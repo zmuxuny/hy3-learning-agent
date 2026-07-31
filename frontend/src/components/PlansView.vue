@@ -96,89 +96,91 @@ function inspectPlanWithAgent() {
         <div v-if="!store.plans.length" class="empty-state compact">还没有计划</div>
       </aside>
 
-      <main v-if="store.currentPlan" class="plan-detail">
-        <article class="plan-hero panel">
-          <div class="plan-hero-main">
-            <div class="plan-kicker">
-              <span class="live-badge"><i></i> Agent managed</span>
-              <span>PLAN {{ store.currentPlan.id }} · VERSION {{ store.currentPlan.version }}</span>
-            </div>
-            <h2>{{ store.currentPlan.title }}</h2>
-            <p>{{ store.currentPlan.goal }}</p>
-            <div class="plan-meta-grid">
-              <div><CalendarDaysIcon /><span><small>最终期限</small><strong>{{ formatDate(store.currentPlan.deadline, true) }}</strong></span></div>
-              <div><ClockIcon /><span><small>每周投入</small><strong>{{ store.currentPlan.weekly_minutes }} 分钟</strong></span></div>
-              <div><MapIcon /><span><small>计划结构</small><strong>{{ store.currentPlan.stages.length }} 阶段 · {{ taskIds.size }} 任务</strong></span></div>
-              <div><AdjustmentsHorizontalIcon /><span><small>Agent 操作</small><strong>{{ planOperations.length }} 条可审计记录</strong></span></div>
-            </div>
-          </div>
-          <div class="plan-progress-block">
-            <div class="plan-score" :style="{ '--progress': `${Math.round(store.currentPlan.progress * 360)}deg` }">
-              <span><strong>{{ Math.round(store.currentPlan.progress * 100) }}%</strong><small>整体进度</small></span>
-            </div>
-            <div class="plan-output"><DocumentCheckIcon /><span><small>期望产出</small><strong>{{ store.currentPlan.expected_outcome || '等待补充' }}</strong></span></div>
-          </div>
-        </article>
-
-        <div class="harness-note">
-          <SparklesIcon />
-          <div><strong>Harness 管理模式</strong><p>任务卡上的操作会发给统一 Agent；Agent 先读取上下文，再通过工具修改计划，不绕过审计层。</p></div>
-          <button @click="store.traceOpen = true">查看运行轨迹</button>
-        </div>
-
-        <div class="kanban">
-          <article v-for="stage in store.currentPlan.stages" :key="stage.id" :class="['stage-column', stage.status]">
-            <header>
-              <div>
-                <small>阶段 {{ stage.position + 1 }}</small>
-                <h3>{{ stage.title }}</h3>
+      <section class="plan-workspace">
+        <main v-if="store.currentPlan" class="plan-detail">
+          <article class="plan-hero panel">
+            <div class="plan-hero-main">
+              <div class="plan-kicker">
+                <span class="live-badge"><i></i> Agent managed</span>
+                <span>PLAN {{ store.currentPlan.id }} · VERSION {{ store.currentPlan.version }}</span>
               </div>
-              <span>{{ stageProgress(stage) }}%</span>
-            </header>
-            <div class="stage-progress"><i :style="{ width: `${stageProgress(stage)}%` }"></i></div>
-            <p v-if="stage.description" class="stage-description">{{ stage.description }}</p>
-
-            <div class="stage-tasks">
-              <article v-for="task in stage.tasks" :key="task.id" :class="['task-card', `status-${task.status}`]">
-                <header class="task-card-head">
-                  <span class="task-id">TASK {{ task.id }}</span>
-                  <span :class="['task-status', task.status]">
-                    <i></i>{{ statusLabel(task.status) }}
-                  </span>
-                </header>
-                <div class="task-title">
-                  <component :is="task.status === 'completed' ? CheckCircleIcon : task.status === 'active' ? PlayCircleIcon : ClockIcon" />
-                  <strong>{{ task.title }}</strong>
-                </div>
-                <p>{{ task.description || '等待 Agent 补充任务说明。' }}</p>
-
-                <div class="task-facts">
-                  <span><ClockIcon />{{ task.estimated_minutes }} 分钟</span>
-                  <span><CalendarDaysIcon />截止 {{ formatDate(task.due_at, true) }}</span>
-                  <span v-if="task.review_due_at" class="review-fact"><BoltIcon />复习 {{ formatDate(task.review_due_at, true) }}</span>
-                </div>
-
-                <div class="task-tags">
-                  <span>{{ task.kind }}</span>
-                  <span v-if="task.is_core || task.evidence_required" class="evidence-tag"><ShieldCheckIcon /> 核心 · 需证据</span>
-                  <span v-if="wasTouchedByAgent(task)" class="agent-tag"><SparklesIcon /> Agent 已调整</span>
-                </div>
-
-                <footer>
-                  <a v-if="task.resource_url" :href="task.resource_url" target="_blank" rel="noreferrer">
-                    学习资源 <ArrowTopRightOnSquareIcon />
-                  </a>
-                  <span v-else>暂无外部资源</span>
-                  <button @click="askAgentAboutTask(task)"><SparklesIcon /> 让 Agent 检查</button>
-                </footer>
-              </article>
+              <h2>{{ store.currentPlan.title }}</h2>
+              <p>{{ store.currentPlan.goal }}</p>
+              <div class="plan-meta-grid">
+                <div><CalendarDaysIcon /><span><small>最终期限</small><strong>{{ formatDate(store.currentPlan.deadline, true) }}</strong></span></div>
+                <div><ClockIcon /><span><small>每周投入</small><strong>{{ store.currentPlan.weekly_minutes }} 分钟</strong></span></div>
+                <div><MapIcon /><span><small>计划结构</small><strong>{{ store.currentPlan.stages.length }} 阶段 · {{ taskIds.size }} 任务</strong></span></div>
+                <div><AdjustmentsHorizontalIcon /><span><small>Agent 操作</small><strong>{{ planOperations.length }} 条可审计记录</strong></span></div>
+              </div>
+            </div>
+            <div class="plan-progress-block">
+              <div class="plan-score" :style="{ '--progress': `${Math.round(store.currentPlan.progress * 360)}deg` }">
+                <span><strong>{{ Math.round(store.currentPlan.progress * 100) }}%</strong><small>整体进度</small></span>
+              </div>
+              <div class="plan-output"><DocumentCheckIcon /><span><small>期望产出</small><strong>{{ store.currentPlan.expected_outcome || '等待补充' }}</strong></span></div>
             </div>
           </article>
-        </div>
-      </main>
 
-      <main v-else class="panel empty-state">选择一个计划，或让 Agent 创建完整计划。</main>
+          <div class="harness-note">
+            <SparklesIcon />
+            <div><strong>Harness 管理模式</strong><p>任务卡上的操作会发给统一 Agent；Agent 先读取上下文，再通过工具修改计划，不绕过审计层。</p></div>
+            <button @click="store.traceOpen = true">查看运行轨迹</button>
+          </div>
+
+          <div class="kanban">
+            <article v-for="stage in store.currentPlan.stages" :key="stage.id" :class="['stage-column', stage.status]">
+              <header>
+                <div>
+                  <small>阶段 {{ stage.position + 1 }}</small>
+                  <h3>{{ stage.title }}</h3>
+                </div>
+                <span>{{ stageProgress(stage) }}%</span>
+              </header>
+              <div class="stage-progress"><i :style="{ width: `${stageProgress(stage)}%` }"></i></div>
+              <p v-if="stage.description" class="stage-description">{{ stage.description }}</p>
+
+              <div class="stage-tasks">
+                <article v-for="task in stage.tasks" :key="task.id" :class="['task-card', `status-${task.status}`]">
+                  <header class="task-card-head">
+                    <span class="task-id">TASK {{ task.id }}</span>
+                    <span :class="['task-status', task.status]">
+                      <i></i>{{ statusLabel(task.status) }}
+                    </span>
+                  </header>
+                  <div class="task-title">
+                    <component :is="task.status === 'completed' ? CheckCircleIcon : task.status === 'active' ? PlayCircleIcon : ClockIcon" />
+                    <strong>{{ task.title }}</strong>
+                  </div>
+                  <p>{{ task.description || '等待 Agent 补充任务说明。' }}</p>
+
+                  <div class="task-facts">
+                    <span><ClockIcon />{{ task.estimated_minutes }} 分钟</span>
+                    <span><CalendarDaysIcon />截止 {{ formatDate(task.due_at, true) }}</span>
+                    <span v-if="task.review_due_at" class="review-fact"><BoltIcon />复习 {{ formatDate(task.review_due_at, true) }}</span>
+                  </div>
+
+                  <div class="task-tags">
+                    <span>{{ task.kind }}</span>
+                    <span v-if="task.is_core || task.evidence_required" class="evidence-tag"><ShieldCheckIcon /> 核心 · 需证据</span>
+                    <span v-if="wasTouchedByAgent(task)" class="agent-tag"><SparklesIcon /> Agent 已调整</span>
+                  </div>
+
+                  <footer>
+                    <a v-if="task.resource_url" :href="task.resource_url" target="_blank" rel="noreferrer">
+                      学习资源 <ArrowTopRightOnSquareIcon />
+                    </a>
+                    <span v-else>暂无外部资源</span>
+                    <button @click="askAgentAboutTask(task)"><SparklesIcon /> 让 Agent 检查</button>
+                  </footer>
+                </article>
+              </div>
+            </article>
+          </div>
+        </main>
+
+        <main v-else class="panel empty-state">选择一个计划，或让 Agent 创建完整计划。</main>
+        <AgentComposer />
+      </section>
     </div>
-    <AgentComposer />
   </section>
 </template>

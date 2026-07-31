@@ -180,8 +180,10 @@ Sidebar                  Conversation Canvas               Run Drawer
                          固定输入框                         审计与撤销确认
 
 Plan Workspace
-计划版本 / 阶段 / 任务卡 / 证据 / 复习 / Agent 操作痕迹
-└─ 任何“让 Agent 检查”请求都返回统一 AgentRuntime，不直接写数据库
+横向计划切换栏
+└─ 当前计划：版本 / 阶段 / 任务卡 / 证据 / 复习 / Agent 操作痕迹
+   ├─ Agent 输入框与计划内容共享整个内容区的视觉中轴
+   └─ 任何“让 Agent 检查”请求都返回统一 AgentRuntime，不直接写数据库
 ```
 
 ## 9. 多用户预留
