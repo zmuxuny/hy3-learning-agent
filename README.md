@@ -1,0 +1,114 @@
+# Learning Agent · Hy3
+
+一个在个人电脑上持续运行的主动式学习 Agent Harness。它不是只会聊天的问答框：用户对话和后台心跳进入同一套 Agent Runtime，Hy3 可以读取计划与分层上下文、调用原子工具、主动提醒或抽查，并把每次行动作为可审计事件实时展示。
+
+当前版本聚焦编程与技术学习，采用单用户本地部署；核心数据均带 `owner_id`，为未来多用户服务保留隔离边界。
+
+## 为什么是 Harness
+
+```mermaid
+flowchart LR
+    U[用户消息] --> R[Agent Runtime]
+    H[定时心跳] --> R
+    R --> C[Context Assembler]
+    C --> M[Hy3]
+    M --> T[类型化工具]
+    T --> D[(SQLite + Markdown 快照)]
+    T --> N[收件箱 / 浏览器 / 邮件]
+    R --> E[SSE 运行事件]
+    E --> W[Codex 风格工作台]
+```
+
+- 同一个统一 Agent 处理对话、心跳、计划与考核，按任务切换角色。
+- 界面展示上下文组装、行动摘要、工具调用、结果和失败，不展示模型私有思维链。
+- 长期记忆只生成候选，用户确认后生效；低风险写操作留下逆向 Patch，可撤销。
+- 后台提醒受免打扰、每日上限和冷却时间等确定性 Guard 约束。
+- 原始对话、学习事件、分层记忆和每次 Run 的上下文快照分别保存。
+
+## 已实现能力
+
+- 完整 `Plan → Stage → Task` 计划模型与多计划工作台
+- `AgentRun / RunEvent` 生命周期、SSE 实时轨迹和停止请求
+- Hy3 多轮 Function Calling，以及 TokenHub 交错式思考字段回填
+- 全局与计划级记忆、来源/置信度、确认/删除、Markdown 快照
+- 周期心跳和手动心跳，共用同一个 Agent Runtime
+- 应用内收件箱、浏览器通知、可选 SMTP 邮件
+- 简答测验、证据化评分、复习调度、XP 与可撤销操作基础
+- 核心任务证据门槛、真实计划进度和真实学习事件热力图
+- 响应式三栏工作台、计划看板、进度环和轻游戏化视觉
+
+受限代码执行、公开资料搜索、日历双向同步、IMAP 邮件回复和真实子 Agent 执行仍属于后续工作，不在界面中伪装成已完成能力。
+
+## 快速开始
+
+要求 Python 3.11+ 与 Node.js 20+。
+
+```bash
+./scripts/setup.sh
+cp .env.example .env
+```
+
+只在本机 `.env` 中填写 TokenHub Key：
+
+```dotenv
+OPENAI_API_KEY=你的密钥
+OPENAI_API_BASE=https://tokenhub.tencentmaas.com/v1
+MODEL_NAME=hy3
+```
+
+密钥不得提交到 Git。启动后端；它会同时托管已构建的前端：
+
+```bash
+./scripts/start.sh
+```
+
+打开 <http://127.0.0.1:8000>。开发前端时可另开终端：
+
+```bash
+cd frontend
+npm run dev
+```
+
+Vite 会把 `/api` 代理到 `127.0.0.1:8000`。
+
+## 两条演示流程
+
+### 1. 完整计划与主动提醒
+
+在底部输入目标、基础、截止日期、每周时间、偏好、期望产出、资源和不采用的方法，请 Agent 创建完整计划。随后点击“立即运行一次心跳”：Hy3 会读取计划和近期事件，自主选择保持安静、提醒、抽查或执行低风险可撤销调整。
+
+### 2. 核心任务与主动考核
+
+让 Agent 把一个核心任务标记为完成。没有证据时工具会拒绝；提交答案或仓库/文件证据后，Agent 可以创建并评分测验、更新 XP、安排复习。工具结果和操作 ID 出现在右侧运行轨迹中。
+
+## 验证
+
+```bash
+source .venv/bin/activate
+pytest -q
+npm --prefix frontend run build
+npm --prefix frontend audit --omit=dev
+```
+
+自动化测试使用隔离数据库和模拟模型响应，验证工具循环但不冒充真实 Hy3 调用。真实模型验收必须看到 TokenHub 成功响应；若返回 `401006 endpoint is inactive`，需要先在 TokenHub 控制台启用对应端点或 Token Plan。
+
+## 数据与安全
+
+- SQLite 默认位于 `data/learning_companion.db`，上下文快照位于 `data/context/`，两者都被 Git 忽略。
+- SMTP 密码和 TokenHub Key 只保存在 `.env`。
+- 浏览器通知只有在用户授予权限后显示。
+- 本地服务或电脑停止时无法主动提醒。
+- 当前代码执行工具尚未开放；未来实现必须隔离目录、密钥、网络、时间和资源。
+
+## 项目文档
+
+- [产品定义](docs/PRODUCT.md)
+- [架构与上下文](docs/ARCHITECTURE.md)
+- [工具与权限协议](docs/TOOL_PROTOCOL.md)
+- [路线图](docs/ROADMAP.md)
+- [当前状态](docs/STATUS.md)
+- [参赛提交清单](docs/SUBMISSION.md)
+
+## License
+
+[MIT](LICENSE)

@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite3
+sql_app.db
+
+# IDEs
+.vscode/
+.idea/
+.trae/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# User Data
+uploads/
+data/uploads/
+data/context/
+
+# JavaScript dependencies and generated frontend assets
+node_modules/
+dist/
+
+# Runtime logs
+logs/
+*.log
+
+# Local migration references kept outside the clean project history
+_legacy/
+frontend-new/

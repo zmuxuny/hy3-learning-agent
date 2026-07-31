@@ -1,0 +1,236 @@
+import { computed, ref } from 'vue';
+import { defineStore } from 'pinia';
+import api from '../api/client';
+
+const RUN_EVENTS = [
+  'run.started',
+  'context.built',
+  'assistant.status',
+  'assistant.message',
+  'tool.started',
+  'tool.completed',
+  'approval.required',
+  'operation.committed',
+  'notification.sent',
+  'run.completed',
+  'run.failed',
+  'run.cancelled',
+];
+
+export const useWorkspaceStore = defineStore('workspace', () => {
+  const activeView = ref('home');
+  const profile = ref(null);
+  const plans = ref([]);
+  const dashboard = ref({ activity: [], achievements: [], due_review_count: 0, open_quiz_count: 0 });
+  const currentPlan = ref(null);
+  const memories = ref([]);
+  const notifications = ref([]);
+  const operations = ref([]);
+  const runs = ref([]);
+  const currentRun = ref(null);
+  const activeSessionId = ref(null);
+  const runEvents = ref([]);
+  const loading = ref(false);
+  const error = ref('');
+  let eventSource = null;
+
+  const unreadCount = computed(() => notifications.value.filter((item) => !item.read_at).length);
+  const activePlans = computed(() => plans.value.filter((plan) => plan.status === 'active'));
+  const pendingMemories = computed(() => memories.value.filter((memory) => memory.status === 'proposed'));
+
+  async function loadWorkspace() {
+    loading.value = true;
+    error.value = '';
+    try {
+      const [profileRes, plansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes] = await Promise.all([
+        api.get('/profile'),
+        api.get('/plans'),
+        api.get('/dashboard'),
+        api.get('/memories'),
+        api.get('/notifications'),
+        api.get('/operations'),
+        api.get('/agent/runs'),
+      ]);
+      profile.value = profileRes.data;
+      plans.value = plansRes.data;
+      dashboard.value = dashboardRes.data;
+      memories.value = memoriesRes.data;
+      notifications.value = notificationsRes.data;
+      operations.value = operationsRes.data;
+      runs.value = runsRes.data;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function selectPlan(planId) {
+    const response = await api.get(`/plans/${planId}`);
+    currentPlan.value = response.data;
+    activeView.value = 'plans';
+  }
+
+  async function startRun(objective, planId = null) {
+    if (!objective.trim()) return;
+    closeEventSource();
+    runEvents.value = [];
+    error.value = '';
+    const response = await api.post('/agent/runs', {
+      objective,
+      plan_id: planId,
+      session_id: activeSessionId.value,
+      trigger: 'user_message',
+    });
+    currentRun.value = response.data;
+    activeSessionId.value = response.data.session_id;
+    runs.value.unshift(response.data);
+    subscribeToRun(response.data.id);
+  }
+
+  async function triggerHeartbeat() {
+    closeEventSource();
+    runEvents.value = [];
+    error.value = '';
+    try {
+      const response = await api.post('/agent/heartbeat');
+      currentRun.value = response.data;
+      runs.value.unshift(response.data);
+      subscribeToRun(response.data.id);
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+    }
+  }
+
+  async function inspectRun(run) {
+    closeEventSource();
+    currentRun.value = run;
+    const response = await api.get(`/agent/runs/${run.id}/events`);
+    runEvents.value = response.data.map((event) => ({
+      sequence: event.sequence,
+      type: event.event_type,
+      summary: event.summary,
+      payload: event.payload,
+      created_at: event.created_at,
+    }));
+    if (['queued', 'running'].includes(run.status)) subscribeToRun(run.id, false);
+  }
+
+  function subscribeToRun(runId, clear = true) {
+    if (clear) runEvents.value = [];
+    eventSource = new EventSource(`/api/v1/agent/runs/${runId}/events/stream`);
+    RUN_EVENTS.forEach((eventName) => {
+      eventSource.addEventListener(eventName, async (event) => {
+        const payload = JSON.parse(event.data);
+        if (!runEvents.value.some((item) => item.sequence === payload.sequence)) {
+          runEvents.value.push(payload);
+        }
+        if (eventName === 'run.completed' || eventName === 'run.failed' || eventName === 'run.cancelled') {
+          currentRun.value = { ...currentRun.value, status: eventName.split('.')[1] };
+          closeEventSource();
+          await refreshAfterRun();
+        }
+      });
+    });
+    eventSource.onerror = () => closeEventSource();
+  }
+
+  async function cancelCurrentRun() {
+    if (!currentRun.value) return;
+    await api.post(`/agent/runs/${currentRun.value.id}/cancel`);
+  }
+
+  async function confirmMemory(memoryId) {
+    await api.post(`/memories/${memoryId}/confirm`);
+    const response = await api.get('/memories');
+    memories.value = response.data;
+  }
+
+  async function deleteMemory(memoryId) {
+    await api.delete(`/memories/${memoryId}`);
+    memories.value = memories.value.filter((memory) => memory.id !== memoryId);
+  }
+
+  async function markNotificationRead(notificationId) {
+    const response = await api.post(`/notifications/${notificationId}/read`);
+    const index = notifications.value.findIndex((item) => item.id === notificationId);
+    if (index >= 0) notifications.value[index] = response.data;
+  }
+
+  async function undoOperation(operationId) {
+    await api.post(`/operations/${operationId}/undo`);
+    await refreshAfterRun();
+  }
+
+  async function refreshAfterRun() {
+    const knownNotificationIds = new Set(notifications.value.map((item) => item.id));
+    const [profileRes, plansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes] = await Promise.all([
+      api.get('/profile'),
+      api.get('/plans'),
+      api.get('/dashboard'),
+      api.get('/memories'),
+      api.get('/notifications'),
+      api.get('/operations'),
+      api.get('/agent/runs'),
+    ]);
+    profile.value = profileRes.data;
+    plans.value = plansRes.data;
+    dashboard.value = dashboardRes.data;
+    memories.value = memoriesRes.data;
+    notifications.value = notificationsRes.data;
+    if ('Notification' in window && Notification.permission === 'granted') {
+      notifications.value
+        .filter((item) => item.channel === 'browser' && item.status === 'sent' && !knownNotificationIds.has(item.id))
+        .forEach((item) => new Notification(item.title, { body: item.body }));
+    }
+    operations.value = operationsRes.data;
+    runs.value = runsRes.data;
+    if (currentPlan.value) await selectPlan(currentPlan.value.id);
+  }
+
+  function closeEventSource() {
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+  }
+
+  function startNewConversation() {
+    activeSessionId.value = null;
+    currentRun.value = null;
+    runEvents.value = [];
+    activeView.value = 'home';
+    closeEventSource();
+  }
+
+  return {
+    activeView,
+    profile,
+    plans,
+    dashboard,
+    currentPlan,
+    memories,
+    notifications,
+    operations,
+    runs,
+    currentRun,
+    activeSessionId,
+    runEvents,
+    loading,
+    error,
+    unreadCount,
+    activePlans,
+    pendingMemories,
+    loadWorkspace,
+    selectPlan,
+    startRun,
+    triggerHeartbeat,
+    inspectRun,
+    cancelCurrentRun,
+    confirmMemory,
+    deleteMemory,
+    markNotificationRead,
+    undoOperation,
+    startNewConversation,
+  };
+});
