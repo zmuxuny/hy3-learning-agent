@@ -1,14 +1,17 @@
 <script setup>
 import {
   AdjustmentsHorizontalIcon,
+  ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
   BoltIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
+  ChevronRightIcon,
   ClockIcon,
   DocumentCheckIcon,
   MapIcon,
   PlayCircleIcon,
+  PlusIcon,
   ShieldCheckIcon,
   SparklesIcon,
 } from '@heroicons/vue/24/outline';
@@ -25,6 +28,22 @@ const planOperations = computed(() => store.operations.filter((operation) => (
   || (operation.entity_type === 'task' && taskIds.value.has(operation.entity_id))
 )));
 
+function tasksFor(plan) {
+  return plan.stages.flatMap((stage) => stage.tasks);
+}
+
+function completedTasks(plan) {
+  return tasksFor(plan).filter((task) => task.status === 'completed').length;
+}
+
+function operationCount(plan) {
+  const ids = new Set(tasksFor(plan).map((task) => String(task.id)));
+  return store.operations.filter((operation) => (
+    (operation.entity_type === 'plan' && operation.entity_id === String(plan.id))
+    || (operation.entity_type === 'task' && ids.has(operation.entity_id))
+  )).length;
+}
+
 function statusLabel(status) {
   return { pending: '待开始', active: '进行中', completed: '已完成', blocked: '受阻', skipped: '已跳过' }[status] || status;
 }
@@ -36,6 +55,17 @@ function formatDate(value, includeTime = false) {
     month: 'numeric',
     day: 'numeric',
     ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  }).format(new Date(value));
+}
+
+function formatUpdated(value) {
+  if (!value) return '尚未更新';
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(new Date(value));
 }
 
@@ -61,41 +91,88 @@ function inspectPlanWithAgent() {
     store.currentPlan.id,
   );
 }
+
+function checkCurrentPlan() {
+  store.startRun(
+    '请主动检查当前计划现在是否有逾期、阻塞、待复习或需要提醒的事项。先读取真实状态；如果没有需要干预的内容，直接说明无需动作。',
+    store.currentPlan.id,
+  );
+}
+
+function createPlanWithAgent() {
+  store.startNewConversation();
+  store.startRun('请通过对话引导我创建一份新的学习计划。先确认目标、当前基础、期限、每周时间、偏好、期望产出、已有资源和不希望采用的方式，再生成完整计划。');
+}
 </script>
 
 <template>
-  <section class="view has-composer">
-    <header class="view-header compact-header">
+  <section v-if="store.planScreen === 'list'" class="view plan-index-view">
+    <header class="view-header plan-index-header">
       <div>
-        <span class="eyebrow">PLANS · EVIDENCE · OPERATIONS</span>
+        <span class="eyebrow">PLANS · PROGRESS · EVIDENCE</span>
         <h1>学习计划</h1>
-        <p>计划是 Agent 可以读取和操作的工作空间。核心任务必须有证据，所有 AI 修改都进入审计记录并可撤销。</p>
+        <p>查看所有学习目标和执行状态。进入一个计划后，对话会明确专注于该计划。</p>
+      </div>
+      <button class="primary-button" @click="createPlanWithAgent"><PlusIcon /> 用 Agent 创建</button>
+    </header>
+
+    <div class="plan-index-content">
+      <div class="plan-index-toolbar">
+        <div><strong>全部计划</strong><span>{{ store.plans.length }}</span></div>
+        <small>按最近更新排序</small>
+      </div>
+
+      <div v-if="store.plans.length" class="plan-list">
+        <button v-for="plan in store.plans" :key="plan.id" class="plan-list-card" @click="store.selectPlan(plan.id)">
+          <div class="plan-list-main">
+            <header>
+              <span :class="['plan-list-status', plan.status]"><i></i>{{ statusLabel(plan.status) }}</span>
+              <small>更新于 {{ formatUpdated(plan.updated_at) }}</small>
+            </header>
+            <h2>{{ plan.title }}</h2>
+            <p>{{ plan.goal || plan.description || '等待 Agent 补充计划目标。' }}</p>
+            <div class="plan-list-progress">
+              <span><i :style="{ width: `${Math.round(plan.progress * 100)}%` }"></i></span>
+              <strong>{{ Math.round(plan.progress * 100) }}%</strong>
+            </div>
+            <footer>
+              <span><CalendarDaysIcon />{{ formatDate(plan.deadline) }}</span>
+              <span><MapIcon />{{ plan.stages.length }} 阶段 · {{ tasksFor(plan).length }} 任务</span>
+              <span><CheckCircleIcon />{{ completedTasks(plan) }} 项已完成</span>
+              <span><SparklesIcon />{{ operationCount(plan) }} 次 Agent 操作</span>
+            </footer>
+          </div>
+          <div class="plan-list-enter">
+            <span>进入计划</span>
+            <ChevronRightIcon />
+          </div>
+        </button>
+      </div>
+
+      <div v-else class="plan-list-empty panel">
+        <MapIcon />
+        <h2>还没有学习计划</h2>
+        <p>让 Agent 先了解你的目标和约束，再创建第一份完整计划。</p>
+        <button class="primary-button" @click="createPlanWithAgent"><PlusIcon /> 用 Agent 创建</button>
+      </div>
+    </div>
+  </section>
+
+  <section v-else class="view has-composer">
+    <header class="view-header compact-header plan-detail-header">
+      <div>
+        <button class="back-button" @click="store.openPlanList"><ArrowLeftIcon /> 所有计划</button>
+        <span class="eyebrow">PLAN WORKSPACE · AGENT FOCUS</span>
+        <h1>计划工作区</h1>
+        <p>这里的对话明确绑定当前计划；Agent 会优先读取它的任务、记忆、证据和复习安排。</p>
       </div>
       <div class="plan-header-actions" v-if="store.currentPlan">
-        <button class="secondary-button" @click="store.triggerHeartbeat"><BoltIcon /> 主动检查</button>
+        <button class="secondary-button" @click="checkCurrentPlan"><BoltIcon /> 主动检查</button>
         <button class="primary-button" @click="inspectPlanWithAgent"><SparklesIcon /> 交给 Agent</button>
       </div>
     </header>
 
-    <div class="plans-layout">
-      <aside class="plan-picker panel">
-        <div class="plan-picker-title"><MapIcon /> 全部计划 <span>{{ store.plans.length }}</span></div>
-        <button
-          v-for="plan in store.plans"
-          :key="plan.id"
-          :class="{ active: store.currentPlan?.id === plan.id }"
-          @click="store.selectPlan(plan.id)"
-        >
-          <span class="plan-dot"></span>
-          <div>
-            <strong>{{ plan.title }}</strong>
-            <small>{{ statusLabel(plan.status) }} · {{ Math.round(plan.progress * 100) }}%</small>
-            <span class="picker-progress"><i :style="{ width: `${Math.round(plan.progress * 100)}%` }"></i></span>
-          </div>
-        </button>
-        <div v-if="!store.plans.length" class="empty-state compact">还没有计划</div>
-      </aside>
-
+    <div class="plan-detail-layout">
       <section class="plan-workspace">
         <main v-if="store.currentPlan" class="plan-detail">
           <article class="plan-hero panel">
@@ -123,17 +200,14 @@ function inspectPlanWithAgent() {
 
           <div class="harness-note">
             <SparklesIcon />
-            <div><strong>Harness 管理模式</strong><p>任务卡上的操作会发给统一 Agent；Agent 先读取上下文，再通过工具修改计划，不绕过审计层。</p></div>
+            <div><strong>当前计划已成为对话焦点</strong><p>Agent 先读取本计划上下文，再自主选择工具；所有修改进入审计层并可撤销。</p></div>
             <button @click="store.traceOpen = true">查看运行轨迹</button>
           </div>
 
           <div class="kanban">
             <article v-for="stage in store.currentPlan.stages" :key="stage.id" :class="['stage-column', stage.status]">
               <header>
-                <div>
-                  <small>阶段 {{ stage.position + 1 }}</small>
-                  <h3>{{ stage.title }}</h3>
-                </div>
+                <div><small>阶段 {{ stage.position + 1 }}</small><h3>{{ stage.title }}</h3></div>
                 <span>{{ stageProgress(stage) }}%</span>
               </header>
               <div class="stage-progress"><i :style="{ width: `${stageProgress(stage)}%` }"></i></div>
@@ -143,32 +217,25 @@ function inspectPlanWithAgent() {
                 <article v-for="task in stage.tasks" :key="task.id" :class="['task-card', `status-${task.status}`]">
                   <header class="task-card-head">
                     <span class="task-id">TASK {{ task.id }}</span>
-                    <span :class="['task-status', task.status]">
-                      <i></i>{{ statusLabel(task.status) }}
-                    </span>
+                    <span :class="['task-status', task.status]"><i></i>{{ statusLabel(task.status) }}</span>
                   </header>
                   <div class="task-title">
                     <component :is="task.status === 'completed' ? CheckCircleIcon : task.status === 'active' ? PlayCircleIcon : ClockIcon" />
                     <strong>{{ task.title }}</strong>
                   </div>
                   <p>{{ task.description || '等待 Agent 补充任务说明。' }}</p>
-
                   <div class="task-facts">
                     <span><ClockIcon />{{ task.estimated_minutes }} 分钟</span>
                     <span><CalendarDaysIcon />截止 {{ formatDate(task.due_at, true) }}</span>
                     <span v-if="task.review_due_at" class="review-fact"><BoltIcon />复习 {{ formatDate(task.review_due_at, true) }}</span>
                   </div>
-
                   <div class="task-tags">
                     <span>{{ task.kind }}</span>
                     <span v-if="task.is_core || task.evidence_required" class="evidence-tag"><ShieldCheckIcon /> 核心 · 需证据</span>
                     <span v-if="wasTouchedByAgent(task)" class="agent-tag"><SparklesIcon /> Agent 已调整</span>
                   </div>
-
                   <footer>
-                    <a v-if="task.resource_url" :href="task.resource_url" target="_blank" rel="noreferrer">
-                      学习资源 <ArrowTopRightOnSquareIcon />
-                    </a>
+                    <a v-if="task.resource_url" :href="task.resource_url" target="_blank" rel="noreferrer">学习资源 <ArrowTopRightOnSquareIcon /></a>
                     <span v-else>暂无外部资源</span>
                     <button @click="askAgentAboutTask(task)"><SparklesIcon /> 让 Agent 检查</button>
                   </footer>
@@ -178,7 +245,7 @@ function inspectPlanWithAgent() {
           </div>
         </main>
 
-        <main v-else class="panel empty-state">选择一个计划，或让 Agent 创建完整计划。</main>
+        <main v-else class="panel empty-state">该计划已不存在，返回计划列表重新选择。</main>
         <AgentComposer />
       </section>
     </div>

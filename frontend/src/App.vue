@@ -12,7 +12,7 @@ import { useWorkspaceStore } from './stores/workspace';
 const store = useWorkspaceStore();
 const viewTitle = computed(() => ({
   home: store.currentRun?.objective || '新对话',
-  plans: '学习计划',
+  plans: store.planScreen === 'detail' && store.currentPlan ? store.currentPlan.title : '学习计划',
   memory: 'AI 眼中的我',
   inbox: '主动消息',
 }[store.activeView]));

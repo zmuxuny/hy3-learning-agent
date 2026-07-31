@@ -19,6 +19,7 @@ const RUN_EVENTS = [
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const activeView = ref('home');
+  const planScreen = ref('list');
   const profile = ref(null);
   const plans = ref([]);
   const dashboard = ref({ activity: [], achievements: [], due_review_count: 0, open_quiz_count: 0 });
@@ -28,6 +29,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const operations = ref([]);
   const runs = ref([]);
   const currentRun = ref(null);
+  const focusPlanId = ref(null);
   const traceOpen = ref(false);
   const activeSessionId = ref(null);
   const runEvents = ref([]);
@@ -38,6 +40,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const unreadCount = computed(() => notifications.value.filter((item) => !item.read_at).length);
   const activePlans = computed(() => plans.value.filter((plan) => plan.status === 'active'));
   const pendingMemories = computed(() => memories.value.filter((memory) => memory.status === 'proposed'));
+  const focusedPlan = computed(() => (
+    plans.value.find((plan) => plan.id === focusPlanId.value) || null
+  ));
 
   async function loadWorkspace() {
     loading.value = true;
@@ -75,36 +80,53 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function refreshCurrentPlan() {
     if (!plans.value.length) {
       currentPlan.value = null;
+      focusPlanId.value = null;
+      planScreen.value = 'list';
       return;
     }
-    const selectedPlan = plans.value.find((plan) => plan.id === currentPlan.value?.id);
-    await loadPlan(selectedPlan?.id || plans.value[0].id);
+    if (!currentPlan.value) return;
+    const selectedPlan = plans.value.find((plan) => plan.id === currentPlan.value.id);
+    if (!selectedPlan) {
+      if (focusPlanId.value === currentPlan.value.id) focusPlanId.value = null;
+      currentPlan.value = null;
+      planScreen.value = 'list';
+      return;
+    }
+    await loadPlan(selectedPlan.id);
   }
 
   async function selectPlan(planId) {
     await loadPlan(planId);
+    if (focusPlanId.value !== planId) resetConversationState();
+    planScreen.value = 'detail';
+    focusPlanId.value = planId;
+    activeView.value = 'plans';
+  }
+
+  function openPlanList() {
+    planScreen.value = 'list';
     activeView.value = 'plans';
   }
 
   async function openView(view) {
-    if (view === 'plans' && !currentPlan.value && plans.value.length) {
-      await loadPlan(plans.value[0].id);
-    }
+    if (view === 'plans') planScreen.value = 'list';
     activeView.value = view;
   }
 
-  async function startRun(objective, planId = null) {
+  async function startRun(objective, planId = undefined) {
     if (!objective.trim()) return;
+    const resolvedPlanId = planId === undefined ? focusPlanId.value : planId;
     closeEventSource();
     runEvents.value = [];
     error.value = '';
     const response = await api.post('/agent/runs', {
       objective,
-      plan_id: planId,
+      plan_id: resolvedPlanId,
       session_id: activeSessionId.value,
       trigger: 'user_message',
     });
     currentRun.value = response.data;
+    focusPlanId.value = response.data.plan_id ?? resolvedPlanId ?? null;
     activeSessionId.value = response.data.session_id;
     activeView.value = 'home';
     runs.value.unshift(response.data);
@@ -118,6 +140,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const response = await api.post('/agent/heartbeat');
       currentRun.value = response.data;
+      focusPlanId.value = response.data.plan_id ?? null;
+      activeSessionId.value = response.data.session_id || null;
       activeView.value = 'home';
       runs.value.unshift(response.data);
       subscribeToRun(response.data.id);
@@ -129,6 +153,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function inspectRun(run) {
     closeEventSource();
     currentRun.value = run;
+    focusPlanId.value = run.plan_id ?? null;
     activeSessionId.value = run.session_id || null;
     activeView.value = 'home';
     const response = await api.get(`/agent/runs/${run.id}/events`);
@@ -221,16 +246,22 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  function startNewConversation() {
+  function resetConversationState() {
     activeSessionId.value = null;
     currentRun.value = null;
     runEvents.value = [];
-    activeView.value = 'home';
     closeEventSource();
+  }
+
+  function startNewConversation() {
+    resetConversationState();
+    focusPlanId.value = null;
+    activeView.value = 'home';
   }
 
   return {
     activeView,
+    planScreen,
     profile,
     plans,
     dashboard,
@@ -240,6 +271,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     operations,
     runs,
     currentRun,
+    focusPlanId,
     traceOpen,
     activeSessionId,
     runEvents,
@@ -248,8 +280,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     unreadCount,
     activePlans,
     pendingMemories,
+    focusedPlan,
     loadWorkspace,
     selectPlan,
+    openPlanList,
     openView,
     startRun,
     triggerHeartbeat,

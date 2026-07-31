@@ -21,7 +21,7 @@ const navigation = [
 
 <template>
   <aside class="sidebar">
-    <button class="brand" @click="store.activeView = 'home'">
+    <button class="brand" @click="store.openView('home')">
       <span class="brand-mark"><AcademicCapIcon /></span>
       <strong>Learning Agent</strong>
       <ChevronDownIcon />

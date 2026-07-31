@@ -1,5 +1,5 @@
 <script setup>
-import { ArrowUpIcon, PlusIcon, SparklesIcon } from '@heroicons/vue/24/outline';
+import { ArrowUpIcon, MapIcon, PlusIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 
@@ -10,7 +10,7 @@ async function submit() {
   const value = prompt.value.trim();
   if (!value) return;
   prompt.value = '';
-  await store.startRun(value, store.currentPlan?.id || null);
+  await store.startRun(value);
 }
 </script>
 
@@ -27,6 +27,16 @@ async function submit() {
       <span class="composer-mode"><SparklesIcon /> Hy3 · 深度</span>
       <button class="send-button" :disabled="!prompt.trim()" @click="submit"><ArrowUpIcon /></button>
     </div>
-    <p>{{ store.currentPlan ? `当前关联：${store.currentPlan.title}` : 'Agent 可以读取上下文并调用工具执行动作' }}</p>
+    <div :class="['composer-context', { focused: store.focusedPlan }]">
+      <span v-if="store.focusedPlan">
+        <MapIcon /><strong>计划焦点</strong>{{ store.focusedPlan.title }}
+      </span>
+      <span v-else>
+        <SparklesIcon /><strong>全局对话</strong>Agent 可以协调所有计划
+      </span>
+      <button v-if="store.focusedPlan && store.activeView === 'home'" @click="store.startNewConversation">
+        开始全局对话
+      </button>
+    </div>
   </div>
 </template>

@@ -130,7 +130,7 @@ function eventTitle(event) {
           </div>
         </div>
 
-        <div v-if="store.currentPlan" class="context-chip"><MapIcon /> 当前计划：{{ store.currentPlan.title }}</div>
+        <div v-if="store.focusedPlan" class="context-chip"><MapIcon /> 本次对话专注：{{ store.focusedPlan.title }}</div>
       </div>
     </div>
 
