@@ -62,7 +62,9 @@
 
 只保存当前对话需要的近期消息。较早对话经过总结后进入全局或计划记忆，不无限堆叠原始消息。
 
-每条会话拥有显式焦点：`plan_id = null` 表示全局对话，非空值表示计划对话。`currentPlan` 只代表界面正在查看的数据，不能被当作对话焦点；前端使用独立的 `focusPlanId` 组装 Run 请求。切换全局与计划焦点时建立新的会话边界，避免近期原文跨计划串入。
+每条会话拥有显式焦点：`plan_id = null` 表示全局对话，非空值表示计划对话。`currentPlan` 只代表界面正在查看的数据，不能被当作对话焦点；前端使用独立的 `focusPlanId` 组装 Run 请求。切换全局与计划焦点时建立新的会话边界，避免近期原文跨计划串入。后端同时校验已有 Session 的 `plan_id`，拒绝用同一个 Session 静默改绑其他计划，隔离不能只依赖 UI。
+
+`Session → ChatMessage → AgentRun` 同时承担持久化与 UI 恢复：`GET /agent/sessions/{session_id}/messages` 按时间和 ID 返回原始消息；前端选择任一历史 Run 时先恢复整个 Session，再把该 Run 的事件投影到对应用户消息之后。新 Run 先乐观加入用户消息，完成事件到达后再用数据库原文替换，避免网络时序造成重复或闪烁。
 
 ### Working Memory
 
@@ -177,7 +179,7 @@ backend/app/
 
 ```text
 Sidebar                  Conversation Canvas               Run Drawer
-计划 / 记忆 / 最近 Run    用户目标与 Agent 最终答复          完整事件序列
+计划 / 记忆 / 最近 Run    Session 多轮原始消息               完整事件序列
 主动教练在线状态          关键上下文与工具摘要               参数 / 结果 / 失败
                          固定输入框                         审计与撤销确认
 

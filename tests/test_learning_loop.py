@@ -6,11 +6,12 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 
+from app.api.agent import create_run, read_session_messages
 from app.db.database import AsyncSessionLocal
 from app.api.operations import undo_operation
-from app.models import AgentRun, Notification, Operation, RunEvent
+from app.models import AgentRun, Notification, Operation, RunEvent, Session
 from app.runtime.agent import AgentRuntime
-from app.schemas import PlanCreate, StageCreate, TaskCreate, TaskUpdate
+from app.schemas import AgentRunCreate, PlanCreate, StageCreate, TaskCreate, TaskUpdate
 from app.services import plans as plan_service
 from app.tools import ToolContext, execute_tool
 
@@ -37,6 +38,24 @@ def plan_payload(title: str = "Python async mastery") -> PlanCreate:
             )
         ],
     )
+
+
+@pytest.mark.asyncio
+async def test_session_focus_cannot_be_rebound():
+    async with AsyncSessionLocal() as db:
+        session = Session(owner_id="local", plan_id=None, title="Global conversation")
+        db.add(session)
+        await db.commit()
+        await db.refresh(session)
+
+        with pytest.raises(HTTPException) as error:
+            await create_run(
+                AgentRunCreate(objective="Switch focus silently", session_id=session.id, plan_id=999),
+                db,
+            )
+
+        assert error.value.status_code == 409
+        assert error.value.detail == "Session focus does not match requested plan"
 
 
 @pytest.mark.asyncio
@@ -163,6 +182,12 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
         assert all("private" not in event.summary for event in events)
         notifications = list((await db.execute(select(Notification))).scalars())
         assert {item.channel for item in notifications} == {"in_app", "browser"}
+        messages = await read_session_messages(run.session_id, db)
+        assert [(message.role, message.content) for message in messages] == [
+            ("user", "监督我开始今天的学习"),
+            ("assistant", "我检查了计划，并把本次练习提醒放进了收件箱。"),
+        ]
+        assert all(message.run_id == run_id for message in messages)
 
     assert completions.calls[0]["extra_body"] == {"reasoning_effort": "high"}
     replayed_messages = completions.calls[1]["messages"]

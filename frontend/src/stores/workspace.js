@@ -32,6 +32,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const focusPlanId = ref(null);
   const traceOpen = ref(false);
   const activeSessionId = ref(null);
+  const conversationMessages = ref([]);
   const runEvents = ref([]);
   const loading = ref(false);
   const error = ref('');
@@ -77,6 +78,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     currentPlan.value = response.data;
   }
 
+  async function loadConversation(sessionId) {
+    if (!sessionId) {
+      conversationMessages.value = [];
+      return;
+    }
+    const response = await api.get(`/agent/sessions/${sessionId}/messages`);
+    if (activeSessionId.value === sessionId) conversationMessages.value = response.data;
+  }
+
   async function refreshCurrentPlan() {
     if (!plans.value.length) {
       currentPlan.value = null;
@@ -114,23 +124,41 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function startRun(objective, planId = undefined) {
-    if (!objective.trim()) return;
+    if (!objective.trim()) return false;
     const resolvedPlanId = planId === undefined ? focusPlanId.value : planId;
     closeEventSource();
     runEvents.value = [];
     error.value = '';
-    const response = await api.post('/agent/runs', {
-      objective,
-      plan_id: resolvedPlanId,
-      session_id: activeSessionId.value,
-      trigger: 'user_message',
-    });
-    currentRun.value = response.data;
-    focusPlanId.value = response.data.plan_id ?? resolvedPlanId ?? null;
-    activeSessionId.value = response.data.session_id;
-    activeView.value = 'home';
-    runs.value.unshift(response.data);
-    subscribeToRun(response.data.id);
+    try {
+      const response = await api.post('/agent/runs', {
+        objective,
+        plan_id: resolvedPlanId,
+        session_id: activeSessionId.value,
+        trigger: 'user_message',
+      });
+      currentRun.value = response.data;
+      focusPlanId.value = response.data.plan_id ?? resolvedPlanId ?? null;
+      activeSessionId.value = response.data.session_id;
+      if (!conversationMessages.value.some((message) => message.run_id === response.data.id && message.role === 'user')) {
+        conversationMessages.value.push({
+          id: `pending-${response.data.id}`,
+          session_id: response.data.session_id,
+          run_id: response.data.id,
+          role: 'user',
+          content: objective,
+          message_metadata: {},
+          created_at: new Date().toISOString(),
+          pending: true,
+        });
+      }
+      activeView.value = 'home';
+      runs.value.unshift(response.data);
+      subscribeToRun(response.data.id);
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
   }
 
   async function triggerHeartbeat() {
@@ -142,6 +170,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       currentRun.value = response.data;
       focusPlanId.value = response.data.plan_id ?? null;
       activeSessionId.value = response.data.session_id || null;
+      conversationMessages.value = [];
       activeView.value = 'home';
       runs.value.unshift(response.data);
       subscribeToRun(response.data.id);
@@ -156,7 +185,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     focusPlanId.value = run.plan_id ?? null;
     activeSessionId.value = run.session_id || null;
     activeView.value = 'home';
-    const response = await api.get(`/agent/runs/${run.id}/events`);
+    const [response] = await Promise.all([
+      api.get(`/agent/runs/${run.id}/events`),
+      loadConversation(activeSessionId.value),
+    ]);
     runEvents.value = response.data.map((event) => ({
       sequence: event.sequence,
       type: event.event_type,
@@ -237,6 +269,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     operations.value = operationsRes.data;
     runs.value = runsRes.data;
     await refreshCurrentPlan();
+    await loadConversation(activeSessionId.value);
   }
 
   function closeEventSource() {
@@ -249,6 +282,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function resetConversationState() {
     activeSessionId.value = null;
     currentRun.value = null;
+    conversationMessages.value = [];
     runEvents.value = [];
     closeEventSource();
   }
@@ -274,6 +308,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     focusPlanId,
     traceOpen,
     activeSessionId,
+    conversationMessages,
     runEvents,
     loading,
     error,

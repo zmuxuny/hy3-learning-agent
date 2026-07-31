@@ -1,36 +1,23 @@
 <script setup>
-import {
-  BoltIcon,
-  CheckCircleIcon,
-  CircleStackIcon,
-  CommandLineIcon,
-  MapIcon,
-  SparklesIcon,
-  XCircleIcon,
-} from '@heroicons/vue/24/outline';
-import { computed, ref, watch } from 'vue';
+import { BoltIcon, MapIcon, SparklesIcon } from '@heroicons/vue/24/outline';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
+import AgentRunTurn from './AgentRunTurn.vue';
 
 const store = useWorkspaceStore();
-const processExpanded = ref(false);
-const running = computed(() => ['queued', 'running'].includes(store.currentRun?.status));
+const scrollArea = ref(null);
+const pinnedToBottom = ref(true);
 const days = computed(() => store.dashboard.activity.map((day, index) => ({
   index,
   date: day.date,
   value: Math.min(day.count, 4),
 })));
-const activityEvents = computed(() => store.runEvents.filter((event) => ![
-  'run.started',
-  'tool.started',
-  'assistant.message',
-  'run.completed',
-].includes(event.type)));
-const visibleActivityEvents = computed(() => (
-  processExpanded.value ? activityEvents.value : activityEvents.value.slice(0, 6)
+const currentRunUser = computed(() => store.conversationMessages.find(
+  (message) => message.run_id === store.currentRun?.id && message.role === 'user',
 ));
-const finalEvent = computed(() => [...store.runEvents].reverse().find(
-  (event) => event.type === 'assistant.message' || event.type === 'run.completed' || event.type === 'run.failed',
+const currentRunAssistant = computed(() => [...store.conversationMessages].reverse().find(
+  (message) => message.run_id === store.currentRun?.id && message.role === 'assistant',
 ));
 const suggestions = [
   '根据我的目标创建一份完整学习计划',
@@ -38,33 +25,33 @@ const suggestions = [
   '根据最近表现主动抽查我',
 ];
 
+function onScroll() {
+  if (!scrollArea.value) return;
+  const distance = scrollArea.value.scrollHeight - scrollArea.value.scrollTop - scrollArea.value.clientHeight;
+  pinnedToBottom.value = distance < 120;
+}
+
+async function scrollToLatest(force = false) {
+  await nextTick();
+  if (scrollArea.value && (force || pinnedToBottom.value)) {
+    scrollArea.value.scrollTop = scrollArea.value.scrollHeight;
+  }
+}
+
 watch(() => store.currentRun?.id, () => {
-  processExpanded.value = false;
+  pinnedToBottom.value = true;
+  scrollToLatest(true);
 });
-
-function iconFor(type) {
-  if (type === 'context.built') return CircleStackIcon;
-  if (type.startsWith('tool.')) return CommandLineIcon;
-  if (type === 'run.failed') return XCircleIcon;
-  return CheckCircleIcon;
-}
-
-function eventTitle(event) {
-  if (event.type === 'context.built') return '读取学习上下文';
-  if (event.type === 'tool.started') return `正在调用 ${event.payload?.name || '工具'}`;
-  if (event.type === 'tool.completed') return `${event.payload?.name || '工具'} 已完成`;
-  if (event.type === 'assistant.status') return event.summary;
-  if (event.type === 'run.failed') return '运行失败';
-  return event.summary || event.type;
-}
+watch(() => store.conversationMessages.length, () => scrollToLatest());
+watch(() => store.runEvents.length, () => scrollToLatest());
 </script>
 
 <template>
   <section class="conversation-page">
-    <div class="conversation-scroll">
+    <div ref="scrollArea" class="conversation-scroll" @scroll="onScroll">
       <div v-if="store.error" class="error-banner">{{ store.error }}</div>
 
-      <div v-if="!store.currentRun" class="welcome-state">
+      <div v-if="!store.currentRun && !store.conversationMessages.length" class="welcome-state">
         <div class="welcome-mark"><SparklesIcon /></div>
         <h1>今天想学什么？</h1>
         <p>告诉我你的目标。我会制定计划、持续跟进，并在需要时主动提醒或考核。</p>
@@ -90,45 +77,34 @@ function eventTitle(event) {
       </div>
 
       <div v-else class="thread">
-        <div class="user-turn">
-          <div class="message-bubble">{{ store.currentRun.objective }}</div>
-        </div>
+        <template v-for="message in store.conversationMessages" :key="message.id">
+          <div v-if="message.role === 'user'" class="user-turn">
+            <div class="message-bubble">{{ message.content }}</div>
+          </div>
 
-        <div class="agent-turn">
-          <div class="agent-avatar"><SparklesIcon /></div>
-          <div class="agent-content">
-            <div class="agent-name">Learning Agent <span>Hy3</span></div>
+          <AgentRunTurn
+            v-if="message.role === 'user' && message.run_id === store.currentRun?.id"
+            :answer="currentRunAssistant?.content || ''"
+          />
 
-            <div v-if="activityEvents.length || running" class="inline-process">
-              <div
-                v-for="event in visibleActivityEvents"
-                :key="event.sequence"
-                :class="['process-row', { failed: event.type === 'run.failed' }]"
-              >
-                <component :is="iconFor(event.type)" />
-                <span>{{ eventTitle(event) }}</span>
-                <small v-if="event.type === 'tool.completed'">
-                  {{ event.payload?.result?.ok === false ? '失败' : '完成' }}
-                </small>
-              </div>
-              <div v-if="running" class="process-row active-process">
-                <span class="thinking-dots"><i></i><i></i><i></i></span>
-                <span>正在观察、规划并调用工具</span>
-              </div>
-              <div class="process-links">
-                <button v-if="activityEvents.length > 6" @click="processExpanded = !processExpanded">
-                  {{ processExpanded ? '收起步骤' : `展开其余 ${activityEvents.length - 6} 个动作` }}
-                </button>
-                <button @click="store.traceOpen = true">查看完整运行轨迹</button>
-              </div>
-            </div>
-
-            <div v-if="finalEvent" :class="['assistant-answer', { failed: finalEvent.type === 'run.failed' }]">
-              <p>{{ finalEvent.summary }}</p>
-              <small v-if="finalEvent.type === 'run.failed'">{{ finalEvent.payload?.error }}</small>
+          <div
+            v-if="message.role === 'assistant' && message.run_id !== store.currentRun?.id"
+            class="agent-turn conversation-agent"
+          >
+            <div class="agent-avatar"><SparklesIcon /></div>
+            <div class="agent-content">
+              <div class="agent-name">Learning Agent <span>Hy3</span></div>
+              <div class="assistant-answer"><p>{{ message.content }}</p></div>
             </div>
           </div>
-        </div>
+        </template>
+
+        <template v-if="store.currentRun && !currentRunUser">
+          <div class="user-turn run-objective-turn">
+            <div class="message-bubble">{{ store.currentRun.objective }}</div>
+          </div>
+          <AgentRunTurn :answer="currentRunAssistant?.content || ''" />
+        </template>
 
         <div v-if="store.focusedPlan" class="context-chip"><MapIcon /> 本次对话专注：{{ store.focusedPlan.title }}</div>
       </div>

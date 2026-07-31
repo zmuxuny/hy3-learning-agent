@@ -195,6 +195,16 @@ class AgentRunRead(APIModel):
     created_at: datetime
 
 
+class ChatMessageRead(APIModel):
+    id: int
+    session_id: str
+    run_id: str | None
+    role: str
+    content: str
+    message_metadata: dict[str, Any]
+    created_at: datetime
+
+
 class RunEventRead(APIModel):
     id: int
     run_id: str

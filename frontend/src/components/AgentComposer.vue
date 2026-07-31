@@ -1,16 +1,18 @@
 <script setup>
 import { ArrowUpIcon, MapIcon, PlusIcon, SparklesIcon } from '@heroicons/vue/24/outline';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 
 const store = useWorkspaceStore();
 const prompt = ref('');
+const running = computed(() => ['queued', 'running'].includes(store.currentRun?.status));
 
 async function submit() {
+  if (running.value) return;
   const value = prompt.value.trim();
   if (!value) return;
-  prompt.value = '';
-  await store.startRun(value);
+  const started = await store.startRun(value);
+  if (started) prompt.value = '';
 }
 </script>
 
@@ -21,11 +23,12 @@ async function submit() {
       <textarea
         v-model="prompt"
         rows="1"
-        placeholder="给 Learning Agent 发消息"
+        :placeholder="running ? 'Agent 正在运行，可以在运行详情中停止' : '给 Learning Agent 发消息'"
+        :disabled="running"
         @keydown.enter.exact.prevent="submit"
       ></textarea>
       <span class="composer-mode"><SparklesIcon /> Hy3 · 深度</span>
-      <button class="send-button" :disabled="!prompt.trim()" @click="submit"><ArrowUpIcon /></button>
+      <button class="send-button" :disabled="running || !prompt.trim()" @click="submit"><ArrowUpIcon /></button>
     </div>
     <div :class="['composer-context', { focused: store.focusedPlan }]">
       <span v-if="store.focusedPlan">

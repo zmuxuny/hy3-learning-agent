@@ -8,10 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal, get_db
-from app.models import AgentRun, RunEvent, Session
+from app.models import AgentRun, ChatMessage, RunEvent, Session
 from app.runtime import AgentRuntime
 from app.runtime.scheduler import proactive_scheduler
-from app.schemas import AgentRunCreate, AgentRunRead, RunEventRead
+from app.schemas import AgentRunCreate, AgentRunRead, ChatMessageRead, RunEventRead
 
 
 router = APIRouter()
@@ -32,6 +32,8 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
         session = await db.get(Session, session_id)
         if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
             raise HTTPException(status_code=404, detail="Session not found")
+        if session.plan_id != data.plan_id:
+            raise HTTPException(status_code=409, detail="Session focus does not match requested plan")
     elif data.trigger == "user_message":
         session = Session(
             owner_id=settings.DEFAULT_OWNER_ID,
@@ -63,6 +65,19 @@ async def list_runs(limit: int = 30, db: AsyncSession = Depends(get_db)):
         .where(AgentRun.owner_id == settings.DEFAULT_OWNER_ID)
         .order_by(AgentRun.created_at.desc())
         .limit(min(max(limit, 1), 100))
+    )
+    return list(result.scalars())
+
+
+@router.get("/sessions/{session_id}/messages", response_model=list[ChatMessageRead])
+async def read_session_messages(session_id: str, db: AsyncSession = Depends(get_db)):
+    session = await db.get(Session, session_id)
+    if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Session not found")
+    result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at, ChatMessage.id)
     )
     return list(result.scalars())
 
