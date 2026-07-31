@@ -27,7 +27,9 @@ class UserProfile(Base):
     __tablename__ = "user_profiles"
 
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), primary_key=True)
-    coach_style: Mapped[str] = mapped_column(String(64), default="supervising_coach")
+    # Keep the existing column name for local database compatibility while the
+    # product language uses "agent style" instead of the retired coach label.
+    agent_style: Mapped[str] = mapped_column("coach_style", String(64), default="adaptive_study_partner")
     preferences: Mapped[dict] = mapped_column(JSON, default=dict)
     quiet_hours: Mapped[dict] = mapped_column(JSON, default=lambda: {"start": "23:00", "end": "08:00"})
     daily_notification_limit: Mapped[int] = mapped_column(Integer, default=3)
@@ -115,6 +117,41 @@ class LearningResource(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     source: Mapped[str] = mapped_column(String(120), default="agent")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TaskSubmission(Base):
+    __tablename__ = "task_submissions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), index=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), index=True)
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True)
+    submission_type: Mapped[str] = mapped_column(String(32), default="text")
+    content: Mapped[str] = mapped_column(Text, default="")
+    artifacts: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(32), default="submitted", index=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    feedback: Mapped[str] = mapped_column(Text, default="")
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CalendarEvent(Base):
+    __tablename__ = "calendar_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), nullable=True, index=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(240))
+    description: Mapped[str] = mapped_column(Text, default="")
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="scheduled", index=True)
+    source: Mapped[str] = mapped_column(String(64), default="agent")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class Session(Base):

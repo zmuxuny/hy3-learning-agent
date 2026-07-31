@@ -14,7 +14,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 const store = useWorkspaceStore();
 const navigation = [
   { id: 'plans', label: '学习计划', icon: MapIcon },
-  { id: 'inbox', label: '主动消息', icon: BellIcon },
+  { id: 'inbox', label: '收件箱', icon: BellIcon },
   { id: 'memory', label: 'AI 记忆', icon: CircleStackIcon },
 ];
 </script>
@@ -72,9 +72,9 @@ const navigation = [
     </section>
 
     <div class="sidebar-footer">
-      <button class="coach-status" @click="store.triggerHeartbeat">
-        <span class="coach-icon"><BoltIcon /></span>
-        <span><strong>主动教练在线</strong><small>点击立即检查计划</small></span>
+      <button class="agent-status" @click="store.triggerHeartbeat">
+        <span class="agent-status-icon"><BoltIcon /></span>
+        <span><strong>学习 Agent 在线</strong><small>点击立即检查计划</small></span>
         <i></i>
       </button>
       <div class="profile-card" v-if="store.profile">

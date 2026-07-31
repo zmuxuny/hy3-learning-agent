@@ -2,9 +2,12 @@
 import { ArrowUpIcon, MapIcon, PlusIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
+import api from '../api/client';
 
 const store = useWorkspaceStore();
 const prompt = ref('');
+const fileInput = ref(null);
+const uploading = ref(false);
 const running = computed(() => ['queued', 'running'].includes(store.currentRun?.status));
 
 async function submit() {
@@ -14,16 +17,32 @@ async function submit() {
   const started = await store.startRun(value);
   if (started) prompt.value = '';
 }
+
+async function uploadFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  uploading.value = true;
+  try {
+    const response = await api.upload('/workspace/files', file);
+    prompt.value = `请读取并检查我上传的学习成果文件 \`${response.data.path}\`。如果当前对话聚焦某个任务，请把它作为 submission_create 的证据；需要时运行代码或测试，再用 submission_check 给出验收结果。`;
+  } catch (uploadError) {
+    store.error = uploadError.message;
+  } finally {
+    uploading.value = false;
+    event.target.value = '';
+  }
+}
 </script>
 
 <template>
   <div class="composer-wrap">
     <div class="composer-shell">
-      <button class="composer-plus" title="文件提交将在受限执行环境完成"><PlusIcon /></button>
+      <button class="composer-plus" :disabled="running || uploading" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
+      <input ref="fileInput" class="visually-hidden" type="file" @change="uploadFile" />
       <textarea
         v-model="prompt"
         rows="1"
-        :placeholder="running ? 'Agent 正在运行，可以在运行详情中停止' : '给 Learning Agent 发消息'"
+        :placeholder="uploading ? '正在上传文件…' : running ? 'Agent 正在运行，可以在运行详情中停止' : '给 Learning Agent 发消息'"
         :disabled="running"
         @keydown.enter.exact.prevent="submit"
       ></textarea>

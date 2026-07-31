@@ -33,6 +33,8 @@ async def ensure_local_owner() -> None:
                     daily_notification_limit=settings.AGENT_DAILY_NOTIFICATION_LIMIT,
                 )
             )
+        elif profile.agent_style == "supervising_coach":
+            profile.agent_style = "adaptive_study_partner"
         await db.commit()
 
 

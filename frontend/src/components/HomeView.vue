@@ -3,6 +3,7 @@ import { BoltIcon, MapIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
+import AgentMessage from './AgentMessage.vue';
 import AgentRunTurn from './AgentRunTurn.vue';
 
 const store = useWorkspaceStore();
@@ -63,7 +64,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
 
         <div class="quiet-overview">
           <div class="overview-copy">
-            <span><BoltIcon /> 主动教练已就绪</span>
+            <span><BoltIcon /> 学习 Agent 已就绪</span>
             <p>后台心跳会自行判断何时介入；没有必要时，它会保持安静。</p>
           </div>
           <div class="overview-stats">
@@ -94,7 +95,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
             <div class="agent-avatar"><SparklesIcon /></div>
             <div class="agent-content">
               <div class="agent-name">Learning Agent <span>Hy3</span></div>
-              <div class="assistant-answer"><p>{{ message.content }}</p></div>
+              <div class="assistant-answer"><AgentMessage :content="message.content" /></div>
             </div>
           </div>
         </template>

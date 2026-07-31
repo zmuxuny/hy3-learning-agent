@@ -19,10 +19,10 @@ const store = useWorkspaceStore();
     <div class="memory-layout">
       <article class="panel memory-summary">
         <div class="memory-avatar">AI</div>
-        <h2>监督型学习教练</h2>
+        <h2>自主学习 Agent</h2>
         <p>当前画像会被所有计划安全引用，计划私有内容不会自动提升为全局记忆。</p>
         <dl v-if="store.profile">
-          <div><dt>教练风格</dt><dd>{{ store.profile.coach_style }}</dd></div>
+          <div><dt>协作方式</dt><dd>{{ store.profile.agent_style }}</dd></div>
           <div><dt>免打扰</dt><dd>{{ store.profile.quiet_hours.start }}—{{ store.profile.quiet_hours.end }}</dd></div>
           <div><dt>通知上限</dt><dd>{{ store.profile.daily_notification_limit }}/天</dd></div>
         </dl>

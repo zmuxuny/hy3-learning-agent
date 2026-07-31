@@ -101,11 +101,15 @@ class TaskUpdate(BaseModel):
     estimated_minutes: int | None = Field(default=None, ge=1, le=1440)
     review_due_at: datetime | None = None
     evidence: list[dict[str, Any]] | None = None
+    kind: str | None = None
+    is_core: bool | None = None
+    evidence_required: bool | None = None
+    resource_url: str | None = None
 
 
 class ProfileRead(APIModel):
     owner_id: str
-    coach_style: str
+    agent_style: str
     preferences: dict[str, Any]
     quiet_hours: dict[str, Any]
     daily_notification_limit: int
@@ -116,7 +120,7 @@ class ProfileRead(APIModel):
 
 
 class ProfileUpdate(BaseModel):
-    coach_style: str | None = None
+    agent_style: str | None = None
     preferences: dict[str, Any] | None = None
     quiet_hours: dict[str, Any] | None = None
     daily_notification_limit: int | None = Field(default=None, ge=0, le=20)

@@ -18,6 +18,14 @@ const api = {
   post: (path, body) => request('POST', path, body),
   patch: (path, body) => request('PATCH', path, body),
   delete: (path) => request('DELETE', path),
+  upload: async (path, file) => {
+    const body = new FormData();
+    body.append('file', file);
+    const response = await fetch(`/api/v1${path}`, { method: 'POST', body });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.detail || `Upload failed with ${response.status}`);
+    return { data };
+  },
 };
 
 export default api;

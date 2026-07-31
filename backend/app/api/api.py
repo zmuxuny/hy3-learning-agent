@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api import agent, memories, notifications, operations, plans, profile, settings, system
+from app.api import agent, memories, notifications, operations, plans, profile, settings, system, workspace
 
 
 api_router = APIRouter()
@@ -12,3 +12,4 @@ api_router.include_router(memories.router, prefix="/memories", tags=["memories"]
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(operations.router, prefix="/operations", tags=["operations"])
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
+api_router.include_router(workspace.router, prefix="/workspace", tags=["workspace"])

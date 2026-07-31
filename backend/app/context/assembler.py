@@ -1,24 +1,25 @@
 from datetime import datetime, timezone
-from pathlib import Path
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import PROJECT_ROOT, settings
 from app.models import (
+    CalendarEvent,
     ChatMessage,
     ContextSnapshot,
     LearningEvent,
-    Memory,
+    LearningResource,
     Notification,
     Plan,
     Quiz,
     ReviewSchedule,
     Session,
     Stage,
+    TaskSubmission,
     UserProfile,
 )
+from app.context.memory import MemoryManager, search_terms
 
 
 class ContextAssembler:
@@ -32,6 +33,7 @@ class ContextAssembler:
         plan_id: int | None = None,
         session_id: str | None = None,
         run_id: str | None = None,
+        objective: str = "",
     ) -> ContextSnapshot:
         manifest: list[dict] = []
         sections = ["# Agent Context", f"Generated: {datetime.now(timezone.utc).isoformat()}"]
@@ -41,7 +43,7 @@ class ContextAssembler:
             sections.extend(
                 [
                     "## Global learner profile",
-                    f"- Coach style: {profile.coach_style}",
+                    f"- Agent style: {profile.agent_style}",
                     f"- Preferences: {profile.preferences}",
                     f"- Quiet hours: {profile.quiet_hours}",
                     f"- Level: {profile.level}; XP: {profile.xp}; streak: {profile.streak_days}",
@@ -49,18 +51,14 @@ class ContextAssembler:
             )
             manifest.append({"type": "profile", "id": owner_id})
 
-        memory_query = (
-            select(Memory)
-            .where(Memory.owner_id == owner_id, Memory.status == "confirmed")
-            .order_by(Memory.updated_at.desc())
-            .limit(40)
+        memory_manager = MemoryManager(self.db)
+        await memory_manager.maintain(owner_id)
+        relevant_memories = await memory_manager.retrieve(
+            owner_id,
+            plan_id=plan_id,
+            query=objective,
+            limit=24,
         )
-        memories = list((await self.db.execute(memory_query)).scalars())
-        relevant_memories = [
-            memory
-            for memory in memories
-            if memory.scope == "global" or (plan_id is not None and memory.scope == "plan" and memory.scope_id == str(plan_id))
-        ]
         if relevant_memories:
             sections.append("## Confirmed memory")
             for memory in relevant_memories:
@@ -97,8 +95,15 @@ class ContextAssembler:
         event_query = select(LearningEvent).where(LearningEvent.owner_id == owner_id)
         if plan_id is not None:
             event_query = event_query.where(LearningEvent.plan_id == plan_id)
-        event_query = event_query.order_by(LearningEvent.created_at.desc()).limit(settings.AGENT_CONTEXT_EVENT_LIMIT)
+        event_query = event_query.order_by(LearningEvent.created_at.desc()).limit(settings.AGENT_CONTEXT_EVENT_LIMIT * 3)
         events = list((await self.db.execute(event_query)).scalars())
+        if objective:
+            terms = search_terms(objective)
+            events.sort(
+                key=lambda event: len(terms.intersection(search_terms(f"{event.event_type} {event.summary}"))),
+                reverse=True,
+            )
+        events = events[: settings.AGENT_CONTEXT_EVENT_LIMIT]
         if events:
             sections.append("## Recent learning events")
             for event in reversed(events):
@@ -140,6 +145,34 @@ class ContextAssembler:
                 )
                 manifest.append({"type": "notification", "id": notification.id})
 
+        resource_query = select(LearningResource).where(LearningResource.owner_id == owner_id)
+        submission_query = select(TaskSubmission).where(TaskSubmission.owner_id == owner_id)
+        calendar_query = select(CalendarEvent).where(CalendarEvent.owner_id == owner_id, CalendarEvent.status == "scheduled")
+        if plan_id is not None:
+            resource_query = resource_query.where(LearningResource.plan_id == plan_id)
+            submission_query = submission_query.where(TaskSubmission.plan_id == plan_id)
+            calendar_query = calendar_query.where(CalendarEvent.plan_id == plan_id)
+        resources = list((await self.db.execute(resource_query.order_by(LearningResource.created_at.desc()).limit(12))).scalars())
+        submissions = list((await self.db.execute(submission_query.order_by(TaskSubmission.created_at.desc()).limit(12))).scalars())
+        calendar_events = list((await self.db.execute(calendar_query.order_by(CalendarEvent.starts_at).limit(20))).scalars())
+        if resources:
+            sections.append("## Saved learning resources")
+            for resource in resources:
+                sections.append(f"- resource:{resource.id} {resource.title} — {resource.url}")
+                manifest.append({"type": "resource", "id": resource.id})
+        if submissions:
+            sections.append("## Recent task submissions")
+            for submission in reversed(submissions):
+                sections.append(
+                    f"- submission:{submission.id} task={submission.task_id} status={submission.status} score={submission.score}; {submission.content[:240]}"
+                )
+                manifest.append({"type": "submission", "id": submission.id})
+        if calendar_events:
+            sections.append("## Study calendar")
+            for event in calendar_events:
+                sections.append(f"- calendar:{event.id} {event.starts_at} — {event.title} [{event.status}]")
+                manifest.append({"type": "calendar_event", "id": event.id})
+
         if session_id:
             session = await self.db.get(Session, session_id)
             if session and session.owner_id == owner_id:
@@ -147,7 +180,7 @@ class ContextAssembler:
                     select(ChatMessage)
                     .where(ChatMessage.session_id == session_id)
                     .order_by(ChatMessage.created_at.desc())
-                    .limit(24)
+                    .limit(settings.AGENT_RECENT_MESSAGE_LIMIT)
                 )
                 messages = list(reversed(list((await self.db.execute(message_query)).scalars())))
                 sections.extend(["## Conversation", f"Session summary: {session.summary or '(empty)'}"])
@@ -156,6 +189,13 @@ class ContextAssembler:
                     manifest.append({"type": "message", "id": message.id})
 
         markdown = "\n".join(sections).strip() + "\n"
+        max_chars = settings.AGENT_CONTEXT_TOKEN_BUDGET * 4
+        if len(markdown) > max_chars:
+            head_limit = int(max_chars * 0.68)
+            tail_limit = max_chars - head_limit
+            head = markdown[:head_limit].rsplit("\n", 1)[0]
+            tail = markdown[-tail_limit:].split("\n", 1)[-1]
+            markdown = f"{head}\n\n[Lower-priority context compacted at configured token budget]\n\n{tail}"
         snapshot = ContextSnapshot(
             owner_id=owner_id,
             plan_id=plan_id,
@@ -175,3 +215,5 @@ class ContextAssembler:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(markdown, encoding="utf-8")
         return snapshot
+    LearningResource,
+    TaskSubmission,

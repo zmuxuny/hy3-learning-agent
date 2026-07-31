@@ -15,8 +15,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    PROJECT_NAME: str = "AI Learning Companion"
-    VERSION: str = "0.2.0"
+    PROJECT_NAME: str = "Learning Agent"
+    VERSION: str = "0.3.0"
     API_V1_STR: str = "/api/v1"
     DEFAULT_OWNER_ID: str = "local"
     DEFAULT_TIMEZONE: str = "Asia/Shanghai"
@@ -30,8 +30,13 @@ class Settings(BaseSettings):
     MODEL_REASONING_EFFORT: str = "high"
 
     AGENT_MAX_STEPS: int = Field(default=8, ge=1, le=24)
+    AGENT_MODEL_TIMEOUT_SECONDS: int = Field(default=90, ge=10, le=300)
+    AGENT_TOOL_TIMEOUT_SECONDS: int = Field(default=35, ge=5, le=120)
     AGENT_HEARTBEAT_SECONDS: int = Field(default=300, ge=15)
     AGENT_CONTEXT_EVENT_LIMIT: int = Field(default=40, ge=5, le=500)
+    AGENT_CONTEXT_TOKEN_BUDGET: int = Field(default=12000, ge=2000, le=100000)
+    AGENT_RECENT_MESSAGE_LIMIT: int = Field(default=16, ge=4, le=100)
+    AGENT_SESSION_COMPRESSION_THRESHOLD: int = Field(default=24, ge=8, le=500)
     AGENT_DAILY_NOTIFICATION_LIMIT: int = Field(default=3, ge=0, le=20)
     AGENT_NOTIFICATION_COOLDOWN_MINUTES: int = Field(default=180, ge=0)
     ENABLE_SCHEDULER: bool = True
@@ -43,6 +48,17 @@ class Settings(BaseSettings):
     SMTP_FROM: str = ""
     SMTP_TO: str = ""
     SMTP_USE_TLS: bool = True
+
+    IMAP_HOST: str = ""
+    IMAP_PORT: int = 993
+    IMAP_USERNAME: str = ""
+    IMAP_PASSWORD: str = ""
+    IMAP_FOLDER: str = "INBOX"
+    ENABLE_EMAIL_REPLY_POLLING: bool = False
+
+    WEB_SEARCH_TIMEOUT_SECONDS: int = Field(default=12, ge=3, le=60)
+    TOOL_EXECUTION_TIMEOUT_SECONDS: int = Field(default=10, ge=1, le=60)
+    TOOL_OUTPUT_LIMIT: int = Field(default=12000, ge=1000, le=100000)
 
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
@@ -57,6 +73,7 @@ def get_settings() -> Settings:
     (PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
     (PROJECT_ROOT / "data" / "context" / "plans").mkdir(parents=True, exist_ok=True)
     (PROJECT_ROOT / "data" / "context" / "decisions").mkdir(parents=True, exist_ok=True)
+    (PROJECT_ROOT / "data" / "workspace").mkdir(parents=True, exist_ok=True)
     return settings
 
 

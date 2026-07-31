@@ -1,0 +1,95 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+
+const port = Number(process.argv[2] || 9223);
+const outputDir = process.argv[3] || '/tmp/learning-agent-browser-check';
+const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json());
+const target = targets.find((item) => item.type === 'page' && item.url.startsWith('http://127.0.0.1'));
+if (!target) throw new Error('Learning Agent browser target not found');
+
+await mkdir(outputDir, { recursive: true });
+const socket = new WebSocket(target.webSocketDebuggerUrl);
+await new Promise((resolve, reject) => {
+  socket.addEventListener('open', resolve, { once: true });
+  socket.addEventListener('error', reject, { once: true });
+});
+
+let commandId = 0;
+const pending = new Map();
+socket.addEventListener('message', (event) => {
+  const message = JSON.parse(event.data);
+  if (!message.id || !pending.has(message.id)) return;
+  const { resolve, reject } = pending.get(message.id);
+  pending.delete(message.id);
+  if (message.error) reject(new Error(message.error.message));
+  else resolve(message.result);
+});
+
+function send(method, params = {}) {
+  const id = ++commandId;
+  socket.send(JSON.stringify({ id, method, params }));
+  return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+}
+
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+async function evaluate(expression) {
+  const result = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+  return result.result.value;
+}
+
+async function viewport(width, height) {
+  await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width <= 560 });
+  await wait(250);
+}
+
+async function inspect(label) {
+  const metrics = await evaluate(`(() => {
+    const clipped = [...document.querySelectorAll('button')].filter((node) => {
+      const rect = node.getBoundingClientRect();
+      return rect.right > innerWidth + 1 || rect.left < -1;
+    }).map((node) => node.textContent.trim().slice(0, 40));
+    return {
+      label: ${JSON.stringify(label)},
+      viewport: [innerWidth, innerHeight],
+      h1: [...document.querySelectorAll('h1')].map((node) => node.textContent.trim()),
+      workspaceBars: document.querySelectorAll('.workspace-bar').length,
+      timelineStages: document.querySelectorAll('.timeline-stage').length,
+      messages: document.querySelectorAll('.message-bubble').length,
+      runTurns: document.querySelectorAll('.run-turn, .conversation-agent').length,
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      clipped,
+    };
+  })()`);
+  const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(`${outputDir}/${label}.png`, Buffer.from(screenshot.data, 'base64'));
+  return metrics;
+}
+
+await send('Page.enable');
+await wait(1500);
+const report = [];
+
+await viewport(2560, 1440);
+await evaluate(`(() => { const brand = document.querySelector('.brand'); if (brand) brand.click(); return Boolean(brand); })()`);
+await wait(350);
+report.push(await inspect('home-wide'));
+
+await evaluate(`(() => { const row = document.querySelector('.recent-row'); if (row) row.click(); return Boolean(row); })()`);
+await wait(1200);
+report.push(await inspect('conversation-wide'));
+
+await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('学习计划')); if (item) item.click(); return Boolean(item); })()`);
+await wait(700);
+await evaluate(`(() => { const card = document.querySelector('.plan-list-card'); if (card) card.click(); return Boolean(card); })()`);
+await wait(900);
+report.push(await inspect('plan-wide'));
+
+for (const [width, height] of [[1440, 1000], [1280, 800], [768, 1024]]) {
+  await viewport(width, height);
+  report.push(await inspect(`plan-${width}`));
+}
+
+await viewport(375, 812);
+report.push(await inspect('plan-mobile'));
+
+console.log(JSON.stringify(report, null, 2));
+socket.close();

@@ -109,12 +109,12 @@ class NotificationService:
 
     def _send_email(self, reply_token: str, title: str, body: str) -> None:
         message = EmailMessage()
-        message["Subject"] = title
+        message["Subject"] = f"[Learning Agent][LA:{reply_token}] {title}"
         message["From"] = settings.SMTP_FROM or settings.SMTP_USERNAME
         message["To"] = settings.SMTP_TO
         message["Reply-To"] = settings.SMTP_FROM or settings.SMTP_USERNAME
         message["X-Learning-Agent-Reply-Token"] = reply_token
-        message.set_content(f"{body}\n\nReply token: {reply_token}")
+        message.set_content(f"{body}\n\n直接回复此邮件即可继续与 Learning Agent 沟通。\nReply token: {reply_token}")
 
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
             if settings.SMTP_USE_TLS:

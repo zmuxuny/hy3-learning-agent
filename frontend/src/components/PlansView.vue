@@ -14,6 +14,7 @@ import {
   PlusIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  PaperClipIcon,
 } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -82,6 +83,13 @@ function wasTouchedByAgent(task) {
 function askAgentAboutTask(task) {
   store.startRun(
     `请检查任务 ${task.id}「${task.title}」的当前状态、证据要求和截止时间。先读取计划，再告诉我今天如何推进；如需调整，只执行低风险且可撤销的修改。`,
+    store.currentPlan.id,
+  );
+}
+
+function submitTaskToAgent(task) {
+  store.startRun(
+    `我要提交任务 ${task.id}「${task.title}」的学习成果。请先读取任务要求，询问我需要提交的文字、文件路径、代码或链接；收到后使用 submission_create 保存证据，必要时读取文件或运行代码，再用 submission_check 给出验收结果。`,
     store.currentPlan.id,
   );
 }
@@ -163,13 +171,10 @@ function createPlanWithAgent() {
   </section>
 
   <section v-else class="view has-composer">
-    <header class="plan-detail-toolbar">
-      <button class="back-button" @click="store.openPlanList"><ArrowLeftIcon /> 所有计划</button>
-      <div class="plan-header-actions" v-if="store.currentPlan">
-        <RunTraceButton />
-        <button class="secondary-button" @click="checkCurrentPlan"><BoltIcon /> 主动检查</button>
-        <button class="primary-button" @click="inspectPlanWithAgent"><SparklesIcon /> 交给 Agent</button>
-      </div>
+    <header v-if="store.currentPlan" class="plan-detail-toolbar">
+      <button class="back-button icon-back" aria-label="返回所有计划" @click="store.openPlanList"><ArrowLeftIcon /></button>
+      <h1>{{ store.currentPlan.title }}</h1>
+      <RunTraceButton />
     </header>
 
     <div class="plan-detail-layout">
@@ -177,11 +182,6 @@ function createPlanWithAgent() {
         <main v-if="store.currentPlan" class="plan-detail">
           <article class="plan-hero">
             <div class="plan-hero-main">
-              <div class="plan-kicker">
-                <span class="live-badge"><i></i> Agent managed</span>
-                <span>PLAN {{ store.currentPlan.id }} · VERSION {{ store.currentPlan.version }}</span>
-              </div>
-              <h1>{{ store.currentPlan.title }}</h1>
               <p>{{ store.currentPlan.goal }}</p>
               <div class="plan-meta-grid">
                 <div><CalendarDaysIcon /><span><small>最终期限</small><strong>{{ formatDate(store.currentPlan.deadline, true) }}</strong></span></div>
@@ -198,10 +198,12 @@ function createPlanWithAgent() {
             </div>
           </article>
 
-          <div class="harness-note">
-            <SparklesIcon />
-            <div><strong>当前计划已成为对话焦点</strong><p>Agent 先读取本计划上下文，再自主选择工具；所有修改进入审计层并可撤销。</p></div>
-            <button @click="store.traceOpen = true">查看运行轨迹</button>
+          <div class="plan-action-row">
+            <span><i></i>计划焦点 · 版本 {{ store.currentPlan.version }}</span>
+            <div>
+              <button class="secondary-button" @click="checkCurrentPlan"><BoltIcon /> 检查提醒</button>
+              <button class="primary-button" @click="inspectPlanWithAgent"><SparklesIcon /> 交给 Agent</button>
+            </div>
           </div>
 
           <div class="plan-timeline">
@@ -246,7 +248,10 @@ function createPlanWithAgent() {
                       <footer>
                         <a v-if="task.resource_url" :href="task.resource_url" target="_blank" rel="noreferrer">学习资源 <ArrowTopRightOnSquareIcon /></a>
                         <span v-else>暂无外部资源</span>
-                        <button @click="askAgentAboutTask(task)"><SparklesIcon /> 让 Agent 检查</button>
+                        <div class="task-actions">
+                          <button @click="submitTaskToAgent(task)"><PaperClipIcon /> 提交成果</button>
+                          <button @click="askAgentAboutTask(task)"><SparklesIcon /> 检查任务</button>
+                        </div>
                       </footer>
                     </div>
                   </article>

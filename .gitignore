@@ -52,6 +52,7 @@ Thumbs.db
 uploads/
 data/uploads/
 data/context/
+data/workspace/
 
 # JavaScript dependencies and generated frontend assets
 node_modules/

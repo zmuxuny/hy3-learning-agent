@@ -13,7 +13,7 @@ async function requestBrowserPermission() {
 <template>
   <section class="view">
     <header class="view-header compact-header">
-      <div><span class="eyebrow">PROACTIVE INBOX</span><h1>主动消息</h1><p>提醒、抽查和调整建议统一进入这里；浏览器与邮件是可选投递渠道。</p></div>
+      <div><span class="eyebrow">PERSONAL INBOX</span><h1>收件箱</h1><p>学习提醒、抽查和调整建议统一进入这里；重要消息可以同步到邮箱。</p></div>
       <div class="page-header-actions">
         <RunTraceButton />
         <button class="secondary-button" @click="requestBrowserPermission"><BellIcon /> 启用浏览器通知</button>

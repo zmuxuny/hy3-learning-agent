@@ -15,5 +15,11 @@ async def read_settings():
         "scheduler_enabled": settings.ENABLE_SCHEDULER,
         "heartbeat_seconds": settings.AGENT_HEARTBEAT_SECONDS,
         "email_configured": bool(settings.SMTP_HOST and settings.SMTP_USERNAME and settings.SMTP_TO),
+        "email_reply_configured": bool(
+            settings.ENABLE_EMAIL_REPLY_POLLING
+            and settings.IMAP_HOST
+            and settings.IMAP_USERNAME
+            and settings.IMAP_PASSWORD
+        ),
         "timezone": settings.DEFAULT_TIMEZONE,
     }

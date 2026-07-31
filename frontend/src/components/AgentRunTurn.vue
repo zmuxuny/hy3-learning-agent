@@ -8,6 +8,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
+import AgentMessage from './AgentMessage.vue';
 
 const props = defineProps({
   answer: { type: String, default: '' },
@@ -93,7 +94,7 @@ function eventTitle(event) {
       </div>
 
       <div v-if="answerText" :class="['assistant-answer', { failed: finalEvent?.type === 'run.failed' }]">
-        <p>{{ answerText }}</p>
+        <AgentMessage :content="answerText" />
         <small v-if="finalEvent?.type === 'run.failed'">{{ finalEvent.payload?.error }}</small>
       </div>
     </div>

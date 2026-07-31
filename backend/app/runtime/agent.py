@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime, timezone
 
@@ -5,6 +6,7 @@ from openai import AsyncOpenAI
 from sqlalchemy import select
 
 from app.context import ContextAssembler
+from app.context.memory import MemoryManager
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, ChatMessage, Session
@@ -39,6 +41,7 @@ class AgentRuntime:
                     plan_id=run.plan_id,
                     session_id=session.id if session else None,
                     run_id=run.id,
+                    objective=run.objective,
                 )
                 await db.commit()
                 await emit_event(
@@ -70,13 +73,16 @@ class AgentRuntime:
                         await emit_event(db, run.id, "run.cancelled", "Agent run cancelled")
                         return
 
-                    response = await self.client.chat.completions.create(
-                        model=settings.MODEL_NAME,
-                        messages=messages,
-                        tools=openai_tools(),
-                        tool_choice="auto",
-                        temperature=settings.MODEL_TEMPERATURE,
-                        extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
+                    response = await asyncio.wait_for(
+                        self.client.chat.completions.create(
+                            model=settings.MODEL_NAME,
+                            messages=messages,
+                            tools=openai_tools(),
+                            tool_choice="auto",
+                            temperature=settings.MODEL_TEMPERATURE,
+                            extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
+                        ),
+                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
                     )
                     message = response.choices[0].message
                     assistant_payload: dict = {"role": "assistant", "content": message.content or ""}
@@ -110,10 +116,19 @@ class AgentRuntime:
                             f"调用工具 {call.function.name}",
                             {"tool_call_id": call.id, "name": call.function.name},
                         )
-                        result = await execute_tool(
-                            call.function.name,
-                            call.function.arguments,
-                            ToolContext(db=db, owner_id=run.owner_id, run_id=run.id, trigger=run.trigger),
+                        result = await asyncio.wait_for(
+                            execute_tool(
+                                call.function.name,
+                                call.function.arguments,
+                                ToolContext(
+                                    db=db,
+                                    owner_id=run.owner_id,
+                                    run_id=run.id,
+                                    trigger=run.trigger,
+                                    plan_id=run.plan_id,
+                                ),
+                            ),
+                            timeout=settings.AGENT_TOOL_TIMEOUT_SECONDS,
                         )
                         await emit_event(
                             db,
@@ -129,11 +144,26 @@ class AgentRuntime:
                                 "content": json.dumps(result, ensure_ascii=False, default=str),
                             }
                         )
+                        data = result.get("data") or {}
+                        if data.get("approval_required"):
+                            await emit_event(db, run.id, "approval.required", data.get("reason", "需要用户确认"), data)
+                        if data.get("operation_id"):
+                            await emit_event(
+                                db,
+                                run.id,
+                                "operation.committed",
+                                f"{call.function.name} 的修改已记录，可在操作记录中撤销",
+                                {"operation_id": data["operation_id"], "tool": call.function.name},
+                            )
+                        if call.function.name == "notification_send" and not data.get("blocked"):
+                            await emit_event(db, run.id, "notification.sent", "学习提醒已进入通知渠道", data)
                 else:
                     final_text = "本次运行达到最大工具轮次，已安全停止。"
 
                 if session and final_text:
                     db.add(ChatMessage(session_id=session.id, run_id=run.id, role="assistant", content=final_text))
+                    await db.flush()
+                    await MemoryManager(db).compress_session(session, self.client)
                 run.status = "completed"
                 run.completed_at = datetime.now(timezone.utc)
                 await db.commit()
