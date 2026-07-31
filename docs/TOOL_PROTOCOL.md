@@ -48,19 +48,19 @@
 
 ## 统一工具结果
 
+当前 Runtime 的实际结果信封是：
+
 ```json
 {
   "ok": true,
-  "tool_call_id": "call_123",
-  "summary": "Updated task 8 deadline",
-  "data": {},
-  "evidence": [],
-  "operation_id": "op_456",
-  "undo_available": true
+  "data": {
+    "operation_id": "op_456",
+    "undo_available": true
+  }
 }
 ```
 
-错误同样是模型可观察的结果。Agent 可以修正参数后重试，但运行时限制总轮次、单工具重试次数和 Token 预算。
+`tool_call_id`、工具名和完整结果记录在 `tool.completed` RunEvent 外层。错误返回 `{"ok": false, "error": "..."}`，同样会回填给模型成为可观察结果。Agent 当前可以在 Run 最大轮次内修正参数后重试；单工具重试上限、Token/费用预算和崩溃检查点仍属于完整 Harness 的待实现能力。
 
 ## 可撤销操作
 

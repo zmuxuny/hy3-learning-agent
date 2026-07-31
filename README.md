@@ -46,7 +46,7 @@ flowchart LR
 - 应用内收件箱、浏览器通知、可选 SMTP 邮件
 - 简答测验、证据化评分、复习调度、XP 与可撤销操作基础
 - 核心任务证据门槛、真实计划进度和真实学习事件热力图
-- 对话优先的响应式工作台、可收起运行抽屉、精细计划看板和轻游戏化视觉
+- 对话优先的响应式工作台、可收起运行抽屉、纵向计划时间线和轻游戏化视觉
 
 受限代码执行、公开资料搜索、日历双向同步、IMAP 邮件回复和真实子 Agent 执行仍属于后续工作，不在界面中伪装成已完成能力。
 
@@ -115,6 +115,7 @@ npm --prefix frontend audit --omit=dev
 
 - [产品定义](docs/PRODUCT.md)
 - [架构与上下文](docs/ARCHITECTURE.md)
+- [Harness 完整性标准](docs/HARNESS.md)
 - [工具与权限协议](docs/TOOL_PROTOCOL.md)
 - [路线图](docs/ROADMAP.md)
 - [当前状态](docs/STATUS.md)

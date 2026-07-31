@@ -1,6 +1,7 @@
 <script setup>
 import { CheckIcon, ClockIcon, DocumentTextIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { useWorkspaceStore } from '../stores/workspace';
+import RunTraceButton from './RunTraceButton.vue';
 
 const store = useWorkspaceStore();
 </script>
@@ -9,7 +10,10 @@ const store = useWorkspaceStore();
   <section class="view">
     <header class="view-header compact-header">
       <div><span class="eyebrow">MEMORY INSPECTOR</span><h1>AI 眼中的我</h1><p>每条长期认识都带有来源、范围和确认状态；你始终拥有纠正和删除权。</p></div>
-      <span class="memory-count">{{ store.memories.length }} 条记忆</span>
+      <div class="page-header-actions">
+        <RunTraceButton />
+        <span class="memory-count">{{ store.memories.length }} 条记忆</span>
+      </div>
     </header>
 
     <div class="memory-layout">

@@ -18,6 +18,7 @@ import {
 import { computed } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
+import RunTraceButton from './RunTraceButton.vue';
 
 const store = useWorkspaceStore();
 const taskIds = computed(() => new Set(
@@ -113,7 +114,10 @@ function createPlanWithAgent() {
         <h1>学习计划</h1>
         <p>查看所有学习目标和执行状态。进入一个计划后，对话会明确专注于该计划。</p>
       </div>
-      <button class="primary-button" @click="createPlanWithAgent"><PlusIcon /> 用 Agent 创建</button>
+      <div class="page-header-actions">
+        <RunTraceButton />
+        <button class="primary-button" @click="createPlanWithAgent"><PlusIcon /> 用 Agent 创建</button>
+      </div>
     </header>
 
     <div class="plan-index-content">
@@ -159,14 +163,10 @@ function createPlanWithAgent() {
   </section>
 
   <section v-else class="view has-composer">
-    <header class="view-header compact-header plan-detail-header">
-      <div>
-        <button class="back-button" @click="store.openPlanList"><ArrowLeftIcon /> 所有计划</button>
-        <span class="eyebrow">PLAN WORKSPACE · AGENT FOCUS</span>
-        <h1>计划工作区</h1>
-        <p>这里的对话明确绑定当前计划；Agent 会优先读取它的任务、记忆、证据和复习安排。</p>
-      </div>
+    <header class="plan-detail-toolbar">
+      <button class="back-button" @click="store.openPlanList"><ArrowLeftIcon /> 所有计划</button>
       <div class="plan-header-actions" v-if="store.currentPlan">
+        <RunTraceButton />
         <button class="secondary-button" @click="checkCurrentPlan"><BoltIcon /> 主动检查</button>
         <button class="primary-button" @click="inspectPlanWithAgent"><SparklesIcon /> 交给 Agent</button>
       </div>
@@ -175,13 +175,13 @@ function createPlanWithAgent() {
     <div class="plan-detail-layout">
       <section class="plan-workspace">
         <main v-if="store.currentPlan" class="plan-detail">
-          <article class="plan-hero panel">
+          <article class="plan-hero">
             <div class="plan-hero-main">
               <div class="plan-kicker">
                 <span class="live-badge"><i></i> Agent managed</span>
                 <span>PLAN {{ store.currentPlan.id }} · VERSION {{ store.currentPlan.version }}</span>
               </div>
-              <h2>{{ store.currentPlan.title }}</h2>
+              <h1>{{ store.currentPlan.title }}</h1>
               <p>{{ store.currentPlan.goal }}</p>
               <div class="plan-meta-grid">
                 <div><CalendarDaysIcon /><span><small>最终期限</small><strong>{{ formatDate(store.currentPlan.deadline, true) }}</strong></span></div>
@@ -204,43 +204,54 @@ function createPlanWithAgent() {
             <button @click="store.traceOpen = true">查看运行轨迹</button>
           </div>
 
-          <div class="kanban">
-            <article v-for="stage in store.currentPlan.stages" :key="stage.id" :class="['stage-column', stage.status]">
-              <header>
-                <div><small>阶段 {{ stage.position + 1 }}</small><h3>{{ stage.title }}</h3></div>
-                <span>{{ stageProgress(stage) }}%</span>
-              </header>
-              <div class="stage-progress"><i :style="{ width: `${stageProgress(stage)}%` }"></i></div>
-              <p v-if="stage.description" class="stage-description">{{ stage.description }}</p>
+          <div class="plan-timeline">
+            <article v-for="stage in store.currentPlan.stages" :key="stage.id" :class="['timeline-stage', stage.status]">
+              <div class="timeline-rail"><span>{{ stage.position + 1 }}</span><i></i></div>
+              <section class="timeline-stage-body">
+                <header class="timeline-stage-header">
+                  <div>
+                    <small>阶段 {{ stage.position + 1 }} · {{ stage.tasks.length }} 个任务</small>
+                    <h3>{{ stage.title }}</h3>
+                    <p v-if="stage.description">{{ stage.description }}</p>
+                  </div>
+                  <div class="stage-completion">
+                    <strong>{{ stageProgress(stage) }}%</strong>
+                    <span><i :style="{ width: `${stageProgress(stage)}%` }"></i></span>
+                  </div>
+                </header>
 
-              <div class="stage-tasks">
-                <article v-for="task in stage.tasks" :key="task.id" :class="['task-card', `status-${task.status}`]">
-                  <header class="task-card-head">
-                    <span class="task-id">TASK {{ task.id }}</span>
-                    <span :class="['task-status', task.status]"><i></i>{{ statusLabel(task.status) }}</span>
-                  </header>
-                  <div class="task-title">
-                    <component :is="task.status === 'completed' ? CheckCircleIcon : task.status === 'active' ? PlayCircleIcon : ClockIcon" />
-                    <strong>{{ task.title }}</strong>
-                  </div>
-                  <p>{{ task.description || '等待 Agent 补充任务说明。' }}</p>
-                  <div class="task-facts">
-                    <span><ClockIcon />{{ task.estimated_minutes }} 分钟</span>
-                    <span><CalendarDaysIcon />截止 {{ formatDate(task.due_at, true) }}</span>
-                    <span v-if="task.review_due_at" class="review-fact"><BoltIcon />复习 {{ formatDate(task.review_due_at, true) }}</span>
-                  </div>
-                  <div class="task-tags">
-                    <span>{{ task.kind }}</span>
-                    <span v-if="task.is_core || task.evidence_required" class="evidence-tag"><ShieldCheckIcon /> 核心 · 需证据</span>
-                    <span v-if="wasTouchedByAgent(task)" class="agent-tag"><SparklesIcon /> Agent 已调整</span>
-                  </div>
-                  <footer>
-                    <a v-if="task.resource_url" :href="task.resource_url" target="_blank" rel="noreferrer">学习资源 <ArrowTopRightOnSquareIcon /></a>
-                    <span v-else>暂无外部资源</span>
-                    <button @click="askAgentAboutTask(task)"><SparklesIcon /> 让 Agent 检查</button>
-                  </footer>
-                </article>
-              </div>
+                <div class="timeline-tasks">
+                  <article v-for="task in stage.tasks" :key="task.id" :class="['timeline-task', `status-${task.status}`]">
+                    <div class="timeline-task-state">
+                      <component :is="task.status === 'completed' ? CheckCircleIcon : task.status === 'active' ? PlayCircleIcon : ClockIcon" />
+                    </div>
+                    <div class="timeline-task-main">
+                      <header>
+                        <div><small>TASK {{ task.id }}</small><strong>{{ task.title }}</strong></div>
+                        <span :class="['task-status', task.status]"><i></i>{{ statusLabel(task.status) }}</span>
+                      </header>
+                      <p>{{ task.description || '等待 Agent 补充任务说明。' }}</p>
+                      <div class="timeline-task-meta">
+                        <div class="task-facts">
+                          <span><ClockIcon />{{ task.estimated_minutes }} 分钟</span>
+                          <span><CalendarDaysIcon />截止 {{ formatDate(task.due_at, true) }}</span>
+                          <span v-if="task.review_due_at" class="review-fact"><BoltIcon />复习 {{ formatDate(task.review_due_at, true) }}</span>
+                        </div>
+                        <div class="task-tags">
+                          <span>{{ task.kind }}</span>
+                          <span v-if="task.is_core || task.evidence_required" class="evidence-tag"><ShieldCheckIcon /> 核心 · 需证据</span>
+                          <span v-if="wasTouchedByAgent(task)" class="agent-tag"><SparklesIcon /> Agent 已调整</span>
+                        </div>
+                      </div>
+                      <footer>
+                        <a v-if="task.resource_url" :href="task.resource_url" target="_blank" rel="noreferrer">学习资源 <ArrowTopRightOnSquareIcon /></a>
+                        <span v-else>暂无外部资源</span>
+                        <button @click="askAgentAboutTask(task)"><SparklesIcon /> 让 Agent 检查</button>
+                      </footer>
+                    </div>
+                  </article>
+                </div>
+              </section>
             </article>
           </div>
         </main>

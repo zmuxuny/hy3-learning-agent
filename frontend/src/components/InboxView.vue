@@ -1,6 +1,7 @@
 <script setup>
 import { BellIcon, CheckIcon, EnvelopeIcon } from '@heroicons/vue/24/outline';
 import { useWorkspaceStore } from '../stores/workspace';
+import RunTraceButton from './RunTraceButton.vue';
 
 const store = useWorkspaceStore();
 
@@ -13,7 +14,10 @@ async function requestBrowserPermission() {
   <section class="view">
     <header class="view-header compact-header">
       <div><span class="eyebrow">PROACTIVE INBOX</span><h1>主动消息</h1><p>提醒、抽查和调整建议统一进入这里；浏览器与邮件是可选投递渠道。</p></div>
-      <button class="secondary-button" @click="requestBrowserPermission"><BellIcon /> 启用浏览器通知</button>
+      <div class="page-header-actions">
+        <RunTraceButton />
+        <button class="secondary-button" @click="requestBrowserPermission"><BellIcon /> 启用浏览器通知</button>
+      </div>
     </header>
 
     <div class="inbox-list">

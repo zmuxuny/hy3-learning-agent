@@ -190,5 +190,19 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
         assert all(message.run_id == run_id for message in messages)
 
     assert completions.calls[0]["extra_body"] == {"reasoning_effort": "high"}
+    assert "The supplied tool schemas are the complete set" in completions.calls[0]["messages"][0]["content"]
+    assert {tool["function"]["name"] for tool in completions.calls[0]["tools"]} == {
+        "profile_get",
+        "plan_list",
+        "plan_get",
+        "plan_create",
+        "task_patch",
+        "review_schedule",
+        "quiz_create",
+        "quiz_get",
+        "quiz_grade",
+        "memory_propose",
+        "notification_send",
+    }
     replayed_messages = completions.calls[1]["messages"]
     assert any(message.get("reasoning_content") == "private planning tokens" for message in replayed_messages)
