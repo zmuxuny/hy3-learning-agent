@@ -1,6 +1,6 @@
 # 项目状态
 
-更新时间：2026-07-31 23:30（Asia/Shanghai）
+更新时间：2026-08-01 01:03（Asia/Shanghai）
 
 ## 当前阶段
 
@@ -11,24 +11,28 @@
 - Windows 旧环境、旧代码、本地数据和旧 Git 历史已移到项目外的可恢复归档。
 - Linux `.venv` 和全新 Node 依赖安装成功。
 - FastAPI 同时提供 API、SSE 和 Vue 生产包；健康检查及主要读取接口返回 200。
-- 前端生产构建成功：约 99 KB JS、19 KB CSS。
+- 前端生产构建成功：107.05 KB JS、31.93 KB CSS（gzip 后分别为 39.04 KB、7.33 KB）。
 - `npm audit --omit=dev`：0 个已知漏洞。
 - `pytest -q`：2 个闭环测试通过。
 - 计划进度由真实任务状态计算；核心任务无证据时拒绝完成。
 - 模拟 Hy3 三轮工具循环通过，私有推理没有写入 RunEvent，`reasoning_content` 会回填下一轮。
-- TokenHub 真实请求已抵达平台，Harness 正确记录平台失败事件。
+- TokenHub 普通对话、Function Calling、Function Calling + 深度思考三种请求均成功。
+- 真实 Hy3 Harness 只读闭环成功：`context.built → plan_list → assistant.message → run.completed`。
+- 真实 Hy3 已创建一份 4 阶段、14 任务的完整计划，并在同一 Run 中调用画像、计划、任务、复习、记忆候选和通知工具。
+- 真实 Hy3 手动心跳成功读取计划和画像并形成主动判断，Demo A 的工程闭环已经跑通。
+- 首页已按 ChatGPT/Codex 桌面端方向重做为对话优先界面，运行详情改为可收起抽屉；计划工作区包含计划版本、进度环、阶段看板、证据/复习信息与 Agent 操作痕迹。
+- 桌面、平板和手机尺寸已验证计划首项自动加载、14 张任务卡渲染且无页面级横向溢出。
+- 真实 Hy3 完成态回归确认仍停留在对话页，不会因数据刷新被强制切回计划页。
 
 ## 当前外部阻塞
 
-TokenHub 返回 HTTP 402、错误码 `401006`、`endpoint is inactive`。`.env` 的 Base URL 与 Model 均正确；需要在腾讯控制台启用对应端点/Token Plan，或换用一个已激活的本地 Token。真实 Hy3 两条 Demo 在此之前不能如实标记完成。
+无模型接口阻塞。此前一次 `401006 endpoint is inactive` 属于 TokenHub 瞬时状态，使用相同本地配置重试后已经恢复。
 
 ## 提交前剩余事项（按优先级）
 
-1. 激活 TokenHub，完成真实只读工具调用。
-2. 用真实 Hy3 录制计划/提醒与考核/调整两条 Demo。
-3. 按赛事要求使用 CodeBuddy 或 WorkBuddy 完成一次真实协作并记录准确范围。
-4. 清理演示数据库，完成新 Git 初始化和首次提交。
-5. 创建个人 GitHub 仓库、录制小于 2 分钟视频并提交目标 PR。
+1. 跑通 Demo B：核心任务证据 → 抽查 → 评分 → 复习/调整 → 撤销。
+2. 按赛事要求使用 CodeBuddy 或 WorkBuddy 完成一次真实协作并记录准确范围。
+3. 创建个人 GitHub 仓库，录制包含 Demo A 与 Demo B 的小于 2 分钟视频并提交目标 PR。
 
 ## 已知限制
 
@@ -43,4 +47,4 @@ TokenHub 返回 HTTP 402、错误码 `401006`、`endpoint is inactive`。`.env` 
 
 - 自动化测试中的模型响应是固定模拟，仅验证 Harness，不是 Hy3 能力证明。
 - `run.failed` 证明失败可观察，不等于真实 Demo 已通过。
-- 尚未初始化新 Git 仓库，旧 Git 备份仍保留。
+- 新 Git 仓库已经初始化；旧 Git 备份仍在项目外保留。

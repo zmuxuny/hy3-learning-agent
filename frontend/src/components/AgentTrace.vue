@@ -6,6 +6,7 @@ import {
   CircleStackIcon,
   CommandLineIcon,
   StopIcon,
+  XMarkIcon,
   XCircleIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
@@ -13,6 +14,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 
 const store = useWorkspaceStore();
 const expanded = ref(new Set());
+const pendingUndoId = ref(null);
 const running = computed(() => ['queued', 'running'].includes(store.currentRun?.status));
 const undoable = computed(() => store.operations.filter(
   (operation) => operation.run_id === store.currentRun?.id && operation.status === 'committed',
@@ -30,6 +32,17 @@ function toggle(sequence) {
   next.has(sequence) ? next.delete(sequence) : next.add(sequence);
   expanded.value = next;
 }
+
+async function confirmUndo(operation) {
+  await store.undoOperation(operation.id);
+  pendingUndoId.value = null;
+}
+
+function undoLabel(operation) {
+  if (operation.tool_name === 'plan.create') return '撤销整个计划创建';
+  if (operation.tool_name === 'quiz.grade') return '撤销评分与 XP';
+  return `撤销 ${operation.tool_name}`;
+}
 </script>
 
 <template>
@@ -39,9 +52,10 @@ function toggle(sequence) {
         <span class="eyebrow">AGENT HARNESS</span>
         <h2>运行轨迹</h2>
       </div>
-      <span :class="['run-status', store.currentRun?.status || 'idle']">
-        {{ store.currentRun?.status || 'idle' }}
-      </span>
+      <div class="trace-header-actions">
+        <span :class="['run-status', store.currentRun?.status || 'idle']">{{ store.currentRun?.status || 'idle' }}</span>
+        <button class="trace-close" @click="store.traceOpen = false"><XMarkIcon /></button>
+      </div>
     </header>
 
     <div v-if="store.currentRun" class="run-objective">
@@ -83,9 +97,13 @@ function toggle(sequence) {
     <footer class="trace-footer">
       <div v-if="undoable.length" class="undo-list">
         <span>本次运行的可撤销操作</span>
-        <button v-for="operation in undoable" :key="operation.id" @click="store.undoOperation(operation.id)">
-          <ArrowUturnLeftIcon /> 撤销 {{ operation.tool_name }}
-        </button>
+        <div v-for="operation in undoable" :key="operation.id" class="undo-item">
+          <button @click="pendingUndoId = operation.id"><ArrowUturnLeftIcon /> {{ undoLabel(operation) }}</button>
+          <div v-if="pendingUndoId === operation.id" class="undo-confirm">
+            <p>将执行已记录的逆向操作，并保留审计记录。确定继续吗？</p>
+            <span><button @click="pendingUndoId = null">取消</button><button class="confirm" @click="confirmUndo(operation)">确认撤销</button></span>
+          </div>
+        </div>
       </div>
       <button v-if="running" class="stop-button" @click="store.cancelCurrentRun">
         <StopIcon /> 停止运行

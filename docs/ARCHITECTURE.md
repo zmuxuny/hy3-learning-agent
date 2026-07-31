@@ -3,37 +3,20 @@
 ## 1. 总体架构
 
 ```text
-                       ┌─────────────────────┐
-                       │  Scheduler / Worker │
-                       └──────────┬──────────┘
-                                  │ heartbeat
-                                  ▼
-┌──────────────┐        ┌─────────────────────┐
-│ Plans/Tasks  │───────▶│  State Collector    │
-└──────────────┘        └──────────┬──────────┘
-                                  │ candidate event
-┌──────────────┐                   ▼
-│ Memory Store │───────▶┌─────────────────────┐
-└──────────────┘        │ Context Assembler   │
-                        └──────────┬──────────┘
-                                  │ bounded context
-                                  ▼
-                        ┌─────────────────────┐
-                        │ Hy3 Decision Policy │
-                        └──────────┬──────────┘
-                                  │ structured decision
-                                  ▼
-                        ┌─────────────────────┐
-                        │ Intervention Guard  │
-                        └──────────┬──────────┘
-                                  │ allowed action
-                                  ▼
-                        ┌─────────────────────┐
-                        │ Inbox / Notification│
-                        └─────────────────────┘
+用户消息 ─┐
+后台心跳 ─┼─▶ AgentRuntime ─▶ ContextAssembler ─▶ Hy3
+任务事件 ─┘        ▲                                  │
+                  └──── 观察结果 ◀──── ToolRegistry ◀─┘
+                                           │
+                  SQLite / Markdown ◀──────┼──────▶ 通知渠道
+                                           │
+                                   Operation / RunEvent
+                                           │ SSE
+                                           ▼
+                                      Harness 工作台
 ```
 
-后台 Worker 持续运行；Hy3 按事件调用。这样既能实现主动性，也能控制成本、频率和不可预测行为。
+后台 Worker 持续运行；Hy3 按事件调用。用户消息和主动事件共享同一个可观察、可停止、有轮次预算的工具循环，确定性 Guard 只约束权限、触达频率和安全边界。
 
 用户对话和后台心跳都进入同一个 `AgentRuntime`，只改变触发源：
 
@@ -116,21 +99,14 @@ Hy3 支持长上下文，但系统仍需选择、分层和压缩。长上下文�
 
 ## 5. 主动决策协议
 
-Hy3 返回严格结构化结果：
+主动心跳与用户对话使用同一个 Tool Calling 循环，不维护一套独立的固定 JSON 工作流。Hy3 可以先调用 `plan_list`、`plan_get`、画像或事件工具收集证据，再自主选择：
 
-```json
-{
-  "action": "silent | remind | quiz | replan_proposal",
-  "reason": "为什么此刻应该或不应该介入",
-  "urgency": "low | medium | high",
-  "message": "面向用户的内容",
-  "related_plan_id": 1,
-  "related_task_ids": [3],
-  "next_check_at": "2026-08-01T09:00:00+08:00"
-}
-```
+- 不调用写工具，并在 Run 结论中记录保持安静；
+- 调用通知、测验或复习工具进行干预；
+- 调用可撤销的计划工具完成低风险调整；
+- 创建记忆或高风险变更候选，等待用户确认。
 
-每次决策都写入日志。`silent` 同样需要记录，以证明 Agent 确实进行了判断，而不是只有通知结果。
+每次模型轮次、工具开始/完成、最终结论和失败都归入同一个 `run_id`。`silent` 同样必须形成完成事件，证明 Agent 做过判断，而不是只有通知结果。
 
 ## 5.1 Harness 运行事件
 
@@ -173,7 +149,6 @@ run.failed
 
 ```text
 backend/app/
-├── agents/          # proactive agent and decision policy
 ├── api/             # HTTP and SSE endpoints
 ├── context/         # assembly, snapshots and consolidation
 ├── core/            # configuration and scheduling
@@ -185,15 +160,29 @@ backend/app/
 └── tools/           # atomic agent capabilities
 ```
 
-前端第一阶段只实现：
+前端第一阶段实现：
 
 - 今日状态与通知收件箱
 - 计划、阶段和任务
-- AI 对话
+- 对话主画布与内联 Agent 行动摘要
+- 可收起的完整运行轨迹抽屉
 - 主动抽查卡片
 - 记忆查看器和上下文来源
 
-视觉重点是信息可解释、状态明确和快速响应，不依赖游戏化特效。
+视觉重点是信息可解释、状态明确、对齐精确和快速响应。计划卡、边框、间距与状态色使用统一视觉 Token，不依赖游戏化特效制造完成感。
+
+## 8.1 Harness 的 UI 投影
+
+```text
+Sidebar                  Conversation Canvas               Run Drawer
+计划 / 记忆 / 最近 Run    用户目标与 Agent 最终答复          完整事件序列
+主动教练在线状态          关键上下文与工具摘要               参数 / 结果 / 失败
+                         固定输入框                         审计与撤销确认
+
+Plan Workspace
+计划版本 / 阶段 / 任务卡 / 证据 / 复习 / Agent 操作痕迹
+└─ 任何“让 Agent 检查”请求都返回统一 AgentRuntime，不直接写数据库
+```
 
 ## 9. 多用户预留
 

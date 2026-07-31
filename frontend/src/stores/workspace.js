@@ -28,6 +28,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const operations = ref([]);
   const runs = ref([]);
   const currentRun = ref(null);
+  const traceOpen = ref(false);
   const activeSessionId = ref(null);
   const runEvents = ref([]);
   const loading = ref(false);
@@ -58,6 +59,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       notifications.value = notificationsRes.data;
       operations.value = operationsRes.data;
       runs.value = runsRes.data;
+      await refreshCurrentPlan();
     } catch (requestError) {
       error.value = requestError.response?.data?.detail || requestError.message;
     } finally {
@@ -65,10 +67,30 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  async function selectPlan(planId) {
+  async function loadPlan(planId) {
     const response = await api.get(`/plans/${planId}`);
     currentPlan.value = response.data;
+  }
+
+  async function refreshCurrentPlan() {
+    if (!plans.value.length) {
+      currentPlan.value = null;
+      return;
+    }
+    const selectedPlan = plans.value.find((plan) => plan.id === currentPlan.value?.id);
+    await loadPlan(selectedPlan?.id || plans.value[0].id);
+  }
+
+  async function selectPlan(planId) {
+    await loadPlan(planId);
     activeView.value = 'plans';
+  }
+
+  async function openView(view) {
+    if (view === 'plans' && !currentPlan.value && plans.value.length) {
+      await loadPlan(plans.value[0].id);
+    }
+    activeView.value = view;
   }
 
   async function startRun(objective, planId = null) {
@@ -84,6 +106,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     });
     currentRun.value = response.data;
     activeSessionId.value = response.data.session_id;
+    activeView.value = 'home';
     runs.value.unshift(response.data);
     subscribeToRun(response.data.id);
   }
@@ -95,6 +118,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const response = await api.post('/agent/heartbeat');
       currentRun.value = response.data;
+      activeView.value = 'home';
       runs.value.unshift(response.data);
       subscribeToRun(response.data.id);
     } catch (requestError) {
@@ -105,6 +129,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function inspectRun(run) {
     closeEventSource();
     currentRun.value = run;
+    activeSessionId.value = run.session_id || null;
+    activeView.value = 'home';
     const response = await api.get(`/agent/runs/${run.id}/events`);
     runEvents.value = response.data.map((event) => ({
       sequence: event.sequence,
@@ -185,7 +211,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     operations.value = operationsRes.data;
     runs.value = runsRes.data;
-    if (currentPlan.value) await selectPlan(currentPlan.value.id);
+    await refreshCurrentPlan();
   }
 
   function closeEventSource() {
@@ -214,6 +240,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     operations,
     runs,
     currentRun,
+    traceOpen,
     activeSessionId,
     runEvents,
     loading,
@@ -223,6 +250,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     pendingMemories,
     loadWorkspace,
     selectPlan,
+    openView,
     startRun,
     triggerHeartbeat,
     inspectRun,
