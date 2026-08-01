@@ -27,6 +27,10 @@ function iconFor(type) {
   return CheckCircleIcon;
 }
 
+function eventFailed(event) {
+  return event.type.includes('failed') || event.payload?.result?.ok === false;
+}
+
 function toggle(sequence) {
   const next = new Set(expanded.value);
   next.has(sequence) ? next.delete(sequence) : next.add(sequence);
@@ -71,7 +75,7 @@ function undoLabel(operation) {
         class="trace-event"
         @click="toggle(event.sequence)"
       >
-        <span :class="['event-icon', event.type.includes('failed') ? 'danger' : '']">
+        <span :class="['event-icon', eventFailed(event) ? 'danger' : '']">
           <component :is="iconFor(event.type)" />
         </span>
         <span class="event-copy">

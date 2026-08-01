@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     AGENT_MODEL_TIMEOUT_SECONDS: int = Field(default=90, ge=10, le=300)
     AGENT_MODEL_RETRY_ATTEMPTS: int = Field(default=2, ge=1, le=3)
     AGENT_TOOL_TIMEOUT_SECONDS: int = Field(default=35, ge=5, le=120)
+    AGENT_TOOL_FAILURE_LIMIT: int = Field(default=2, ge=1, le=5)
     AGENT_TOOL_MESSAGE_CHAR_LIMIT: int = Field(default=16000, ge=2000, le=100000)
     AGENT_SESSION_TITLE_TIMEOUT_SECONDS: int = Field(default=15, ge=3, le=60)
     AGENT_HEARTBEAT_SECONDS: int = Field(default=300, ge=15)

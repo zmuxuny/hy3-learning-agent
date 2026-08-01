@@ -20,6 +20,41 @@ class AgentModelTimeout(RuntimeError):
     pass
 
 
+class ToolFailureGuard:
+    """Bound repeated failures so one broken capability cannot consume a whole run."""
+
+    def __init__(self, failure_limit: int):
+        self.failure_limit = failure_limit
+        self.failures: dict[str, int] = {}
+        self.blocked: set[str] = set()
+
+    def before_call(self, tool_name: str) -> dict | None:
+        if tool_name not in self.blocked:
+            return None
+        return {
+            "ok": False,
+            "error": f"{tool_name} is disabled for the remainder of this run after repeated failures",
+            "retryable": False,
+            "circuit_open": True,
+        }
+
+    def observe(self, tool_name: str, result: dict) -> dict:
+        if result.get("ok"):
+            self.failures.pop(tool_name, None)
+            return result
+        failure_count = self.failures.get(tool_name, 0) + 1
+        self.failures[tool_name] = failure_count
+        if failure_count >= self.failure_limit:
+            self.blocked.add(tool_name)
+            return {
+                **result,
+                "retryable": False,
+                "circuit_open": True,
+                "instruction": f"Do not call {tool_name} again in this run; use existing evidence or explain the blocker.",
+            }
+        return result
+
+
 def _compact_tool_message(result: dict) -> str:
     """Keep model observations bounded without changing the persisted trace payload."""
     limit = settings.AGENT_TOOL_MESSAGE_CHAR_LIMIT
@@ -93,6 +128,7 @@ class AgentRuntime:
                 ]
 
                 final_text = ""
+                failure_guard = ToolFailureGuard(settings.AGENT_TOOL_FAILURE_LIMIT)
                 for step in range(settings.AGENT_MAX_STEPS):
                     await db.refresh(run)
                     if run.cancel_requested:
@@ -104,15 +140,21 @@ class AgentRuntime:
                     response = None
                     for attempt in range(settings.AGENT_MODEL_RETRY_ATTEMPTS):
                         try:
+                            model_tools = [
+                                tool
+                                for tool in openai_tools()
+                                if tool["function"]["name"] not in failure_guard.blocked
+                            ]
+                            request = {
+                                "model": settings.MODEL_NAME,
+                                "messages": messages,
+                                "temperature": settings.MODEL_TEMPERATURE,
+                                "extra_body": {"reasoning_effort": settings.MODEL_REASONING_EFFORT},
+                            }
+                            if model_tools:
+                                request.update({"tools": model_tools, "tool_choice": "auto"})
                             response = await asyncio.wait_for(
-                                self.client.chat.completions.create(
-                                    model=settings.MODEL_NAME,
-                                    messages=messages,
-                                    tools=openai_tools(),
-                                    tool_choice="auto",
-                                    temperature=settings.MODEL_TEMPERATURE,
-                                    extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
-                                ),
+                                self.client.chat.completions.create(**request),
                                 timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
                             )
                             break
@@ -160,22 +202,25 @@ class AgentRuntime:
                             f"调用工具 {call.function.name}",
                             {"tool_call_id": call.id, "name": call.function.name},
                         )
-                        async with AsyncSessionLocal() as tool_db:
-                            result = await asyncio.wait_for(
-                                execute_tool(
-                                    call.function.name,
-                                    call.function.arguments,
-                                    ToolContext(
-                                        db=tool_db,
-                                        owner_id=run.owner_id,
-                                        run_id=run_id,
-                                        trigger=run.trigger,
-                                        plan_id=run.plan_id,
-                                        session_id=session.id if session else None,
+                        result = failure_guard.before_call(call.function.name)
+                        if result is None:
+                            async with AsyncSessionLocal() as tool_db:
+                                result = await asyncio.wait_for(
+                                    execute_tool(
+                                        call.function.name,
+                                        call.function.arguments,
+                                        ToolContext(
+                                            db=tool_db,
+                                            owner_id=run.owner_id,
+                                            run_id=run_id,
+                                            trigger=run.trigger,
+                                            plan_id=run.plan_id,
+                                            session_id=session.id if session else None,
+                                        ),
                                     ),
-                                ),
-                                timeout=settings.AGENT_TOOL_TIMEOUT_SECONDS,
-                            )
+                                    timeout=settings.AGENT_TOOL_TIMEOUT_SECONDS,
+                                )
+                            result = failure_guard.observe(call.function.name, result)
                         await emit_event(
                             db,
                             run.id,

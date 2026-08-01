@@ -16,12 +16,14 @@
 - SMTP 发送和 IMAP 回复路由已实现；没有邮箱配置时安全回退为站内通知。
 - 真实 Hy3 Run 成功完成 `web_search → plan_get → web_open → web_search(save) → plan_patch → resource_list`，搜索结果、计划版本和可撤销操作均真实落库。
 - 真实连续 Session 验收通过：同一 Session 两轮消息只生成一个侧栏条目，语义标题保持稳定；修复网络策略后真实完成 `web_search → web_open` 并核验 Python 官方 asyncio 页面。
+- Web 安全校验兼容 WSL 代理的 IPv4/IPv6 Fake-IP DNS，同时继续拒绝 localhost、私网和非公网 IP 字面量；真实搜索返回 3 条结果并成功打开 Python 官方页面。
+- 同一工具在单个 Run 内连续失败两次会熔断并从后续模型轮次移除，避免 Web 或外部依赖故障触发无效重试风暴；运行摘要中的失败工具不再显示成“已完成”。
 - 工具改用独立数据库事务，参数/工具失败不再因主 Runtime ORM 对象失效而升级成 `MissingGreenlet`；模型超时有一次可观察重试，工具回填有体积上限。
 - 前端对话页取消 Header；真实 Hy3 长工具 Run 在完成态正确恢复消息和步骤，Markdown 答案不再裸露 `**` 标记。
 - 计划详情只有一个标题（计划名称），摘要和操作降为正文层级，任务保持纵向时间线。
 - 浏览器回归覆盖 375、768、1280、1440 和 2560×1440；没有文档横向溢出、重复 Header 或横向裁切按钮。
-- `pytest -q`：11 passed。
-- 前端生产构建：119.70 KB JS、39.79 KB CSS（gzip 42.81 KB、8.66 KB）。
+- `pytest -q`：13 passed。
+- 前端生产构建：119.77 KB JS、39.79 KB CSS（gzip 42.81 KB、8.66 KB）。
 
 ## Demo 就绪能力
 

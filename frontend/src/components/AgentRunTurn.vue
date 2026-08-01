@@ -57,7 +57,7 @@ function eventTitle(event) {
   if (event.type === 'context.built') return '读取学习上下文';
   if (event.type === 'run.retrying') return event.summary;
   if (event.type === 'tool.started') return `正在调用 ${event.payload?.name || '工具'}`;
-  if (event.type === 'tool.completed') return `${event.payload?.name || '工具'} 已完成`;
+  if (event.type === 'tool.completed') return event.payload?.name || '工具';
   if (event.type === 'assistant.status') return event.summary;
   if (event.type === 'run.failed') return '运行失败';
   if (event.type === 'run.cancelled') return '运行已停止';
@@ -75,7 +75,7 @@ function eventTitle(event) {
         <div
           v-for="event in visibleActivityEvents"
           :key="event.sequence"
-          :class="['process-row', { failed: event.type === 'run.failed' || event.type === 'run.cancelled' }]"
+          :class="['process-row', { failed: event.type === 'run.failed' || event.type === 'run.cancelled' || event.payload?.result?.ok === false }]"
         >
           <component :is="iconFor(event.type)" />
           <span>{{ eventTitle(event) }}</span>

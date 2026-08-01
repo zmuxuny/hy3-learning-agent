@@ -14,7 +14,7 @@ from app.db.database import AsyncSessionLocal
 from app.api.operations import undo_operation
 from app.context.memory import MemoryManager
 from app.models import AgentRun, ChatMessage, Memory, Notification, RunEvent, Session, TaskSubmission
-from app.runtime.agent import AgentRuntime
+from app.runtime.agent import AgentRuntime, ToolFailureGuard
 from app.schemas import AgentRunCreate, PlanCreate, SessionUpdate, StageCreate, TaskCreate, TaskUpdate
 from app.services import plans as plan_service
 from app.tools import ToolContext, execute_tool
@@ -428,6 +428,41 @@ async def test_redirect_targets_are_validated_on_every_hop(monkeypatch):
         with pytest.raises(ValueError, match="Private or reserved"):
             await fetch_with_safe_redirects(client, "https://example.com/start")
     assert checked == ["https://example.com/start", "http://127.0.0.1/private"]
+
+
+@pytest.mark.asyncio
+async def test_fake_ip_dns_is_allowed_only_for_domain_names(monkeypatch):
+    import socket
+    import app.search.security as security
+
+    def fake_getaddrinfo(host, port):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.4.11", port))]
+
+    monkeypatch.setattr(security.socket, "getaddrinfo", fake_getaddrinfo)
+    await security.validate_public_url("https://html.duckduckgo.com/html/")
+
+    with pytest.raises(ValueError, match="IP literals"):
+        await security.validate_public_url("https://198.18.4.11/")
+
+    def fake_ipv6_getaddrinfo(host, port):
+        return [(socket.AF_INET6, socket.SOCK_STREAM, 6, "", ("2001::c085:4dbd", port, 0, 0))]
+
+    monkeypatch.setattr(security.socket, "getaddrinfo", fake_ipv6_getaddrinfo)
+    await security.validate_public_url("https://html.duckduckgo.com/html/")
+
+    with pytest.raises(ValueError, match="IP literals"):
+        await security.validate_public_url("https://[2001::c085:4dbd]/")
+
+
+def test_tool_failure_guard_opens_after_repeated_failures():
+    guard = ToolFailureGuard(failure_limit=2)
+    first = guard.observe("web_search", {"ok": False, "error": "network failed"})
+    second = guard.observe("web_search", {"ok": False, "error": "network failed again"})
+
+    assert "circuit_open" not in first
+    assert second["circuit_open"] is True
+    assert guard.before_call("web_search")["circuit_open"] is True
+    assert guard.before_call("plan_get") is None
 
 
 @pytest.mark.asyncio

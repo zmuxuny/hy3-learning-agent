@@ -15,25 +15,32 @@ async def validate_public_url(url: str) -> None:
     hostname = parsed.hostname.lower().rstrip(".")
     if hostname in {"localhost", "127.0.0.1", "::1"} or hostname.endswith(".local"):
         raise ValueError("Local network URLs are not allowed")
+    try:
+        literal_ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        literal_ip = None
+    if literal_ip is not None and not literal_ip.is_global:
+        raise ValueError(f"Non-public IP literals are not allowed: {hostname}")
     addresses = await asyncio.to_thread(
         socket.getaddrinfo,
         hostname,
         parsed.port or (443 if parsed.scheme == "https" else 80),
     )
     resolved = {ipaddress.ip_address(address[4][0]) for address in addresses}
-    has_public_address = any(ip.is_global for ip in resolved)
-    synthetic_proxy_range = ipaddress.ip_network("198.18.0.0/15")
+    synthetic_proxy_ranges = (
+        ipaddress.ip_network("198.18.0.0/15"),
+        ipaddress.ip_network("2001::/32"),
+    )
     for ip in resolved:
         synthetic_proxy_ip = (
             settings.WEB_ALLOW_SYNTHETIC_DNS
-            and has_public_address
-            and ip.version == 4
-            and ip in synthetic_proxy_range
+            and literal_ip is None
+            and any(ip in network for network in synthetic_proxy_ranges)
         )
         if synthetic_proxy_ip:
             continue
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-            raise ValueError("Private or reserved network targets are not allowed")
+            raise ValueError(f"Non-public DNS target is not allowed for {hostname}: {ip}")
 
 
 async def fetch_with_safe_redirects(
