@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -10,8 +11,9 @@ from app.core.config import settings
 from app.db.database import AsyncSessionLocal, get_db
 from app.models import AgentRun, ChatMessage, RunEvent, Session
 from app.runtime import AgentRuntime
+from app.runtime.session_titles import initial_session_title
 from app.runtime.scheduler import proactive_scheduler
-from app.schemas import AgentRunCreate, AgentRunRead, ChatMessageRead, RunEventRead
+from app.schemas import AgentRunCreate, AgentRunRead, ChatMessageRead, RunEventRead, SessionRead, SessionUpdate
 
 
 router = APIRouter()
@@ -34,11 +36,12 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Session not found")
         if session.plan_id != data.plan_id:
             raise HTTPException(status_code=409, detail="Session focus does not match requested plan")
+        session.updated_at = datetime.now(timezone.utc)
     elif data.trigger == "user_message":
         session = Session(
             owner_id=settings.DEFAULT_OWNER_ID,
             plan_id=data.plan_id,
-            title=data.objective[:80] or "New conversation",
+            title=initial_session_title(data.objective),
         )
         db.add(session)
         await db.flush()
@@ -67,6 +70,76 @@ async def list_runs(limit: int = 30, db: AsyncSession = Depends(get_db)):
         .limit(min(max(limit, 1), 100))
     )
     return list(result.scalars())
+
+
+@router.get("/sessions", response_model=list[SessionRead])
+async def list_sessions(limit: int = 30, db: AsyncSession = Depends(get_db)):
+    sessions = list((await db.execute(
+        select(Session)
+        .where(Session.owner_id == settings.DEFAULT_OWNER_ID)
+        .order_by(Session.updated_at.desc())
+        .limit(min(max(limit, 1), 100))
+    )).scalars())
+    if not sessions:
+        return []
+    session_ids = [session.id for session in sessions]
+    runs = list((await db.execute(
+        select(AgentRun)
+        .where(AgentRun.session_id.in_(session_ids))
+        .order_by(AgentRun.created_at.desc())
+    )).scalars())
+    latest_runs: dict[str, AgentRun] = {}
+    run_counts: dict[str, int] = {}
+    for run in runs:
+        run_counts[run.session_id] = run_counts.get(run.session_id, 0) + 1
+        latest_runs.setdefault(run.session_id, run)
+
+    rows = []
+    for session in sessions:
+        messages = list(session.messages)
+        latest = latest_runs.get(session.id)
+        rows.append({
+            "id": session.id,
+            "plan_id": session.plan_id,
+            "title": session.title,
+            "summary": session.summary,
+            "message_count": len(messages),
+            "run_count": run_counts.get(session.id, 0),
+            "last_message": messages[-1].content[:180] if messages else "",
+            "last_run_id": latest.id if latest else None,
+            "last_run_status": latest.status if latest else None,
+            "created_at": session.created_at,
+            "updated_at": session.updated_at,
+        })
+    rows.sort(key=lambda item: item["updated_at"], reverse=True)
+    return rows
+
+
+@router.patch("/sessions/{session_id}", response_model=SessionRead)
+async def rename_session(session_id: str, data: SessionUpdate, db: AsyncSession = Depends(get_db)):
+    session = await db.get(Session, session_id)
+    if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session.title = data.title
+    session.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(session)
+    latest = (await db.execute(
+        select(AgentRun).where(AgentRun.session_id == session.id).order_by(AgentRun.created_at.desc()).limit(1)
+    )).scalars().one_or_none()
+    return {
+        "id": session.id,
+        "plan_id": session.plan_id,
+        "title": session.title,
+        "summary": session.summary,
+        "message_count": len(session.messages),
+        "run_count": len((await db.execute(select(AgentRun.id).where(AgentRun.session_id == session.id))).all()),
+        "last_message": session.messages[-1].content[:180] if session.messages else "",
+        "last_run_id": latest.id if latest else None,
+        "last_run_status": latest.status if latest else None,
+        "created_at": session.created_at,
+        "updated_at": session.updated_at,
+    }
 
 
 @router.get("/sessions/{session_id}/messages", response_model=list[ChatMessageRead])

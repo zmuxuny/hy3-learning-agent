@@ -2,7 +2,7 @@
 
 ## 设计原则
 
-工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。高层流程由 Hy3 规划；用户消息、后台候选、复习到期和邮件回复共享同一 `AgentRuntime`。
+工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。每个工具同时注册 Pydantic 输入模型和输出模型；输入用于 Function Calling，成功输出在回填模型前再次校验。完整契约通过 `GET /api/v1/settings/tools` 暴露。高层流程由 Hy3 规划；用户消息、后台候选、复习到期和邮件回复共享同一 `AgentRuntime`。
 
 ## 31 个已注册工具
 
@@ -38,7 +38,7 @@
 
 | 工具 | 作用 |
 | --- | --- |
-| `web_search` / `web_open` | 搜索公开资料、核验正文并保存资源 |
+| `web_search` / `web_open` | 通过可替换 Provider 搜索公开资料；逐跳校验重定向后核验正文并保存资源 |
 | `file_list` / `file_read` / `file_write` | 操作个人 Agent 工作区内的学习文件 |
 | `code_execute` | 有超时和输出上限地运行 Python/Bash；不是安全容器 |
 | `calendar_list` / `calendar_create` / `calendar_patch` | 读取、创建和调整个人学习日历 |
@@ -63,7 +63,7 @@ SMTP 邮件主题携带回复令牌。启用 IMAP 后，未读回复会被路由
 }
 ```
 
-错误是 `{"ok": false, "error": "..."}`，会作为 tool message 回填给模型。对用户可见的轨迹包括：
+成功数据必须通过对应 Output Schema；错误统一为 `{"ok": false, "error": "...", "retryable": false}`，并作为 tool message 回填给模型。每次工具在独立数据库 Session 中执行，回滚不会污染主 Runtime。对用户可见的轨迹包括：
 
 ```text
 run.started → context.built → assistant.status

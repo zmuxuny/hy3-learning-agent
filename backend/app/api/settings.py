@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.core.config import settings
+from app.tools.registry import tool_contracts
 
 
 router = APIRouter()
@@ -23,3 +24,8 @@ async def read_settings():
         ),
         "timezone": settings.DEFAULT_TIMEZONE,
     }
+
+
+@router.get("/tools")
+async def read_tool_contracts():
+    return {"count": len(tool_contracts()), "tools": tool_contracts()}

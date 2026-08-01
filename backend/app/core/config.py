@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     )
 
     PROJECT_NAME: str = "Learning Agent"
-    VERSION: str = "0.3.0"
+    VERSION: str = "0.4.0"
     API_V1_STR: str = "/api/v1"
     DEFAULT_OWNER_ID: str = "local"
     DEFAULT_TIMEZONE: str = "Asia/Shanghai"
@@ -31,7 +31,10 @@ class Settings(BaseSettings):
 
     AGENT_MAX_STEPS: int = Field(default=8, ge=1, le=24)
     AGENT_MODEL_TIMEOUT_SECONDS: int = Field(default=90, ge=10, le=300)
+    AGENT_MODEL_RETRY_ATTEMPTS: int = Field(default=2, ge=1, le=3)
     AGENT_TOOL_TIMEOUT_SECONDS: int = Field(default=35, ge=5, le=120)
+    AGENT_TOOL_MESSAGE_CHAR_LIMIT: int = Field(default=16000, ge=2000, le=100000)
+    AGENT_SESSION_TITLE_TIMEOUT_SECONDS: int = Field(default=15, ge=3, le=60)
     AGENT_HEARTBEAT_SECONDS: int = Field(default=300, ge=15)
     AGENT_CONTEXT_EVENT_LIMIT: int = Field(default=40, ge=5, le=500)
     AGENT_CONTEXT_TOKEN_BUDGET: int = Field(default=12000, ge=2000, le=100000)
@@ -57,6 +60,9 @@ class Settings(BaseSettings):
     ENABLE_EMAIL_REPLY_POLLING: bool = False
 
     WEB_SEARCH_TIMEOUT_SECONDS: int = Field(default=12, ge=3, le=60)
+    WEB_SEARCH_PROVIDER: str = "duckduckgo"
+    WEB_MAX_REDIRECTS: int = Field(default=5, ge=0, le=10)
+    WEB_ALLOW_SYNTHETIC_DNS: bool = True
     TOOL_EXECUTION_TIMEOUT_SECONDS: int = Field(default=10, ge=1, le=60)
     TOOL_OUTPUT_LIMIT: int = Field(default=12000, ge=1000, le=100000)
 

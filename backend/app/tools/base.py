@@ -17,6 +17,7 @@ class ToolContext:
     run_id: str
     trigger: str
     plan_id: int | None = None
+    session_id: str | None = None
 
 
 ToolHandler = Callable[[ToolContext, BaseModel], Awaitable[dict[str, Any]]]
@@ -28,15 +29,32 @@ class ToolDefinition:
     description: str
     args_model: type[BaseModel]
     handler: ToolHandler
+    output_model: type[BaseModel] | None = None
 
     def openai_schema(self) -> dict:
+        output_fields = []
+        if self.output_model is not None:
+            output_fields = self.output_model.model_json_schema().get("required", [])
+        description = self.description
+        if output_fields:
+            description += f" Successful output fields: {', '.join(output_fields)}."
         return {
             "type": "function",
             "function": {
                 "name": self.name,
-                "description": self.description,
+                "description": description,
                 "parameters": self.args_model.model_json_schema(),
             },
+        }
+
+    def contract_schema(self) -> dict:
+        if self.output_model is None:
+            raise RuntimeError(f"Tool {self.name} has no output model")
+        return {
+            "name": self.name,
+            "description": self.description,
+            "input_schema": self.args_model.model_json_schema(),
+            "output_schema": self.output_model.model_json_schema(),
         }
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -32,6 +33,7 @@ class MemoryManager:
         owner_id: str,
         *,
         plan_id: int | None,
+        session_id: str | None = None,
         query: str,
         limit: int = 20,
     ) -> list[Memory]:
@@ -46,13 +48,15 @@ class MemoryManager:
                 continue
             scope_match = memory.scope == "global" or (
                 plan_id is not None and memory.scope == "plan" and memory.scope_id == str(plan_id)
+            ) or (
+                session_id is not None and memory.scope == "session" and memory.scope_id == session_id
             )
             if not scope_match:
                 continue
             overlap = len(query_terms.intersection(search_terms(memory.content)))
             age_days = max(0, (now - _aware(memory.updated_at)).days)
             recency = max(0.0, 2.0 - age_days / 30)
-            scope_bonus = 3.0 if memory.scope == "plan" else 1.0
+            scope_bonus = 3.0 if memory.scope in {"plan", "session"} else 1.0
             score = overlap * 3.0 + LAYER_WEIGHT.get(memory.layer, 1.0) + recency + scope_bonus + memory.confidence
             ranked.append((score, memory))
         ranked.sort(key=lambda item: (item[0], _aware(item[1].updated_at)), reverse=True)
@@ -111,13 +115,16 @@ class MemoryManager:
         summary = ""
         if client is not None:
             try:
-                response = await client.chat.completions.create(
-                    model=settings.MODEL_NAME,
-                    messages=[
-                        {"role": "system", "content": "Compress the learning conversation into concise Chinese factual memory. Preserve goals, decisions, plan/task IDs, evidence, unresolved blockers, preferences, and commitments. Do not invent facts."},
-                        {"role": "user", "content": transcript[-30000:]},
-                    ],
-                    temperature=0.2,
+                response = await asyncio.wait_for(
+                    client.chat.completions.create(
+                        model=settings.MODEL_NAME,
+                        messages=[
+                            {"role": "system", "content": "Compress the learning conversation into concise Chinese factual memory. Preserve goals, decisions, plan/task IDs, evidence, unresolved blockers, preferences, and commitments. Do not invent facts."},
+                            {"role": "user", "content": transcript[-30000:]},
+                        ],
+                        temperature=0.2,
+                    ),
+                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
                 )
                 summary = response.choices[0].message.content or ""
             except Exception:

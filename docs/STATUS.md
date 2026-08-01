@@ -8,18 +8,20 @@
 
 ## 本轮已验证
 
-- System Prompt 与 31 个真实 Function Calling Schema 进入同一个 Hy3 多轮 Runtime。
+- System Prompt 与 31 个真实 Function Calling 输入 Schema 进入同一个 Hy3 多轮 Runtime；31 个输出 Schema 在工具成功后强制校验，并由契约接口公开。
 - 计划焦点由后端 Guard 强制；计划内 Run 不能操作其他计划私有数据。
 - 自动化闭环通过：计划修改 → 文件写/读 → Python 执行 → 核心任务提交 → 验收 → 进度/XP → 日历。
-- 分层记忆通过：全局/计划作用域、相关性排序、过期、归档、计划摘要和 28 条长会话压缩；原始消息全部保留。
+- 分层记忆通过：全局/计划/Session 作用域、相关性排序、过期、归档、计划摘要和 28 条长会话压缩；原始消息全部保留。
 - 主动调度先筛选到期复习、24 小时内任务和三天停滞，再启动 Hy3；站内通知受免打扰、频率和冷却 Guard。
 - SMTP 发送和 IMAP 回复路由已实现；没有邮箱配置时安全回退为站内通知。
 - 真实 Hy3 Run 成功完成 `web_search → plan_get → web_open → web_search(save) → plan_patch → resource_list`，搜索结果、计划版本和可撤销操作均真实落库。
+- 真实连续 Session 验收通过：同一 Session 两轮消息只生成一个侧栏条目，语义标题保持稳定；修复网络策略后真实完成 `web_search → web_open` 并核验 Python 官方 asyncio 页面。
+- 工具改用独立数据库事务，参数/工具失败不再因主 Runtime ORM 对象失效而升级成 `MissingGreenlet`；模型超时有一次可观察重试，工具回填有体积上限。
 - 前端对话页取消 Header；真实 Hy3 长工具 Run 在完成态正确恢复消息和步骤，Markdown 答案不再裸露 `**` 标记。
 - 计划详情只有一个标题（计划名称），摘要和操作降为正文层级，任务保持纵向时间线。
 - 浏览器回归覆盖 375、768、1280、1440 和 2560×1440；没有文档横向溢出、重复 Header 或横向裁切按钮。
-- `pytest -q`：6 passed。
-- 前端生产构建：115.84 KB JS、38.52 KB CSS（gzip 41.65 KB、8.38 KB）。
+- `pytest -q`：11 passed。
+- 前端生产构建：119.70 KB JS、39.79 KB CSS（gzip 42.81 KB、8.66 KB）。
 
 ## Demo 就绪能力
 

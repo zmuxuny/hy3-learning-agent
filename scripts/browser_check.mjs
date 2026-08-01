@@ -55,6 +55,7 @@ async function inspect(label) {
       timelineStages: document.querySelectorAll('.timeline-stage').length,
       messages: document.querySelectorAll('.message-bubble').length,
       runTurns: document.querySelectorAll('.run-turn, .conversation-agent').length,
+      sessions: document.querySelectorAll('.session-row').length,
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       clipped,
     };
@@ -73,10 +74,16 @@ await evaluate(`(() => { const brand = document.querySelector('.brand'); if (bra
 await wait(350);
 report.push(await inspect('home-wide'));
 
-await evaluate(`(() => { const row = document.querySelector('.recent-row'); if (row) row.click(); return Boolean(row); })()`);
+await evaluate(`(() => { const row = document.querySelector('.session-row'); if (row) row.click(); return Boolean(row); })()`);
 await wait(1200);
 report.push(await inspect('conversation-wide'));
 
+for (const [width, height] of [[1440, 1000], [768, 1024], [375, 812]]) {
+  await viewport(width, height);
+  report.push(await inspect(`conversation-${width}`));
+}
+
+await viewport(2560, 1440);
 await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('学习计划')); if (item) item.click(); return Boolean(item); })()`);
 await wait(700);
 await evaluate(`(() => { const card = document.querySelector('.plan-list-card'); if (card) card.click(); return Boolean(card); })()`);

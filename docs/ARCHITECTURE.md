@@ -64,7 +64,7 @@
 
 每条会话拥有显式焦点：`plan_id = null` 表示全局对话，非空值表示计划对话。`currentPlan` 只代表界面正在查看的数据，不能被当作对话焦点；前端使用独立的 `focusPlanId` 组装 Run 请求。切换全局与计划焦点时建立新的会话边界，避免近期原文跨计划串入。后端同时校验已有 Session 的 `plan_id`，拒绝用同一个 Session 静默改绑其他计划，隔离不能只依赖 UI。
 
-`Session → ChatMessage → AgentRun` 同时承担持久化与 UI 恢复：`GET /agent/sessions/{session_id}/messages` 按时间和 ID 返回原始消息；前端选择任一历史 Run 时先恢复整个 Session，再把该 Run 的事件投影到对应用户消息之后。新 Run 先乐观加入用户消息，完成事件到达后再用数据库原文替换，避免网络时序造成重复或闪烁。
+`Session → ChatMessage → AgentRun` 同时承担持久化与 UI 恢复：`GET /agent/sessions` 返回以 Session 聚合的标题、消息数、Run 数和最近状态，`GET /agent/sessions/{session_id}/messages` 返回完整原文。前端选择历史 Session 后恢复整个消息流，并把最新 Run 的事件投影到对应用户消息之后。新 Run 先乐观加入用户消息，完成事件到达后再用数据库原文替换，避免网络时序造成重复或闪烁。首轮完成后由独立短请求生成语义标题，`PATCH /agent/sessions/{session_id}` 支持手动改名；自动命名只会替换未被用户修改的初始标题。
 
 ### Working Memory
 
@@ -179,7 +179,7 @@ backend/app/
 
 ```text
 Sidebar                  Conversation Canvas               Run Drawer
-计划 / 记忆 / 最近 Run    Session 多轮原始消息               完整事件序列
+计划 / 记忆 / Session     Session 多轮原始消息               完整事件序列
 学习 Agent 在线状态        关键上下文与工具摘要               参数 / 结果 / 失败
                          固定输入框                         审计与撤销确认
 

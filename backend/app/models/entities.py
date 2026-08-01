@@ -160,7 +160,7 @@ class Session(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
-    title: Mapped[str] = mapped_column(String(240), default="New conversation")
+    title: Mapped[str] = mapped_column(String(240), default="新对话")
     summary: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

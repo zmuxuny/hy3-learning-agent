@@ -14,7 +14,13 @@ async def memory_search(ctx: ToolContext, args: MemorySearchArgs) -> dict:
     plan_id = args.plan_id if args.plan_id is not None else ctx.plan_id
     if ctx.plan_id is not None and plan_id != ctx.plan_id:
         return {"error": "Plan-focused runs cannot retrieve another plan's private memory"}
-    memories = await MemoryManager(ctx.db).retrieve(ctx.owner_id, plan_id=plan_id, query=args.query, limit=args.limit)
+    memories = await MemoryManager(ctx.db).retrieve(
+        ctx.owner_id,
+        plan_id=plan_id,
+        session_id=ctx.session_id,
+        query=args.query,
+        limit=args.limit,
+    )
     return {"memories": [{
         "id": item.id, "scope": item.scope, "scope_id": item.scope_id,
         "layer": item.layer, "content": item.content, "confidence": item.confidence,

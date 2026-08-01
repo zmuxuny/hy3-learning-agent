@@ -4,6 +4,7 @@ import api from '../api/client';
 
 const RUN_EVENTS = [
   'run.started',
+  'run.retrying',
   'context.built',
   'assistant.status',
   'assistant.message',
@@ -28,6 +29,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const notifications = ref([]);
   const operations = ref([]);
   const runs = ref([]);
+  const sessions = ref([]);
   const currentRun = ref(null);
   const focusPlanId = ref(null);
   const traceOpen = ref(false);
@@ -44,12 +46,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const focusedPlan = computed(() => (
     plans.value.find((plan) => plan.id === focusPlanId.value) || null
   ));
+  const activeSession = computed(() => (
+    sessions.value.find((session) => session.id === activeSessionId.value) || null
+  ));
 
   async function loadWorkspace() {
     loading.value = true;
     error.value = '';
     try {
-      const [profileRes, plansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes] = await Promise.all([
+      const [profileRes, plansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes, sessionsRes] = await Promise.all([
         api.get('/profile'),
         api.get('/plans'),
         api.get('/dashboard'),
@@ -57,6 +62,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         api.get('/notifications'),
         api.get('/operations'),
         api.get('/agent/runs'),
+        api.get('/agent/sessions'),
       ]);
       profile.value = profileRes.data;
       plans.value = plansRes.data;
@@ -65,6 +71,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       notifications.value = notificationsRes.data;
       operations.value = operationsRes.data;
       runs.value = runsRes.data;
+      sessions.value = sessionsRes.data;
       await refreshCurrentPlan();
     } catch (requestError) {
       error.value = requestError.response?.data?.detail || requestError.message;
@@ -85,6 +92,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     const response = await api.get(`/agent/sessions/${sessionId}/messages`);
     if (activeSessionId.value === sessionId) conversationMessages.value = response.data;
+  }
+
+  async function loadSessions() {
+    const response = await api.get('/agent/sessions');
+    sessions.value = response.data;
   }
 
   async function refreshCurrentPlan() {
@@ -153,6 +165,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       activeView.value = 'home';
       runs.value.unshift(response.data);
+      await loadSessions();
       subscribeToRun(response.data.id);
       return true;
     } catch (requestError) {
@@ -197,6 +210,39 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       created_at: event.created_at,
     }));
     if (['queued', 'running'].includes(run.status)) subscribeToRun(run.id, false);
+  }
+
+  async function selectSession(session) {
+    closeEventSource();
+    activeSessionId.value = session.id;
+    focusPlanId.value = session.plan_id ?? null;
+    activeView.value = 'home';
+    await loadConversation(session.id);
+    let run = runs.value.find((item) => item.id === session.last_run_id);
+    if (!run && session.last_run_id) {
+      run = (await api.get(`/agent/runs/${session.last_run_id}`)).data;
+    }
+    currentRun.value = run || null;
+    if (!run) {
+      runEvents.value = [];
+      return;
+    }
+    const response = await api.get(`/agent/runs/${run.id}/events`);
+    runEvents.value = response.data.map((event) => ({
+      sequence: event.sequence,
+      type: event.event_type,
+      summary: event.summary,
+      payload: event.payload,
+      created_at: event.created_at,
+    }));
+    if (['queued', 'running'].includes(run.status)) subscribeToRun(run.id, false);
+  }
+
+  async function renameSession(sessionId, title) {
+    const response = await api.patch(`/agent/sessions/${sessionId}`, { title });
+    const index = sessions.value.findIndex((session) => session.id === sessionId);
+    if (index >= 0) sessions.value[index] = response.data;
+    return response.data;
   }
 
   function subscribeToRun(runId, clear = true) {
@@ -247,7 +293,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function refreshAfterRun() {
     const knownNotificationIds = new Set(notifications.value.map((item) => item.id));
-    const [profileRes, plansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes] = await Promise.all([
+    const [profileRes, plansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes, sessionsRes] = await Promise.all([
       api.get('/profile'),
       api.get('/plans'),
       api.get('/dashboard'),
@@ -255,6 +301,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       api.get('/notifications'),
       api.get('/operations'),
       api.get('/agent/runs'),
+      api.get('/agent/sessions'),
     ]);
     profile.value = profileRes.data;
     plans.value = plansRes.data;
@@ -268,6 +315,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     operations.value = operationsRes.data;
     runs.value = runsRes.data;
+    sessions.value = sessionsRes.data;
     await refreshCurrentPlan();
     await loadConversation(activeSessionId.value);
   }
@@ -304,6 +352,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     notifications,
     operations,
     runs,
+    sessions,
     currentRun,
     focusPlanId,
     traceOpen,
@@ -316,6 +365,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     activePlans,
     pendingMemories,
     focusedPlan,
+    activeSession,
     loadWorkspace,
     selectPlan,
     openPlanList,
@@ -323,6 +373,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     startRun,
     triggerHeartbeat,
     inspectRun,
+    selectSession,
+    renameSession,
     cancelCurrentRun,
     confirmMemory,
     deleteMemory,

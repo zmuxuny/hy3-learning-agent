@@ -56,6 +56,7 @@ class ContextAssembler:
         relevant_memories = await memory_manager.retrieve(
             owner_id,
             plan_id=plan_id,
+            session_id=session_id,
             query=objective,
             limit=24,
         )

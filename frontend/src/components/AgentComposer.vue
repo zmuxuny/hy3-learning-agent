@@ -32,6 +32,16 @@ async function uploadFile(event) {
     event.target.value = '';
   }
 }
+
+async function switchSession(event) {
+  const sessionId = event.target.value;
+  if (!sessionId) {
+    store.startNewConversation();
+    return;
+  }
+  const session = store.sessions.find((item) => item.id === sessionId);
+  if (session) await store.selectSession(session);
+}
 </script>
 
 <template>
@@ -59,6 +69,15 @@ async function uploadFile(event) {
       <button v-if="store.focusedPlan && store.activeView === 'home'" @click="store.startNewConversation">
         开始全局对话
       </button>
+      <label class="mobile-session-switch">
+        <span class="visually-hidden">切换对话</span>
+        <select :value="store.activeSessionId || ''" @change="switchSession">
+          <option value="">＋ 新对话</option>
+          <option v-for="session in store.sessions" :key="session.id" :value="session.id">
+            {{ session.title }}
+          </option>
+        </select>
+      </label>
     </div>
   </div>
 </template>

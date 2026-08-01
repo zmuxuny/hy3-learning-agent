@@ -8,16 +8,19 @@ import pytest
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 
-from app.api.agent import create_run, read_session_messages
+from app.api.agent import create_run, list_sessions, read_session_messages, rename_session
 from app.api.workspace import upload_workspace_file
 from app.db.database import AsyncSessionLocal
 from app.api.operations import undo_operation
 from app.context.memory import MemoryManager
 from app.models import AgentRun, ChatMessage, Memory, Notification, RunEvent, Session, TaskSubmission
 from app.runtime.agent import AgentRuntime
-from app.schemas import AgentRunCreate, PlanCreate, StageCreate, TaskCreate, TaskUpdate
+from app.schemas import AgentRunCreate, PlanCreate, SessionUpdate, StageCreate, TaskCreate, TaskUpdate
 from app.services import plans as plan_service
 from app.tools import ToolContext, execute_tool
+from app.tools.registry import tool_contracts
+from app.search.security import fetch_with_safe_redirects
+from app.search.providers import DuckDuckGoSearchProvider
 
 
 def plan_payload(title: str = "Python async mastery") -> PlanCreate:
@@ -197,6 +200,9 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
     assert "The supplied tool schemas are the complete set" in completions.calls[0]["messages"][0]["content"]
     tool_names = {tool["function"]["name"] for tool in completions.calls[0]["tools"]}
     assert len(tool_names) == 31
+    contracts = tool_contracts()
+    assert len(contracts) == 31
+    assert all(contract["input_schema"] and contract["output_schema"] for contract in contracts)
     assert {
         "profile_get",
         "plan_list",
@@ -326,13 +332,22 @@ async def test_layered_memory_retrieval_lifecycle_and_session_compression():
         session = Session(owner_id="local", plan_id=plan.id, title="Long session")
         db.add(session)
         await db.flush()
+        db.add(Memory(
+            owner_id="local", scope="session", scope_id=session.id, layer="episodic", status="confirmed",
+            content="本次会话约定先处理连接超时，再优化并发数", confidence=0.98,
+        ))
         for index in range(28):
             db.add(ChatMessage(session_id=session.id, role="user" if index % 2 == 0 else "assistant", content=f"第 {index} 轮：讨论并发抓取器和超时处理"))
         await db.commit()
 
         manager = MemoryManager(db)
-        found = await manager.retrieve("local", plan_id=plan.id, query="抓取器超时怎么办", limit=5)
+        found = await manager.retrieve(
+            "local", plan_id=plan.id, session_id=session.id, query="抓取器连接超时怎么办", limit=5,
+        )
+        assert any(item.scope == "session" for item in found)
         assert found[0].scope == "plan"
+        without_session = await manager.retrieve("local", plan_id=plan.id, query="连接超时", limit=10)
+        assert all(item.scope != "session" for item in without_session)
         maintained = await manager.maintain("local")
         assert maintained["expired"] == 1
         compressed = await manager.compress_session(session, client=None)
@@ -363,3 +378,144 @@ async def test_workspace_upload_enters_agent_file_scope():
         )
         assert read["ok"] is True
         assert read["data"]["content"] == "print('ready')\n"
+
+
+@pytest.mark.asyncio
+async def test_session_navigation_and_manual_rename_are_session_based():
+    async with AsyncSessionLocal() as db:
+        session = Session(owner_id="local", plan_id=None, title="第一条很长的用户消息")
+        db.add(session)
+        await db.flush()
+        first = AgentRun(owner_id="local", session_id=session.id, trigger="user_message", objective="第一问", status="completed")
+        second = AgentRun(owner_id="local", session_id=session.id, trigger="user_message", objective="第二问", status="completed")
+        db.add_all([first, second])
+        await db.flush()
+        db.add_all([
+            ChatMessage(session_id=session.id, run_id=first.id, role="user", content="第一问"),
+            ChatMessage(session_id=session.id, run_id=first.id, role="assistant", content="第一答"),
+            ChatMessage(session_id=session.id, run_id=second.id, role="user", content="第二问"),
+            ChatMessage(session_id=session.id, run_id=second.id, role="assistant", content="第二答"),
+        ])
+        await db.commit()
+
+        rows = await list_sessions(30, db)
+        row = next(item for item in rows if item["id"] == session.id)
+        assert row["run_count"] == 2
+        assert row["message_count"] == 4
+        assert row["last_message"] == "第二答"
+
+        renamed = await rename_session(session.id, SessionUpdate(title="Transformer 实战计划"), db)
+        assert renamed["title"] == "Transformer 实战计划"
+
+
+@pytest.mark.asyncio
+async def test_redirect_targets_are_validated_on_every_hop(monkeypatch):
+    import httpx
+    import app.search.security as security
+
+    checked = []
+
+    async def validate(url):
+        checked.append(url)
+        if "127.0.0.1" in url:
+            raise ValueError("Private or reserved network targets are not allowed")
+
+    async def handler(request):
+        return httpx.Response(302, headers={"location": "http://127.0.0.1/private"}, request=request)
+
+    monkeypatch.setattr(security, "validate_public_url", validate)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="Private or reserved"):
+            await fetch_with_safe_redirects(client, "https://example.com/start")
+    assert checked == ["https://example.com/start", "http://127.0.0.1/private"]
+
+
+@pytest.mark.asyncio
+async def test_duckduckgo_provider_filters_ads_and_deduplicates(monkeypatch):
+    import httpx
+    import app.search.providers as providers
+
+    html = """
+    <a class="result__a" href="https://duckduckgo.com/y.js?ad_domain=example.com">广告</a>
+    <a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fdocs.python.org%2F3%2Flibrary%2Fasyncio.html">Python asyncio</a>
+    <a class="result__a" href="https://docs.python.org/3/library/asyncio.html">Python asyncio duplicate</a>
+    """
+
+    async def fetch(client, url, *, params=None):
+        request = httpx.Request("GET", url, params=params)
+        return httpx.Response(200, text=html, request=request), 0
+
+    monkeypatch.setattr(providers, "fetch_with_safe_redirects", fetch)
+    results = await DuckDuckGoSearchProvider().search("asyncio", 5)
+    assert [result.url for result in results] == ["https://docs.python.org/3/library/asyncio.html"]
+
+
+class RecoveringCompletions:
+    def __init__(self, *, timeout_first=False):
+        self.timeout_first = timeout_first
+        self.calls = 0
+
+    async def create(self, **kwargs):
+        self.calls += 1
+        if self.timeout_first and self.calls == 1:
+            raise TimeoutError
+        if self.calls == (2 if self.timeout_first else 1):
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                content="我先检查复习安排。",
+                reasoning_content=None,
+                tool_calls=None if self.timeout_first else [FakeToolCall("bad-review", "review_schedule", "{}")],
+            ))])
+        if not self.timeout_first and self.calls == 2:
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                content="复习工具参数不完整，我没有写入错误安排。",
+                reasoning_content=None,
+                tool_calls=None,
+            ))])
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content="复习安排检查",
+            reasoning_content=None,
+            tool_calls=None,
+        ))])
+
+
+@pytest.mark.asyncio
+async def test_tool_failure_isolated_from_runtime_database_session():
+    async with AsyncSessionLocal() as db:
+        run = AgentRun(owner_id="local", trigger="user_message", objective="检查复习安排")
+        db.add(run)
+        await db.commit()
+        run_id = run.id
+
+    runtime = AgentRuntime()
+    runtime.client = SimpleNamespace(chat=SimpleNamespace(completions=RecoveringCompletions()))
+    await runtime.run(run_id)
+
+    async with AsyncSessionLocal() as db:
+        run = await db.get(AgentRun, run_id)
+        events = list((await db.execute(select(RunEvent).where(RunEvent.run_id == run_id))).scalars())
+        assert run.status == "completed"
+        failed_tool = next(event for event in events if event.event_type == "tool.completed")
+        assert failed_tool.payload["result"]["ok"] is False
+        assert all(event.event_type != "run.failed" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_model_timeout_retries_without_losing_conversation():
+    async with AsyncSessionLocal() as db:
+        run = AgentRun(owner_id="local", trigger="user_message", objective="给我一个今日建议")
+        db.add(run)
+        await db.commit()
+        run_id = run.id
+
+    completions = RecoveringCompletions(timeout_first=True)
+    runtime = AgentRuntime()
+    runtime.client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    await runtime.run(run_id)
+
+    async with AsyncSessionLocal() as db:
+        run = await db.get(AgentRun, run_id)
+        events = list((await db.execute(select(RunEvent).where(RunEvent.run_id == run_id))).scalars())
+        assert run.status == "completed"
+        assert any(event.event_type == "run.retrying" for event in events)
+        messages = await read_session_messages(run.session_id, db)
+        assert messages[-1].content == "我先检查复习安排。"

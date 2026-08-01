@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from app.schemas import PlanCreate, TaskUpdate
 from app.services import plans as plan_service
 from app.tools.base import EmptyArgs, ToolContext, ToolDefinition, json_safe, parse_arguments
 from app.tools.calendar import CALENDAR_TOOLS
+from app.tools.contracts import attach_output_contracts
 from app.tools.learning import LEARNING_TOOLS
 from app.tools.memory import MEMORY_TOOLS
 from app.tools.web import WEB_TOOLS
@@ -55,9 +56,9 @@ class QuizGradeArgs(BaseModel):
 
 
 class MemoryProposalArgs(BaseModel):
-    scope: str = "global"
+    scope: Literal["global", "plan", "session"] = "global"
     scope_id: str | None = None
-    layer: str = "semantic"
+    layer: Literal["short_term", "long_term", "episodic", "semantic"] = "semantic"
     content: str
     confidence: float = Field(default=0.8, ge=0, le=1)
 
@@ -359,6 +360,12 @@ async def memory_propose(ctx: ToolContext, args: MemoryProposalArgs) -> dict:
         if ctx.plan_id is not None and target_plan != ctx.plan_id:
             return {"error": "Plan-focused runs cannot write another plan's memory"}
         args.scope_id = str(target_plan)
+    elif args.scope == "session":
+        if ctx.session_id is None:
+            return {"error": "Session memory requires an active conversation"}
+        if args.scope_id not in {None, ctx.session_id}:
+            return {"error": "A run cannot write another session's private memory"}
+        args.scope_id = ctx.session_id
     memory = Memory(
         owner_id=ctx.owner_id,
         source_type="agent_run",
@@ -402,6 +409,8 @@ TOOLS = [
     ToolDefinition("notification_send", "Send an in-app notification and optionally queue email/browser delivery.", NotificationArgs, notification_send),
 ] + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS
 
+attach_output_contracts(TOOLS)
+
 TOOL_MAP = {tool.name: tool for tool in TOOLS}
 
 
@@ -413,7 +422,11 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
         payload = parse_arguments(raw_arguments)
         args = tool.args_model.model_validate(payload)
         data = await tool.handler(ctx, args)
-        return {"ok": "error" not in data, "data": data}
+        if "error" in data:
+            return {"ok": False, "error": str(data["error"]), "retryable": False}
+        if not data.get("approval_required"):
+            data = tool.output_model.model_validate(data).model_dump(mode="json")
+        return {"ok": True, "data": data}
     except Exception as exc:
         await ctx.db.rollback()
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
@@ -421,3 +434,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
 
 def openai_tools() -> list[dict]:
     return [tool.openai_schema() for tool in TOOLS]
+
+
+def tool_contracts() -> list[dict]:
+    return [tool.contract_schema() for tool in TOOLS]

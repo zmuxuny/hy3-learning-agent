@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class APIModel(BaseModel):
@@ -197,6 +197,32 @@ class AgentRunRead(APIModel):
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
+
+
+class SessionRead(APIModel):
+    id: str
+    plan_id: int | None
+    title: str
+    summary: str
+    message_count: int
+    run_count: int
+    last_message: str
+    last_run_id: str | None
+    last_run_status: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SessionUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=80)
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        normalized = " ".join(value.split())
+        if not normalized:
+            raise ValueError("title cannot be blank")
+        return normalized
 
 
 class ChatMessageRead(APIModel):

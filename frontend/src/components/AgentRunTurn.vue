@@ -47,6 +47,7 @@ watch(() => store.currentRun?.id, () => {
 
 function iconFor(type) {
   if (type === 'context.built') return CircleStackIcon;
+  if (type === 'run.retrying') return CircleStackIcon;
   if (type.startsWith('tool.')) return CommandLineIcon;
   if (type === 'run.failed' || type === 'run.cancelled') return XCircleIcon;
   return CheckCircleIcon;
@@ -54,6 +55,7 @@ function iconFor(type) {
 
 function eventTitle(event) {
   if (event.type === 'context.built') return '读取学习上下文';
+  if (event.type === 'run.retrying') return event.summary;
   if (event.type === 'tool.started') return `正在调用 ${event.payload?.name || '工具'}`;
   if (event.type === 'tool.completed') return `${event.payload?.name || '工具'} 已完成`;
   if (event.type === 'assistant.status') return event.summary;
@@ -95,7 +97,7 @@ function eventTitle(event) {
 
       <div v-if="answerText" :class="['assistant-answer', { failed: finalEvent?.type === 'run.failed' }]">
         <AgentMessage :content="answerText" />
-        <small v-if="finalEvent?.type === 'run.failed'">{{ finalEvent.payload?.error }}</small>
+        <small v-if="finalEvent?.type === 'run.failed'">错误编号：{{ finalEvent.payload?.code || 'run_failed' }}</small>
       </div>
     </div>
   </div>
