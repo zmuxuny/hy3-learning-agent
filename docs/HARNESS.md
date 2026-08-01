@@ -9,7 +9,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 ## 当前完整学习闭环
 
 ```text
-搜索并核验资源 → 创建结构化计划 → 修改阶段/任务/时间
+澄清需求 → 规划子 Agent 调研 → 提案确认 → 搜索/核验资源 → 正式计划
         ↓
 执行任务 → 提交文字/文件/代码/链接证据
         ↓
@@ -26,7 +26,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 
 - `backend/app/runtime/prompt.py`：身份、循环、计划焦点、工具纪律、证据标准、主动触达和安全边界。
 - `backend/app/runtime/agent.py`：多轮 Function Calling、独立工具事务、结果回填、模型超时重试、取消、SSE 事件和 Session 压缩。
-- `backend/app/tools/registry.py`：向 Hy3 注入 32 个真实工具输入 Schema，并用 32 个 Pydantic 输出 Schema 校验成功结果；完整双向契约可由 `/api/v1/settings/tools` 检查。
+- `backend/app/tools/registry.py`：向 Hy3 注入 37 个真实工具输入 Schema，并用 37 个 Pydantic 输出 Schema 校验成功结果；完整双向契约可由 `/api/v1/settings/tools` 检查。
 - `backend/app/runtime/scheduler.py`：先用确定性规则发现到期复习、24 小时内任务和长期停滞，再为有价值的候选启动 Hy3。
 
 ## 分层上下文与记忆
@@ -35,6 +35,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 | --- | --- | --- |
 | Working | 当前 Run 的目标、工具观察和临时决策 | Run 完成后只保留事件，不提升为事实 |
 | Conversation | 全量原始消息、Session 摘要、最近消息窗口、Session 私有记忆 | 超过阈值后压缩旧消息；原文不删除；切换 Session 后不再检索 |
+| Planning | Intake 已确认事实/问题/充分性、提案与规划子 Run 报告 | 绑定 Session；提案显式采用后才成为正式 Plan |
 | Session–Plan relation | 创建、讨论、聚焦关系和跨作用域交接摘要 | 永久保留来源；归档不删除；只在显式转场时建立计划 Session |
 | Event ledger | 计划、任务、提交、评分、提醒和邮件回复事件 | 不可变事实流 |
 | Episodic | 某次学习表现、阻塞或干预结果 | 相关性检索；90 天后可归档 |
@@ -52,9 +53,10 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 - Web 搜索通过可替换的 Provider 接口执行；页面打开关闭自动重定向并逐跳重新校验目标。代理/TUN 的 `198.18/15` 与 `2001::/32` Fake-IP 只对域名解析兼容，直接 IP 请求仍被拒绝。
 - 站内通知始终是默认渠道；邮箱是可选增强。自动触达受免打扰、每日上限和冷却时间约束。
 - 计划、任务、策展资源、测验、日历和文件写入尽可能生成 `Operation` 与逆向 Patch。
+- 用户消息编辑先保存不可变 Revision；旧下游消息退出当前上下文，但旧 Run、快照和 Operation 均保留。
 
 ## 完整性结论
 
 当前版本已达到“可录制完整个人学习 Demo 的 Harness”：计划、资源、执行、证据、检查、记忆和主动提醒均有真实执行能力；SMTP/IMAP 代码、连续 Session 路由和诊断接口已完成，真实供应商收发仍依赖本机邮箱凭据。它不是通用操作系统 Agent，也不宣称拥有容器级代码隔离、任意宿主目录权限或生产级崩溃检查点。
 
-后续硬化项不阻塞学习 Demo：高风险 Run 的暂停—批准—恢复检查点、进程崩溃续跑、单工具分类重试/幂等键、费用预算，以及真正的受限子 Agent。
+后续硬化项不阻塞学习 Demo：高风险 Run 的暂停—批准—恢复检查点、进程崩溃续跑、单工具分类重试/幂等键、费用预算，以及从当前只读规划委员会扩展到通用 spawn/join/cancel 子 Agent。

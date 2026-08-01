@@ -63,6 +63,10 @@ async function inspect(label) {
       resourceSections: document.querySelectorAll('.plan-resources-section').length,
       emailSetup: document.querySelectorAll('.email-setup').length,
       contextTransitions: document.querySelectorAll('.context-transition').length,
+      planningPanels: document.querySelectorAll('.planning-panel').length,
+      planningQuestions: document.querySelectorAll('.planning-question').length,
+      proposalStages: document.querySelectorAll('.proposal-stages article').length,
+      messageActions: document.querySelectorAll('.message-actions').length,
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       clipped,
     };
@@ -89,6 +93,49 @@ report.push(await inspect('conversation-wide'));
 for (const [width, height] of [[1440, 1000], [768, 1024], [375, 812]]) {
   await viewport(width, height);
   report.push(await inspect(`conversation-${width}`));
+}
+
+await viewport(1440, 1000);
+const openedCurrentEditor = await evaluate(`(() => {
+  const button = document.querySelector('.message-actions button[title="编辑并重新运行"]');
+  if (button) button.click();
+  return Boolean(button);
+})()`);
+if (openedCurrentEditor) {
+  await wait(500);
+  report.push(await inspect('message-editor-current'));
+  await evaluate(`(() => {
+    const button = [...document.querySelectorAll('.message-editor button')].find((node) => node.textContent.includes('取消'));
+    if (button) button.click();
+    return Boolean(button);
+  })()`);
+}
+
+await viewport(1440, 1000);
+const openedProposalFixture = await evaluate(`(() => {
+  const row = [...document.querySelectorAll('.session-row')].find((node) => node.textContent.includes('计划提案'));
+  if (row) row.click();
+  return Boolean(row);
+})()`);
+if (openedProposalFixture) {
+  await wait(700);
+  report.push(await inspect('planning-proposal-1440'));
+  const openedEditor = await evaluate(`(() => {
+    const button = document.querySelector('.message-actions button[title="编辑并重新运行"]');
+    if (button) button.click();
+    return Boolean(button);
+  })()`);
+  if (openedEditor) {
+    await wait(500);
+    report.push(await inspect('message-editor-1440'));
+    await evaluate(`(() => {
+      const button = [...document.querySelectorAll('.message-editor button')].find((node) => node.textContent.includes('取消'));
+      if (button) button.click();
+      return Boolean(button);
+    })()`);
+  }
+  await viewport(375, 812);
+  report.push(await inspect('planning-proposal-mobile'));
 }
 
 await viewport(2560, 1440);

@@ -99,6 +99,8 @@ class ContextAssembler:
                 for plan in plans:
                     tasks = [task for stage in plan.stages for task in stage.tasks]
                     current = [task.title for task in tasks if task.status in {"active", "blocked"}]
+                    if not current:
+                        current = [task.title for task in tasks if task.status == "pending"][:1]
                     relation = ",".join(sorted(relation_map.get(plan.id, set()))) or "none"
                     sections.append(
                         f"- plan:{plan.id} [{plan.status}] {plan.title}; progress={plan.progress:.0%}; "
@@ -243,10 +245,12 @@ class ContextAssembler:
                 message_query = (
                     select(ChatMessage)
                     .where(ChatMessage.session_id == session_id)
-                    .order_by(ChatMessage.created_at.desc())
-                    .limit(settings.AGENT_RECENT_MESSAGE_LIMIT)
+                    .order_by(ChatMessage.created_at, ChatMessage.id)
                 )
-                messages = list(reversed(list((await self.db.execute(message_query)).scalars())))
+                messages = [
+                    message for message in (await self.db.execute(message_query)).scalars()
+                    if not message.message_metadata.get("superseded_by_edit")
+                ][-settings.AGENT_RECENT_MESSAGE_LIMIT:]
                 sections.extend(["## Conversation", f"Session summary: {session.summary or '(empty)'}"])
                 if session.handoff_summary:
                     sections.append(f"Handoff from parent session:\n{session.handoff_summary}")

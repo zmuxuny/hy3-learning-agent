@@ -5,6 +5,8 @@ import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
 import AgentMessage from './AgentMessage.vue';
 import AgentRunTurn from './AgentRunTurn.vue';
+import PlanningWorkspace from './PlanningWorkspace.vue';
+import UserMessage from './UserMessage.vue';
 
 const store = useWorkspaceStore();
 const scrollArea = ref(null);
@@ -81,7 +83,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
       <div v-else class="thread">
         <template v-for="message in store.conversationMessages" :key="message.id">
           <div v-if="message.role === 'user'" class="user-turn">
-            <div class="message-bubble">{{ message.content }}</div>
+            <UserMessage :message="message" />
           </div>
 
           <AgentRunTurn
@@ -107,6 +109,8 @@ watch(() => store.runEvents.length, () => scrollToLatest());
           </div>
           <AgentRunTurn :answer="currentRunAssistant?.content || ''" />
         </template>
+
+        <PlanningWorkspace />
 
         <div v-if="store.focusedPlan" class="context-chip"><MapIcon /> 本次对话专注：{{ store.focusedPlan.title }}</div>
       </div>

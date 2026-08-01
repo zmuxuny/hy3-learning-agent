@@ -40,8 +40,11 @@ async def build_handoff_summary(db: AsyncSession, session: Session) -> str:
         select(ChatMessage)
         .where(ChatMessage.session_id == session.id)
         .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
-        .limit(6)
     )).scalars())
+    messages = [
+        message for message in messages
+        if not message.message_metadata.get("superseded_by_edit")
+    ][:6]
     excerpts = [
         f"{message.role}: {' '.join(message.content.split())[:360]}"
         for message in reversed(messages)

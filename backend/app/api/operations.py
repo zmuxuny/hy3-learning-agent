@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.database import get_db
 from app.core.config import PROJECT_ROOT
-from app.models import ActivityDay, CalendarEvent, LearningEvent, LearningResource, Operation, Plan, Quiz, ReviewSchedule, Session, Stage, Task, TaskSubmission, UserProfile
+from app.models import ActivityDay, CalendarEvent, LearningEvent, LearningResource, Operation, Plan, PlanProposal, Quiz, ReviewSchedule, Session, Stage, Task, TaskSubmission, UserProfile
 from app.schemas import OperationRead
 from app.services.plans import recompute_plan_state
 
@@ -63,6 +63,13 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
         plan = await db.get(Plan, int(inverse["delete"]))
         if plan:
             await db.delete(plan)
+        proposal_id = operation.forward_patch.get("proposal_id")
+        if proposal_id:
+            proposal = await db.get(PlanProposal, proposal_id)
+            if proposal:
+                proposal.status = "pending"
+                proposal.plan_id = None
+                proposal.decided_at = None
     elif operation.entity_type == "session" and "changes" in inverse:
         session = await db.get(Session, operation.entity_id)
         if not session:

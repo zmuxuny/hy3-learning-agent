@@ -87,9 +87,10 @@ class MemoryManager:
             completed = [task for task in tasks if task.status == "completed"]
             blocked = [task.title for task in tasks if task.status == "blocked"]
             active = [task.title for task in tasks if task.status == "active"]
+            next_pending = next((task.title for task in tasks if task.status == "pending"), "")
             plan.memory_summary = (
                 f"进度 {len(completed)}/{len(tasks)}；"
-                f"当前任务：{'、'.join(active[:3]) or '无'}；"
+                f"当前任务：{'、'.join(active[:3]) or next_pending or '无'}；"
                 f"阻塞：{'、'.join(blocked[:3]) or '无'}；"
                 f"计划版本 {plan.version}。"
             )
@@ -100,7 +101,10 @@ class MemoryManager:
         result = await self.db.execute(
             select(ChatMessage).where(ChatMessage.session_id == session.id).order_by(ChatMessage.created_at, ChatMessage.id)
         )
-        messages = list(result.scalars())
+        messages = [
+            message for message in result.scalars()
+            if not message.message_metadata.get("superseded_by_edit")
+        ]
         keep = settings.AGENT_RECENT_MESSAGE_LIMIT
         if len(messages) <= settings.AGENT_SESSION_COMPRESSION_THRESHOLD:
             return False

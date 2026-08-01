@@ -6,6 +6,7 @@ import {
   CommandLineIcon,
   MapIcon,
   SparklesIcon,
+  UserGroupIcon,
   XCircleIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
@@ -51,6 +52,7 @@ function iconFor(type) {
   if (type === 'context.built') return CircleStackIcon;
   if (type === 'run.retrying') return CircleStackIcon;
   if (type.startsWith('tool.')) return CommandLineIcon;
+  if (type.startsWith('subagent.')) return UserGroupIcon;
   if (type === 'run.failed' || type === 'run.cancelled') return XCircleIcon;
   return CheckCircleIcon;
 }
@@ -60,6 +62,8 @@ function eventTitle(event) {
   if (event.type === 'run.retrying') return event.summary;
   if (event.type === 'tool.started') return `正在调用 ${event.payload?.name || '工具'}`;
   if (event.type === 'tool.completed') return event.payload?.name || '工具';
+  if (event.type === 'subagent.started') return `${event.payload?.role || '规划'}子 Agent 已接受分工`;
+  if (event.type === 'subagent.completed') return `${event.payload?.role || '规划'}子 Agent 已返回结论`;
   if (event.type === 'assistant.status') return event.summary;
   if (event.type === 'run.failed') return '运行失败';
   if (event.type === 'run.cancelled') return '运行已停止';

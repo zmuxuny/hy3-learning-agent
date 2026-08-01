@@ -34,6 +34,13 @@ const planOperations = computed(() => store.operations.filter((operation) => (
   (operation.entity_type === 'plan' && operation.entity_id === String(store.currentPlan?.id))
   || (operation.entity_type === 'task' && taskIds.value.has(operation.entity_id))
 )));
+const currentTask = computed(() => {
+  const tasks = store.currentPlan?.stages.flatMap((stage) => stage.tasks) || [];
+  return tasks.find((task) => task.status === 'active')
+    || tasks.find((task) => task.status === 'blocked')
+    || tasks.find((task) => task.status === 'pending')
+    || null;
+});
 
 function tasksFor(plan) {
   return plan.stages.flatMap((stage) => stage.tasks);
@@ -126,7 +133,7 @@ function checkCurrentPlan() {
 
 function createPlanWithAgent() {
   store.startNewConversation();
-  store.startRun('请通过对话引导我创建一份新的学习计划。先确认目标、当前基础、期限、每周时间、偏好、期望产出、已有资源和不希望采用的方式，再生成完整计划。');
+  store.startRun('我想制定一份新的学习计划。请先了解我真正想达到什么结果；把已确认的信息和最关键的待确认问题记录成需求卡片，不要现在就创建正式计划。信息充分后，你可以把资源调研、课程结构和考核审查分给规划子 Agent，最后给我一份可讨论、可确认的计划提案。');
 }
 </script>
 
@@ -234,7 +241,7 @@ function createPlanWithAgent() {
           </article>
 
           <div class="plan-action-row">
-            <span><i></i>计划焦点 · 版本 {{ store.currentPlan.version }}</span>
+            <span><i></i><strong>当前一步</strong>{{ currentTask?.title || '计划已完成' }} · 版本 {{ store.currentPlan.version }}</span>
             <div>
               <button class="secondary-button" @click="checkCurrentPlan"><BoltIcon /> 检查提醒</button>
               <button class="primary-button" @click="teachNextStep"><SparklesIcon /> 教我下一步</button>
@@ -297,14 +304,14 @@ function createPlanWithAgent() {
                 </header>
 
                 <div class="timeline-tasks">
-                  <article v-for="task in stage.tasks" :key="task.id" :class="['timeline-task', `status-${task.status}`]">
+                  <article v-for="task in stage.tasks" :key="task.id" :class="['timeline-task', `status-${task.status}`, { 'is-current': task.id === currentTask?.id }]">
                     <div class="timeline-task-state">
                       <component :is="task.status === 'completed' ? CheckCircleIcon : task.status === 'active' ? PlayCircleIcon : ClockIcon" />
                     </div>
                     <div class="timeline-task-main">
                       <header>
                         <div><small>TASK {{ task.id }}</small><strong>{{ task.title }}</strong></div>
-                        <span :class="['task-status', task.status]"><i></i>{{ statusLabel(task.status) }}</span>
+                        <span :class="['task-status', task.status]"><i></i>{{ task.id === currentTask?.id && task.status === 'pending' ? '当前建议' : statusLabel(task.status) }}</span>
                       </header>
                       <p>{{ task.description || '等待 Agent 补充任务说明。' }}</p>
                       <div class="timeline-task-meta">

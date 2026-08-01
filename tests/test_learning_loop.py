@@ -8,18 +8,43 @@ import pytest
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 
-from app.api.agent import create_run, handoff_session, list_sessions, read_session_messages, rename_session
+from app.api.agent import (
+    create_run,
+    decide_plan_proposal,
+    edit_user_message,
+    handoff_session,
+    list_sessions,
+    read_planning_state,
+    read_session_messages,
+    rename_session,
+)
 from app.api.plans import read_plan_resources, set_plan_archived
 from app.api.workspace import upload_workspace_file
 from app.db.database import AsyncSessionLocal
 from app.api.operations import undo_operation
 from app.context.memory import MemoryManager
-from app.models import AgentRun, ChatMessage, LearningResource, Memory, Notification, RunEvent, Session, SessionPlanLink, TaskSubmission
+from app.models import (
+    AgentRun,
+    ChatMessage,
+    ChatMessageRevision,
+    LearningResource,
+    Memory,
+    Notification,
+    Plan,
+    PlanProposal,
+    PlanningIntake,
+    RunEvent,
+    Session,
+    SessionPlanLink,
+    TaskSubmission,
+)
 from app.runtime.agent import AgentRuntime, ToolFailureGuard
 from app.schemas import (
     AgentRunCreate,
+    MessageEdit,
     PlanArchiveUpdate,
     PlanCreate,
+    PlanProposalDecision,
     SessionHandoffCreate,
     SessionUpdate,
     StageCreate,
@@ -209,9 +234,9 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
     assert completions.calls[0]["extra_body"] == {"reasoning_effort": "high"}
     assert "The supplied tool schemas are the complete set" in completions.calls[0]["messages"][0]["content"]
     tool_names = {tool["function"]["name"] for tool in completions.calls[0]["tools"]}
-    assert len(tool_names) == 32
+    assert len(tool_names) == 37
     contracts = tool_contracts()
-    assert len(contracts) == 32
+    assert len(contracts) == 37
     assert all(contract["input_schema"] and contract["output_schema"] for contract in contracts)
     assert {
         "profile_get",
@@ -238,6 +263,11 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
         "code_execute",
         "calendar_list",
         "calendar_create",
+        "planning_intake_get",
+        "planning_intake_update",
+        "planning_delegate",
+        "plan_proposal_create",
+        "study_state_get",
     }.issubset(tool_names)
     assert "Coursera, edX, Hugging Face Learn" in completions.calls[0]["messages"][0]["content"]
     assert "what should I do now" in completions.calls[0]["messages"][0]["content"]
@@ -797,3 +827,215 @@ async def test_model_timeout_retries_without_losing_conversation():
         assert any(event.event_type == "run.retrying" for event in events)
         messages = await read_session_messages(run.session_id, db)
         assert messages[-1].content == "我先检查复习安排。"
+
+
+@pytest.mark.asyncio
+async def test_planning_intake_requires_readiness_and_proposal_accept_is_idempotent():
+    async with AsyncSessionLocal() as db:
+        session = Session(owner_id="local", title="共创 Python 计划")
+        db.add(session)
+        await db.flush()
+        run = AgentRun(owner_id="local", session_id=session.id, trigger="user_message", objective="我想学 Python")
+        db.add(run)
+        await db.commit()
+        await db.refresh(session)
+        await db.refresh(run)
+        ctx = ToolContext(
+            db=db,
+            owner_id="local",
+            run_id=run.id,
+            trigger="user_message",
+            session_id=session.id,
+        )
+
+        collecting = await execute_tool(
+            "planning_intake_update",
+            json.dumps({
+                "goal": "系统学习 Python",
+                "confirmed_facts": [{"key": "目标", "value": "能写自动化脚本", "source": "user"}],
+                "open_questions": [{
+                    "id": "weekly_time",
+                    "prompt": "每周能投入多少时间？",
+                    "why": "决定计划节奏",
+                    "options": ["3 小时", "5 小时"],
+                    "allow_custom": True,
+                }],
+                "readiness": "collecting",
+                "readiness_confidence": 0.55,
+                "rationale": "还缺少时间约束",
+            }, ensure_ascii=False),
+            ctx,
+        )
+        assert collecting["ok"] is True
+        assert collecting["data"]["open_questions"][0]["id"] == "weekly_time"
+
+        blocked = await execute_tool(
+            "plan_proposal_create",
+            json.dumps({"plan": plan_payload("不能创建").model_dump(mode="json"), "rationale": "信息还不够"}),
+            ctx,
+        )
+        assert blocked["ok"] is False
+
+        ready = await execute_tool(
+            "planning_intake_update",
+            json.dumps({
+                "goal": "系统学习 Python 并交付自动化项目",
+                "confirmed_facts": [
+                    {"key": "目标", "value": "完成可运行自动化项目", "source": "user"},
+                    {"key": "每周时间", "value": "5 小时", "source": "user"},
+                    {"key": "当前基础", "value": "会基础语法", "source": "user"},
+                ],
+                "open_questions": [],
+                "readiness": "ready",
+                "readiness_confidence": 0.92,
+                "rationale": "目标、基础、时间和产出足以制定可执行计划",
+            }, ensure_ascii=False),
+            ctx,
+        )
+        assert ready["data"]["readiness"] == "ready"
+        proposed = await execute_tool(
+            "plan_proposal_create",
+            json.dumps({
+                "plan": plan_payload("Python 自动化共创计划").model_dump(mode="json"),
+                "rationale": "根据已确认约束安排一个核心项目",
+            }, ensure_ascii=False),
+            ctx,
+        )
+        assert proposed["ok"] is True
+        proposal_id = proposed["data"]["proposal_id"]
+        state = await read_planning_state(session.id, db)
+        assert state["intake"].readiness == "ready"
+        assert state["proposal"].id == proposal_id
+
+        first = await decide_plan_proposal(proposal_id, PlanProposalDecision(accepted=True), db)
+        second = await decide_plan_proposal(proposal_id, PlanProposalDecision(accepted=True), db)
+        assert first.plan_id == second.plan_id
+        assert first.status == "accepted"
+        plans = list((await db.execute(select(Plan).where(Plan.owner_id == "local"))).scalars())
+        assert len(plans) == 1
+        links = list((await db.execute(select(SessionPlanLink).where(
+            SessionPlanLink.session_id == session.id,
+            SessionPlanLink.relation_type == "created",
+        ))).scalars())
+        assert [link.plan_id for link in links] == [first.plan_id]
+
+
+@pytest.mark.asyncio
+async def test_message_edit_preserves_revision_and_excludes_superseded_tail(monkeypatch):
+    import app.api.agent as agent_api
+    from app.context import ContextAssembler
+
+    monkeypatch.setattr(agent_api, "_start_runtime", lambda _run_id: None)
+    async with AsyncSessionLocal() as db:
+        session = Session(owner_id="local", title="可修订会话", summary="旧摘要")
+        db.add(session)
+        await db.flush()
+        old_run = AgentRun(
+            owner_id="local", session_id=session.id, trigger="user_message",
+            objective="学习旧主题", status="completed",
+        )
+        db.add(old_run)
+        await db.flush()
+        user = ChatMessage(session_id=session.id, run_id=old_run.id, role="user", content="学习旧主题")
+        assistant = ChatMessage(session_id=session.id, run_id=old_run.id, role="assistant", content="旧主题回答")
+        derived_memory = Memory(
+            owner_id="local", scope="session", scope_id=session.id, layer="semantic",
+            content="用户决定学习旧主题", source_type="agent_run", source_id=old_run.id,
+            status="confirmed",
+        )
+        db.add_all([user, assistant, derived_memory])
+        await db.commit()
+        await db.refresh(user)
+
+        rerun = await edit_user_message(user.id, MessageEdit(content="学习新的 asyncio 主题"), db)
+        assert rerun.session_id == session.id
+        assert rerun.objective == "学习新的 asyncio 主题"
+        visible = await read_session_messages(session.id, db)
+        assert [(item.role, item.content) for item in visible] == [("user", "学习新的 asyncio 主题")]
+        revision = (await db.execute(select(ChatMessageRevision).where(
+            ChatMessageRevision.message_id == user.id
+        ))).scalars().one()
+        assert revision.content == "学习旧主题"
+        stale = await db.get(ChatMessage, assistant.id)
+        assert stale.message_metadata["superseded_by_edit"]
+        await db.refresh(derived_memory)
+        assert derived_memory.status == "archived"
+        snapshot = await ContextAssembler(db).build(
+            "local", session_id=session.id, run_id=rerun.id, objective=rerun.objective,
+        )
+        assert "学习新的 asyncio 主题" in snapshot.markdown
+        assert "旧主题回答" not in snapshot.markdown
+
+
+@pytest.mark.asyncio
+async def test_study_state_selects_first_pending_task_and_tracks_evidence():
+    async with AsyncSessionLocal() as db:
+        plan = await plan_service.create_plan(db, "local", plan_payload("学习位置测试"))
+        run = AgentRun(
+            owner_id="local", plan_id=plan.id, trigger="user_message", objective="我现在做到哪了"
+        )
+        db.add(run)
+        await db.commit()
+        result = await execute_tool(
+            "study_state_get",
+            json.dumps({"plan_id": plan.id}),
+            ToolContext(
+                db=db, owner_id="local", run_id=run.id,
+                trigger="user_message", plan_id=plan.id,
+            ),
+        )
+        assert result["ok"] is True
+        assert result["data"]["current_task"]["title"] == "Read event-loop guide"
+        assert result["data"]["recommended_next"]["id"] == plan.stages[0].tasks[0].id
+        assert result["data"]["counts"]["core_evidence_pending"] == 1
+        assert result["data"]["plan_version"] == plan.version
+
+
+@pytest.mark.asyncio
+async def test_planning_delegate_creates_joined_child_runs(monkeypatch):
+    import app.tools.planning as planning_tools
+
+    class SpecialistCompletions:
+        async def create(self, **kwargs):
+            role_line = kwargs["messages"][1]["content"].splitlines()[0]
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                content=f"{role_line}：建议保留一个核心交付和一次阶段考核。"
+            ))])
+
+    class SpecialistClient:
+        def __init__(self, **_kwargs):
+            self.chat = SimpleNamespace(completions=SpecialistCompletions())
+
+    monkeypatch.setattr(planning_tools, "AsyncOpenAI", SpecialistClient)
+    async with AsyncSessionLocal() as db:
+        session = Session(owner_id="local", title="子 Agent 规划")
+        db.add(session)
+        await db.flush()
+        parent = AgentRun(
+            owner_id="local", session_id=session.id, trigger="user_message",
+            objective="帮我制定计划", status="running",
+        )
+        db.add(parent)
+        await db.commit()
+        result = await execute_tool(
+            "planning_delegate",
+            json.dumps({"assignments": [
+                {"role": "课程设计", "objective": "拆解阶段和依赖"},
+                {"role": "考核审查", "objective": "检查证据与可执行性"},
+            ]}, ensure_ascii=False),
+            ToolContext(
+                db=db, owner_id="local", run_id=parent.id, trigger="user_message",
+                session_id=session.id,
+            ),
+        )
+        assert result["ok"] is True
+        assert len(result["data"]["reports"]) == 2
+        children = list((await db.execute(select(AgentRun).where(
+            AgentRun.parent_run_id == parent.id
+        ))).scalars())
+        assert {child.status for child in children} == {"completed"}
+        assert all(child.trigger == "subagent" for child in children)
+        assert all(child.session_id == session.id for child in children)
+        assert not list((await db.execute(select(ChatMessage).where(
+            ChatMessage.run_id.in_([child.id for child in children])
+        ))).scalars())

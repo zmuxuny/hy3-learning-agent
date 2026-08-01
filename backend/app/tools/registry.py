@@ -14,6 +14,7 @@ from app.tools.calendar import CALENDAR_TOOLS
 from app.tools.contracts import attach_output_contracts
 from app.tools.learning import LEARNING_TOOLS
 from app.tools.memory import MEMORY_TOOLS
+from app.tools.planning import PLANNING_TOOLS
 from app.tools.web import WEB_TOOLS
 from app.tools.workspace import WORKSPACE_TOOLS
 
@@ -148,6 +149,13 @@ async def plan_get(ctx: ToolContext, args: PlanIdArgs) -> dict:
 async def plan_create(ctx: ToolContext, args: PlanCreate) -> dict:
     if ctx.trigger not in {"user_message"}:
         return {"approval_required": True, "reason": "Background runs cannot create a plan without user approval."}
+    if ctx.session_id:
+        return {
+            "error": (
+                "Conversation planning must use planning_intake_update and plan_proposal_create. "
+                "The proposal is materialized only after explicit user acceptance."
+            )
+        }
     plan = await plan_service.create_plan(ctx.db, ctx.owner_id, args, ctx.run_id, commit=False)
     operation = Operation(
         owner_id=ctx.owner_id,
@@ -418,7 +426,7 @@ TOOLS = [
     ToolDefinition("quiz_grade", "Store an evidence-based quiz grade and schedule the next review.", QuizGradeArgs, quiz_grade),
     ToolDefinition("memory_propose", "Propose a long-term memory for user confirmation.", MemoryProposalArgs, memory_propose),
     ToolDefinition("notification_send", "Send an in-app notification and optionally queue email/browser delivery.", NotificationArgs, notification_send),
-] + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS
+] + PLANNING_TOOLS + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS
 
 attach_output_contracts(TOOLS)
 
@@ -435,7 +443,15 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
         data = await tool.handler(ctx, args)
         if "error" in data:
             return {"ok": False, "error": str(data["error"]), "retryable": False}
-        if not data.get("approval_required"):
+        if data.get("approval_required"):
+            # Proposal-style tools still expose and validate their full success
+            # contract. Minimal guard-only approval responses intentionally do
+            # not pretend to be successful tool data.
+            try:
+                data = tool.output_model.model_validate(data).model_dump(mode="json")
+            except Exception:
+                pass
+        else:
             data = tool.output_model.model_validate(data).model_dump(mode="json")
         return {"ok": True, "data": data}
     except Exception as exc:

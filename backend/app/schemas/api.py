@@ -260,6 +260,64 @@ class SessionHandoffCreate(BaseModel):
     plan_id: int
 
 
+class PlanningQuestion(APIModel):
+    id: str
+    prompt: str
+    why: str = ""
+    options: list[str] = Field(default_factory=list)
+    allow_custom: bool = True
+
+
+class PlanningIntakeRead(APIModel):
+    session_id: str
+    goal: str
+    confirmed_facts: list[dict[str, Any]]
+    open_questions: list[PlanningQuestion]
+    readiness: str
+    readiness_confidence: float
+    rationale: str
+    source_run_id: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlanProposalRead(APIModel):
+    id: str
+    session_id: str
+    source_run_id: str | None
+    title: str
+    rationale: str
+    plan_payload: dict[str, Any]
+    specialist_reports: list[dict[str, Any]]
+    status: str
+    plan_id: int | None
+    decided_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlanningStateRead(BaseModel):
+    intake: PlanningIntakeRead | None = None
+    proposal: PlanProposalRead | None = None
+
+
+class PlanProposalDecision(BaseModel):
+    accepted: bool
+
+
+class MessageEdit(BaseModel):
+    content: str = Field(min_length=1, max_length=50000)
+    rerun: Literal[True] = True
+
+    @field_validator("content")
+    @classmethod
+    def normalize_content(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("message cannot be blank")
+        return normalized
+
+
 class PlanArchiveUpdate(BaseModel):
     archived: bool
 

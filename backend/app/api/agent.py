@@ -9,7 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal, get_db
-from app.models import AgentRun, ChatMessage, Operation, Plan, RunEvent, Session, SessionPlanLink
+from app.models import (
+    AgentRun,
+    ChatMessage,
+    ChatMessageRevision,
+    Memory,
+    Operation,
+    Plan,
+    PlanProposal,
+    PlanningIntake,
+    RunEvent,
+    Session,
+    SessionPlanLink,
+)
 from app.runtime import AgentRuntime
 from app.runtime.session_titles import initial_session_title
 from app.runtime.scheduler import proactive_scheduler
@@ -17,17 +29,27 @@ from app.schemas import (
     AgentRunCreate,
     AgentRunRead,
     ChatMessageRead,
+    MessageEdit,
+    PlanCreate,
+    PlanProposalDecision,
+    PlanProposalRead,
+    PlanningStateRead,
     RunEventRead,
     SessionHandoffCreate,
     SessionRead,
     SessionUpdate,
 )
 from app.services.sessions import build_handoff_summary, link_session_plan
+from app.services import plans as plan_service
 
 
 router = APIRouter()
 runtime = AgentRuntime()
 active_tasks: set[asyncio.Task] = set()
+
+
+def _visible_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
+    return [message for message in messages if not message.message_metadata.get("superseded_by_edit")]
 
 
 def _start_runtime(run_id: str) -> None:
@@ -45,6 +67,15 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Session not found")
         if session.archived_at is not None:
             raise HTTPException(status_code=409, detail="Archived sessions must be restored before continuing")
+        active_run = (await db.execute(
+            select(AgentRun.id).where(
+                AgentRun.session_id == session.id,
+                AgentRun.parent_run_id.is_(None),
+                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if active_run:
+            raise HTTPException(status_code=409, detail="This Session already has an active run")
         if session.plan_id != data.plan_id:
             raise HTTPException(status_code=409, detail="Session focus does not match requested plan")
         session.updated_at = datetime.now(timezone.utc)
@@ -92,7 +123,7 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
 async def list_runs(limit: int = 30, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(AgentRun)
-        .where(AgentRun.owner_id == settings.DEFAULT_OWNER_ID)
+        .where(AgentRun.owner_id == settings.DEFAULT_OWNER_ID, AgentRun.parent_run_id.is_(None))
         .order_by(AgentRun.created_at.desc())
         .limit(min(max(limit, 1), 100))
     )
@@ -113,7 +144,7 @@ async def list_sessions(limit: int = 30, db: AsyncSession = Depends(get_db), arc
     session_ids = [session.id for session in sessions]
     runs = list((await db.execute(
         select(AgentRun)
-        .where(AgentRun.session_id.in_(session_ids))
+        .where(AgentRun.session_id.in_(session_ids), AgentRun.parent_run_id.is_(None))
         .order_by(AgentRun.created_at.desc())
     )).scalars())
     latest_runs: dict[str, AgentRun] = {}
@@ -133,7 +164,7 @@ async def list_sessions(limit: int = 30, db: AsyncSession = Depends(get_db), arc
 
     rows = []
     for session in sessions:
-        messages = list(session.messages)
+        messages = _visible_messages(list(session.messages))
         latest = latest_runs.get(session.id)
         rows.append({
             "id": session.id,
@@ -187,6 +218,7 @@ async def rename_session(session_id: str, data: SessionUpdate, db: AsyncSession 
     session.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(session)
+    messages = _visible_messages(list(session.messages))
     latest = (await db.execute(
         select(AgentRun).where(AgentRun.session_id == session.id).order_by(AgentRun.created_at.desc()).limit(1)
     )).scalars().one_or_none()
@@ -201,9 +233,11 @@ async def rename_session(session_id: str, data: SessionUpdate, db: AsyncSession 
         "linked_plan_ids": list((await db.execute(
             select(SessionPlanLink.plan_id).where(SessionPlanLink.session_id == session.id).distinct()
         )).scalars()),
-        "message_count": len(session.messages),
-        "run_count": len((await db.execute(select(AgentRun.id).where(AgentRun.session_id == session.id))).all()),
-        "last_message": session.messages[-1].content[:180] if session.messages else "",
+        "message_count": len(messages),
+        "run_count": len((await db.execute(select(AgentRun.id).where(
+            AgentRun.session_id == session.id, AgentRun.parent_run_id.is_(None)
+        ))).all()),
+        "last_message": messages[-1].content[:180] if messages else "",
         "last_run_id": latest.id if latest else None,
         "last_run_status": latest.status if latest else None,
         "created_at": session.created_at,
@@ -275,7 +309,9 @@ async def handoff_session(
         "archived_at": child.archived_at,
         "linked_plan_ids": [plan.id],
         "message_count": len(child.messages),
-        "run_count": len((await db.execute(select(AgentRun.id).where(AgentRun.session_id == child.id))).all()),
+        "run_count": len((await db.execute(select(AgentRun.id).where(
+            AgentRun.session_id == child.id, AgentRun.parent_run_id.is_(None)
+        ))).all()),
         "last_message": child.messages[-1].content[:180] if child.messages else "",
         "last_run_id": latest.id if latest else None,
         "last_run_status": latest.status if latest else None,
@@ -294,7 +330,166 @@ async def read_session_messages(session_id: str, db: AsyncSession = Depends(get_
         .where(ChatMessage.session_id == session_id)
         .order_by(ChatMessage.created_at, ChatMessage.id)
     )
-    return list(result.scalars())
+    return _visible_messages(list(result.scalars()))
+
+
+@router.get("/sessions/{session_id}/planning", response_model=PlanningStateRead)
+async def read_planning_state(session_id: str, db: AsyncSession = Depends(get_db)):
+    session = await db.get(Session, session_id)
+    if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Session not found")
+    intake = await db.get(PlanningIntake, session_id)
+    proposal = (await db.execute(
+        select(PlanProposal).where(
+            PlanProposal.owner_id == settings.DEFAULT_OWNER_ID,
+            PlanProposal.session_id == session_id,
+        ).order_by(PlanProposal.created_at.desc()).limit(1)
+    )).scalars().one_or_none()
+    return {"intake": intake, "proposal": proposal}
+
+
+@router.post("/plan-proposals/{proposal_id}/decision", response_model=PlanProposalRead)
+async def decide_plan_proposal(
+    proposal_id: str,
+    data: PlanProposalDecision,
+    db: AsyncSession = Depends(get_db),
+):
+    proposal = await db.get(PlanProposal, proposal_id)
+    if not proposal or proposal.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Plan proposal not found")
+    if proposal.status == "accepted":
+        if not data.accepted:
+            raise HTTPException(status_code=409, detail="An accepted proposal cannot be rejected")
+        return proposal
+    if proposal.status == "rejected":
+        raise HTTPException(status_code=409, detail="This proposal was already rejected; ask the Agent for a revision")
+    if not data.accepted:
+        proposal.status = "rejected"
+        proposal.decided_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(proposal)
+        return proposal
+
+    try:
+        plan_data = PlanCreate.model_validate(proposal.plan_payload)
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=f"Proposal payload is invalid: {exc}") from exc
+    plan = await plan_service.create_plan(
+        db,
+        settings.DEFAULT_OWNER_ID,
+        plan_data,
+        proposal.source_run_id,
+        commit=False,
+    )
+    operation = Operation(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        run_id=proposal.source_run_id,
+        tool_name="plan.proposal.accept",
+        entity_type="plan",
+        entity_id=str(plan.id),
+        forward_patch={"created": plan.id, "proposal_id": proposal.id},
+        inverse_patch={"delete": plan.id},
+    )
+    db.add(operation)
+    await link_session_plan(
+        db,
+        owner_id=settings.DEFAULT_OWNER_ID,
+        session_id=proposal.session_id,
+        plan_id=plan.id,
+        relation_type="created",
+        source_run_id=proposal.source_run_id,
+    )
+    proposal.plan_id = plan.id
+    proposal.status = "accepted"
+    proposal.decided_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(proposal)
+    return proposal
+
+
+@router.post("/messages/{message_id}/edit", response_model=AgentRunRead, status_code=202)
+async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession = Depends(get_db)):
+    message = await db.get(ChatMessage, message_id)
+    if not message or message.role != "user":
+        raise HTTPException(status_code=404, detail="Editable user message not found")
+    session = await db.get(Session, message.session_id)
+    if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.archived_at is not None:
+        raise HTTPException(status_code=409, detail="Restore the Session before editing a message")
+    active_run = (await db.execute(
+        select(AgentRun.id).where(
+            AgentRun.session_id == session.id,
+            AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+        ).limit(1)
+    )).scalar_one_or_none()
+    if active_run:
+        raise HTTPException(status_code=409, detail="Stop the active run before editing an earlier message")
+
+    db.add(ChatMessageRevision(
+        message_id=message.id,
+        session_id=session.id,
+        previous_run_id=message.run_id,
+        content=message.content,
+        message_metadata=dict(message.message_metadata),
+    ))
+    downstream = list((await db.execute(
+        select(ChatMessage).where(
+            ChatMessage.session_id == session.id,
+            ChatMessage.id > message.id,
+        ).order_by(ChatMessage.id)
+    )).scalars())
+    edit_token = f"message:{message.id}:{datetime.now(timezone.utc).isoformat()}"
+    for stale in downstream:
+        stale.message_metadata = {**stale.message_metadata, "superseded_by_edit": edit_token}
+    downstream_run_ids = {stale.run_id for stale in downstream if stale.run_id}
+    if downstream_run_ids:
+        derived_memories = list((await db.execute(
+            select(Memory).where(
+                Memory.owner_id == settings.DEFAULT_OWNER_ID,
+                Memory.scope == "session",
+                Memory.scope_id == session.id,
+                Memory.source_id.in_(downstream_run_ids),
+                Memory.status.in_(["proposed", "confirmed"]),
+            )
+        )).scalars())
+        for memory in derived_memories:
+            memory.status = "archived"
+    previous_run_id = message.run_id
+    run = AgentRun(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        session_id=session.id,
+        plan_id=session.plan_id,
+        trigger="user_message",
+        objective=data.content,
+        model=settings.MODEL_NAME,
+    )
+    db.add(run)
+    await db.flush()
+    message.content = data.content
+    message.run_id = run.id
+    message.message_metadata = {
+        **{key: value for key, value in message.message_metadata.items() if key != "included_in_summary"},
+        "edited_at": datetime.now(timezone.utc).isoformat(),
+        "revises_run_id": previous_run_id,
+    }
+    session.summary = ""
+    session.updated_at = datetime.now(timezone.utc)
+    db.add(Operation(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        run_id=run.id,
+        tool_name="message.edit",
+        entity_type="chat_message",
+        entity_id=str(message.id),
+        forward_patch={"content": data.content, "superseded_message_ids": [item.id for item in downstream]},
+        inverse_patch={"revision_preserved": True, "previous_run_id": previous_run_id},
+        status="recorded",
+    ))
+    await db.commit()
+    await db.refresh(run)
+    if data.rerun:
+        _start_runtime(run.id)
+    return run
 
 
 @router.get("/runs/{run_id}", response_model=AgentRunRead)

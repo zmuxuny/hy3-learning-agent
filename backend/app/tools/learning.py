@@ -13,6 +13,7 @@ from app.models import (
     LearningResource,
     Operation,
     Plan,
+    ReviewSchedule,
     Stage,
     Task,
     TaskSubmission,
@@ -87,6 +88,10 @@ class EventListArgs(BaseModel):
     task_id: int | None = None
     event_types: list[str] = Field(default_factory=list)
     limit: int = Field(default=30, ge=1, le=100)
+
+
+class StudyStateArgs(BaseModel):
+    plan_id: int | None = None
 
 
 def _focused(ctx: ToolContext, plan_id: int) -> dict | None:
@@ -314,6 +319,72 @@ async def learning_event_list(ctx: ToolContext, args: EventListArgs) -> dict:
     return {"events": [{"id": item.id, "type": item.event_type, "summary": item.summary, "payload": item.payload, "created_at": item.created_at.isoformat()} for item in events]}
 
 
+async def study_state_get(ctx: ToolContext, args: StudyStateArgs) -> dict:
+    plan_id = args.plan_id if args.plan_id is not None else ctx.plan_id
+    if plan_id is None:
+        return {"error": "study_state_get requires plan_id or a focused plan"}
+    if error := _focused(ctx, plan_id):
+        return error
+    plan = await plan_service.get_plan(ctx.db, ctx.owner_id, plan_id)
+    ordered = [(stage, task) for stage in plan.stages for task in stage.tasks]
+    active = next(((stage, task) for stage, task in ordered if task.status == "active"), None)
+    blocked = [(stage, task) for stage, task in ordered if task.status == "blocked"]
+    next_pending = next(((stage, task) for stage, task in ordered if task.status == "pending"), None)
+    current = active or (blocked[0] if blocked else None) or next_pending
+    recommended = active or next_pending
+    now = datetime.now(timezone.utc)
+
+    def is_overdue(task: Task) -> bool:
+        if task.status in {"completed", "skipped"} or task.due_at is None:
+            return False
+        due = task.due_at if task.due_at.tzinfo else task.due_at.replace(tzinfo=timezone.utc)
+        return due < now
+
+    overdue = [task for _, task in ordered if is_overdue(task)]
+    reviews = list((await ctx.db.execute(
+        select(ReviewSchedule).where(
+            ReviewSchedule.owner_id == ctx.owner_id,
+            ReviewSchedule.plan_id == plan.id,
+            ReviewSchedule.status == "scheduled",
+        ).order_by(ReviewSchedule.due_at).limit(20)
+    )).scalars())
+    submissions = list((await ctx.db.execute(
+        select(TaskSubmission).where(
+            TaskSubmission.owner_id == ctx.owner_id,
+            TaskSubmission.plan_id == plan.id,
+        ).order_by(TaskSubmission.created_at.desc()).limit(8)
+    )).scalars())
+    completed = [task for _, task in ordered if task.status == "completed"]
+    core_incomplete = [task for _, task in ordered if task.is_core and task.status != "completed"]
+    return {
+        "plan_id": plan.id,
+        "plan_version": plan.version,
+        "progress": plan.progress,
+        "current_stage": current[0].title if current else None,
+        "current_task": {"id": current[1].id, "title": current[1].title, "status": current[1].status} if current else None,
+        "recommended_next": ({
+            "id": recommended[1].id,
+            "title": recommended[1].title,
+            "reason": "继续当前活动任务" if active else "计划中第一个尚未开始的可执行任务",
+        } if recommended else None),
+        "counts": {
+            "total": len(ordered),
+            "completed": len(completed),
+            "blocked": len(blocked),
+            "overdue": len(overdue),
+            "core_evidence_pending": len(core_incomplete),
+            "reviews_due": len(reviews),
+        },
+        "overdue_tasks": [{"id": task.id, "title": task.title, "due_at": task.due_at.isoformat()} for task in overdue],
+        "blocked_tasks": [{"id": task.id, "title": task.title} for _, task in blocked],
+        "scheduled_reviews": [{"id": review.id, "task_id": review.task_id, "due_at": review.due_at.isoformat()} for review in reviews],
+        "recent_submissions": [{"id": item.id, "task_id": item.task_id, "status": item.status, "score": item.score} for item in submissions],
+        "weekly_minutes": plan.weekly_minutes,
+        "completed_estimated_minutes": sum(task.estimated_minutes for task in completed),
+        "generated_at": now.isoformat(),
+    }
+
+
 def _submission_dict(item: TaskSubmission) -> dict:
     return {
         "id": item.id, "plan_id": item.plan_id, "task_id": item.task_id,
@@ -355,4 +426,5 @@ LEARNING_TOOLS = [
     ToolDefinition("submission_check", "Record an evidence-based submission verdict; accepted work completes the task and awards progress.", SubmissionCheckArgs, submission_check),
     ToolDefinition("resource_list", "List learning resources saved from web research for the focused plan.", ResourceListArgs, resource_list),
     ToolDefinition("learning_event_list", "Retrieve immutable learning events relevant to the current plan or task.", EventListArgs, learning_event_list),
+    ToolDefinition("study_state_get", "Read one canonical, versioned progress snapshot with the current task, recommended next step, evidence, blockers, overdue work, reviews, and recent submissions.", StudyStateArgs, study_state_get),
 ]

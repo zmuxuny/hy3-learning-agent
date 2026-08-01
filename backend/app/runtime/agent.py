@@ -213,6 +213,11 @@ class AgentRuntime:
                         result = failure_guard.before_call(call.function.name)
                         if result is None:
                             async with AsyncSessionLocal() as tool_db:
+                                tool_timeout = (
+                                    max(settings.AGENT_TOOL_TIMEOUT_SECONDS, settings.AGENT_MODEL_TIMEOUT_SECONDS + 20)
+                                    if call.function.name == "planning_delegate"
+                                    else settings.AGENT_TOOL_TIMEOUT_SECONDS
+                                )
                                 result = await asyncio.wait_for(
                                     execute_tool(
                                         call.function.name,
@@ -226,7 +231,7 @@ class AgentRuntime:
                                             session_id=session.id if session else None,
                                         ),
                                     ),
-                                    timeout=settings.AGENT_TOOL_TIMEOUT_SECONDS,
+                                    timeout=tool_timeout,
                                 )
                             result = failure_guard.observe(call.function.name, result)
                         await emit_event(

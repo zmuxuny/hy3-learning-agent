@@ -70,6 +70,10 @@ Session 与 Plan 都支持可恢复归档。归档只改变生命周期和默认
 
 `Session → ChatMessage → AgentRun` 同时承担持久化与 UI 恢复：`GET /agent/sessions` 返回以 Session 聚合的标题、消息数、Run 数和最近状态，`GET /agent/sessions/{session_id}/messages` 返回完整原文。前端选择历史 Session 后恢复整个消息流，并把最新 Run 的事件投影到对应用户消息之后。新 Run 先乐观加入用户消息，完成事件到达后再用数据库原文替换，避免网络时序造成重复或闪烁。首轮完成后由独立短请求生成语义标题，`PATCH /agent/sessions/{session_id}` 支持手动改名；自动命名只会替换未被用户修改的初始标题。
 
+计划制定在 Session 内增加两层持久状态：`PlanningIntake` 保存目标、带来源的已确认事实、结构化待确认问题、充分性结论/置信度/理由；`PlanProposal` 保存完整 PlanCreate 负载、主 Agent 理由、子 Agent 报告和 pending/accepted/rejected 生命周期。普通会话 Run 不能再直接调用 `plan_create`；必须先将 Intake 标为 ready，再写提案。`POST /agent/plan-proposals/{id}/decision` 是显式提交边界，采用操作幂等地创建正式 Plan、Operation 与 SessionPlanLink。
+
+用户编辑消息采用非破坏式当前分支语义：旧内容写入 `ChatMessageRevision`，旧 Run、事件、快照与 Operation 不变；目标消息之后的旧消息加 `superseded_by_edit` 标记并从 Session API、上下文组装、摘要压缩与 handoff 中排除。修订内容仍在原 Session 创建新 Run，因此不会在侧边栏产生伪对话。当前版本保留审计但不提供旧分支切换 UI。
+
 ### Working Memory
 
 当前 Agent Run 的目标、临时计划、工具结果和未完成步骤。Run 结束后只保留事件与总结，不把临时推断直接提升为长期事实。
@@ -125,6 +129,8 @@ run.started
 assistant.status
 tool.started
 tool.completed
+subagent.started
+subagent.completed
 approval.required
 operation.committed
 notification.sent
@@ -212,11 +218,13 @@ Plan Workspace
 
 ## 10. 子 Agent 边界
 
-当前版本尚未注册可执行的子 Agent 工具。后续统一 Agent 可以为资源调研、代码作业评测或计划冲突分析启动受限子 Agent；届时子 Agent 必须：
+当前注册 `planning_delegate`，可一次把最多三个规划调查分给独立 `AgentRun(trigger=subagent, parent_run_id=...)`。子 Run 只接收父 Run 的只读上下文快照和单一任务；工具白名单限于画像/记忆/文件/日历读取及 `web_search/web_open`，并强制拒绝保存搜索结果和全部业务写工具。子 Run 不写主 Session 消息，返回简短报告后由主 Agent join、解决冲突并生成提案。父事件流记录 `subagent.started/completed`，侧边栏与最近 Run 查询只投影根 Run，不把子 Run 冒充新对话。
+
+这是针对计划共创的受限委员会，不等于通用 Agent 编排。后续通用能力仍必须：
 
 - 只继承最小必要上下文和工具。
 - 默认不能直接修改计划或长期记忆。
 - 返回结果与证据给主 Agent，由主 Agent决定后续动作。
 - 产生独立 `run_id`，并在父 Run 的事件流中可见。
 
-参赛 MVP 不以多 Agent 作为关键依赖；真正的 spawn/join/cancel、预算和检查点按 `ROADMAP.md` 的 M7 顺序实现。
+通用 spawn/join/cancel、每类子 Agent 工具白名单、费用预算和崩溃检查点按 `ROADMAP.md` 的后续顺序实现；当前规划子 Run 的失败会作为报告返回，主 Agent 可降级完成。
