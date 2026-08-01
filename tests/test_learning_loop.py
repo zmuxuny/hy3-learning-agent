@@ -1045,7 +1045,10 @@ async def test_planning_intake_requires_readiness_and_proposal_accept_is_idempot
         proposed = await execute_tool(
             "plan_proposal_create",
             json.dumps({
-                "plan": plan_payload("Python 自动化共创计划").model_dump(mode="json"),
+                "plan": json.dumps(
+                    plan_payload("Python 自动化共创计划").model_dump(mode="json"),
+                    ensure_ascii=False,
+                ),
                 "rationale": "根据已确认约束安排一个核心项目",
             }, ensure_ascii=False),
             ctx,

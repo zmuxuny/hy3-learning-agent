@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from app.context import ContextAssembler
@@ -52,6 +52,20 @@ class PlanningDelegateArgs(BaseModel):
 class PlanProposalCreateArgs(BaseModel):
     plan: PlanCreate
     rationale: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("plan", mode="before")
+    @classmethod
+    def decode_serialized_plan(cls, value):
+        """Accept nested JSON emitted by OpenAI-compatible tool callers.
+
+        Some providers serialize a nested object twice even though the tool
+        schema declares it as an object. Keeping this normalization at the
+        contract boundary makes the tool tolerant without weakening the
+        validation performed by ``PlanCreate``.
+        """
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
 
 
 def _require_session(ctx: ToolContext) -> str | None:
