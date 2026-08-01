@@ -6,9 +6,9 @@
 
 ## Demo
 
-[![观看 Learning Agent · Hy3 92.6 秒完整 Demo](assets/demo/learning-agent-hy3-demo-cover.jpg)](assets/demo/learning-agent-hy3-demo.mp4)
+[![观看 Learning Agent · Hy3 92.6 秒完整 Demo](assets/demo/learning-agent-hy3-demo-cover.jpg)](https://zmuxuny.github.io/hy3-learning-agent/)
 
-[▶ 直接播放或下载仓库内视频（MP4 · 92.6 秒 · 1080p）](assets/demo/learning-agent-hy3-demo.mp4)
+[▶ 在线播放完整 Demo（92.6 秒 · 1080p）](https://zmuxuny.github.io/hy3-learning-agent/)
 
 同一段视频包含两条真实端到端流程：
 

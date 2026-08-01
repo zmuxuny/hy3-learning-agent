@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f6f3" />
+    <meta
+      name="description"
+      content="Learning Agent · Hy3：92.6 秒真实端到端 Demo，展示计划共创、证据验收与主动提醒。"
+    />
+    <meta property="og:title" content="Learning Agent · Hy3 Demo" />
+    <meta
+      property="og:description"
+      content="一个会澄清目标、维护学习计划、检查真实证据并主动跟进的个人学习 Agent Harness。"
+    />
+    <meta
+      property="og:image"
+      content="https://zmuxuny.github.io/hy3-learning-agent/media/learning-agent-hy3-demo-cover.jpg"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%236d64e8%22/><path d=%22M16 27l16-9 16 9-16 9-16-9zm6 6v9c7 5 13 5 20 0v-9%22 fill=%22none%22 stroke=%22white%22 stroke-width=%224%22 stroke-linejoin=%22round%22/></svg>"
+    />
+    <title>Learning Agent · Hy3 Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: #20211f;
+        background: #f6f6f3;
+        font-synthesis: none;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 320px;
+        margin: 0;
+        background: #f6f6f3;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .shell {
+        width: min(1120px, calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      .topbar {
+        display: flex;
+        min-height: 72px;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #dedfd9;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 15px;
+        font-weight: 700;
+        text-decoration: none;
+        letter-spacing: -0.01em;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        border-radius: 10px;
+        background: #20211f;
+        color: #fff;
+      }
+
+      .brand-mark svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .top-links {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        color: #696b65;
+        font-size: 14px;
+      }
+
+      .top-links a {
+        text-underline-offset: 4px;
+      }
+
+      main {
+        padding: 72px 0 56px;
+      }
+
+      .intro {
+        max-width: 820px;
+        margin-bottom: 34px;
+      }
+
+      .eyebrow {
+        margin: 0 0 15px;
+        color: #6d64e8;
+        font-size: 12px;
+        font-weight: 750;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 780px;
+        margin: 0;
+        font-size: clamp(38px, 5vw, 64px);
+        font-weight: 680;
+        line-height: 1.08;
+        letter-spacing: -0.045em;
+      }
+
+      .lede {
+        max-width: 710px;
+        margin: 22px 0 0;
+        color: #656760;
+        font-size: 18px;
+        line-height: 1.72;
+      }
+
+      .player {
+        overflow: hidden;
+        margin: 0;
+        border: 1px solid #d8d9d3;
+        border-radius: 18px;
+        background: #171815;
+        box-shadow: 0 18px 45px rgba(31, 32, 29, 0.08);
+      }
+
+      video {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #171815;
+        object-fit: contain;
+      }
+
+      .player-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 16px 18px;
+        border-top: 1px solid #30312e;
+        color: #c8cac3;
+        font-size: 13px;
+      }
+
+      .player-meta strong {
+        color: #fff;
+        font-weight: 620;
+      }
+
+      .verified {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+      }
+
+      .verified::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #67bd8f;
+        content: "";
+      }
+
+      .flows {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 44px;
+        border-top: 1px solid #dedfd9;
+        border-bottom: 1px solid #dedfd9;
+      }
+
+      .flow {
+        padding: 29px 34px 31px 0;
+      }
+
+      .flow + .flow {
+        padding-right: 0;
+        padding-left: 34px;
+        border-left: 1px solid #dedfd9;
+      }
+
+      .flow-index {
+        display: block;
+        margin-bottom: 18px;
+        color: #888a83;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 670;
+        line-height: 1.38;
+        letter-spacing: -0.02em;
+      }
+
+      .flow p {
+        margin: 11px 0 0;
+        color: #6a6c66;
+        font-size: 14px;
+        line-height: 1.72;
+      }
+
+      footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 28px 0 42px;
+        color: #777972;
+        font-size: 13px;
+      }
+
+      footer a {
+        font-weight: 620;
+        text-underline-offset: 4px;
+      }
+
+      @media (max-width: 760px) {
+        .shell {
+          width: min(100% - 32px, 1120px);
+        }
+
+        .topbar {
+          min-height: 64px;
+        }
+
+        .top-links a:first-child {
+          display: none;
+        }
+
+        main {
+          padding: 48px 0 40px;
+        }
+
+        .intro {
+          margin-bottom: 26px;
+        }
+
+        h1 {
+          font-size: clamp(34px, 10vw, 46px);
+        }
+
+        .lede {
+          margin-top: 17px;
+          font-size: 16px;
+        }
+
+        .player {
+          border-radius: 13px;
+        }
+
+        .player-meta {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 8px;
+          padding: 14px 15px;
+        }
+
+        .flows {
+          grid-template-columns: 1fr;
+          margin-top: 34px;
+        }
+
+        .flow,
+        .flow + .flow {
+          padding: 24px 0 26px;
+          border-left: 0;
+        }
+
+        .flow + .flow {
+          border-top: 1px solid #dedfd9;
+        }
+
+        footer {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 9px;
+          padding-bottom: 30px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="https://github.com/zmuxuny/hy3-learning-agent">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="m4 9 8-4.5L20 9l-8 4.5L4 9Zm3 3v4.5c3.5 2.5 6.5 2.5 10 0V12"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          Learning Agent
+        </a>
+        <nav class="top-links" aria-label="项目链接">
+          <a href="https://github.com/zmuxuny/hy3-learning-agent">查看源码</a>
+          <a href="https://github.com/Tencent-Hunyuan/Hy3/pull/220">提交 PR</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="intro" aria-labelledby="demo-title">
+          <p class="eyebrow">Hy3 · Personal Agent Harness</p>
+          <h1 id="demo-title">一个真正参与学习过程的 Agent</h1>
+          <p class="lede">
+            92.6 秒真实端到端演示：从澄清目标、调研资源和制定计划，到读取进度、检查代码证据并由后台心跳主动跟进。
+          </p>
+        </section>
+
+        <figure class="player">
+          <video
+            controls
+            playsinline
+            preload="metadata"
+            poster="./media/learning-agent-hy3-demo-cover.jpg"
+          >
+            <source src="./media/learning-agent-hy3-demo.mp4" type="video/mp4" />
+            你的浏览器不支持 HTML5 视频。请前往项目仓库下载 MP4。
+          </video>
+          <figcaption class="player-meta">
+            <span><strong>Learning Agent · Hy3</strong> · 1080p · 92.6 秒</span>
+            <span class="verified">真实 Hy3 决策与应用状态</span>
+          </figcaption>
+        </figure>
+
+        <section class="flows" aria-label="视频包含的两条端到端流程">
+          <article class="flow">
+            <span class="flow-index">DEMO 01</span>
+            <h2>从模糊目标到可执行计划</h2>
+            <p>结构化澄清、规划子 Run、真实资源核验、提案审阅与计划 Session 交接。</p>
+          </article>
+          <article class="flow">
+            <span class="flow-index">DEMO 02</span>
+            <h2>从当前任务到主动跟进</h2>
+            <p>按计划教学、文件与代码验收、进度更新、复习安排和后台心跳提醒。</p>
+          </article>
+        </section>
+      </main>
+
+      <footer>
+        <span>由腾讯混元 Hy3 驱动 · MIT License</span>
+        <a href="https://github.com/zmuxuny/hy3-learning-agent">github.com/zmuxuny/hy3-learning-agent</a>
+      </footer>
+    </div>
+  </body>
+</html>
