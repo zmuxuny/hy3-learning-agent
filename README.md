@@ -4,6 +4,19 @@
 
 当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
 
+## Demo
+
+[![观看 Learning Agent · Hy3 92.6 秒完整 Demo](assets/demo/learning-agent-hy3-demo-cover.jpg)](assets/demo/learning-agent-hy3-demo.mp4)
+
+[▶ 直接播放或下载仓库内视频（MP4 · 92.6 秒 · 1080p）](assets/demo/learning-agent-hy3-demo.mp4)
+
+同一段视频包含两条真实端到端流程：
+
+1. 模糊目标 → 结构化澄清 → 规划调研 → 可审阅提案 → 用户采用 → 带交接摘要的计划 Session；
+2. 读取真实进度 → 当前任务教学 → 文件与代码检查 → 证据验收 → 进度更新 → 心跳自主提醒。
+
+视频中的模型决策均来自 TokenHub Hy3 API，工具调用、计划进度、验收结果和站内通知均为真实运行状态；剪辑仅移除了模型与网络等待时间。
+
 ## 为什么是 Harness
 
 ```mermaid
