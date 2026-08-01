@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -10,7 +11,8 @@ from sqlalchemy import select
 from app.api.api import api_router
 from app.core.config import PROJECT_ROOT, settings
 from app.db.database import AsyncSessionLocal, create_schema
-from app.models import Owner, UserProfile  # noqa: F401 - imports register every mapped entity
+from app.models import AgentRun, Owner, UserProfile  # noqa: F401 - imports register every mapped entity
+from app.runtime.events import emit_event
 from app.runtime.scheduler import proactive_scheduler
 
 
@@ -38,10 +40,35 @@ async def ensure_local_owner() -> None:
         await db.commit()
 
 
+async def reconcile_interrupted_runs() -> int:
+    """Fail in-memory Runs left active by a previous process without erasing their trace."""
+    async with AsyncSessionLocal() as db:
+        interrupted = list((await db.execute(
+            select(AgentRun).where(AgentRun.status.in_(["queued", "running"]))
+        )).scalars())
+        if not interrupted:
+            return 0
+        now = datetime.now(timezone.utc)
+        for run in interrupted:
+            run.status = "failed"
+            run.completed_at = now
+        await db.commit()
+        for run in interrupted:
+            await emit_event(
+                db,
+                run.id,
+                "run.failed",
+                "上一次应用进程结束，本 Run 已安全收口；既有消息、工具结果和操作记录均保留。",
+                {"code": "process_interrupted", "recoverable": False},
+            )
+        return len(interrupted)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await create_schema()
     await ensure_local_owner()
+    await reconcile_interrupted_runs()
     proactive_scheduler.start()
     try:
         yield

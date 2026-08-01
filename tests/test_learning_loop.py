@@ -39,6 +39,7 @@ from app.models import (
     TaskSubmission,
 )
 from app.runtime.agent import AgentRuntime, ToolFailureGuard
+from app.main import reconcile_interrupted_runs
 from app.schemas import (
     AgentRunCreate,
     MessageEdit,
@@ -80,6 +81,35 @@ def plan_payload(title: str = "Python async mastery") -> PlanCreate:
             )
         ],
     )
+
+
+@pytest.mark.asyncio
+async def test_startup_reconciles_interrupted_runs_without_losing_trace():
+    async with AsyncSessionLocal() as db:
+        interrupted = AgentRun(
+            owner_id="local", trigger="user_message", objective="unfinished", status="running",
+        )
+        completed = AgentRun(
+            owner_id="local", trigger="user_message", objective="done", status="completed",
+        )
+        db.add_all([interrupted, completed])
+        await db.commit()
+        interrupted_id = interrupted.id
+        completed_id = completed.id
+
+    assert await reconcile_interrupted_runs() == 1
+
+    async with AsyncSessionLocal() as db:
+        interrupted = await db.get(AgentRun, interrupted_id)
+        completed = await db.get(AgentRun, completed_id)
+        assert interrupted.status == "failed"
+        assert interrupted.completed_at is not None
+        assert completed.status == "completed"
+        event = (await db.execute(select(RunEvent).where(
+            RunEvent.run_id == interrupted_id,
+            RunEvent.event_type == "run.failed",
+        ))).scalars().one()
+        assert event.payload["code"] == "process_interrupted"
 
 
 @pytest.mark.asyncio

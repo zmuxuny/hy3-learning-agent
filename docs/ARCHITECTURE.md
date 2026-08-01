@@ -228,3 +228,5 @@ Plan Workspace
 - 产生独立 `run_id`，并在父 Run 的事件流中可见。
 
 通用 spawn/join/cancel、每类子 Agent 工具白名单、费用预算和崩溃检查点按 `ROADMAP.md` 的后续顺序实现；当前规划子 Run 的失败会作为报告返回，主 Agent 可降级完成。
+
+应用启动时会把上一个进程遗留的 `queued/running` Run 标记为 `failed(process_interrupted)` 并追加可见事件，保留原消息、工具结果和操作记录，同时解除 Session 的假占用。这是安全收口，不是检查点续跑；真正的进程恢复仍在 Roadmap 中。
