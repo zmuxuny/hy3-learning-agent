@@ -89,20 +89,6 @@ Vite 会把 `/api` 代理到 `127.0.0.1:8000`。
 
 站内提醒完全不需要邮箱：应用运行时，前端每 15 秒同步后台通知并在页面内弹出新提醒。只有希望离开应用后仍收到邮件或直接回复邮件时，才需要在 `.env` 配置 SMTP/IMAP 凭据；独立 Agent 邮箱是推荐方案而不是硬性要求，完整选择、字段和测试方法见 [邮箱配置](docs/EMAIL.md)。
 
-## 两条演示流程
-
-### 1. 完整计划与主动提醒
-
-先只输入一个真实但不完整的学习目标。Hy3 会把已知事实和最关键的 1–3 个问题保存为可恢复提问卡；它自己判断信息是否充分，并可把资源、课程结构和考核审查分给独立规划子 Run。主 Agent 汇总后给出提案，只有点击“采用并创建计划”才写入正式计划。随后运行一次心跳：Hy3 会读取计划和近期事件，自主选择保持安静、提醒、抽查或执行低风险可撤销调整。
-
-### 2. 核心任务与主动考核
-
-进入计划后点击“教我下一步”。Agent 先通过统一学习位置快照确定当前阶段、当前任务、证据缺口、逾期与复习，再只推进一个练习。让 Agent 把一个核心任务标记为完成时，没有证据工具会拒绝；提交答案或仓库/文件证据后，Agent 可以创建并评分测验、更新 XP、安排复习。
-
-计划工作区还提供“补充资源”和“教我下一步”：前者要求 Agent 比较具体课程、教程、实验与必要参考，打开核验后保存为可撤销的资源清单；后者依据当前任务、提交和复习状态进行一次一任务的交互式教学。
-
-赛事录屏按两条独立闭环组织，而不是把功能列表快速扫一遍：Demo 1 从模糊目标到经用户采用的正式计划；Demo 2 从真实学习位置到文件/代码证据验收、复习与主动检查。完整的 115 秒分镜、数据重置和真实性要求见 [Demo 录制脚本](docs/DEMO.md)。
-
 ## 验证
 
 ```bash
@@ -132,17 +118,6 @@ npm --prefix frontend audit --omit=dev
 - [邮箱配置与收发](docs/EMAIL.md)
 - [路线图](docs/ROADMAP.md)
 - [当前状态](docs/STATUS.md)
-- [参赛提交清单](docs/SUBMISSION.md)
-- [完整 Demo 脚本](docs/DEMO.md)
-
-## 赛事提交
-
-- 目标任务：[Tencent-Hunyuan/Hy3 Issue #4](https://github.com/Tencent-Hunyuan/Hy3/issues/4)
-- 独立应用仓库：[zmuxuny/hy3-learning-agent](https://github.com/zmuxuny/hy3-learning-agent)
-- 提交 PR：[Tencent-Hunyuan/Hy3 #220](https://github.com/Tencent-Hunyuan/Hy3/pull/220)，分支关系固定为 `zmuxuny/Hy3:rhinobird2026 → Tencent-Hunyuan/Hy3:rhinobird2026`
-- 视频：录制完成后补充公开链接；正式提交必须包含两条端到端流程且总长不超过 2 分钟
-
-CodeBuddy/WorkBuddy 协作范围只会在实际完成并可验证后记录，不把其他 AI Coding 工具的工作冒充为官方指定工具协作。
 
 ## License
 
