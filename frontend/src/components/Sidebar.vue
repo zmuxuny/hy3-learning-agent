@@ -30,6 +30,15 @@ const navigation = [
   { id: 'memory', label: 'AI 记忆', icon: CircleStackIcon },
 ];
 
+const heartbeatLabel = computed(() => {
+  const status = store.schedulerStatus;
+  if (!status?.enabled) return '后台检查已关闭';
+  if (status.active) return '正在主动检查学习状态';
+  if (!status.next_cycle_at) return `每 ${Math.round((status.interval_seconds || 300) / 60)} 分钟检查`;
+  const next = new Date(status.next_cycle_at);
+  return `下次检查 ${next.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+});
+
 function sessionMeta(session) {
   const plan = [...store.plans, ...store.archivedPlans].find((item) => item.id === session.plan_id);
   if (plan) return plan.title;
@@ -86,15 +95,19 @@ function setSessionTitleInput(element) {
 
     <section class="sidebar-group" v-if="store.activePlans.length">
       <div class="section-title">置顶计划</div>
-      <button
+      <div
         v-for="plan in store.activePlans.slice(0, 3)"
         :key="plan.id"
-        class="side-row"
-        @click="store.selectPlan(plan.id)"
+        class="side-plan-row"
       >
-        <MapIcon />
-        <span><strong>{{ plan.title }}</strong><small>{{ Math.round(plan.progress * 100) }}% 完成</small></span>
-      </button>
+        <button class="side-row" @click="store.selectPlan(plan.id)">
+          <MapIcon />
+          <span><strong>{{ plan.title }}</strong><small>{{ Math.round(plan.progress * 100) }}% 完成</small></span>
+        </button>
+        <button class="side-plan-archive" title="归档计划" @click="store.setPlanArchived(plan.id, true)">
+          <ArchiveBoxArrowDownIcon />
+        </button>
+      </div>
     </section>
 
     <section class="sidebar-group recent-group">
@@ -105,7 +118,7 @@ function setSessionTitleInput(element) {
         </button>
       </div>
       <div
-        v-for="session in displayedSessions.slice(0, 12)"
+        v-for="session in displayedSessions"
         :key="session.id"
         :class="['session-row', { active: store.activeSessionId === session.id }]"
         role="button"
@@ -152,7 +165,7 @@ function setSessionTitleInput(element) {
     <div class="sidebar-footer">
       <button class="agent-status" @click="store.triggerHeartbeat">
         <span class="agent-status-icon"><BoltIcon /></span>
-        <span><strong>学习 Agent 在线</strong><small>点击立即检查计划</small></span>
+        <span><strong>学习 Agent 在线</strong><small>{{ heartbeatLabel }} · 点击立即检查</small></span>
         <i></i>
       </button>
       <div class="profile-card" v-if="store.profile">

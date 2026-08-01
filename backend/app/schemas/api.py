@@ -301,6 +301,20 @@ class PlanningStateRead(BaseModel):
     proposal: PlanProposalRead | None = None
 
 
+class PlanningAnswer(BaseModel):
+    question_id: str = Field(min_length=1, max_length=80)
+    answer: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("answer")
+    @classmethod
+    def normalize_answer(cls, value: str) -> str:
+        return value.strip()
+
+
+class PlanningAnswersSubmit(BaseModel):
+    answers: list[PlanningAnswer] = Field(min_length=1, max_length=6)
+
+
 class PlanProposalDecision(BaseModel):
     accepted: bool
 

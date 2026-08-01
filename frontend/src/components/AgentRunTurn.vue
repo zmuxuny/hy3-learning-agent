@@ -2,6 +2,7 @@
 import {
   CheckCircleIcon,
   ArrowRightIcon,
+  ChevronDownIcon,
   CircleStackIcon,
   CommandLineIcon,
   MapIcon,
@@ -36,13 +37,28 @@ const activityEvents = computed(() => {
   }
   return rows;
 });
-const visibleActivityEvents = computed(() => (
-  processExpanded.value ? activityEvents.value : activityEvents.value.slice(0, 6)
-));
+const latestActivity = computed(() => activityEvents.value[activityEvents.value.length - 1] || null);
 const finalEvent = computed(() => [...store.runEvents].reverse().find(
   (event) => ['assistant.message', 'run.completed', 'run.failed', 'run.cancelled'].includes(event.type),
 ));
 const answerText = computed(() => props.answer || finalEvent.value?.summary || '');
+const durationLabel = computed(() => {
+  const start = store.currentRun?.started_at || store.currentRun?.created_at;
+  if (!start) return '';
+  const end = store.currentRun?.completed_at
+    || latestActivity.value?.created_at
+    || (running.value ? new Date().toISOString() : start);
+  const seconds = Math.max(0, Math.round((new Date(end) - new Date(start)) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds % 60}s`;
+});
+const activitySummary = computed(() => {
+  if (running.value) return latestActivity.value ? eventTitle(latestActivity.value) : '正在准备学习上下文';
+  if (store.currentRun?.status === 'failed') return '本次运行已失败';
+  if (store.currentRun?.status === 'cancelled') return '本次运行已停止';
+  return `已处理 ${activityEvents.value.length} 个动作`;
+});
 
 watch(() => store.currentRun?.id, () => {
   processExpanded.value = false;
@@ -83,27 +99,26 @@ async function continueInCreatedPlan() {
     <div class="agent-content">
       <div class="agent-name">Learning Agent <span>Hy3</span></div>
 
-      <div v-if="activityEvents.length || running" class="inline-process">
-        <div
-          v-for="event in visibleActivityEvents"
-          :key="event.sequence"
-          :class="['process-row', { failed: event.type === 'run.failed' || event.type === 'run.cancelled' || event.payload?.result?.ok === false }]"
-        >
-          <component :is="iconFor(event.type)" />
-          <span>{{ eventTitle(event) }}</span>
-          <small v-if="event.type === 'tool.completed'">
-            {{ event.payload?.result?.ok === false ? '失败' : '完成' }}
-          </small>
-        </div>
-        <div v-if="running" class="process-row active-process">
-          <span class="thinking-dots"><i></i><i></i><i></i></span>
-          <span>正在观察、规划并调用工具</span>
-        </div>
-        <div class="process-links">
-          <button v-if="activityEvents.length > 6" @click="processExpanded = !processExpanded">
-            {{ processExpanded ? '收起步骤' : `展开其余 ${activityEvents.length - 6} 个动作` }}
-          </button>
-          <button @click="store.traceOpen = true">查看完整运行轨迹</button>
+      <div v-if="store.currentRun" :class="['run-activity', { expanded: processExpanded, running }]">
+        <button class="run-activity-summary" @click="processExpanded = !processExpanded">
+          <span v-if="running" class="thinking-dots"><i></i><i></i><i></i></span>
+          <CheckCircleIcon v-else-if="store.currentRun.status === 'completed'" />
+          <XCircleIcon v-else-if="['failed', 'cancelled'].includes(store.currentRun.status)" />
+          <CircleStackIcon v-else />
+          <span><strong>{{ activitySummary }}</strong><small>{{ durationLabel }}<template v-if="activityEvents.length"> · {{ activityEvents.length }} 个记录</template></small></span>
+          <ChevronDownIcon class="activity-chevron" />
+        </button>
+        <div v-if="processExpanded" class="run-activity-body">
+          <div
+            v-for="event in activityEvents"
+            :key="event.sequence"
+            :class="['process-row', { failed: event.type === 'run.failed' || event.type === 'run.cancelled' || event.payload?.result?.ok === false }]"
+          >
+            <component :is="iconFor(event.type)" />
+            <span>{{ eventTitle(event) }}</span>
+            <small v-if="event.type === 'tool.completed'">{{ event.payload?.result?.ok === false ? '失败' : '完成' }}</small>
+          </div>
+          <button class="full-trace-link" @click="store.traceOpen = true">查看完整运行轨迹</button>
         </div>
       </div>
 

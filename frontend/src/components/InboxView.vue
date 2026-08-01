@@ -1,9 +1,27 @@
 <script setup>
-import { BellIcon, CheckCircleIcon, CheckIcon, EnvelopeIcon, ServerStackIcon, XCircleIcon } from '@heroicons/vue/24/outline';
+import { BellIcon, BoltIcon, CheckCircleIcon, CheckIcon, ClockIcon, EnvelopeIcon, ServerStackIcon, XCircleIcon } from '@heroicons/vue/24/outline';
+import { computed } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import RunTraceButton from './RunTraceButton.vue';
 
 const store = useWorkspaceStore();
+const heartbeatMinutes = computed(() => Math.max(1, Math.round((store.schedulerStatus?.interval_seconds || 300) / 60)));
+
+function formatTime(value, fallback = '等待首次检查') {
+  return value ? new Date(value).toLocaleString() : fallback;
+}
+
+function decisionLabel(value) {
+  return ({
+    waiting_for_first_cycle: '等待首次自动检查',
+    quiet_no_intervention_needed: '上次判断：无需打扰',
+    heartbeat_already_running: '上次检查仍在运行',
+    due_review: '发现到期复习并已交给 Agent',
+    task_due_within_24h: '发现临近截止任务并已交给 Agent',
+    progress_checkin_due: '发现进度需要跟进并已交给 Agent',
+    cycle_error: '上轮候选扫描失败，将在下一轮重试',
+  })[value] || '后台会按真实状态决定是否介入';
+}
 
 async function requestBrowserPermission() {
   if ('Notification' in window) await Notification.requestPermission();
@@ -24,6 +42,22 @@ function testEmail(channel, sendMessage = false) {
       </div>
     </header>
 
+    <section class="proactive-status panel">
+      <div class="proactive-status-icon"><BoltIcon /></div>
+      <div class="proactive-status-copy">
+        <header>
+          <div><strong>主动检查已{{ store.schedulerStatus?.enabled ? '开启' : '关闭' }}</strong><span>全局心跳 · 不是每个任务各跑一个定时器</span></div>
+          <em :class="{ active: store.schedulerStatus?.active }">{{ store.schedulerStatus?.active ? '检查中' : `${heartbeatMinutes} 分钟一轮` }}</em>
+        </header>
+        <p>每轮先读取到期复习、临近截止任务和学习活动；有证据需要介入时才启动 Hy3。超过 {{ store.schedulerStatus?.progress_checkin_hours || 24 }} 小时没有学习证据时，它也可以主动询问进度。站内收件箱无需配置邮箱。</p>
+        <div class="proactive-status-facts">
+          <span><ClockIcon /><small>下次检查</small><strong>{{ formatTime(store.schedulerStatus?.next_cycle_at) }}</strong></span>
+          <span><CheckCircleIcon /><small>最近判断</small><strong>{{ decisionLabel(store.schedulerStatus?.last_decision) }}</strong></span>
+        </div>
+      </div>
+      <button class="secondary-button" :disabled="store.schedulerStatus?.active" @click="store.triggerHeartbeat"><BoltIcon /> 立即检查</button>
+    </section>
+
     <section class="email-setup panel">
       <div class="email-setup-icon"><ServerStackIcon /></div>
       <div class="email-setup-copy">
@@ -34,7 +68,7 @@ function testEmail(channel, sendMessage = false) {
           </em>
         </header>
         <p v-if="!store.emailConfiguration?.smtp_configured || !store.emailConfiguration?.imap_configured">
-          在项目根目录 <code>.env</code> 填写 SMTP/IMAP 主机、邮箱账号和应用专用密码，然后重启服务。密码只保存在本机，不会进入页面或 Git。
+          邮箱只是可选的离站渠道，不影响站内主动提醒。若需要邮件，必须有一个真实发件服务：可以复用个人邮箱的应用专用密码，也可以接入事务邮件 SMTP 服务；项目无法在没有任何发件凭据时替代邮件服务商发信。
         </p>
         <p v-else>
           发件账号 {{ store.emailConfiguration.smtp_username }}，收件文件夹 {{ store.emailConfiguration.imap_folder }}；邮件回复会回到原来的连续对话。

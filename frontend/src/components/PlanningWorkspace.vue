@@ -35,11 +35,11 @@ function selectOption(question, option) {
 
 async function answerQuestions() {
   const answers = (intake.value?.open_questions || []).map((question) => ({
-    question: question.prompt,
+    question_id: question.id,
     answer: customAnswers.value[question.id]?.trim() || selections.value[question.id] || '交给 AI 判断',
   }));
   submitting.value = true;
-  await store.startRun(`这是我对计划澄清问题的回答：\n${answers.map((item) => `- ${item.question}\n  ${item.answer}`).join('\n')}\n请更新需求状态；如果已经充分，可以进行必要的子 Agent 分工并生成可审阅的计划提案。`);
+  await store.submitPlanningAnswers(answers);
   submitting.value = false;
 }
 

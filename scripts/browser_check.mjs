@@ -2,8 +2,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 
 const port = Number(process.argv[2] || 9223);
 const outputDir = process.argv[3] || '/tmp/learning-agent-browser-check';
+const appUrl = process.argv[4] || 'http://127.0.0.1:8000';
 const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json());
-const target = targets.find((item) => item.type === 'page' && item.url.startsWith('http://127.0.0.1'));
+const target = targets.find((item) => item.type === 'page' && item.url.startsWith(appUrl));
 if (!target) throw new Error('Learning Agent browser target not found');
 
 await mkdir(outputDir, { recursive: true });
@@ -62,6 +63,13 @@ async function inspect(label) {
       resourceRows: document.querySelectorAll('.resource-row').length,
       resourceSections: document.querySelectorAll('.plan-resources-section').length,
       emailSetup: document.querySelectorAll('.email-setup').length,
+      proactiveStatus: document.querySelectorAll('.proactive-status').length,
+      runActivity: document.querySelectorAll('.run-activity').length,
+      runActivityExpanded: document.querySelectorAll('.run-activity.expanded').length,
+      markdownTables: document.querySelectorAll('.agent-markdown table').length,
+      sidebarScrollOwner: getComputedStyle(document.querySelector('.sidebar')).overflowY,
+      recentScrollOwner: getComputedStyle(document.querySelector('.recent-group') || document.body).overflowY,
+      pinnedPlanArchiveActions: document.querySelectorAll('.side-plan-archive').length,
       contextTransitions: document.querySelectorAll('.context-transition').length,
       planningPanels: document.querySelectorAll('.planning-panel').length,
       planningQuestions: document.querySelectorAll('.planning-question').length,
@@ -89,6 +97,15 @@ report.push(await inspect('home-wide'));
 await evaluate(`(() => { const row = document.querySelector('.session-row'); if (row) row.click(); return Boolean(row); })()`);
 await wait(1200);
 report.push(await inspect('conversation-wide'));
+const expandedRunActivity = await evaluate(`(() => {
+  const button = document.querySelector('.run-activity-summary');
+  if (button) button.click();
+  return Boolean(button);
+})()`);
+if (expandedRunActivity) {
+  await wait(250);
+  report.push(await inspect('conversation-activity-expanded'));
+}
 
 for (const [width, height] of [[1440, 1000], [768, 1024], [375, 812]]) {
   await viewport(width, height);

@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     AGENT_TOOL_MESSAGE_CHAR_LIMIT: int = Field(default=16000, ge=2000, le=100000)
     AGENT_SESSION_TITLE_TIMEOUT_SECONDS: int = Field(default=15, ge=3, le=60)
     AGENT_HEARTBEAT_SECONDS: int = Field(default=300, ge=15)
+    AGENT_PROGRESS_CHECKIN_HOURS: int = Field(default=24, ge=1, le=720)
     AGENT_CONTEXT_EVENT_LIMIT: int = Field(default=40, ge=5, le=500)
     AGENT_CONTEXT_TOKEN_BUDGET: int = Field(default=12000, ge=2000, le=100000)
     AGENT_RECENT_MESSAGE_LIMIT: int = Field(default=16, ge=4, le=100)

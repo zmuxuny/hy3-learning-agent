@@ -1,7 +1,7 @@
 import copy
 import io
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -17,6 +17,7 @@ from app.api.agent import (
     read_planning_state,
     read_session_messages,
     rename_session,
+    submit_planning_answers,
 )
 from app.api.plans import read_plan_resources, set_plan_archived
 from app.api.workspace import upload_workspace_file
@@ -27,6 +28,7 @@ from app.models import (
     AgentRun,
     ChatMessage,
     ChatMessageRevision,
+    LearningEvent,
     LearningResource,
     Memory,
     Notification,
@@ -40,11 +42,14 @@ from app.models import (
 )
 from app.runtime.agent import AgentRuntime, ToolFailureGuard
 from app.main import reconcile_interrupted_runs
+from app.runtime.scheduler import proactive_scheduler
 from app.schemas import (
     AgentRunCreate,
     MessageEdit,
     PlanArchiveUpdate,
     PlanCreate,
+    PlanningAnswer,
+    PlanningAnswersSubmit,
     PlanProposalDecision,
     SessionHandoffCreate,
     SessionUpdate,
@@ -128,6 +133,67 @@ async def test_session_focus_cannot_be_rebound():
 
         assert error.value.status_code == 409
         assert error.value.detail == "Session focus does not match requested plan"
+
+
+@pytest.mark.asyncio
+async def test_planning_card_answers_are_a_structured_same_session_interaction(monkeypatch):
+    import app.api.agent as agent_api
+
+    monkeypatch.setattr(agent_api, "_start_runtime", lambda _run_id: None)
+    async with AsyncSessionLocal() as db:
+        session = Session(owner_id="local", title="计划共创")
+        db.add(session)
+        await db.flush()
+        db.add(PlanningIntake(
+            session_id=session.id,
+            owner_id="local",
+            goal="学习并完成作品",
+            open_questions=[{
+                "id": "weekly_time",
+                "prompt": "每周能投入多少时间？",
+                "why": "决定计划密度",
+                "options": ["3 小时", "5 小时"],
+                "allow_custom": True,
+            }],
+            readiness="collecting",
+            readiness_confidence=0.45,
+            rationale="还缺少时间约束",
+        ))
+        await db.commit()
+
+        run = await submit_planning_answers(
+            session.id,
+            PlanningAnswersSubmit(answers=[PlanningAnswer(question_id="weekly_time", answer="5 小时")]),
+            db,
+        )
+        assert run.session_id == session.id
+        intake = await db.get(PlanningIntake, session.id)
+        assert intake.open_questions == []
+        assert "重新判断" in intake.rationale
+        message = (await db.execute(select(ChatMessage).where(ChatMessage.run_id == run.id))).scalars().one()
+        assert message.message_metadata["ui_kind"] == "planning_answers"
+        assert message.message_metadata["answer_count"] == 1
+        assert "5 小时" in message.content
+
+
+@pytest.mark.asyncio
+async def test_scheduler_can_request_progress_without_task_deadlines(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "AGENT_PROGRESS_CHECKIN_HOURS", 1)
+    async with AsyncSessionLocal() as db:
+        plan = await plan_service.create_plan(db, "local", plan_payload("主动跟进计划"))
+        stale_at = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(hours=2)
+        plan.created_at = stale_at
+        event = (await db.execute(select(LearningEvent).where(LearningEvent.plan_id == plan.id))).scalars().one()
+        event.created_at = stale_at
+        await db.commit()
+        plan_id = plan.id
+
+    candidate = await proactive_scheduler._next_candidate()
+    assert candidate["plan_id"] == plan_id
+    assert candidate["reason"] == "progress_checkin_due"
+    assert "主动发一条简短站内询问" in candidate["objective"]
 
 
 @pytest.mark.asyncio

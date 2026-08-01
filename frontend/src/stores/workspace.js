@@ -37,6 +37,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const archivedSessions = ref([]);
   const emailConfiguration = ref(null);
   const emailTestResult = ref(null);
+  const schedulerStatus = ref(null);
+  const proactiveNotice = ref(null);
   const currentRun = ref(null);
   const focusPlanId = ref(null);
   const traceOpen = ref(false);
@@ -47,6 +49,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const loading = ref(false);
   const error = ref('');
   let eventSource = null;
+  let proactiveTimer = null;
 
   const unreadCount = computed(() => notifications.value.filter((item) => !item.read_at).length);
   const activePlans = computed(() => plans.value.filter((plan) => plan.status === 'active'));
@@ -79,7 +82,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loading.value = true;
     error.value = '';
     try {
-      const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes] = await Promise.all([
+      const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes, proactiveRes] = await Promise.all([
         api.get('/profile'),
         api.get('/plans'),
         api.get('/plans?archived=true'),
@@ -91,6 +94,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         api.get('/agent/sessions'),
         api.get('/agent/sessions?archived=true'),
         api.get('/settings/email'),
+        api.get('/settings/proactive'),
       ]);
       profile.value = profileRes.data;
       plans.value = plansRes.data;
@@ -103,6 +107,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       sessions.value = sessionsRes.data;
       archivedSessions.value = archivedSessionsRes.data;
       emailConfiguration.value = emailRes.data;
+      schedulerStatus.value = proactiveRes.data;
       await refreshCurrentPlan();
     } catch (requestError) {
       error.value = requestError.response?.data?.detail || requestError.message;
@@ -235,6 +240,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       activeView.value = 'home';
       runs.value.unshift(response.data);
       subscribeToRun(response.data.id);
+      await refreshProactiveState();
     } catch (requestError) {
       error.value = requestError.response?.data?.detail || requestError.message;
     }
@@ -320,6 +326,46 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  async function submitPlanningAnswers(answers) {
+    if (!activeSessionId.value || !answers.length) return false;
+    closeEventSource();
+    runEvents.value = [];
+    error.value = '';
+    try {
+      const response = await api.post(`/agent/sessions/${activeSessionId.value}/planning/answers`, { answers });
+      currentRun.value = response.data;
+      const intake = planningState.value.intake;
+      if (intake) {
+        planningState.value = {
+          ...planningState.value,
+          intake: {
+            ...intake,
+            open_questions: [],
+            readiness: 'collecting',
+            rationale: '回答已提交，Agent 正在重新判断需求是否充分。',
+          },
+        };
+      }
+      conversationMessages.value.push({
+        id: `planning-answers-${response.data.id}`,
+        session_id: activeSessionId.value,
+        run_id: response.data.id,
+        role: 'user',
+        content: '',
+        message_metadata: { ui_kind: 'planning_answers', answer_count: answers.length },
+        created_at: new Date().toISOString(),
+        pending: true,
+      });
+      runs.value.unshift(response.data);
+      await loadSessions();
+      subscribeToRun(response.data.id);
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
+  }
+
   async function decidePlanProposal(proposalId, accepted) {
     error.value = '';
     try {
@@ -380,6 +426,43 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       emailTestResult.value = { ok: false, error: requestError.response?.data?.detail || requestError.message };
       return false;
     }
+  }
+
+  async function refreshProactiveState() {
+    try {
+      const knownIds = new Set(notifications.value.map((item) => item.id));
+      const [notificationsResponse, proactiveResponse] = await Promise.all([
+        api.get('/notifications'),
+        api.get('/settings/proactive'),
+      ]);
+      const fresh = notificationsResponse.data.filter((item) => (
+        !knownIds.has(item.id) && item.channel === 'in_app' && item.status === 'sent'
+      ));
+      notifications.value = notificationsResponse.data;
+      schedulerStatus.value = proactiveResponse.data;
+      if (fresh.length) {
+        proactiveNotice.value = fresh[0];
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(fresh[0].title, { body: fresh[0].body });
+        }
+      }
+    } catch {
+      // Background visibility must never interrupt the active conversation.
+    }
+  }
+
+  function startProactiveSync() {
+    if (proactiveTimer) return;
+    proactiveTimer = window.setInterval(refreshProactiveState, 15000);
+  }
+
+  function stopProactiveSync() {
+    if (proactiveTimer) window.clearInterval(proactiveTimer);
+    proactiveTimer = null;
+  }
+
+  function dismissProactiveNotice() {
+    proactiveNotice.value = null;
   }
 
   function subscribeToRun(runId, clear = true) {
@@ -461,6 +544,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     emailConfiguration.value = emailRes.data;
     await refreshCurrentPlan();
     await loadConversation(activeSessionId.value);
+    await refreshProactiveState();
   }
 
   function closeEventSource() {
@@ -502,6 +586,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     archivedSessions,
     emailConfiguration,
     emailTestResult,
+    schedulerStatus,
+    proactiveNotice,
     currentRun,
     focusPlanId,
     traceOpen,
@@ -528,10 +614,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     renameSession,
     setSessionArchived,
     editMessage,
+    submitPlanningAnswers,
     decidePlanProposal,
     continueInPlan,
     setPlanArchived,
     testEmail,
+    refreshProactiveState,
+    startProactiveSync,
+    stopProactiveSync,
+    dismissProactiveNotice,
     cancelCurrentRun,
     confirmMemory,
     deleteMemory,

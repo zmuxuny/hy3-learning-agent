@@ -31,6 +31,7 @@ from app.schemas import (
     ChatMessageRead,
     MessageEdit,
     PlanCreate,
+    PlanningAnswersSubmit,
     PlanProposalDecision,
     PlanProposalRead,
     PlanningStateRead,
@@ -346,6 +347,83 @@ async def read_planning_state(session_id: str, db: AsyncSession = Depends(get_db
         ).order_by(PlanProposal.created_at.desc()).limit(1)
     )).scalars().one_or_none()
     return {"intake": intake, "proposal": proposal}
+
+
+@router.post("/sessions/{session_id}/planning/answers", response_model=AgentRunRead, status_code=202)
+async def submit_planning_answers(
+    session_id: str,
+    data: PlanningAnswersSubmit,
+    db: AsyncSession = Depends(get_db),
+):
+    session = await db.get(Session, session_id)
+    if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.archived_at is not None:
+        raise HTTPException(status_code=409, detail="Restore the Session before answering planning questions")
+    active_run = (await db.execute(
+        select(AgentRun.id).where(
+            AgentRun.session_id == session.id,
+            AgentRun.parent_run_id.is_(None),
+            AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+        ).limit(1)
+    )).scalar_one_or_none()
+    if active_run:
+        raise HTTPException(status_code=409, detail="This Session already has an active run")
+    intake = await db.get(PlanningIntake, session.id)
+    if not intake or not intake.open_questions:
+        raise HTTPException(status_code=409, detail="There are no open planning questions")
+
+    questions = {str(item.get("id")): item for item in intake.open_questions}
+    supplied = {item.question_id: item.answer for item in data.answers}
+    if len(supplied) != len(data.answers):
+        raise HTTPException(status_code=422, detail="Each planning question can only be answered once")
+    unknown = sorted(set(supplied) - set(questions))
+    if unknown:
+        raise HTTPException(status_code=422, detail=f"Unknown planning question IDs: {', '.join(unknown)}")
+    missing = [question_id for question_id in questions if question_id not in supplied]
+    if missing:
+        raise HTTPException(status_code=422, detail="Answer every visible planning question before submitting")
+
+    answer_lines = [
+        f"- {questions[question_id].get('prompt', question_id)}\n  {supplied[question_id]}"
+        for question_id in questions
+    ]
+    objective = (
+        "用户已通过计划澄清卡提交以下答案：\n"
+        + "\n".join(answer_lines)
+        + "\n请更新 planning_intake；如果仍不充分，提出下一组最高信息量问题；"
+          "如果已经充分，进行必要的规划子 Agent 分工并生成可审阅提案。"
+    )
+    run = AgentRun(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        session_id=session.id,
+        plan_id=session.plan_id,
+        trigger="user_message",
+        objective=objective,
+        model=settings.MODEL_NAME,
+    )
+    db.add(run)
+    await db.flush()
+    db.add(ChatMessage(
+        session_id=session.id,
+        run_id=run.id,
+        role="user",
+        content=objective,
+        message_metadata={
+            "ui_kind": "planning_answers",
+            "answer_count": len(data.answers),
+            "answers": [item.model_dump(mode="json") for item in data.answers],
+        },
+    ))
+    intake.open_questions = []
+    intake.readiness = "collecting"
+    intake.readiness_confidence = min(intake.readiness_confidence, 0.95)
+    intake.rationale = "回答已提交，Agent 正在重新判断需求是否充分。"
+    session.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(run)
+    _start_runtime(run.id)
+    return run
 
 
 @router.post("/plan-proposals/{proposal_id}/decision", response_model=PlanProposalRead)

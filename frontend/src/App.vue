@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted } from 'vue';
+import { BellIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { onBeforeUnmount, onMounted } from 'vue';
 import AgentTrace from './components/AgentTrace.vue';
 import HomeView from './components/HomeView.vue';
 import InboxView from './components/InboxView.vue';
@@ -9,7 +10,11 @@ import Sidebar from './components/Sidebar.vue';
 import { useWorkspaceStore } from './stores/workspace';
 
 const store = useWorkspaceStore();
-onMounted(() => store.loadWorkspace());
+onMounted(async () => {
+  await store.loadWorkspace();
+  store.startProactiveSync();
+});
+onBeforeUnmount(() => store.stopProactiveSync());
 </script>
 
 <template>
@@ -26,5 +31,14 @@ onMounted(() => store.loadWorkspace());
     </main>
     <button v-if="store.traceOpen" class="trace-backdrop" aria-label="关闭运行详情" @click="store.traceOpen = false"></button>
     <AgentTrace v-if="store.traceOpen" />
+    <aside v-if="store.proactiveNotice" class="proactive-toast" aria-live="polite">
+      <BellIcon />
+      <button class="proactive-toast-copy" @click="store.openView('inbox'); store.dismissProactiveNotice()">
+        <small>Learning Agent 主动消息</small>
+        <strong>{{ store.proactiveNotice.title }}</strong>
+        <span>{{ store.proactiveNotice.body }}</span>
+      </button>
+      <button class="proactive-toast-close" aria-label="关闭通知" @click="store.dismissProactiveNotice"><XMarkIcon /></button>
+    </aside>
   </div>
 </template>

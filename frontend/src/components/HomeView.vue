@@ -1,5 +1,5 @@
 <script setup>
-import { BoltIcon, MapIcon, SparklesIcon } from '@heroicons/vue/24/outline';
+import { BoltIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
@@ -82,7 +82,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
 
       <div v-else class="thread">
         <template v-for="message in store.conversationMessages" :key="message.id">
-          <div v-if="message.role === 'user'" class="user-turn">
+          <div v-if="message.role === 'user' && message.message_metadata?.ui_kind !== 'planning_answers'" class="user-turn">
             <UserMessage :message="message" />
           </div>
 
@@ -112,7 +112,6 @@ watch(() => store.runEvents.length, () => scrollToLatest());
 
         <PlanningWorkspace />
 
-        <div v-if="store.focusedPlan" class="context-chip"><MapIcon /> 本次对话专注：{{ store.focusedPlan.title }}</div>
       </div>
     </div>
 

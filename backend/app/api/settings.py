@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.core.config import settings
 from app.tools.registry import tool_contracts
 from app.notifications.diagnostics import email_configuration, test_imap, test_smtp
+from app.runtime.scheduler import proactive_scheduler
 
 
 router = APIRouter()
@@ -38,6 +39,11 @@ async def read_settings():
 @router.get("/tools")
 async def read_tool_contracts():
     return {"count": len(tool_contracts()), "tools": tool_contracts()}
+
+
+@router.get("/proactive")
+async def read_proactive_status():
+    return await proactive_scheduler.describe()
 
 
 @router.get("/email")
