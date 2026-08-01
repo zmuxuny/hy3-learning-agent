@@ -41,6 +41,8 @@
 
 ## Demo 就绪能力
 
+录制准备已经按官方 Issue #4 固化为两条独立闭环和 115 秒分镜。`scripts/demo-data.sh` 会先整体备份再重置本地状态，并可从指定备份恢复；`scripts/demo-preflight.sh` 一次检查测试、生产构建、依赖、补丁、敏感文件和运行中服务配置。仓库同时提供 `examples/demo/minimal_agent.py` 作为明确标注、可真实执行的证据样例，不把它冒充模型输出。
+
 1. 比较具体课程、教程、动手实验与必要参考，打开正文核验并保存为计划资源清单。
 2. 从模糊目标开始，经结构化提问、规划子 Run 与提案确认创建完整计划。
 3. 可撤销修改计划、阶段、任务和日历。
@@ -59,10 +61,10 @@
 - 高风险工具可以返回确认需求，完整的 Run 暂停—批准—检查点恢复仍是硬化项。
 - 当前子 Agent 仅限无工具写权限的规划调查；通用 spawn/join/cancel、进程崩溃续跑、费用预算和工具幂等不能宣称已完成。
 - 应用重启会将上个进程遗留的活动 Run 安全标记为 `process_interrupted`，避免 Session 永久锁死；它保留轨迹但不等同于检查点续跑。
-- SMTP/IMAP 协议、连续 Session 路由和连接测试已实现；当前实例未提供邮箱凭据，因此不能宣称真实供应商收发通过。
+- SMTP/IMAP 协议、连续 Session 路由和连接测试已实现；当前本机实例已完成 QQ SMTP 真实发送、IMAP 登录和回复回原 Session 验收。凭据只存在被 Git 忽略的 `.env`，公开仓库不包含邮箱地址或授权码。
 
 ## 交付剩余
 
-- 使用真实提交文件录制 `docs/DEMO.md` 主线。
+- 按 `docs/DEMO.md` 录制两条真实 Hy3 端到端流程，并剪为不超过 2 分钟的视频或 GIF。
 - 完成赛事要求的 CodeBuddy/WorkBuddy 协作记录。
-- 创建个人 GitHub 仓库、录制视频并向目标分支提交 PR。
+- 将完整源码推送到已创建的 `zmuxuny/hy3-learning-agent`，并更新现有 `Tencent-Hunyuan/Hy3` PR #220 中的 submission 文件和视频链接。

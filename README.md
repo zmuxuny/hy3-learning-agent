@@ -101,6 +101,8 @@ Vite 会把 `/api` 代理到 `127.0.0.1:8000`。
 
 计划工作区还提供“补充资源”和“教我下一步”：前者要求 Agent 比较具体课程、教程、实验与必要参考，打开核验后保存为可撤销的资源清单；后者依据当前任务、提交和复习状态进行一次一任务的交互式教学。
 
+赛事录屏按两条独立闭环组织，而不是把功能列表快速扫一遍：Demo 1 从模糊目标到经用户采用的正式计划；Demo 2 从真实学习位置到文件/代码证据验收、复习与主动检查。完整的 115 秒分镜、数据重置和真实性要求见 [Demo 录制脚本](docs/DEMO.md)。
+
 ## 验证
 
 ```bash
@@ -132,6 +134,15 @@ npm --prefix frontend audit --omit=dev
 - [当前状态](docs/STATUS.md)
 - [参赛提交清单](docs/SUBMISSION.md)
 - [完整 Demo 脚本](docs/DEMO.md)
+
+## 赛事提交
+
+- 目标任务：[Tencent-Hunyuan/Hy3 Issue #4](https://github.com/Tencent-Hunyuan/Hy3/issues/4)
+- 独立应用仓库：[zmuxuny/hy3-learning-agent](https://github.com/zmuxuny/hy3-learning-agent)
+- 提交 PR：[Tencent-Hunyuan/Hy3 #220](https://github.com/Tencent-Hunyuan/Hy3/pull/220)，分支关系固定为 `zmuxuny/Hy3:rhinobird2026 → Tencent-Hunyuan/Hy3:rhinobird2026`
+- 视频：录制完成后补充公开链接；正式提交必须包含两条端到端流程且总长不超过 2 分钟
+
+CodeBuddy/WorkBuddy 协作范围只会在实际完成并可验证后记录，不把其他 AI Coding 工具的工作冒充为官方指定工具协作。
 
 ## License
 

@@ -2,31 +2,58 @@
 
 目标 Issue：<https://github.com/Tencent-Hunyuan/Hy3/issues/4>
 
-## 提交前必须完成
+现有提交关系已经确认：
 
-- [x] 在 Issue 评论 `已认领本任务`
-- [x] TokenHub Hy3 真实只读工具调用成功
-- [x] Demo A 工程闭环：澄清 → 规划分工 → 提案采用 → 正式计划 → 心跳 → 主动提醒或静默决策
-- [ ] Demo B：核心任务证据 → 抽查 → 评分 → 复习/调整 → 撤销
-- [ ] 用 CodeBuddy 或 WorkBuddy 完成一次真实、可说明范围的协作
-- [ ] 在 README 中如实记录该协作范围，不得把 Codex 工作冒充为 CodeBuddy
-- [ ] 录制小于 2 分钟的 GIF 或视频，展示两条完整流程
-- [ ] 确认 `.env`、数据库、日志、上下文快照和本地提交文件没有进入 Git
-- [x] 初始化清理后的独立 Git 历史
-- [ ] 推送个人 GitHub 仓库
-- [ ] 向 Hy3 仓库的 `rhinobird2026` 分支提交 PR
+```text
+完整应用源码：zmuxuny/hy3-learning-agent (main)
+提交说明文件：zmuxuny/Hy3 (rhinobird2026)
+现有 PR #220：zmuxuny/Hy3:rhinobird2026
+             → Tencent-Hunyuan/Hy3:rhinobird2026
+```
 
-## 建议交给 CodeBuddy 的真实任务
+不得把独立应用仓库的 `main` 当成 Hy3 上游 PR 的 head，也不得把 PR 目标改成上游默认分支。
 
-让 CodeBuddy 检查 `backend/app/runtime/agent.py` 对 TokenHub Hy3 多轮工具调用的适配，重点验证 `reasoning_content` 回填、工具消息格式和失败事件记录。根据它的实际输出完成一次可验证修改或评审记录，再把准确范围写入 README。
+## 官方硬性要求
 
-## 视频脚本（约 100 秒）
+- [x] 全部模型能力通过 TokenHub Hy3 API 使用，不训练、不微调、不做本地推理部署
+- [x] 有可运行的交互 Web 前端
+- [x] README 明确说明 Hy3 在系统中承担规划、工具选择、上下文使用和主动决策角色
+- [ ] 录制并跑通 Demo 1：模糊目标 → 澄清 → 规划子 Run → 资源核验 → 提案采用 → 正式计划
+- [ ] 录制并跑通 Demo 2：进度感知教学 → 文件/代码证据 → 验收 → 进度/复习 → 主动检查
+- [ ] 将两条流程剪为同一段 **≤ 2 分钟** 视频或 GIF，并提供可公开访问的链接
+- [x] 项目使用 MIT License 开源
+- [ ] 对公开仓库执行最终密钥、数据库、日志、快照和个人数据扫描
 
-1. 0–12 秒：一句话介绍“会主动监督的学习 Agent Harness”，扫过对话主画布、计划工作区和运行抽屉。
-2. 12–38 秒：输入模糊目标，快速展示提问卡、规划子 Run 和可审阅提案；点击采用后才出现正式计划。
-3. 38–56 秒：点击“教我下一步”，展示版本化学习位置与一个小练习；快速展示一次消息编辑重跑。
-4. 56–74 秒：手动触发心跳，展示 Hy3 的计划读取、决策和收件箱提醒。
-5. 74–96 秒：提交核心任务证据并回答抽查，展示评分、复习调度和 XP。
-6. 96–108 秒：展开工具详情并撤销一次调整，展示“可观察、可审计、可撤销”。
+## GitHub 交付状态
 
-录屏前清空测试数据库，重新创建专用演示数据；不要使用固定夹具冒充真实 Hy3 输出。
+- [x] 已在 Issue 认领任务
+- [x] 已创建独立仓库 <https://github.com/zmuxuny/hy3-learning-agent>
+- [x] 已创建上游 PR <https://github.com/Tencent-Hunyuan/Hy3/pull/220>
+- [x] PR head/base 是 `zmuxuny:rhinobird2026 → Tencent-Hunyuan:rhinobird2026`
+- [ ] 把本地完整应用源码推送到独立仓库 `main`
+- [ ] 更新 fork 的 `submissions/hy3-learning-agent.md`，包含准确能力、两条 Demo、运行方法和视频链接
+- [ ] 推送更新到 `zmuxuny/Hy3:rhinobird2026`，确认现有 PR #220 自动增加提交，而不是新开错误 PR
+- [ ] 在 GitHub 网页上核对 PR Files changed 只包含预期 submission 文件
+
+## AI Coding 协作说明
+
+Issue 期望参与者使用 CodeBuddy/WorkBuddy，并鼓励 README 记录协作代码范围。只能记录实际发生过的协作：
+
+- [ ] 用 CodeBuddy 或 WorkBuddy 完成一次真实、可复述的代码评审或小范围修改
+- [ ] 保存协作截图或记录
+- [ ] 在 README 和 submission 文件中写明准确文件/职责，不把 Codex 工作冒充为 CodeBuddy/WorkBuddy
+
+推荐范围：检查 `backend/app/runtime/agent.py` 的 TokenHub Hy3 多轮工具调用适配，验证 `reasoning_content` 回填、tool message 格式和失败事件记录。
+
+## 录制前命令
+
+```bash
+# 先停止正在运行的服务
+./scripts/demo-data.sh reset
+./scripts/start.sh
+
+# 另一个终端
+./scripts/demo-preflight.sh
+```
+
+完整 115 秒分镜见 [DEMO.md](DEMO.md)。视频上传后，必须同时更新独立仓库 README、fork submission 文件和 PR #220 描述/评论中的视频链接。
