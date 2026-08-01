@@ -14,6 +14,13 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
     "notifications": {
         "session_id": "VARCHAR(64)",
     },
+    "learning_resources": {
+        "provider": "VARCHAR(120) NOT NULL DEFAULT ''",
+        "language": "VARCHAR(32) NOT NULL DEFAULT ''",
+        "difficulty": "VARCHAR(32) NOT NULL DEFAULT 'mixed'",
+        "why_recommended": "TEXT NOT NULL DEFAULT ''",
+        "verified_at": "DATETIME",
+    },
 }
 
 
@@ -70,5 +77,43 @@ async def migrate_sqlite_schema(connection: AsyncConnection) -> None:
             SELECT agent_runs.session_id FROM agent_runs WHERE agent_runs.id = notifications.run_id
         )
         WHERE session_id IS NULL AND run_id IS NOT NULL
+        """
+    ))
+    await connection.execute(text(
+        """
+        UPDATE learning_resources
+        SET provider = CASE
+            WHEN url LIKE '%runoob.com%' THEN '菜鸟教程'
+            WHEN url LIKE '%coursera.org%' THEN 'Coursera'
+            WHEN url LIKE '%huggingface.co%' THEN 'Hugging Face'
+            WHEN url LIKE '%kaggle.com%' THEN 'Kaggle'
+            WHEN url LIKE '%fastapi.tiangolo.com%' THEN 'FastAPI'
+            WHEN url LIKE '%realpython.com%' THEN 'Real Python'
+            WHEN url LIKE '%github.com%' THEN 'GitHub'
+            ELSE provider
+        END
+        WHERE provider = ''
+        """
+    ))
+    await connection.execute(text(
+        """
+        UPDATE learning_resources
+        SET resource_type = CASE
+            WHEN url LIKE '%coursera.org/%' OR url LIKE '%huggingface.co/learn/%' THEN 'course'
+            WHEN url LIKE '%runoob.com/%' OR url LIKE '%realpython.com/%' THEN 'tutorial'
+            WHEN url LIKE '%github.com/%' THEN 'repository'
+            WHEN url LIKE '%docs%' OR url LIKE '%documentation%' OR url LIKE '%fastapi.tiangolo.com/%' THEN 'documentation'
+            ELSE 'web'
+        END
+        WHERE resource_type = 'web'
+        """
+    ))
+    await connection.execute(text(
+        """
+        UPDATE learning_resources
+        SET resource_type = 'web'
+        WHERE (source = 'web_search' OR source LIKE 'web_search:%')
+          AND provider = ''
+          AND resource_type = 'tutorial'
         """
     ))

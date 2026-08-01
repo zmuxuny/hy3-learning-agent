@@ -41,6 +41,7 @@ function testEmail(channel, sendMessage = false) {
         </p>
         <small v-if="store.emailConfiguration?.smtp_missing?.length">SMTP 缺少：{{ store.emailConfiguration.smtp_missing.join('、') }}</small>
         <small v-if="store.emailConfiguration?.imap_missing?.length">IMAP 缺少：{{ store.emailConfiguration.imap_missing.join('、') }}</small>
+        <small v-for="warning in store.emailConfiguration?.warnings || []" :key="warning" class="email-warning">{{ warning }}</small>
         <div class="email-test-actions" v-if="store.emailConfiguration?.smtp_configured || store.emailConfiguration?.imap_configured">
           <button v-if="store.emailConfiguration.smtp_configured" class="secondary-button" @click="testEmail('smtp', true)"><EnvelopeIcon /> 发送测试邮件</button>
           <button v-if="store.emailConfiguration.imap_configured" class="secondary-button" @click="testEmail('imap')"><ServerStackIcon /> 测试回复邮箱</button>

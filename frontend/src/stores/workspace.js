@@ -26,6 +26,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const archivedPlans = ref([]);
   const dashboard = ref({ activity: [], achievements: [], due_review_count: 0, open_quiz_count: 0 });
   const currentPlan = ref(null);
+  const planResources = ref([]);
   const memories = ref([]);
   const notifications = ref([]);
   const operations = ref([]);
@@ -103,8 +104,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function loadPlan(planId) {
-    const response = await api.get(`/plans/${planId}`);
-    currentPlan.value = response.data;
+    const [planResponse, resourcesResponse] = await Promise.all([
+      api.get(`/plans/${planId}`),
+      api.get(`/plans/${planId}/resources`),
+    ]);
+    currentPlan.value = planResponse.data;
+    planResources.value = resourcesResponse.data;
   }
 
   async function loadConversation(sessionId) {
@@ -128,6 +133,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function refreshCurrentPlan() {
     if (!plans.value.length) {
       currentPlan.value = null;
+      planResources.value = [];
       focusPlanId.value = null;
       planScreen.value = 'list';
       return;
@@ -137,6 +143,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!selectedPlan) {
       if (focusPlanId.value === currentPlan.value.id) focusPlanId.value = null;
       currentPlan.value = null;
+      planResources.value = [];
       planScreen.value = 'list';
       return;
     }
@@ -298,6 +305,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     archivedPlans.value = archivedResponse.data;
     if (archived && currentPlan.value?.id === planId) {
       currentPlan.value = null;
+      planResources.value = [];
       if (focusPlanId.value === planId) resetConversationState();
       planScreen.value = 'list';
     } else if (!archived && currentPlan.value?.id === planId) {
@@ -429,6 +437,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     archivedPlans,
     dashboard,
     currentPlan,
+    planResources,
     memories,
     notifications,
     operations,

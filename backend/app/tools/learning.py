@@ -280,10 +280,23 @@ async def resource_list(ctx: ToolContext, args: ResourceListArgs) -> dict:
     if plan_id is not None and (error := _focused(ctx, plan_id)):
         return error
     query = select(LearningResource).where(LearningResource.owner_id == ctx.owner_id)
+    query = query.where(LearningResource.url.not_like("%duckduckgo.com/y.js%"))
     if plan_id is not None:
         query = query.where(LearningResource.plan_id == plan_id)
     resources = list((await ctx.db.execute(query.order_by(LearningResource.created_at.desc()).limit(args.limit))).scalars())
-    return {"resources": [{"id": item.id, "title": item.title, "url": item.url, "summary": item.summary, "source": item.source} for item in resources]}
+    return {"resources": [{
+        "id": item.id,
+        "title": item.title,
+        "url": item.url,
+        "resource_type": item.resource_type,
+        "provider": item.provider,
+        "language": item.language,
+        "difficulty": item.difficulty,
+        "summary": item.summary,
+        "why_recommended": item.why_recommended,
+        "verified_at": item.verified_at.isoformat() if item.verified_at else None,
+        "source": item.source,
+    } for item in resources]}
 
 
 async def learning_event_list(ctx: ToolContext, args: EventListArgs) -> dict:

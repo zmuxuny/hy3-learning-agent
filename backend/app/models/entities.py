@@ -115,8 +115,13 @@ class LearningResource(Base):
     title: Mapped[str] = mapped_column(String(300))
     url: Mapped[str] = mapped_column(Text, default="")
     resource_type: Mapped[str] = mapped_column(String(32), default="web")
+    provider: Mapped[str] = mapped_column(String(120), default="")
+    language: Mapped[str] = mapped_column(String(32), default="")
+    difficulty: Mapped[str] = mapped_column(String(32), default="mixed")
     summary: Mapped[str] = mapped_column(Text, default="")
+    why_recommended: Mapped[str] = mapped_column(Text, default="")
     source: Mapped[str] = mapped_column(String(120), default="agent")
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

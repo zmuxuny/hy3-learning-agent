@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import get_db
-from app.models import Operation, Plan
-from app.schemas import PlanArchiveUpdate, PlanCreate, PlanRead, TaskRead, TaskUpdate
+from app.models import LearningResource, Operation, Plan
+from app.schemas import LearningResourceRead, PlanArchiveUpdate, PlanCreate, PlanRead, TaskRead, TaskUpdate
 from app.services import plans as plan_service
 
 
@@ -16,6 +17,24 @@ router = APIRouter()
 @router.get("", response_model=list[PlanRead])
 async def read_plans(archived: bool = False, db: AsyncSession = Depends(get_db)):
     return await plan_service.list_plans(db, settings.DEFAULT_OWNER_ID, archived=archived)
+
+
+@router.get("/{plan_id}/resources", response_model=list[LearningResourceRead])
+async def read_plan_resources(plan_id: int, db: AsyncSession = Depends(get_db)):
+    plan = await db.get(Plan, plan_id)
+    if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    result = await db.execute(
+        select(LearningResource)
+        .where(
+            LearningResource.owner_id == settings.DEFAULT_OWNER_ID,
+            LearningResource.plan_id == plan_id,
+            LearningResource.url.not_like("%duckduckgo.com/y.js%"),
+        )
+        .order_by(LearningResource.verified_at.desc(), LearningResource.created_at.desc())
+        .limit(50)
+    )
+    return list(result.scalars())
 
 
 @router.get("/{plan_id}", response_model=PlanRead)

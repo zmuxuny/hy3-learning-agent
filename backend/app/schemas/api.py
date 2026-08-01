@@ -94,6 +94,22 @@ class PlanRead(APIModel):
     stages: list[StageRead]
 
 
+class LearningResourceRead(APIModel):
+    id: int
+    plan_id: int | None
+    title: str
+    url: str
+    resource_type: str
+    provider: str
+    language: str
+    difficulty: str
+    summary: str
+    why_recommended: str
+    source: str
+    verified_at: datetime | None
+    created_at: datetime
+
+
 class TaskUpdate(BaseModel):
     title: str | None = None
     description: str | None = None

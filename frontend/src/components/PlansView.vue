@@ -6,6 +6,7 @@ import {
   ArrowUturnLeftIcon,
   ArrowTopRightOnSquareIcon,
   BoltIcon,
+  BookOpenIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
   ChevronRightIcon,
@@ -98,11 +99,22 @@ function submitTaskToAgent(task) {
   );
 }
 
-function inspectPlanWithAgent() {
+function teachNextStep() {
   store.startRun(
-    '请完整检查当前计划的阶段、任务、截止时间、复习安排和最近学习事件，识别风险并给出今天的最小可执行行动。必要时可进行低风险且可撤销的调整。',
+    '请作为我的学习导师带我完成当前计划的下一步。先读取完整计划、最近提交与学习事件、到期复习和已保存资源，准确判断我进行到哪里；只选择一个最合适的当前任务，解释为什么现在做它，然后讲清必要概念并给我一个小练习。等我回答或提交证据后再继续，不要一次性倾倒整门课程。',
     store.currentPlan.id,
   );
+}
+
+function findPlanResources() {
+  store.startRun(
+    '请为当前计划补充真正可学习的具体资源，而不是只列 API 文档。先读取计划和当前进度，再分别搜索：一门结构化课程或课程主页、一个中文或低门槛教程、一个带练习的实验/项目资源，以及必要时的一份权威参考。可以考虑 Coursera、edX、Hugging Face Learn、Kaggle Learn、CS DIY、Stanford 课程（如主题匹配时的 CS336）、freeCodeCamp、菜鸟教程等，但要按我的目标筛选。逐个 web_open 核验后，用 resource_save 保存类型、难度、语言、内容摘要和推荐理由；不要保存搜索结果页。',
+    store.currentPlan.id,
+  );
+}
+
+function resourceTypeLabel(value) {
+  return { course: '课程', tutorial: '教程', lab: '实验', documentation: '参考文档', video: '视频', book: '书籍', repository: '项目仓库', curriculum: '学习路径' }[value] || '学习资源';
 }
 
 function checkCurrentPlan() {
@@ -225,9 +237,48 @@ function createPlanWithAgent() {
             <span><i></i>计划焦点 · 版本 {{ store.currentPlan.version }}</span>
             <div>
               <button class="secondary-button" @click="checkCurrentPlan"><BoltIcon /> 检查提醒</button>
-              <button class="primary-button" @click="inspectPlanWithAgent"><SparklesIcon /> 交给 Agent</button>
+              <button class="primary-button" @click="teachNextStep"><SparklesIcon /> 教我下一步</button>
             </div>
           </div>
+
+          <section class="plan-resources-section">
+            <header>
+              <div>
+                <small>CURATED LEARNING SOURCES</small>
+                <h2>精选学习资源</h2>
+                <p>按当前阶段挑选的课程、教程和动手练习；旧版搜索结果会标为未核验存档。</p>
+              </div>
+              <button class="secondary-button" @click="findPlanResources"><BookOpenIcon /> 补充资源</button>
+            </header>
+            <div v-if="store.planResources.length" class="resource-list">
+              <a
+                v-for="resource in store.planResources"
+                :key="resource.id"
+                :href="resource.url"
+                target="_blank"
+                rel="noreferrer"
+                :class="['resource-row', { legacy: !resource.verified_at }]"
+              >
+                <span class="resource-mark"><BookOpenIcon /></span>
+                <span class="resource-copy">
+                  <span class="resource-meta">
+                    <em>{{ resource.provider || '公开网络' }}</em>
+                    <i>{{ resourceTypeLabel(resource.resource_type) }}</i>
+                    <i v-if="!resource.verified_at">未核验存档</i>
+                    <i v-if="resource.difficulty && resource.difficulty !== 'mixed'">{{ resource.difficulty }}</i>
+                    <i v-if="resource.language">{{ resource.language }}</i>
+                  </span>
+                  <strong>{{ resource.title }}</strong>
+                  <small>{{ resource.why_recommended || resource.summary || '已保存到当前计划。' }}</small>
+                </span>
+                <ArrowTopRightOnSquareIcon class="resource-open" />
+              </a>
+            </div>
+            <div v-else class="resource-empty">
+              <span>还没有经过筛选的课程资源。</span>
+              <button @click="findPlanResources">让 Agent 搜索并核验</button>
+            </div>
+          </section>
 
           <div class="plan-timeline">
             <article v-for="stage in store.currentPlan.stages" :key="stage.id" :class="['timeline-stage', stage.status]">

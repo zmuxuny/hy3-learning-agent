@@ -198,6 +198,7 @@ class ContextAssembler:
             resource_query = select(LearningResource).where(
                 LearningResource.owner_id == owner_id,
                 LearningResource.plan_id == plan_id,
+                LearningResource.url.not_like("%duckduckgo.com/y.js%"),
             )
             submission_query = select(TaskSubmission).where(
                 TaskSubmission.owner_id == owner_id,
@@ -217,7 +218,11 @@ class ContextAssembler:
         if resources:
             sections.append("## Saved learning resources")
             for resource in resources:
-                sections.append(f"- resource:{resource.id} {resource.title} — {resource.url}")
+                sections.append(
+                    f"- resource:{resource.id} [{resource.resource_type}/{resource.difficulty or 'mixed'}] "
+                    f"{resource.provider or 'Web'} — {resource.title} — {resource.url}; "
+                    f"why={resource.why_recommended or resource.summary or '(not curated)'}"
+                )
                 manifest.append({"type": "resource", "id": resource.id})
         if submissions:
             sections.append("## Recent task submissions")

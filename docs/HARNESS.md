@@ -26,7 +26,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 
 - `backend/app/runtime/prompt.py`：身份、循环、计划焦点、工具纪律、证据标准、主动触达和安全边界。
 - `backend/app/runtime/agent.py`：多轮 Function Calling、独立工具事务、结果回填、模型超时重试、取消、SSE 事件和 Session 压缩。
-- `backend/app/tools/registry.py`：向 Hy3 注入 31 个真实工具输入 Schema，并用 31 个 Pydantic 输出 Schema 校验成功结果；完整双向契约可由 `/api/v1/settings/tools` 检查。
+- `backend/app/tools/registry.py`：向 Hy3 注入 32 个真实工具输入 Schema，并用 32 个 Pydantic 输出 Schema 校验成功结果；完整双向契约可由 `/api/v1/settings/tools` 检查。
 - `backend/app/runtime/scheduler.py`：先用确定性规则发现到期复习、24 小时内任务和长期停滞，再为有价值的候选启动 Hy3。
 
 ## 分层上下文与记忆
@@ -51,7 +51,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 - 所有公开网页请求限制为 HTTP(S)，拒绝 localhost 和 `.local` 地址。
 - Web 搜索通过可替换的 Provider 接口执行；页面打开关闭自动重定向并逐跳重新校验目标。代理/TUN 的 `198.18/15` 与 `2001::/32` Fake-IP 只对域名解析兼容，直接 IP 请求仍被拒绝。
 - 站内通知始终是默认渠道；邮箱是可选增强。自动触达受免打扰、每日上限和冷却时间约束。
-- 计划、任务、测验、日历和文件写入尽可能生成 `Operation` 与逆向 Patch。
+- 计划、任务、策展资源、测验、日历和文件写入尽可能生成 `Operation` 与逆向 Patch。
 
 ## 完整性结论
 

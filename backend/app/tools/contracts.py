@@ -40,6 +40,7 @@ TOOL_OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "memory_maintain": output("MemoryMaintainOutput", expired=int, archived=int, plans_refreshed=int),
     "web_search": output("WebSearchOutput", provider=str, query=str, results=list, saved_resource_ids=list),
     "web_open": output("WebOpenOutput", url=str, title=str, content=str, truncated=bool, redirect_count=int),
+    "resource_save": output("ResourceSaveOutput", resource_id=int, plan_id=int, created=bool, operation_id=str, undo_available=bool),
     "file_list": output("FileListOutput", workspace=str, entries=list, truncated=bool),
     "file_read": output("FileReadOutput", path=str, content=str, truncated=bool, size=int),
     "file_write": output("FileWriteOutput", path=str, size=int, operation_id=str, undo_available=bool),

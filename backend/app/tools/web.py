@@ -1,13 +1,17 @@
+from datetime import datetime, timezone
 from html.parser import HTMLParser
+from typing import Literal
+from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.models import LearningResource, Plan
+from app.models import LearningEvent, LearningResource, Operation, Plan
 from app.search import fetch_with_safe_redirects, get_search_provider
-from app.tools.base import ToolContext, ToolDefinition
+from app.search.security import validate_public_url
+from app.tools.base import ToolContext, ToolDefinition, json_safe
 
 
 class WebSearchArgs(BaseModel):
@@ -20,6 +24,18 @@ class WebSearchArgs(BaseModel):
 class WebOpenArgs(BaseModel):
     url: str = Field(min_length=8, max_length=2000)
     max_chars: int = Field(default=12000, ge=500, le=30000)
+
+
+class ResourceSaveArgs(BaseModel):
+    plan_id: int
+    title: str = Field(min_length=2, max_length=300)
+    url: str = Field(min_length=8, max_length=2000)
+    resource_type: Literal["course", "tutorial", "lab", "documentation", "video", "book", "repository", "curriculum"]
+    provider: str = Field(default="", max_length=120)
+    language: str = Field(default="", max_length=32)
+    difficulty: Literal["beginner", "intermediate", "advanced", "mixed"] = "mixed"
+    summary: str = Field(min_length=8, max_length=1200)
+    why_recommended: str = Field(min_length=8, max_length=1200)
 
 
 class _TextParser(HTMLParser):
@@ -58,7 +74,11 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
 
     provider = get_search_provider(settings.WEB_SEARCH_PROVIDER)
     results = await provider.search(args.query, args.limit)
-    result_rows = [result.as_dict() for result in results]
+    result_rows = []
+    for result in results:
+        row = result.as_dict()
+        row.update(_catalog_metadata(result.url, result.title))
+        result_rows.append(row)
     saved_ids: list[int] = []
     if args.save_results:
         existing_urls = {
@@ -77,7 +97,8 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
                 plan_id=target_plan,
                 title=result["title"],
                 url=result["url"],
-                resource_type="web",
+                resource_type=result["resource_type"],
+                provider=result["provider"],
                 summary=f"Search result for: {args.query}",
                 source=f"web_search:{provider.name}",
             )
@@ -90,6 +111,86 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
         "query": args.query,
         "results": result_rows,
         "saved_resource_ids": saved_ids,
+    }
+
+
+async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
+    if ctx.plan_id is not None and args.plan_id != ctx.plan_id:
+        return {"error": "Plan-focused runs cannot save resources to another plan"}
+    plan = await ctx.db.get(Plan, args.plan_id)
+    if not plan or plan.owner_id != ctx.owner_id:
+        return {"error": "Plan not found"}
+    if plan.status == "archived":
+        return {"error": "Restore the plan before saving resources"}
+    await validate_public_url(args.url)
+
+    resource = (await ctx.db.execute(
+        select(LearningResource).where(
+            LearningResource.owner_id == ctx.owner_id,
+            LearningResource.plan_id == args.plan_id,
+            LearningResource.url == args.url,
+        )
+    )).scalars().one_or_none()
+    created = resource is None
+    if created:
+        resource = LearningResource(owner_id=ctx.owner_id, plan_id=args.plan_id, title=args.title, url=args.url)
+        ctx.db.add(resource)
+        await ctx.db.flush()
+        inverse = {"delete": resource.id}
+    else:
+        inverse = {"changes": {
+            "title": resource.title,
+            "resource_type": resource.resource_type,
+            "provider": resource.provider,
+            "language": resource.language,
+            "difficulty": resource.difficulty,
+            "summary": resource.summary,
+            "why_recommended": resource.why_recommended,
+            "source": resource.source,
+            "verified_at": json_safe(resource.verified_at),
+        }}
+
+    provider = args.provider.strip() or _catalog_metadata(args.url, args.title)["provider"]
+    changes = {
+        "title": args.title,
+        "resource_type": args.resource_type,
+        "provider": provider,
+        "language": args.language,
+        "difficulty": args.difficulty,
+        "summary": args.summary,
+        "why_recommended": args.why_recommended,
+        "source": "agent_curated",
+        "verified_at": datetime.now(timezone.utc),
+    }
+    for field, value in changes.items():
+        setattr(resource, field, value)
+    operation = Operation(
+        owner_id=ctx.owner_id,
+        run_id=ctx.run_id,
+        tool_name="resource.save",
+        entity_type="learning_resource",
+        entity_id=str(resource.id),
+        forward_patch={"changes": json_safe(changes)},
+        inverse_patch=inverse,
+    )
+    ctx.db.add_all([
+        operation,
+        LearningEvent(
+            owner_id=ctx.owner_id,
+            plan_id=args.plan_id,
+            run_id=ctx.run_id,
+            event_type="resource.curated",
+            summary=f"Curated {args.resource_type}: {args.title}",
+            payload={"resource_id": resource.id, "url": args.url, "provider": provider},
+        ),
+    ])
+    await ctx.db.commit()
+    return {
+        "resource_id": resource.id,
+        "plan_id": args.plan_id,
+        "created": created,
+        "operation_id": operation.id,
+        "undo_available": True,
     }
 
 
@@ -121,7 +222,52 @@ def _page_title(html: str) -> str:
     return " ".join(html[start:end].split()) if end >= start else ""
 
 
+def _catalog_metadata(url: str, title: str = "") -> dict[str, str]:
+    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+    provider = host or "Web"
+    providers = {
+        "runoob.com": "菜鸟教程",
+        "coursera.org": "Coursera",
+        "huggingface.co": "Hugging Face",
+        "kaggle.com": "Kaggle",
+        "edx.org": "edX",
+        "freecodecamp.org": "freeCodeCamp",
+        "csdiy.wiki": "CS 自学指南",
+        "youtube.com": "YouTube",
+        "youtu.be": "YouTube",
+        "bilibili.com": "哔哩哔哩",
+    }
+    for domain, name in providers.items():
+        if host == domain or host.endswith(f".{domain}"):
+            provider = name
+            break
+    if "stanford" in host or "cs336" in host:
+        provider = "Stanford"
+
+    value = f"{host} {urlparse(url).path} {title}".lower()
+    if "kaggle.com/learn" in value or "lab" in value:
+        resource_type = "lab"
+    elif "stanford" in host or "cs336" in value:
+        resource_type = "course"
+    elif any(domain in host for domain in ("coursera.org", "edx.org")) or "/course" in value or "/learn" in value:
+        resource_type = "course"
+    elif "runoob.com" in host or "tutorial" in value:
+        resource_type = "tutorial"
+    elif any(domain in host for domain in ("youtube.com", "youtu.be", "bilibili.com")):
+        resource_type = "video"
+    elif "github.com" in host:
+        resource_type = "repository"
+    elif "csdiy.wiki" in host or "curriculum" in value:
+        resource_type = "curriculum"
+    elif "docs" in value or "documentation" in value:
+        resource_type = "documentation"
+    else:
+        resource_type = "tutorial"
+    return {"provider": provider, "resource_type": resource_type}
+
+
 WEB_TOOLS = [
-    ToolDefinition("web_search", "Search the public web through the configured provider and optionally save unique results to the focused plan.", WebSearchArgs, web_search),
+    ToolDefinition("web_search", "Search the public web. Results include inferred provider and resource type; raw auto-save is for capture only, not curriculum curation.", WebSearchArgs, web_search),
     ToolDefinition("web_open", "Open a public HTTP(S) page, validate every redirect hop, and extract readable text for source verification.", WebOpenArgs, web_open),
+    ToolDefinition("resource_save", "Save or update one deliberately selected learning resource after opening it. Record its course/tutorial type, level, language, summary, and why it fits this plan.", ResourceSaveArgs, resource_save),
 ]

@@ -9,12 +9,12 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 
 from app.api.agent import create_run, handoff_session, list_sessions, read_session_messages, rename_session
-from app.api.plans import set_plan_archived
+from app.api.plans import read_plan_resources, set_plan_archived
 from app.api.workspace import upload_workspace_file
 from app.db.database import AsyncSessionLocal
 from app.api.operations import undo_operation
 from app.context.memory import MemoryManager
-from app.models import AgentRun, ChatMessage, Memory, Notification, RunEvent, Session, SessionPlanLink, TaskSubmission
+from app.models import AgentRun, ChatMessage, LearningResource, Memory, Notification, RunEvent, Session, SessionPlanLink, TaskSubmission
 from app.runtime.agent import AgentRuntime, ToolFailureGuard
 from app.schemas import (
     AgentRunCreate,
@@ -209,9 +209,9 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
     assert completions.calls[0]["extra_body"] == {"reasoning_effort": "high"}
     assert "The supplied tool schemas are the complete set" in completions.calls[0]["messages"][0]["content"]
     tool_names = {tool["function"]["name"] for tool in completions.calls[0]["tools"]}
-    assert len(tool_names) == 31
+    assert len(tool_names) == 32
     contracts = tool_contracts()
-    assert len(contracts) == 31
+    assert len(contracts) == 32
     assert all(contract["input_schema"] and contract["output_schema"] for contract in contracts)
     assert {
         "profile_get",
@@ -232,12 +232,15 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
         "memory_maintain",
         "web_search",
         "web_open",
+        "resource_save",
         "file_read",
         "file_write",
         "code_execute",
         "calendar_list",
         "calendar_create",
     }.issubset(tool_names)
+    assert "Coursera, edX, Hugging Face Learn" in completions.calls[0]["messages"][0]["content"]
+    assert "what should I do now" in completions.calls[0]["messages"][0]["content"]
     replayed_messages = completions.calls[1]["messages"]
     assert any(message.get("reasoning_content") == "private planning tokens" for message in replayed_messages)
 
@@ -667,6 +670,62 @@ async def test_duckduckgo_provider_filters_ads_and_deduplicates(monkeypatch):
     monkeypatch.setattr(providers, "fetch_with_safe_redirects", fetch)
     results = await DuckDuckGoSearchProvider().search("asyncio", 5)
     assert [result.url for result in results] == ["https://docs.python.org/3/library/asyncio.html"]
+
+
+@pytest.mark.asyncio
+async def test_curated_resource_is_structured_listed_in_context_and_undoable(monkeypatch):
+    import app.tools.web as web_tools
+    from app.context import ContextAssembler
+
+    async def allow_public_url(_):
+        return None
+
+    monkeypatch.setattr(web_tools, "validate_public_url", allow_public_url)
+    async with AsyncSessionLocal() as db:
+        plan = await plan_service.create_plan(db, "local", plan_payload("Curated resources"))
+        run = AgentRun(owner_id="local", plan_id=plan.id, trigger="user_message", objective="找一门课程")
+        legacy_ad = LearningResource(
+            owner_id="local",
+            plan_id=plan.id,
+            title="Sponsored search result",
+            url="https://duckduckgo.com/y.js?ad_domain=example.com",
+            source="web_search",
+        )
+        db.add_all([run, legacy_ad])
+        await db.commit()
+        await db.refresh(run)
+        result = await execute_tool(
+            "resource_save",
+            json.dumps({
+                "plan_id": plan.id,
+                "title": "Hugging Face LLM Course",
+                "url": "https://huggingface.co/learn/llm-course/chapter1/1",
+                "resource_type": "course",
+                "provider": "Hugging Face",
+                "language": "English",
+                "difficulty": "intermediate",
+                "summary": "A structured course covering transformer and LLM foundations with exercises.",
+                "why_recommended": "Matches the plan's current implementation task and includes hands-on practice.",
+            }),
+            ToolContext(db=db, owner_id="local", run_id=run.id, trigger="user_message", plan_id=plan.id),
+        )
+        assert result["ok"] is True
+        rows = await read_plan_resources(plan.id, db)
+        assert len(rows) == 1
+        assert rows[0].provider == "Hugging Face"
+        assert rows[0].resource_type == "course"
+        assert rows[0].verified_at is not None
+
+        snapshot = await ContextAssembler(db).build("local", plan_id=plan.id, objective="现在该学什么")
+        assert "Hugging Face LLM Course" in snapshot.markdown
+        assert "hands-on practice" in snapshot.markdown
+        assert "Sponsored search result" not in snapshot.markdown
+
+        await undo_operation(result["data"]["operation_id"], db)
+        curated = (await db.execute(
+            select(LearningResource).where(LearningResource.url.like("%huggingface.co/%"))
+        )).scalars().first()
+        assert curated is None
 
 
 class RecoveringCompletions:

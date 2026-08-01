@@ -30,6 +30,14 @@ def email_configuration() -> dict:
         }.items()
         if not value
     ]
+    sender = settings.SMTP_FROM or settings.SMTP_USERNAME
+    warnings = []
+    if sender and settings.SMTP_TO and sender.casefold() == settings.SMTP_TO.casefold():
+        warnings.append("发件邮箱与收件邮箱相同，建议用独立 Agent 邮箱向你的日常邮箱发送")
+    if settings.SMTP_USE_SSL and settings.SMTP_USE_TLS:
+        warnings.append("SMTP_USE_SSL 与 SMTP_USE_TLS 不应同时开启")
+    if sender and settings.IMAP_USERNAME and sender.casefold() != settings.IMAP_USERNAME.casefold():
+        warnings.append("回复地址与 IMAP 账号不同，请确认回复邮件会转投到该 IMAP 邮箱")
     return {
         "smtp_configured": not smtp_missing,
         "imap_configured": settings.ENABLE_EMAIL_REPLY_POLLING and not imap_missing,
@@ -46,6 +54,7 @@ def email_configuration() -> dict:
         "imap_username": _mask(settings.IMAP_USERNAME),
         "imap_folder": settings.IMAP_FOLDER,
         "reply_polling_enabled": settings.ENABLE_EMAIL_REPLY_POLLING,
+        "warnings": warnings,
     }
 
 
