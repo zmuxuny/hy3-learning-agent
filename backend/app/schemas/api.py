@@ -181,7 +181,17 @@ class NotificationRead(APIModel):
     status: str
     sent_at: datetime | None
     read_at: datetime | None
+    archived_at: datetime | None
     created_at: datetime
+
+
+class NotificationArchiveUpdate(BaseModel):
+    archived: bool
+
+
+class NotificationArchiveResult(BaseModel):
+    archived: int = Field(ge=0)
+    archived_at: datetime
 
 
 class ContextSnapshotRead(APIModel):

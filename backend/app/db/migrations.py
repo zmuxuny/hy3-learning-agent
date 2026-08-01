@@ -13,6 +13,7 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
     },
     "notifications": {
         "session_id": "VARCHAR(64)",
+        "archived_at": "DATETIME",
     },
     "learning_resources": {
         "provider": "VARCHAR(120) NOT NULL DEFAULT ''",
@@ -44,6 +45,9 @@ async def migrate_sqlite_schema(connection: AsyncConnection) -> None:
     ))
     await connection.execute(text(
         "CREATE INDEX IF NOT EXISTS ix_notifications_session_id ON notifications (session_id)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_notifications_archived_at ON notifications (archived_at)"
     ))
     await connection.execute(text(
         """

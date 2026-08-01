@@ -20,6 +20,7 @@ from app.api.agent import (
     submit_planning_answers,
 )
 from app.api.plans import read_plan_resources, set_plan_archived
+from app.api.notifications import archive_read_notifications, read_notifications, set_notification_archived
 from app.api.workspace import upload_workspace_file
 from app.db.database import AsyncSessionLocal
 from app.api.operations import undo_operation
@@ -46,6 +47,7 @@ from app.runtime.scheduler import proactive_scheduler
 from app.schemas import (
     AgentRunCreate,
     MessageEdit,
+    NotificationArchiveUpdate,
     PlanArchiveUpdate,
     PlanCreate,
     PlanningAnswer,
@@ -571,6 +573,57 @@ async def test_sessions_and_plans_can_be_archived_and_restored():
 
         restored_plan = await set_plan_archived(plan.id, PlanArchiveUpdate(archived=False), db)
         assert restored_plan.status == "active"
+
+
+@pytest.mark.asyncio
+async def test_notifications_can_be_archived_in_bulk_and_restored():
+    async with AsyncSessionLocal() as db:
+        now = datetime.now(timezone.utc)
+        read_message = Notification(
+            owner_id="local",
+            channel="in_app",
+            title="已读提醒",
+            body="可以批量归档",
+            status="sent",
+            read_at=now,
+        )
+        unread_message = Notification(
+            owner_id="local",
+            channel="in_app",
+            title="未读提醒",
+            body="不能被批量误归档",
+            status="sent",
+        )
+        already_archived = Notification(
+            owner_id="local",
+            channel="in_app",
+            title="历史提醒",
+            body="保留在归档列表",
+            status="sent",
+            read_at=now,
+            archived_at=now,
+        )
+        db.add_all([read_message, unread_message, already_archived])
+        await db.commit()
+        await db.refresh(read_message)
+        await db.refresh(unread_message)
+
+        result = await archive_read_notifications(db)
+        assert result["archived"] == 1
+        assert [item.id for item in await read_notifications(False, False, db)] == [unread_message.id]
+        archived = await read_notifications(False, True, db)
+        assert {item.id for item in archived} == {read_message.id, already_archived.id}
+
+        restored = await set_notification_archived(
+            read_message.id,
+            NotificationArchiveUpdate(archived=False),
+            db,
+        )
+        assert restored.archived_at is None
+        assert {item.id for item in await read_notifications(False, False, db)} == {
+            read_message.id,
+            unread_message.id,
+        }
 
 
 @pytest.mark.asyncio

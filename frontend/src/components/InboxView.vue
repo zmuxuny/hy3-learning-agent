@@ -1,11 +1,16 @@
 <script setup>
-import { BellIcon, BoltIcon, CheckCircleIcon, CheckIcon, ClockIcon, EnvelopeIcon, ServerStackIcon, XCircleIcon } from '@heroicons/vue/24/outline';
-import { computed } from 'vue';
+import { ArchiveBoxArrowDownIcon, ArrowUturnLeftIcon, BellIcon, BoltIcon, CheckCircleIcon, CheckIcon, ClockIcon, EnvelopeIcon, ServerStackIcon, XCircleIcon } from '@heroicons/vue/24/outline';
+import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import RunTraceButton from './RunTraceButton.vue';
 
 const store = useWorkspaceStore();
 const heartbeatMinutes = computed(() => Math.max(1, Math.round((store.schedulerStatus?.interval_seconds || 300) / 60)));
+const showArchived = ref(false);
+const displayedNotifications = computed(() => (
+  showArchived.value ? store.archivedNotifications : store.notifications
+));
+const readActiveCount = computed(() => store.notifications.filter((item) => item.read_at).length);
 
 function formatTime(value, fallback = '等待首次检查') {
   return value ? new Date(value).toLocaleString() : fallback;
@@ -87,13 +92,31 @@ function testEmail(channel, sendMessage = false) {
       </div>
     </section>
 
+    <div class="inbox-toolbar">
+      <div class="inbox-tabs" aria-label="收件箱筛选">
+        <button :class="{ active: !showArchived }" @click="showArchived = false">收件箱 <span>{{ store.notifications.length }}</span></button>
+        <button :class="{ active: showArchived }" @click="showArchived = true">已归档 <span>{{ store.archivedNotifications.length }}</span></button>
+      </div>
+      <button v-if="!showArchived && readActiveCount" class="quiet-button" @click="store.archiveReadNotifications">
+        <ArchiveBoxArrowDownIcon />归档全部已读
+      </button>
+      <small>归档不会删除消息，可随时恢复。</small>
+    </div>
+
     <div class="inbox-list">
-      <article v-for="item in store.notifications" :key="item.id" :class="['panel', 'inbox-card', { unread: !item.read_at }]">
+      <article v-for="item in displayedNotifications" :key="item.id" :class="['panel', 'inbox-card', { unread: !item.read_at }]">
         <div class="inbox-icon"><component :is="item.channel === 'email' ? EnvelopeIcon : BellIcon" /></div>
         <div><header><strong>{{ item.title }}</strong><span>{{ item.channel }} · {{ item.status }}</span></header><p>{{ item.body }}</p><small>{{ new Date(item.created_at).toLocaleString() }}</small></div>
-        <button v-if="!item.read_at" title="标记已读" @click="store.markNotificationRead(item.id)"><CheckIcon /></button>
+        <div class="inbox-actions">
+          <button v-if="!item.read_at" title="标记已读" @click="store.markNotificationRead(item.id)"><CheckIcon /></button>
+          <button :title="showArchived ? '恢复消息' : '归档消息'" @click="store.setNotificationArchived(item.id, !showArchived)">
+            <component :is="showArchived ? ArrowUturnLeftIcon : ArchiveBoxArrowDownIcon" />
+          </button>
+        </div>
       </article>
-      <div v-if="!store.notifications.length" class="panel empty-state">Agent 暂时没有需要主动告诉你的事情。</div>
+      <div v-if="!displayedNotifications.length" class="panel empty-state">
+        {{ showArchived ? '还没有归档消息。' : 'Agent 暂时没有需要主动告诉你的事情。' }}
+      </div>
     </div>
   </section>
 </template>

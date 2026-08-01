@@ -165,7 +165,10 @@ class ContextAssembler:
             ReviewSchedule.status == "scheduled",
         )
         quiz_query = select(Quiz).where(Quiz.owner_id == owner_id, Quiz.status == "open")
-        notification_query = select(Notification).where(Notification.owner_id == owner_id)
+        notification_query = select(Notification).where(
+            Notification.owner_id == owner_id,
+            Notification.archived_at.is_(None),
+        )
         if plan_id is not None:
             review_query = review_query.where(ReviewSchedule.plan_id == plan_id)
             quiz_query = quiz_query.where(Quiz.plan_id == plan_id)

@@ -64,6 +64,11 @@ async function inspect(label) {
       resourceSections: document.querySelectorAll('.plan-resources-section').length,
       emailSetup: document.querySelectorAll('.email-setup').length,
       proactiveStatus: document.querySelectorAll('.proactive-status').length,
+      inboxTabs: document.querySelectorAll('.inbox-tabs button').length,
+      inboxArchiveActions: document.querySelectorAll('.inbox-actions button').length,
+      archivedNotificationCards: document.querySelector('.inbox-tabs button.active')?.textContent.includes('已归档')
+        ? document.querySelectorAll('.inbox-card').length
+        : 0,
       runActivity: document.querySelectorAll('.run-activity').length,
       runActivityExpanded: document.querySelectorAll('.run-activity.expanded').length,
       markdownTables: document.querySelectorAll('.agent-markdown table').length,
@@ -182,6 +187,36 @@ await viewport(1440, 1000);
 await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('收件箱')); if (item) item.click(); return Boolean(item); })()`);
 await wait(500);
 report.push(await inspect('inbox-1440'));
+
+const archivedNotificationTitle = await evaluate(`(() => {
+  const button = document.querySelector('.inbox-actions button[title="归档消息"]');
+  const title = button?.closest('.inbox-card')?.querySelector('strong')?.textContent || '';
+  if (button) button.click();
+  return title;
+})()`);
+if (archivedNotificationTitle) {
+  await wait(500);
+  await evaluate(`(() => {
+    const tab = [...document.querySelectorAll('.inbox-tabs button')].find((node) => node.textContent.includes('已归档'));
+    if (tab) tab.click();
+    return Boolean(tab);
+  })()`);
+  await wait(250);
+  report.push(await inspect('inbox-archived-1440'));
+  await evaluate(`(() => {
+    const title = ${JSON.stringify(archivedNotificationTitle)};
+    const card = [...document.querySelectorAll('.inbox-card')].find((node) => node.querySelector('strong')?.textContent === title);
+    const button = card?.querySelector('.inbox-actions button[title="恢复消息"]');
+    if (button) button.click();
+    return Boolean(button);
+  })()`);
+  await wait(500);
+  await evaluate(`(() => {
+    const tab = [...document.querySelectorAll('.inbox-tabs button')].find((node) => node.textContent.includes('收件箱'));
+    if (tab) tab.click();
+    return Boolean(tab);
+  })()`);
+}
 
 await viewport(375, 812);
 report.push(await inspect('inbox-mobile'));

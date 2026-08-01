@@ -31,6 +31,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const planResources = ref([]);
   const memories = ref([]);
   const notifications = ref([]);
+  const archivedNotifications = ref([]);
   const operations = ref([]);
   const runs = ref([]);
   const sessions = ref([]);
@@ -82,13 +83,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loading.value = true;
     error.value = '';
     try {
-      const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes, proactiveRes] = await Promise.all([
+      const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, archivedNotificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes, proactiveRes] = await Promise.all([
         api.get('/profile'),
         api.get('/plans'),
         api.get('/plans?archived=true'),
         api.get('/dashboard'),
         api.get('/memories'),
         api.get('/notifications'),
+        api.get('/notifications?archived=true'),
         api.get('/operations'),
         api.get('/agent/runs'),
         api.get('/agent/sessions'),
@@ -102,6 +104,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       dashboard.value = dashboardRes.data;
       memories.value = memoriesRes.data;
       notifications.value = notificationsRes.data;
+      archivedNotifications.value = archivedNotificationsRes.data;
       operations.value = operationsRes.data;
       runs.value = runsRes.data;
       sessions.value = sessionsRes.data;
@@ -502,8 +505,31 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function markNotificationRead(notificationId) {
     const response = await api.post(`/notifications/${notificationId}/read`);
-    const index = notifications.value.findIndex((item) => item.id === notificationId);
-    if (index >= 0) notifications.value[index] = response.data;
+    for (const collection of [notifications, archivedNotifications]) {
+      const index = collection.value.findIndex((item) => item.id === notificationId);
+      if (index >= 0) collection.value[index] = response.data;
+    }
+  }
+
+  async function refreshNotifications() {
+    const [activeResponse, archivedResponse] = await Promise.all([
+      api.get('/notifications'),
+      api.get('/notifications?archived=true'),
+    ]);
+    notifications.value = activeResponse.data;
+    archivedNotifications.value = archivedResponse.data;
+  }
+
+  async function setNotificationArchived(notificationId, archived) {
+    await api.patch(`/notifications/${notificationId}/archive`, { archived });
+    if (proactiveNotice.value?.id === notificationId) proactiveNotice.value = null;
+    await refreshNotifications();
+  }
+
+  async function archiveReadNotifications() {
+    const response = await api.post('/notifications/archive-read');
+    await refreshNotifications();
+    return response.data.archived;
   }
 
   async function undoOperation(operationId) {
@@ -513,13 +539,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function refreshAfterRun() {
     const knownNotificationIds = new Set(notifications.value.map((item) => item.id));
-    const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes] = await Promise.all([
+    const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, archivedNotificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes] = await Promise.all([
       api.get('/profile'),
       api.get('/plans'),
       api.get('/plans?archived=true'),
       api.get('/dashboard'),
       api.get('/memories'),
       api.get('/notifications'),
+      api.get('/notifications?archived=true'),
       api.get('/operations'),
       api.get('/agent/runs'),
       api.get('/agent/sessions'),
@@ -532,6 +559,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     dashboard.value = dashboardRes.data;
     memories.value = memoriesRes.data;
     notifications.value = notificationsRes.data;
+    archivedNotifications.value = archivedNotificationsRes.data;
     if ('Notification' in window && Notification.permission === 'granted') {
       notifications.value
         .filter((item) => item.channel === 'browser' && item.status === 'sent' && !knownNotificationIds.has(item.id))
@@ -580,6 +608,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     planResources,
     memories,
     notifications,
+    archivedNotifications,
     operations,
     runs,
     sessions,
@@ -627,6 +656,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     confirmMemory,
     deleteMemory,
     markNotificationRead,
+    setNotificationArchived,
+    archiveReadNotifications,
     undoOperation,
     startNewConversation,
   };
