@@ -1,7 +1,8 @@
+import json
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from app.models import LearningEvent, Memory, Operation, Plan, Quiz, ReviewSchedule, Stage, Task, UserProfile
@@ -28,6 +29,14 @@ class TaskPatchArgs(BaseModel):
     changes: TaskUpdate
     reason: str
     expected_plan_version: int | None = None
+
+    @field_validator("changes", mode="before")
+    @classmethod
+    def decode_serialized_changes(cls, value):
+        """Normalize nested JSON from OpenAI-compatible tool callers."""
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
 
 
 class ReviewScheduleArgs(BaseModel):

@@ -210,7 +210,11 @@ async def test_core_evidence_progress_and_undo():
 
         result = await execute_tool(
             "task_patch",
-            json.dumps({"task_id": normal.id, "changes": {"status": "completed"}, "reason": "User finished it"}),
+            json.dumps({
+                "task_id": normal.id,
+                "changes": json.dumps({"status": "completed"}),
+                "reason": "User finished it",
+            }),
             ToolContext(db=db, owner_id="local", run_id=run.id, trigger="user_message"),
         )
         assert result["ok"] is True
