@@ -8,14 +8,24 @@ import pytest
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 
-from app.api.agent import create_run, list_sessions, read_session_messages, rename_session
+from app.api.agent import create_run, handoff_session, list_sessions, read_session_messages, rename_session
+from app.api.plans import set_plan_archived
 from app.api.workspace import upload_workspace_file
 from app.db.database import AsyncSessionLocal
 from app.api.operations import undo_operation
 from app.context.memory import MemoryManager
-from app.models import AgentRun, ChatMessage, Memory, Notification, RunEvent, Session, TaskSubmission
+from app.models import AgentRun, ChatMessage, Memory, Notification, RunEvent, Session, SessionPlanLink, TaskSubmission
 from app.runtime.agent import AgentRuntime, ToolFailureGuard
-from app.schemas import AgentRunCreate, PlanCreate, SessionUpdate, StageCreate, TaskCreate, TaskUpdate
+from app.schemas import (
+    AgentRunCreate,
+    PlanArchiveUpdate,
+    PlanCreate,
+    SessionHandoffCreate,
+    SessionUpdate,
+    StageCreate,
+    TaskCreate,
+    TaskUpdate,
+)
 from app.services import plans as plan_service
 from app.tools import ToolContext, execute_tool
 from app.tools.registry import tool_contracts
@@ -406,6 +416,180 @@ async def test_session_navigation_and_manual_rename_are_session_based():
 
         renamed = await rename_session(session.id, SessionUpdate(title="Transformer 实战计划"), db)
         assert renamed["title"] == "Transformer 实战计划"
+
+
+@pytest.mark.asyncio
+async def test_sessions_and_plans_can_be_archived_and_restored():
+    async with AsyncSessionLocal() as db:
+        plan = await plan_service.create_plan(db, "local", plan_payload("Archive lifecycle"))
+        session = Session(owner_id="local", plan_id=plan.id, title="可归档对话")
+        db.add(session)
+        await db.commit()
+        await db.refresh(session)
+
+        archived_session = await rename_session(session.id, SessionUpdate(archived=True), db)
+        assert archived_session["archived_at"] is not None
+        assert all(row["id"] != session.id for row in await list_sessions(30, db))
+        assert any(row["id"] == session.id for row in await list_sessions(30, db, archived=True))
+
+        restored_session = await rename_session(session.id, SessionUpdate(archived=False), db)
+        assert restored_session["archived_at"] is None
+
+        archived_plan = await set_plan_archived(plan.id, PlanArchiveUpdate(archived=True), db)
+        assert archived_plan.status == "archived"
+        assert all(item.id != plan.id for item in await plan_service.list_plans(db, "local"))
+        assert any(item.id == plan.id for item in await plan_service.list_plans(db, "local", archived=True))
+
+        restored_plan = await set_plan_archived(plan.id, PlanArchiveUpdate(archived=False), db)
+        assert restored_plan.status == "active"
+
+
+@pytest.mark.asyncio
+async def test_plan_handoff_preserves_provenance_and_context_boundaries():
+    from app.context import ContextAssembler
+
+    async with AsyncSessionLocal() as db:
+        plan = await plan_service.create_plan(db, "local", plan_payload("Context handoff"))
+        source = Session(owner_id="local", title="讨论学习方向")
+        db.add(source)
+        await db.flush()
+        db.add_all([
+            ChatMessage(session_id=source.id, role="user", content="我想系统学习 asyncio"),
+            ChatMessage(session_id=source.id, role="assistant", content="我们已经创建了一份计划。"),
+        ])
+        await db.commit()
+
+        child = await handoff_session(source.id, SessionHandoffCreate(plan_id=plan.id), db)
+        assert child["parent_session_id"] == source.id
+        assert child["plan_id"] == plan.id
+        assert "讨论学习方向" in child["handoff_summary"]
+
+        links = list((await db.execute(select(SessionPlanLink).where(
+            SessionPlanLink.session_id.in_([source.id, child["id"]])
+        ))).scalars())
+        assert {(link.session_id, link.relation_type) for link in links} == {
+            (source.id, "discussed"),
+            (child["id"], "focused"),
+        }
+
+        global_snapshot = await ContextAssembler(db).build("local", session_id=source.id, objective="继续计划")
+        assert "## Plan index" in global_snapshot.markdown
+        assert f"plan:{plan.id}" in global_snapshot.markdown
+        assert "relation=discussed" in global_snapshot.markdown
+        assert "## Saved learning resources" not in global_snapshot.markdown
+
+        plan_snapshot = await ContextAssembler(db).build(
+            "local", plan_id=plan.id, session_id=child["id"], objective="继续"
+        )
+        assert "Handoff from parent session" in plan_snapshot.markdown
+        assert "讨论学习方向" in plan_snapshot.markdown
+
+
+@pytest.mark.asyncio
+async def test_email_reply_returns_to_notification_session(monkeypatch):
+    from app.notifications.email import EmailReplyPoller
+
+    async with AsyncSessionLocal() as db:
+        plan = await plan_service.create_plan(db, "local", plan_payload("Email continuity"))
+        session = Session(owner_id="local", plan_id=plan.id, title="邮件连续对话")
+        db.add(session)
+        await db.flush()
+        notification = Notification(
+            owner_id="local",
+            session_id=session.id,
+            plan_id=plan.id,
+            channel="email",
+            title="今天继续吗",
+            body="完成第一个任务",
+            status="sent",
+        )
+        db.add(notification)
+        await db.commit()
+        await db.refresh(notification)
+
+        monkeypatch.setattr(EmailReplyPoller, "configured", property(lambda self: True))
+        monkeypatch.setattr(EmailReplyPoller, "_fetch_unseen", lambda self: [{
+            "reply_token": notification.reply_token,
+            "subject": "Re: 今天继续吗",
+            "body": "我已经完成了，请检查。",
+        }])
+        run_ids = await EmailReplyPoller().poll(db, "local")
+
+        run = await db.get(AgentRun, run_ids[0])
+        assert run.session_id == session.id
+        message = (await db.execute(select(ChatMessage).where(ChatMessage.run_id == run.id))).scalars().one()
+        assert message.content == "我已经完成了，请检查。"
+        assert message.message_metadata["channel"] == "email"
+
+
+@pytest.mark.asyncio
+async def test_email_diagnostics_exercise_smtp_and_imap(monkeypatch):
+    import app.notifications.diagnostics as diagnostics
+
+    for name, value in {
+        "SMTP_HOST": "smtp.example.com",
+        "SMTP_USERNAME": "learner@example.com",
+        "SMTP_PASSWORD": "app-password",
+        "SMTP_TO": "learner@example.com",
+        "IMAP_HOST": "imap.example.com",
+        "IMAP_USERNAME": "learner@example.com",
+        "IMAP_PASSWORD": "app-password",
+        "ENABLE_EMAIL_REPLY_POLLING": True,
+    }.items():
+        monkeypatch.setattr(diagnostics.settings, name, value)
+
+    smtp_calls = []
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout):
+            smtp_calls.append(("connect", host, port, timeout))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def starttls(self):
+            smtp_calls.append(("starttls",))
+
+        def login(self, username, password):
+            smtp_calls.append(("login", username, password))
+
+        def send_message(self, message):
+            smtp_calls.append(("send", message["To"]))
+
+    class FakeSMTPSSL(FakeSMTP):
+        def __init__(self, host, port, timeout):
+            smtp_calls.append(("ssl_connect", host, port, timeout))
+
+    class FakeIMAP:
+        def __init__(self, host, port, timeout):
+            self.host = host
+
+        def login(self, username, password):
+            return "OK", []
+
+        def select(self, folder, readonly=False):
+            return "OK", [b"7"]
+
+        def logout(self):
+            return "BYE", []
+
+    monkeypatch.setattr(diagnostics.smtplib, "SMTP", FakeSMTP)
+    monkeypatch.setattr(diagnostics.smtplib, "SMTP_SSL", FakeSMTPSSL)
+    monkeypatch.setattr(diagnostics.imaplib, "IMAP4_SSL", FakeIMAP)
+
+    smtp_result = await diagnostics.test_smtp(send_message=True)
+    imap_result = await diagnostics.test_imap()
+    assert smtp_result["message_sent"] is True
+    assert ("send", "learner@example.com") in smtp_calls
+    assert imap_result["message_count"] == 7
+
+    monkeypatch.setattr(diagnostics.settings, "SMTP_USE_SSL", True)
+    monkeypatch.setattr(diagnostics.settings, "SMTP_USE_TLS", False)
+    await diagnostics.test_smtp()
+    assert ("ssl_connect", "smtp.example.com", diagnostics.settings.SMTP_PORT, 20) in smtp_calls
 
 
 @pytest.mark.asyncio

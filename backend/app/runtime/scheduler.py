@@ -76,7 +76,13 @@ class ProactiveScheduler:
         async with AsyncSessionLocal() as db:
             due_review = (await db.execute(
                 select(ReviewSchedule)
-                .where(ReviewSchedule.owner_id == settings.DEFAULT_OWNER_ID, ReviewSchedule.status == "scheduled", ReviewSchedule.due_at <= now)
+                .join(Plan, Plan.id == ReviewSchedule.plan_id)
+                .where(
+                    ReviewSchedule.owner_id == settings.DEFAULT_OWNER_ID,
+                    ReviewSchedule.status == "scheduled",
+                    ReviewSchedule.due_at <= now,
+                    Plan.status == "active",
+                )
                 .order_by(ReviewSchedule.due_at)
                 .limit(1)
             )).scalars().one_or_none()

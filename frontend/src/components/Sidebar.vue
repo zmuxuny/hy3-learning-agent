@@ -1,6 +1,8 @@
 <script setup>
 import {
   AcademicCapIcon,
+  ArchiveBoxArrowDownIcon,
+  ArrowUturnLeftIcon,
   BellIcon,
   BoltIcon,
   ChatBubbleLeftRightIcon,
@@ -11,13 +13,17 @@ import {
   PencilSquareIcon,
   PencilIcon,
 } from '@heroicons/vue/24/outline';
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 
 const store = useWorkspaceStore();
 const editingSessionId = ref(null);
 const sessionTitle = ref('');
 const sessionTitleInput = ref(null);
+const showArchivedSessions = ref(false);
+const displayedSessions = computed(() => (
+  showArchivedSessions.value ? store.archivedSessions : store.sessions
+));
 const navigation = [
   { id: 'plans', label: '学习计划', icon: MapIcon },
   { id: 'inbox', label: '收件箱', icon: BellIcon },
@@ -25,7 +31,7 @@ const navigation = [
 ];
 
 function sessionMeta(session) {
-  const plan = store.plans.find((item) => item.id === session.plan_id);
+  const plan = [...store.plans, ...store.archivedPlans].find((item) => item.id === session.plan_id);
   if (plan) return plan.title;
   return session.message_count > 1 ? `${session.message_count} 条消息` : '全局对话';
 }
@@ -92,9 +98,14 @@ function setSessionTitleInput(element) {
     </section>
 
     <section class="sidebar-group recent-group">
-      <div class="section-title">对话</div>
+      <div class="section-title session-section-title">
+        <span>{{ showArchivedSessions ? '已归档对话' : '对话' }}</span>
+        <button @click="showArchivedSessions = !showArchivedSessions">
+          {{ showArchivedSessions ? '返回' : `归档 ${store.archivedSessions.length || ''}` }}
+        </button>
+      </div>
       <div
-        v-for="session in store.sessions.slice(0, 12)"
+        v-for="session in displayedSessions.slice(0, 12)"
         :key="session.id"
         :class="['session-row', { active: store.activeSessionId === session.id }]"
         role="button"
@@ -123,16 +134,19 @@ function setSessionTitleInput(element) {
           <small>{{ sessionMeta(session) }}</small>
         </span>
         <i v-if="['queued', 'running'].includes(session.last_run_status)" class="session-running"></i>
-        <button
-          v-else
-          class="session-rename-button"
-          title="重命名对话"
-          @click.stop="beginRename(session)"
-        >
-          <PencilIcon />
-        </button>
+        <div v-else class="session-actions" @click.stop>
+          <button v-if="!session.archived_at" title="重命名对话" @click="beginRename(session)"><PencilIcon /></button>
+          <button
+            :title="session.archived_at ? '恢复对话' : '归档对话'"
+            @click="store.setSessionArchived(session.id, !session.archived_at)"
+          >
+            <component :is="session.archived_at ? ArrowUturnLeftIcon : ArchiveBoxArrowDownIcon" />
+          </button>
+        </div>
       </div>
-      <p v-if="!store.sessions.length" class="empty-sidebar">对话会出现在这里</p>
+      <p v-if="!displayedSessions.length" class="empty-sidebar">
+        {{ showArchivedSessions ? '还没有归档对话' : '对话会出现在这里' }}
+      </p>
     </section>
 
     <div class="sidebar-footer">

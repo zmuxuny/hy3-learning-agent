@@ -1,5 +1,4 @@
 import asyncio
-import smtplib
 from datetime import datetime, time, timezone
 from email.message import EmailMessage
 from zoneinfo import ZoneInfo
@@ -9,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import Notification, UserProfile
+from app.notifications.diagnostics import smtp_connection
 
 
 class NotificationService:
@@ -20,6 +20,7 @@ class NotificationService:
         *,
         owner_id: str,
         run_id: str,
+        session_id: str | None,
         trigger: str,
         title: str,
         body: str,
@@ -36,6 +37,7 @@ class NotificationService:
             notification = Notification(
                 owner_id=owner_id,
                 run_id=run_id,
+                session_id=session_id,
                 plan_id=plan_id,
                 channel=channel,
                 title=title,
@@ -116,9 +118,7 @@ class NotificationService:
         message["X-Learning-Agent-Reply-Token"] = reply_token
         message.set_content(f"{body}\n\n直接回复此邮件即可继续与 Learning Agent 沟通。\nReply token: {reply_token}")
 
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
-            if settings.SMTP_USE_TLS:
-                server.starttls()
+        with smtp_connection() as server:
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
             server.send_message(message)
 

@@ -12,10 +12,10 @@ from app.schemas import PlanCreate, TaskUpdate
 PLAN_LOAD = selectinload(Plan.stages).selectinload(Stage.tasks)
 
 
-async def list_plans(db: AsyncSession, owner_id: str) -> list[Plan]:
-    result = await db.execute(
-        select(Plan).where(Plan.owner_id == owner_id).options(PLAN_LOAD).order_by(Plan.updated_at.desc())
-    )
+async def list_plans(db: AsyncSession, owner_id: str, *, archived: bool = False) -> list[Plan]:
+    query = select(Plan).where(Plan.owner_id == owner_id)
+    query = query.where(Plan.status == "archived" if archived else Plan.status != "archived")
+    result = await db.execute(query.options(PLAN_LOAD).order_by(Plan.updated_at.desc()))
     return list(result.scalars().unique())
 
 

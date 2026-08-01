@@ -114,8 +114,16 @@ class AgentRuntime:
                     {"snapshot_id": snapshot.id, "estimated_tokens": snapshot.estimated_tokens},
                 )
 
-                if session and run.trigger == "user_message":
-                    db.add(ChatMessage(session_id=session.id, run_id=run.id, role="user", content=run.objective))
+                if session and run.trigger in {"user_message", "email_reply"}:
+                    existing_user_message = (await db.execute(
+                        select(ChatMessage.id).where(
+                            ChatMessage.session_id == session.id,
+                            ChatMessage.run_id == run.id,
+                            ChatMessage.role == "user",
+                        ).limit(1)
+                    )).scalar_one_or_none()
+                    if existing_user_message is None:
+                        db.add(ChatMessage(session_id=session.id, run_id=run.id, role="user", content=run.objective))
                     session.updated_at = datetime.now(timezone.utc)
                     await db.commit()
 
@@ -246,7 +254,7 @@ class AgentRuntime:
                                 f"{call.function.name} 的修改已记录，可在操作记录中撤销",
                                 {"operation_id": data["operation_id"], "tool": call.function.name},
                             )
-                        if call.function.name == "notification_send" and not data.get("blocked"):
+                        if call.function.name == "notification_send" and result.get("ok") and not data.get("blocked"):
                             await emit_event(db, run.id, "notification.sent", "学习提醒已进入通知渠道", data)
                 else:
                     final_text = "本次运行达到最大工具轮次，已安全停止。"
@@ -293,7 +301,7 @@ class AgentRuntime:
     async def _ensure_session(self, db, run: AgentRun) -> Session | None:
         if run.session_id:
             return await db.get(Session, run.session_id)
-        if run.trigger != "user_message":
+        if run.trigger not in {"user_message", "email_reply"}:
             return None
         session = Session(
             owner_id=run.owner_id,

@@ -27,3 +27,6 @@ async def get_db() -> AsyncIterator[AsyncSession]:
 async def create_schema() -> None:
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+        from app.db.migrations import migrate_sqlite_schema
+
+        await migrate_sqlite_schema(connection)

@@ -55,6 +55,7 @@ class Plan(Base):
     available_resources: Mapped[list] = mapped_column(JSON, default=list)
     avoid_methods: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(32), default="active", index=True)
+    archived_from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     memory_summary: Mapped[str] = mapped_column(Text, default="")
@@ -160,14 +161,36 @@ class Session(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
+    parent_session_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     title: Mapped[str] = mapped_column(String(240), default="新对话")
     summary: Mapped[str] = mapped_column(Text, default="")
+    handoff_summary: Mapped[str] = mapped_column(Text, default="")
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     messages: Mapped[list[ChatMessage]] = relationship(
         back_populates="session", cascade="all, delete-orphan", order_by="ChatMessage.created_at", lazy="selectin"
     )
+
+
+class SessionPlanLink(Base):
+    __tablename__ = "session_plan_links"
+    __table_args__ = (
+        UniqueConstraint("session_id", "plan_id", "relation_type", name="uq_session_plan_relation"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), index=True)
+    relation_type: Mapped[str] = mapped_column(String(32), default="discussed", index=True)
+    source_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ChatMessage(Base):
@@ -288,6 +311,7 @@ class Notification(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
     channel: Mapped[str] = mapped_column(String(32), default="in_app")
     title: Mapped[str] = mapped_column(String(240))

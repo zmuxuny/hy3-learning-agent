@@ -56,6 +56,11 @@ async function inspect(label) {
       messages: document.querySelectorAll('.message-bubble').length,
       runTurns: document.querySelectorAll('.run-turn, .conversation-agent').length,
       sessions: document.querySelectorAll('.session-row').length,
+      sessionActions: document.querySelectorAll('.session-actions').length,
+      planCards: document.querySelectorAll('.plan-list-card').length,
+      planFilters: document.querySelectorAll('.plan-filter-tabs button').length,
+      emailSetup: document.querySelectorAll('.email-setup').length,
+      contextTransitions: document.querySelectorAll('.context-transition').length,
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       clipped,
     };
@@ -86,7 +91,8 @@ for (const [width, height] of [[1440, 1000], [768, 1024], [375, 812]]) {
 await viewport(2560, 1440);
 await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('学习计划')); if (item) item.click(); return Boolean(item); })()`);
 await wait(700);
-await evaluate(`(() => { const card = document.querySelector('.plan-list-card'); if (card) card.click(); return Boolean(card); })()`);
+report.push(await inspect('plan-list-wide'));
+await evaluate(`(() => { const card = document.querySelector('.plan-list-open'); if (card) card.click(); return Boolean(card); })()`);
 await wait(900);
 report.push(await inspect('plan-wide'));
 
@@ -97,6 +103,14 @@ for (const [width, height] of [[1440, 1000], [1280, 800], [768, 1024]]) {
 
 await viewport(375, 812);
 report.push(await inspect('plan-mobile'));
+
+await viewport(1440, 1000);
+await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('收件箱')); if (item) item.click(); return Boolean(item); })()`);
+await wait(500);
+report.push(await inspect('inbox-1440'));
+
+await viewport(375, 812);
+report.push(await inspect('inbox-mobile'));
 
 console.log(JSON.stringify(report, null, 2));
 socket.close();

@@ -1,8 +1,10 @@
 <script setup>
 import {
   CheckCircleIcon,
+  ArrowRightIcon,
   CircleStackIcon,
   CommandLineIcon,
+  MapIcon,
   SparklesIcon,
   XCircleIcon,
 } from '@heroicons/vue/24/outline';
@@ -63,6 +65,12 @@ function eventTitle(event) {
   if (event.type === 'run.cancelled') return '运行已停止';
   return event.summary || event.type;
 }
+
+async function continueInCreatedPlan() {
+  if (store.createdPlanFromCurrentRun) {
+    await store.continueInPlan(store.createdPlanFromCurrentRun.id);
+  }
+}
 </script>
 
 <template>
@@ -99,6 +107,19 @@ function eventTitle(event) {
         <AgentMessage :content="answerText" />
         <small v-if="finalEvent?.type === 'run.failed'">错误编号：{{ finalEvent.payload?.code || 'run_failed' }}</small>
       </div>
+
+      <section v-if="store.createdPlanFromCurrentRun" class="context-transition">
+        <div class="context-transition-icon"><MapIcon /></div>
+        <div>
+          <small>计划已建立 · 当前仍是全局对话</small>
+          <strong>{{ store.createdPlanFromCurrentRun.title }}</strong>
+          <p>你可以留在这里协调多个计划，或建立一个带交接摘要的计划对话。</p>
+        </div>
+        <div class="context-transition-actions">
+          <button @click="store.selectPlan(store.createdPlanFromCurrentRun.id)">打开计划</button>
+          <button class="primary" @click="continueInCreatedPlan">在计划中继续 <ArrowRightIcon /></button>
+        </div>
+      </section>
     </div>
   </div>
 </template>

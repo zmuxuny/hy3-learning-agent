@@ -9,9 +9,12 @@ const prompt = ref('');
 const fileInput = ref(null);
 const uploading = ref(false);
 const running = computed(() => ['queued', 'running'].includes(store.currentRun?.status));
+const archivedContext = computed(() => (
+  Boolean(store.activeSession?.archived_at) || store.focusedPlan?.status === 'archived'
+));
 
 async function submit() {
-  if (running.value) return;
+  if (running.value || archivedContext.value) return;
   const value = prompt.value.trim();
   if (!value) return;
   const started = await store.startRun(value);
@@ -47,21 +50,21 @@ async function switchSession(event) {
 <template>
   <div class="composer-wrap">
     <div class="composer-shell">
-      <button class="composer-plus" :disabled="running || uploading" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
+      <button class="composer-plus" :disabled="running || uploading || archivedContext" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
       <input ref="fileInput" class="visually-hidden" type="file" @change="uploadFile" />
       <textarea
         v-model="prompt"
         rows="1"
-        :placeholder="uploading ? '正在上传文件…' : running ? 'Agent 正在运行，可以在运行详情中停止' : '给 Learning Agent 发消息'"
-        :disabled="running"
+        :placeholder="archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : running ? 'Agent 正在运行，可以在运行详情中停止' : '给 Learning Agent 发消息'"
+        :disabled="running || archivedContext"
         @keydown.enter.exact.prevent="submit"
       ></textarea>
       <span class="composer-mode"><SparklesIcon /> Hy3 · 深度</span>
-      <button class="send-button" :disabled="running || !prompt.trim()" @click="submit"><ArrowUpIcon /></button>
+      <button class="send-button" :disabled="running || archivedContext || !prompt.trim()" @click="submit"><ArrowUpIcon /></button>
     </div>
     <div :class="['composer-context', { focused: store.focusedPlan }]">
       <span v-if="store.focusedPlan">
-        <MapIcon /><strong>计划焦点</strong>{{ store.focusedPlan.title }}
+        <MapIcon /><strong>{{ store.focusedPlan.status === 'archived' ? '已归档计划' : '计划焦点' }}</strong>{{ store.focusedPlan.title }}
       </span>
       <span v-else>
         <SparklesIcon /><strong>全局对话</strong>Agent 可以协调所有计划

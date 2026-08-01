@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     SMTP_FROM: str = ""
     SMTP_TO: str = ""
     SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
 
     IMAP_HOST: str = ""
     IMAP_PORT: int = 993

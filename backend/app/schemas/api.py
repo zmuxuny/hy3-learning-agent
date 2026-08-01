@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class APIModel(BaseModel):
@@ -85,6 +85,7 @@ class PlanRead(APIModel):
     available_resources: list[str]
     avoid_methods: list[str]
     status: str
+    archived_from_status: str | None
     version: int
     progress: float
     memory_summary: str
@@ -156,6 +157,7 @@ class MemoryProposalCreate(BaseModel):
 class NotificationRead(APIModel):
     id: int
     run_id: str | None
+    session_id: str | None
     plan_id: int | None
     channel: str
     title: str
@@ -202,8 +204,12 @@ class AgentRunRead(APIModel):
 class SessionRead(APIModel):
     id: str
     plan_id: int | None
+    parent_session_id: str | None
     title: str
     summary: str
+    handoff_summary: str
+    archived_at: datetime | None
+    linked_plan_ids: list[int]
     message_count: int
     run_count: int
     last_message: str
@@ -214,15 +220,32 @@ class SessionRead(APIModel):
 
 
 class SessionUpdate(BaseModel):
-    title: str = Field(min_length=1, max_length=80)
+    title: str | None = Field(default=None, min_length=1, max_length=80)
+    archived: bool | None = None
 
     @field_validator("title")
     @classmethod
-    def normalize_title(cls, value: str) -> str:
+    def normalize_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         normalized = " ".join(value.split())
         if not normalized:
             raise ValueError("title cannot be blank")
         return normalized
+
+    @model_validator(mode="after")
+    def require_change(self):
+        if self.title is None and self.archived is None:
+            raise ValueError("at least one session change is required")
+        return self
+
+
+class SessionHandoffCreate(BaseModel):
+    plan_id: int
+
+
+class PlanArchiveUpdate(BaseModel):
+    archived: bool
 
 
 class ChatMessageRead(APIModel):

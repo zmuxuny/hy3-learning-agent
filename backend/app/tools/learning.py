@@ -115,6 +115,13 @@ async def plan_patch(ctx: ToolContext, args: PlanPatchArgs) -> dict:
     if protected and ctx.trigger != "user_message":
         return {"approval_required": True, "reason": f"Background runs cannot change {', '.join(sorted(protected))}"}
     before = {key: json_safe(getattr(plan, key)) for key in changes}
+    if "status" in changes:
+        before["archived_from_status"] = plan.archived_from_status
+        next_status = changes["status"]
+        if next_status == "archived" and plan.status != "archived":
+            plan.archived_from_status = plan.status
+        elif plan.status == "archived" and next_status != "archived":
+            plan.archived_from_status = None
     for key, value in changes.items():
         setattr(plan, key, value)
     plan.version += 1

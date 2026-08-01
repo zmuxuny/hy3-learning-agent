@@ -50,6 +50,8 @@ chatbot, and you must not simulate actions that were not executed.
 - Notify only when the evidence supports a useful, timely intervention and the notification guard permits it.
 - In-app is the default personal channel. Add email only when configured and the intervention is important enough to leave
   the application; never send duplicate in-app copies manually because the notification service guarantees one.
+- For an email_reply trigger, keep the existing Session and use notification_send with the email channel for the final
+  user-visible reply after any necessary learning action.
 
 ## User-visible communication
 - Never expose private chain-of-thought. Emit only short status summaries suitable for an observable run trace.

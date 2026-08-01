@@ -1,7 +1,9 @@
 <script setup>
 import {
   AdjustmentsHorizontalIcon,
+  ArchiveBoxArrowDownIcon,
   ArrowLeftIcon,
+  ArrowUturnLeftIcon,
   ArrowTopRightOnSquareIcon,
   BoltIcon,
   CalendarDaysIcon,
@@ -16,12 +18,14 @@ import {
   SparklesIcon,
   PaperClipIcon,
 } from '@heroicons/vue/24/outline';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
 import RunTraceButton from './RunTraceButton.vue';
 
 const store = useWorkspaceStore();
+const showArchivedPlans = ref(false);
+const displayedPlans = computed(() => (showArchivedPlans.value ? store.archivedPlans : store.plans));
 const taskIds = computed(() => new Set(
   store.currentPlan?.stages.flatMap((stage) => stage.tasks.map((task) => String(task.id))) || [],
 ));
@@ -47,7 +51,7 @@ function operationCount(plan) {
 }
 
 function statusLabel(status) {
-  return { pending: '待开始', active: '进行中', completed: '已完成', blocked: '受阻', skipped: '已跳过' }[status] || status;
+  return { pending: '待开始', active: '进行中', paused: '已暂停', completed: '已完成', archived: '已归档', blocked: '受阻', skipped: '已跳过' }[status] || status;
 }
 
 function formatDate(value, includeTime = false) {
@@ -130,42 +134,52 @@ function createPlanWithAgent() {
 
     <div class="plan-index-content">
       <div class="plan-index-toolbar">
-        <div><strong>全部计划</strong><span>{{ store.plans.length }}</span></div>
+        <div class="plan-filter-tabs">
+          <button :class="{ active: !showArchivedPlans }" @click="showArchivedPlans = false">当前计划 <span>{{ store.plans.length }}</span></button>
+          <button :class="{ active: showArchivedPlans }" @click="showArchivedPlans = true">已归档 <span>{{ store.archivedPlans.length }}</span></button>
+        </div>
         <small>按最近更新排序</small>
       </div>
 
-      <div v-if="store.plans.length" class="plan-list">
-        <button v-for="plan in store.plans" :key="plan.id" class="plan-list-card" @click="store.selectPlan(plan.id)">
-          <div class="plan-list-main">
-            <header>
-              <span :class="['plan-list-status', plan.status]"><i></i>{{ statusLabel(plan.status) }}</span>
-              <small>更新于 {{ formatUpdated(plan.updated_at) }}</small>
-            </header>
-            <h2>{{ plan.title }}</h2>
-            <p>{{ plan.goal || plan.description || '等待 Agent 补充计划目标。' }}</p>
-            <div class="plan-list-progress">
-              <span><i :style="{ width: `${Math.round(plan.progress * 100)}%` }"></i></span>
-              <strong>{{ Math.round(plan.progress * 100) }}%</strong>
+      <div v-if="displayedPlans.length" class="plan-list">
+        <article v-for="plan in displayedPlans" :key="plan.id" :class="['plan-list-card', { archived: plan.status === 'archived' }]">
+          <button class="plan-list-open" @click="store.selectPlan(plan.id)">
+            <div class="plan-list-main">
+              <header>
+                <span :class="['plan-list-status', plan.status]"><i></i>{{ statusLabel(plan.status) }}</span>
+                <small>更新于 {{ formatUpdated(plan.updated_at) }}</small>
+              </header>
+              <h2>{{ plan.title }}</h2>
+              <p>{{ plan.goal || plan.description || '等待 Agent 补充计划目标。' }}</p>
+              <div class="plan-list-progress">
+                <span><i :style="{ width: `${Math.round(plan.progress * 100)}%` }"></i></span>
+                <strong>{{ Math.round(plan.progress * 100) }}%</strong>
+              </div>
+              <footer>
+                <span><CalendarDaysIcon />{{ formatDate(plan.deadline) }}</span>
+                <span><MapIcon />{{ plan.stages.length }} 阶段 · {{ tasksFor(plan).length }} 任务</span>
+                <span><CheckCircleIcon />{{ completedTasks(plan) }} 项已完成</span>
+                <span><SparklesIcon />{{ operationCount(plan) }} 次 Agent 操作</span>
+              </footer>
             </div>
-            <footer>
-              <span><CalendarDaysIcon />{{ formatDate(plan.deadline) }}</span>
-              <span><MapIcon />{{ plan.stages.length }} 阶段 · {{ tasksFor(plan).length }} 任务</span>
-              <span><CheckCircleIcon />{{ completedTasks(plan) }} 项已完成</span>
-              <span><SparklesIcon />{{ operationCount(plan) }} 次 Agent 操作</span>
-            </footer>
-          </div>
-          <div class="plan-list-enter">
-            <span>进入计划</span>
-            <ChevronRightIcon />
-          </div>
-        </button>
+            <div class="plan-list-enter"><span>进入计划</span><ChevronRightIcon /></div>
+          </button>
+          <button
+            class="plan-lifecycle-button"
+            :title="plan.status === 'archived' ? '恢复计划' : '归档计划'"
+            @click="store.setPlanArchived(plan.id, plan.status !== 'archived')"
+          >
+            <component :is="plan.status === 'archived' ? ArrowUturnLeftIcon : ArchiveBoxArrowDownIcon" />
+            {{ plan.status === 'archived' ? '恢复' : '归档' }}
+          </button>
+        </article>
       </div>
 
       <div v-else class="plan-list-empty panel">
         <MapIcon />
-        <h2>还没有学习计划</h2>
-        <p>让 Agent 先了解你的目标和约束，再创建第一份完整计划。</p>
-        <button class="primary-button" @click="createPlanWithAgent"><PlusIcon /> 用 Agent 创建</button>
+        <h2>{{ showArchivedPlans ? '还没有归档计划' : '还没有学习计划' }}</h2>
+        <p>{{ showArchivedPlans ? '归档后的计划会保留任务、证据和记忆，并出现在这里。' : '让 Agent 先了解你的目标和约束，再创建第一份完整计划。' }}</p>
+        <button v-if="!showArchivedPlans" class="primary-button" @click="createPlanWithAgent"><PlusIcon /> 用 Agent 创建</button>
       </div>
     </div>
   </section>
@@ -174,7 +188,16 @@ function createPlanWithAgent() {
     <header v-if="store.currentPlan" class="plan-detail-toolbar">
       <button class="back-button icon-back" aria-label="返回所有计划" @click="store.openPlanList"><ArrowLeftIcon /></button>
       <h1>{{ store.currentPlan.title }}</h1>
-      <RunTraceButton />
+      <div class="plan-detail-actions">
+        <button
+          class="secondary-button"
+          @click="store.setPlanArchived(store.currentPlan.id, store.currentPlan.status !== 'archived')"
+        >
+          <component :is="store.currentPlan.status === 'archived' ? ArrowUturnLeftIcon : ArchiveBoxArrowDownIcon" />
+          {{ store.currentPlan.status === 'archived' ? '恢复计划' : '归档计划' }}
+        </button>
+        <RunTraceButton />
+      </div>
     </header>
 
     <div class="plan-detail-layout">

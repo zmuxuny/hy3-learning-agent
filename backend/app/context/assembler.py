@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,6 +15,7 @@ from app.models import (
     Quiz,
     ReviewSchedule,
     Session,
+    SessionPlanLink,
     Stage,
     TaskSubmission,
     UserProfile,
@@ -66,6 +67,46 @@ class ContextAssembler:
                 sections.append(f"- [{memory.layer}/{memory.scope}] {memory.content} (memory:{memory.id})")
                 manifest.append({"type": "memory", "id": memory.id})
 
+        related_plan_links: list[SessionPlanLink] = []
+        if session_id:
+            related_plan_links = list((await self.db.execute(
+                select(SessionPlanLink).where(
+                    SessionPlanLink.owner_id == owner_id,
+                    SessionPlanLink.session_id == session_id,
+                )
+            )).scalars())
+
+        if plan_id is None:
+            related_plan_ids = {link.plan_id for link in related_plan_links}
+            plan_query = (
+                select(Plan)
+                .where(
+                    Plan.owner_id == owner_id,
+                    or_(Plan.status != "archived", Plan.id.in_(related_plan_ids)) if related_plan_ids else Plan.status != "archived",
+                )
+                .options(selectinload(Plan.stages).selectinload(Stage.tasks))
+                .order_by(Plan.updated_at.desc())
+                .limit(24)
+            )
+            plans = list((await self.db.execute(plan_query)).scalars().unique())
+            relation_map: dict[int, set[str]] = {}
+            for link in related_plan_links:
+                relation_map.setdefault(link.plan_id, set()).add(link.relation_type)
+            plans.sort(key=lambda plan: (plan.id in related_plan_ids, plan.updated_at), reverse=True)
+            if plans:
+                sections.append("## Plan index")
+                sections.append("Compact summaries only. Use plan_get before relying on task-level details or changing a plan.")
+                for plan in plans:
+                    tasks = [task for stage in plan.stages for task in stage.tasks]
+                    current = [task.title for task in tasks if task.status in {"active", "blocked"}]
+                    relation = ",".join(sorted(relation_map.get(plan.id, set()))) or "none"
+                    sections.append(
+                        f"- plan:{plan.id} [{plan.status}] {plan.title}; progress={plan.progress:.0%}; "
+                        f"deadline={plan.deadline}; version={plan.version}; relation={relation}; "
+                        f"current={'、'.join(current[:2]) or '无'}; summary={plan.memory_summary or '(empty)'}"
+                    )
+                    manifest.append({"type": "plan_index", "id": plan.id, "version": plan.version})
+
         if plan_id is not None:
             plan_result = await self.db.execute(
                 select(Plan)
@@ -96,6 +137,12 @@ class ContextAssembler:
         event_query = select(LearningEvent).where(LearningEvent.owner_id == owner_id)
         if plan_id is not None:
             event_query = event_query.where(LearningEvent.plan_id == plan_id)
+        elif related_plan_ids:
+            event_query = event_query.where(
+                or_(LearningEvent.plan_id.is_(None), LearningEvent.plan_id.in_(related_plan_ids))
+            )
+        else:
+            event_query = event_query.where(LearningEvent.plan_id.is_(None))
         event_query = event_query.order_by(LearningEvent.created_at.desc()).limit(settings.AGENT_CONTEXT_EVENT_LIMIT * 3)
         events = list((await self.db.execute(event_query)).scalars())
         if objective:
@@ -146,15 +193,26 @@ class ContextAssembler:
                 )
                 manifest.append({"type": "notification", "id": notification.id})
 
-        resource_query = select(LearningResource).where(LearningResource.owner_id == owner_id)
-        submission_query = select(TaskSubmission).where(TaskSubmission.owner_id == owner_id)
         calendar_query = select(CalendarEvent).where(CalendarEvent.owner_id == owner_id, CalendarEvent.status == "scheduled")
         if plan_id is not None:
-            resource_query = resource_query.where(LearningResource.plan_id == plan_id)
-            submission_query = submission_query.where(TaskSubmission.plan_id == plan_id)
+            resource_query = select(LearningResource).where(
+                LearningResource.owner_id == owner_id,
+                LearningResource.plan_id == plan_id,
+            )
+            submission_query = select(TaskSubmission).where(
+                TaskSubmission.owner_id == owner_id,
+                TaskSubmission.plan_id == plan_id,
+            )
             calendar_query = calendar_query.where(CalendarEvent.plan_id == plan_id)
-        resources = list((await self.db.execute(resource_query.order_by(LearningResource.created_at.desc()).limit(12))).scalars())
-        submissions = list((await self.db.execute(submission_query.order_by(TaskSubmission.created_at.desc()).limit(12))).scalars())
+            resources = list((await self.db.execute(
+                resource_query.order_by(LearningResource.created_at.desc()).limit(12)
+            )).scalars())
+            submissions = list((await self.db.execute(
+                submission_query.order_by(TaskSubmission.created_at.desc()).limit(12)
+            )).scalars())
+        else:
+            resources = []
+            submissions = []
         calendar_events = list((await self.db.execute(calendar_query.order_by(CalendarEvent.starts_at).limit(20))).scalars())
         if resources:
             sections.append("## Saved learning resources")
@@ -185,6 +243,8 @@ class ContextAssembler:
                 )
                 messages = list(reversed(list((await self.db.execute(message_query)).scalars())))
                 sections.extend(["## Conversation", f"Session summary: {session.summary or '(empty)'}"])
+                if session.handoff_summary:
+                    sections.append(f"Handoff from parent session:\n{session.handoff_summary}")
                 for message in messages:
                     sections.append(f"- {message.role}: {message.content}")
                     manifest.append({"type": "message", "id": message.id})

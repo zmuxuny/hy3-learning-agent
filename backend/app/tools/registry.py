@@ -8,6 +8,7 @@ from app.models import LearningEvent, Memory, Operation, Plan, Quiz, ReviewSched
 from app.notifications import NotificationService
 from app.schemas import PlanCreate, TaskUpdate
 from app.services import plans as plan_service
+from app.services.sessions import link_session_plan
 from app.tools.base import EmptyArgs, ToolContext, ToolDefinition, json_safe, parse_arguments
 from app.tools.calendar import CALENDAR_TOOLS
 from app.tools.contracts import attach_output_contracts
@@ -158,6 +159,15 @@ async def plan_create(ctx: ToolContext, args: PlanCreate) -> dict:
         inverse_patch={"delete": plan.id},
     )
     ctx.db.add(operation)
+    if ctx.session_id:
+        await link_session_plan(
+            ctx.db,
+            owner_id=ctx.owner_id,
+            session_id=ctx.session_id,
+            plan_id=plan.id,
+            relation_type="created",
+            source_run_id=ctx.run_id,
+        )
     await ctx.db.commit()
     return {"plan_id": plan.id, "title": plan.title, "stage_count": len(plan.stages), "operation_id": operation.id}
 
@@ -387,6 +397,7 @@ async def notification_send(ctx: ToolContext, args: NotificationArgs) -> dict:
     return await NotificationService(ctx.db).send(
         owner_id=ctx.owner_id,
         run_id=ctx.run_id,
+        session_id=ctx.session_id,
         trigger=ctx.trigger,
         title=args.title,
         body=args.body,

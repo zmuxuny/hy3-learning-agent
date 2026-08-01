@@ -64,6 +64,10 @@
 
 每条会话拥有显式焦点：`plan_id = null` 表示全局对话，非空值表示计划对话。`currentPlan` 只代表界面正在查看的数据，不能被当作对话焦点；前端使用独立的 `focusPlanId` 组装 Run 请求。切换全局与计划焦点时建立新的会话边界，避免近期原文跨计划串入。后端同时校验已有 Session 的 `plan_id`，拒绝用同一个 Session 静默改绑其他计划，隔离不能只依赖 UI。
 
+全局 Session 创建计划后不会被静默改绑。`SessionPlanLink` 记录 `created / discussed / focused` 关系，界面提供“打开计划”和“在计划中继续”。后者创建带 `parent_session_id` 与 `handoff_summary` 的计划 Session；原全局 Session 保持原作用域，新的计划 Session 获得可追溯的最小交接上下文。
+
+Session 与 Plan 都支持可恢复归档。归档只改变生命周期和默认列表，不删除原始消息、计划结构、记忆、证据或事件；归档计划退出主动候选扫描，归档 Session 为只读。手动归档同样写入 `Operation` 审计记录。
+
 `Session → ChatMessage → AgentRun` 同时承担持久化与 UI 恢复：`GET /agent/sessions` 返回以 Session 聚合的标题、消息数、Run 数和最近状态，`GET /agent/sessions/{session_id}/messages` 返回完整原文。前端选择历史 Session 后恢复整个消息流，并把最新 Run 的事件投影到对应用户消息之后。新 Run 先乐观加入用户消息，完成事件到达后再用数据库原文替换，避免网络时序造成重复或闪烁。首轮完成后由独立短请求生成语义标题，`PATCH /agent/sessions/{session_id}` 支持手动改名；自动命名只会替换未被用户修改的初始标题。
 
 ### Working Memory
@@ -94,7 +98,7 @@ data/context/decisions/{date}.md
 
 1. 系统角色、权限和输出 Schema
 2. 全局用户画像摘要
-3. 当前焦点计划快照；全局对话不注入某一计划的私有快照
+3. 当前焦点计划快照；全局对话只注入紧凑计划索引和 Session 关联计划，不批量注入跨计划资源与提交
 4. 与候选事件相关的历史事件
 5. 最近一次干预及用户反应
 6. 必要的近期对话

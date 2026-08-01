@@ -54,9 +54,10 @@ watch(() => store.runEvents.length, () => scrollToLatest());
 
       <div v-if="!store.currentRun && !store.conversationMessages.length" class="welcome-state">
         <div class="welcome-mark"><SparklesIcon /></div>
-        <h1>今天想学什么？</h1>
-        <p>告诉我你的目标。我会制定计划、持续跟进，并在需要时主动提醒或考核。</p>
-        <div class="suggestion-list">
+        <h1>{{ store.activeSession?.handoff_summary ? `继续推进${store.focusedPlan ? `「${store.focusedPlan.title}」` : '计划'}` : '今天想学什么？' }}</h1>
+        <p v-if="store.activeSession?.handoff_summary">已从原对话带入目标、决定和未解决事项；这里开始只使用该计划的任务、证据与记忆。</p>
+        <p v-else>告诉我你的目标。我会制定计划、持续跟进，并在需要时主动提醒或考核。</p>
+        <div v-if="!store.activeSession?.handoff_summary" class="suggestion-list">
           <button v-for="suggestion in suggestions" :key="suggestion" @click="store.startRun(suggestion)">
             {{ suggestion }}
           </button>
