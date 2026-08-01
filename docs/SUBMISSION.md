@@ -30,10 +30,11 @@
 - [x] 已创建独立仓库 <https://github.com/zmuxuny/hy3-learning-agent>
 - [x] 已创建上游 PR <https://github.com/Tencent-Hunyuan/Hy3/pull/220>
 - [x] PR head/base 是 `zmuxuny:rhinobird2026 → Tencent-Hunyuan:rhinobird2026`
-- [ ] 把本地完整应用源码推送到独立仓库 `main`
-- [ ] 更新 fork 的 `submissions/hy3-learning-agent.md`，包含准确能力、两条 Demo、运行方法和视频链接
-- [ ] 推送更新到 `zmuxuny/Hy3:rhinobird2026`，确认现有 PR #220 自动增加提交，而不是新开错误 PR
-- [ ] 在 GitHub 网页上核对 PR Files changed 只包含预期 submission 文件
+- [x] 把本地完整应用源码推送到独立仓库 `main`
+- [x] 更新 fork 的 `submissions/hy3-learning-agent.md`，包含准确能力、两条 Demo 和运行方法
+- [x] 推送更新到 `zmuxuny/Hy3:rhinobird2026`，现有 PR #220 已自动增加提交，没有新开错误 PR
+- [x] 通过 GitHub API 核对 PR 只改动 `submissions/hy3-learning-agent.md` 一个文件
+- [ ] 视频完成后把公开链接补入 README、submission 文件与 PR 描述
 
 ## AI Coding 协作说明
 

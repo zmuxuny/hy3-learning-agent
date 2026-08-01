@@ -67,4 +67,4 @@
 
 - 按 `docs/DEMO.md` 录制两条真实 Hy3 端到端流程，并剪为不超过 2 分钟的视频或 GIF。
 - 完成赛事要求的 CodeBuddy/WorkBuddy 协作记录。
-- 将完整源码推送到已创建的 `zmuxuny/hy3-learning-agent`，并更新现有 `Tencent-Hunyuan/Hy3` PR #220 中的 submission 文件和视频链接。
+- 将公开视频链接补入 README、fork submission 文件和现有 `Tencent-Hunyuan/Hy3` PR #220；完整源码与更新后的 submission 文件已经推送。

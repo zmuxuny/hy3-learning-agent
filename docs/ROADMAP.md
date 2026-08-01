@@ -100,7 +100,8 @@
 - [ ] 安装、安全和协作说明
 - [x] 测试与验证报告
 - [x] 创建独立 GitHub 仓库和目标为 Hy3 `rhinobird2026` 的 PR #220
-- [ ] 推送完整应用源码，并更新 PR submission 文件与视频链接
+- [x] 推送完整应用源码，并更新 PR submission 文件
+- [ ] 录制视频并把公开链接补充到 README、submission 文件和 PR
 
 ## 后续硬化
 
