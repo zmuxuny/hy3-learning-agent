@@ -124,12 +124,21 @@ class AgentRuntime:
                 objective=run.objective,
             )
             await db.commit()
+            memory_ids = [
+                item["id"]
+                for item in snapshot.source_manifest
+                if item.get("type") == "memory"
+            ]
             await emit_event(
                 db,
                 run.id,
                 "context.built",
                 "已组装本次运行所需的学习上下文",
-                {"snapshot_id": snapshot.id, "estimated_tokens": snapshot.estimated_tokens},
+                {
+                    "snapshot_id": snapshot.id,
+                    "estimated_tokens": snapshot.estimated_tokens,
+                    "memory_ids": memory_ids,
+                },
             )
 
             if session and run.trigger in {"user_message", "email_reply"}:

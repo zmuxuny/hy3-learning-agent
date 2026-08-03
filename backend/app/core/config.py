@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_API_BASE: str = "https://tokenhub.tencentmaas.com/v1"
     MODEL_NAME: str = "hy3"
+    MODEL_CONTEXT_WINDOW: int = Field(default=128000, ge=4096, le=1000000)
     MODEL_TEMPERATURE: float = 0.9
     MODEL_REASONING_EFFORT: str = "high"
 
