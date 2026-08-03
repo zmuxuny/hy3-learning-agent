@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     AGENT_NOTIFICATION_COOLDOWN_MINUTES: int = Field(default=180, ge=0)
     ENABLE_SCHEDULER: bool = True
 
+    MEMORY_RETRIEVAL_PROVIDER: str = "local_hash"
+
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ""

@@ -39,7 +39,7 @@
 
 | 工具 | 作用 |
 | --- | --- |
-| `memory_search` | 按作用域、层、相关性、置信度和时间检索确认记忆 |
+| `memory_search` | 按 BM25 + 本地 SimHash 混合相关性、作用域、层、置信度和时间检索确认记忆，并返回 `score_breakdown` 分数分解 |
 | `memory_propose` | 创建等待用户确认的长期记忆候选 |
 | `memory_maintain` | 过期短期记忆、归档旧情节并刷新计划摘要 |
 

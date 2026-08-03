@@ -22,6 +22,10 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
         "why_recommended": "TEXT NOT NULL DEFAULT ''",
         "verified_at": "DATETIME",
     },
+    "memories": {
+        "embedding": "JSON",
+        "embedding_provider": "VARCHAR(64)",
+    },
 }
 
 

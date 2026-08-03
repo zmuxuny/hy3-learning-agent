@@ -1,12 +1,15 @@
 # 项目状态
 
-更新时间：2026-08-01（Asia/Shanghai）
+更新时间：2026-08-03（Asia/Shanghai）
 
 ## 当前阶段
 
 个人学习场景已经形成完整的端到端 Harness：计划从对话式需求澄清、受限子 Run 分工和可审阅提案开始，用户采用后才成为正式计划；随后 Hy3 可以跟踪/教学、搜索核验资源、修改计划、读取文件、检查提交、运行代码、安排复习与日历，并由后台候选扫描决定是否发送站内提醒或邮件。
 
 ## 本轮已验证
+
+- 混合语义检索已接入：纯 Python BM25 关键词 + 本地 SimHash 向量（零新增依赖），RRF 融合并叠加作用域/层级/置信度/时间衰减；`memory_search` 返回每条结果的 `score_breakdown`，无向量或无检索词时自动回退到权重排序。
+- 确认记忆在 `memory_maintain` 时持久化 64 位本地向量（`memories.embedding` / `embedding_provider`），旧库通过增量迁移自动补列。
 
 - System Prompt 与 37 个真实 Function Calling 输入 Schema 进入同一个 Hy3 多轮 Runtime；37 个输出 Schema 由契约接口公开并在普通成功结果回填前校验。
 - `PlanningIntake` 持久保存已确认事实、结构化问题和 AI 的充分性理由；`PlanProposal` 在用户采用前不创建正式计划，重复采用保持幂等。
