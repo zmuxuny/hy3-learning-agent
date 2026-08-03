@@ -29,6 +29,7 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
     "agent_runs": {
         "checkpoint": "JSON",
         "pending_approval": "JSON",
+        "budget_usage": "JSON",
         "output": "TEXT NOT NULL DEFAULT ''",
     },
 }
