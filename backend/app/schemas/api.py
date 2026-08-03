@@ -194,6 +194,19 @@ class NotificationArchiveResult(BaseModel):
     archived_at: datetime
 
 
+class PushSubscriptionCreate(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=2000)
+    keys: dict[str, str] = Field(default_factory=dict)
+
+
+class PushSubscriptionRead(APIModel):
+    id: int
+    endpoint: str
+    keys: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+
 class ContextSnapshotRead(APIModel):
     id: int
     plan_id: int | None

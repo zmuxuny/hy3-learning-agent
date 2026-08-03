@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     IMAP_FOLDER: str = "INBOX"
     ENABLE_EMAIL_REPLY_POLLING: bool = False
 
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_SUBJECT: str = "mailto:learner@example.com"
+
     WEB_SEARCH_TIMEOUT_SECONDS: int = Field(default=12, ge=3, le=60)
     WEB_SEARCH_PROVIDER: str = "duckduckgo"
     WEB_MAX_REDIRECTS: int = Field(default=5, ge=0, le=10)

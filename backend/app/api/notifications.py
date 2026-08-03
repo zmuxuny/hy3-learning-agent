@@ -7,10 +7,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.database import get_db
 from app.models import Notification
-from app.schemas import NotificationArchiveResult, NotificationArchiveUpdate, NotificationRead
+from app.notifications.push import push_service
+from app.schemas import (
+    NotificationArchiveResult,
+    NotificationArchiveUpdate,
+    NotificationRead,
+    PushSubscriptionCreate,
+    PushSubscriptionRead,
+)
 
 
 router = APIRouter()
+
+
+@router.post("/subscriptions", response_model=PushSubscriptionRead, status_code=201)
+async def create_push_subscription(
+    data: PushSubscriptionCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    return await push_service.subscribe(db, settings.DEFAULT_OWNER_ID, data.endpoint, data.keys)
+
+
+@router.delete("/subscriptions", response_model=dict)
+async def delete_push_subscription(endpoint: str, db: AsyncSession = Depends(get_db)):
+    removed = await push_service.unsubscribe(db, settings.DEFAULT_OWNER_ID, endpoint)
+    return {"removed": removed}
 
 
 @router.get("", response_model=list[NotificationRead])

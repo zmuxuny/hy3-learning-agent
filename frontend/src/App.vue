@@ -13,6 +13,8 @@ const store = useWorkspaceStore();
 onMounted(async () => {
   await store.loadWorkspace();
   store.startProactiveSync();
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('view') === 'inbox') store.openView('inbox');
 });
 onBeforeUnmount(() => store.stopProactiveSync());
 </script>

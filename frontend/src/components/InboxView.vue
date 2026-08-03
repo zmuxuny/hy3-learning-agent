@@ -29,7 +29,7 @@ function decisionLabel(value) {
 }
 
 async function requestBrowserPermission() {
-  if ('Notification' in window) await Notification.requestPermission();
+  await store.enableBrowserNotifications();
 }
 
 function testEmail(channel, sendMessage = false) {

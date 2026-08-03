@@ -32,6 +32,12 @@ async def read_settings():
             and settings.IMAP_USERNAME
             and settings.IMAP_PASSWORD
         ),
+        "push_configured": bool(
+            settings.VAPID_PUBLIC_KEY
+            and settings.VAPID_PRIVATE_KEY
+            and settings.VAPID_SUBJECT
+        ),
+        "vapid_public_key": settings.VAPID_PUBLIC_KEY,
         "timezone": settings.DEFAULT_TIMEZONE,
     }
 

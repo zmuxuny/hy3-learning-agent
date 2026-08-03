@@ -22,6 +22,30 @@ const RUN_EVENTS = [
   'run.cancelled',
 ];
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+async function showBrowserNotification(title, body) {
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification(title, { body, data: { url: '/?view=inbox' } });
+      return;
+    } catch {
+      // Fall through to the page-level Notification API.
+    }
+  }
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+}
+
 export const useWorkspaceStore = defineStore('workspace', () => {
   const activeView = ref('home');
   const planScreen = ref('list');
@@ -39,6 +63,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const sessions = ref([]);
   const archivedSessions = ref([]);
   const emailConfiguration = ref(null);
+  const appSettings = ref(null);
   const emailTestResult = ref(null);
   const schedulerStatus = ref(null);
   const proactiveNotice = ref(null);
@@ -85,7 +110,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loading.value = true;
     error.value = '';
     try {
-      const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, archivedNotificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes, proactiveRes] = await Promise.all([
+      const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, archivedNotificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes, proactiveRes, settingsRes] = await Promise.all([
         api.get('/profile'),
         api.get('/plans'),
         api.get('/plans?archived=true'),
@@ -99,6 +124,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         api.get('/agent/sessions?archived=true'),
         api.get('/settings/email'),
         api.get('/settings/proactive'),
+        api.get('/settings'),
       ]);
       profile.value = profileRes.data;
       plans.value = plansRes.data;
@@ -112,6 +138,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       sessions.value = sessionsRes.data;
       archivedSessions.value = archivedSessionsRes.data;
       emailConfiguration.value = emailRes.data;
+      appSettings.value = settingsRes.data;
       schedulerStatus.value = proactiveRes.data;
       await refreshCurrentPlan();
     } catch (requestError) {
@@ -447,9 +474,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       schedulerStatus.value = proactiveResponse.data;
       if (fresh.length) {
         proactiveNotice.value = fresh[0];
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(fresh[0].title, { body: fresh[0].body });
-        }
+        showBrowserNotification(fresh[0].title, fresh[0].body);
       }
     } catch {
       // Background visibility must never interrupt the active conversation.
@@ -575,11 +600,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     memories.value = memoriesRes.data;
     notifications.value = notificationsRes.data;
     archivedNotifications.value = archivedNotificationsRes.data;
-    if ('Notification' in window && Notification.permission === 'granted') {
-      notifications.value
-        .filter((item) => item.channel === 'browser' && item.status === 'sent' && !knownNotificationIds.has(item.id))
-        .forEach((item) => new Notification(item.title, { body: item.body }));
-    }
+    notifications.value
+      .filter((item) => item.channel === 'browser' && item.status === 'sent' && !knownNotificationIds.has(item.id))
+      .forEach((item) => showBrowserNotification(item.title, item.body));
     operations.value = operationsRes.data;
     runs.value = runsRes.data;
     sessions.value = sessionsRes.data;
@@ -612,6 +635,39 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     activeView.value = 'home';
   }
 
+  async function enableBrowserNotifications() {
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return false;
+    }
+    if (Notification.permission !== 'granted') return false;
+    if (!('serviceWorker' in navigator)) return true;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (appSettings.value?.vapid_public_key && registration.pushManager) {
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(appSettings.value.vapid_public_key),
+        });
+        const p256dh = subscription.getKey('p256dh');
+        const auth = subscription.getKey('auth');
+        if (p256dh && auth) {
+          await api.post('/notifications/subscriptions', {
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh: btoa(String.fromCharCode(...new Uint8Array(p256dh))),
+              auth: btoa(String.fromCharCode(...new Uint8Array(auth))),
+            },
+          });
+        }
+      }
+    } catch {
+      // Page-level notifications still work without push.
+    }
+    return true;
+  }
+
   return {
     activeView,
     planScreen,
@@ -629,6 +685,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     sessions,
     archivedSessions,
     emailConfiguration,
+    appSettings,
     emailTestResult,
     schedulerStatus,
     proactiveNotice,
@@ -676,5 +733,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     archiveReadNotifications,
     undoOperation,
     startNewConversation,
+    enableBrowserNotifications,
   };
 });

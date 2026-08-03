@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models import Notification, UserProfile
 from app.notifications.diagnostics import smtp_connection
+from app.notifications.push import push_service
 
 
 class NotificationService:
@@ -47,9 +48,19 @@ class NotificationService:
             self.db.add(notification)
             await self.db.flush()
 
-            if channel in {"in_app", "browser"}:
+            if channel == "in_app":
                 notification.status = "sent"
                 notification.sent_at = datetime.now(timezone.utc)
+            elif channel == "browser":
+                notification.status = "sent"
+                notification.sent_at = datetime.now(timezone.utc)
+                await push_service.send(
+                    self.db,
+                    owner_id,
+                    title,
+                    body,
+                    {"notification_id": notification.id, "url": "/?view=inbox"},
+                )
             elif channel == "email":
                 if not self._email_configured():
                     notification.status = "skipped"
