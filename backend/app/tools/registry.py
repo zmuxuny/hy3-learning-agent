@@ -17,6 +17,7 @@ from app.tools.contracts import attach_output_contracts
 from app.tools.learning import LEARNING_TOOLS
 from app.tools.memory import MEMORY_TOOLS
 from app.tools.planning import PLANNING_TOOLS
+from app.tools.subagents import SUBAGENT_TOOLS
 from app.tools.web import WEB_TOOLS
 from app.tools.workspace import WORKSPACE_TOOLS
 
@@ -448,7 +449,7 @@ TOOLS = [
     ToolDefinition("quiz_grade", "Store an evidence-based quiz grade and schedule the next review.", QuizGradeArgs, quiz_grade, idempotent=True),
     ToolDefinition("memory_propose", "Propose a long-term memory for user confirmation.", MemoryProposalArgs, memory_propose),
     ToolDefinition("notification_send", "Send an in-app notification and optionally queue email/browser delivery.", NotificationArgs, notification_send, idempotent=True),
-] + PLANNING_TOOLS + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS
+] + PLANNING_TOOLS + SUBAGENT_TOOLS + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS
 
 attach_output_contracts(TOOLS)
 

@@ -4,7 +4,7 @@
 
 工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。每个工具同时注册 Pydantic 输入模型和输出模型；输入用于 Function Calling，成功输出在回填模型前再次校验。完整契约通过 `GET /api/v1/settings/tools` 暴露。高层流程由 Hy3 规划；用户消息、后台候选、复习到期和邮件回复共享同一 `AgentRuntime`。
 
-## 37 个已注册工具
+## 41 个已注册工具
 
 ### 计划共创与学习位置
 
@@ -13,6 +13,14 @@
 | `planning_intake_get` / `planning_intake_update` | 读取或保存已确认事实、1–3 个结构化问题和 AI 的充分性判断 |
 | `planning_delegate` | 把最多三个只读规划调查分给独立子 Run，并 join 结论 |
 | `plan_proposal_create` | 保存等待用户采用的完整计划提案，不直接创建正式 Plan |
+
+### 通用受限子 Agent
+
+| 工具 | 作用 |
+| --- | --- |
+| `subagent_spawn` | 启动一个只读受限子 Run；可指定工具白名单，但 v1 只会授予只读能力 |
+| `subagent_status` / `subagent_join` | 查询子 Run 状态/输出；join 等待子 Run 结束并返回结构化报告 |
+| `subagent_cancel` | 取消由当前 Run 发起的子 Run |
 | `study_state_get` | 读取带计划版本的当前阶段/任务、下一步、证据、阻塞、逾期、复习和近期提交快照 |
 
 ### 状态与计划

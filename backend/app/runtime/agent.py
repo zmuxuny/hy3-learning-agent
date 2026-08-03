@@ -13,7 +13,6 @@ from app.models import AgentRun, ChatMessage, Session
 from app.runtime.events import emit_event
 from app.runtime.prompt import SYSTEM_PROMPT
 from app.runtime.session_titles import generate_session_title, initial_session_title
-from app.tools import ToolContext, execute_tool, openai_tools
 
 
 class AgentModelTimeout(RuntimeError):
@@ -221,6 +220,8 @@ class AgentRuntime:
         granted: set[str],
         session: Session | None,
     ) -> None:
+        from app.tools import ToolContext, execute_tool
+
         final_text = ""
         failure_guard = ToolFailureGuard(settings.AGENT_TOOL_FAILURE_LIMIT)
         step = start_step
@@ -417,6 +418,8 @@ class AgentRuntime:
             await self._fail(db, run.id, exc)
 
     async def _call_model(self, db, run: AgentRun, messages: list[dict], failure_guard: ToolFailureGuard, step: int):
+        from app.tools import openai_tools
+
         response = None
         for attempt in range(settings.AGENT_MODEL_RETRY_ATTEMPTS):
             try:

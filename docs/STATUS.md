@@ -16,9 +16,9 @@
 - Run 预算已接入：`budget_usage` 记录模型调用次数、Token、工具调用、网络请求、耗时与估算费用；`AGENT_MAX_MODEL_CALLS / AGENT_MAX_TOOL_CALLS / AGENT_MAX_ELAPSED_SECONDS / AGENT_MAX_ESTIMATED_COST_USD` 超限时发 `run.budget_exceeded` 事件并安全停止，前端运行轨迹显示预算用量。
 - Service Worker 已注册：通知通过 `showNotification` 展示（标签页关闭但浏览器运行时仍可显示），点击通知路由回收件箱；配置 `VAPID_*` 后可选 Web Push 推送，未配置时回退页面内通知。失效订阅（404/410）自动清理。电脑关机或浏览器完全退出无法唤醒，文档如实标注。
 
-- System Prompt 与 37 个真实 Function Calling 输入 Schema 进入同一个 Hy3 多轮 Runtime；37 个输出 Schema 由契约接口公开并在普通成功结果回填前校验。
+- System Prompt 与 41 个真实 Function Calling 输入 Schema 进入同一个 Hy3 多轮 Runtime；41 个输出 Schema 由契约接口公开并在普通成功结果回填前校验。
 - `PlanningIntake` 持久保存已确认事实、结构化问题和 AI 的充分性理由；`PlanProposal` 在用户采用前不创建正式计划，重复采用保持幂等。
-- `planning_delegate` 为资源/课程结构/考核调查创建独立只读子 Run，父 Run 显示分工与返回；通用 spawn/join/cancel 尚未冒充完成。
+- `planning_delegate` 与通用子 Agent 共用只读执行器；`subagent_spawn / status / join / cancel` 已开放，v1 强制只读白名单、独立轮次上限和结构化报告，父 Agent 仍是唯一写入口。
 - `study_state_get` 为计划跟踪/教学提供统一版本化快照，新计划会选择首个 pending 任务而不是返回“当前无任务”。
 - 用户消息支持复制和非破坏式编辑；旧版本进入 `ChatMessageRevision`，旧下游退出当前上下文，原 Run/快照/Operation 保留，同一 Session 重新运行。
 - 计划焦点由后端 Guard 强制；计划内 Run 不能操作其他计划私有数据。
@@ -62,7 +62,6 @@
 
 - 这是个人应用，不做登录、团队和多租户。
 - `code_execute` 有时间/输出/环境限制，但不是容器级不可信代码沙箱。
-- 高风险工具可以返回确认需求，完整的 Run 暂停—批准—检查点恢复仍是硬化项。
-- 当前子 Agent 仅限无工具写权限的规划调查；通用 spawn/join/cancel、进程崩溃续跑、费用预算和工具幂等不能宣称已完成。
-- 应用重启会将上个进程遗留的活动 Run 安全标记为 `process_interrupted`，避免 Session 永久锁死；它保留轨迹但不等同于检查点续跑。
+- 阻塞型审批的 Run 暂停—批准—恢复与检查点续跑已实现；无检查点的遗留 Run 仍安全标记为 `process_interrupted`。
+- 通用子 Agent v1 为只读委员会（spawn/status/join/cancel 已开放）；子 Agent 写工具由架构拒绝，写操作始终交回主 Agent。
 - SMTP/IMAP 协议、连续 Session 路由和连接测试已实现；当前本机实例已完成 QQ SMTP 真实发送、IMAP 登录和回复回原 Session 验收。凭据只存在被 Git 忽略的 `.env`，公开仓库不包含邮箱地址或授权码。

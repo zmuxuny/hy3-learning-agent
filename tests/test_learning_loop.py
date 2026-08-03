@@ -337,9 +337,9 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
     assert completions.calls[0]["extra_body"] == {"reasoning_effort": "high"}
     assert "The supplied tool schemas are the complete set" in completions.calls[0]["messages"][0]["content"]
     tool_names = {tool["function"]["name"] for tool in completions.calls[0]["tools"]}
-    assert len(tool_names) == 37
+    assert len(tool_names) == 41
     contracts = tool_contracts()
-    assert len(contracts) == 37
+    assert len(contracts) == 41
     assert all(contract["input_schema"] and contract["output_schema"] for contract in contracts)
     assert {
         "profile_get",

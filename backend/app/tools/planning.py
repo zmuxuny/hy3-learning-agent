@@ -135,101 +135,17 @@ async def _specialist_report(
     assignment: PlanningAssignment,
     context: str,
 ) -> str:
-    # Imported lazily to avoid a registry/planning import cycle. The allowlist
-    # is deliberately read-only: child Agents advise, the lead Agent commits.
-    from app.tools.registry import TOOL_MAP, execute_tool
+    # Shared bounded engine: read-only allowlist, own run events, no writes.
+    from app.runtime.subagents import PLANNING_CHILD_ALLOWLIST, run_restricted_child
 
-    allowed_names = {
-        "profile_get",
-        "memory_search",
-        "web_search",
-        "web_open",
-        "file_list",
-        "file_read",
-        "calendar_list",
-    }
-    schemas = [TOOL_MAP[name].openai_schema() for name in sorted(allowed_names)]
-    messages: list[dict] = [
-        {
-            "role": "system",
-            "content": (
-                "You are a bounded planning sub-agent inside a personal learning harness. Work only on the assigned "
-                "planning question. You may use the supplied read-only tools, including web search/open when current "
-                "external evidence matters. Never request search-result saving and never create or modify application "
-                "state. Return a concise evidence-oriented report with sources, assumptions, recommendations, risks, "
-                "and questions the lead Agent should resolve. Do not expose chain-of-thought."
-            ),
-        },
-        {
-            "role": "user",
-            "content": f"Role: {assignment.role}\nAssignment: {assignment.objective}\n\nShared context:\n{context}",
-        },
-    ]
-    final_text = ""
-    for _ in range(4):
-        response = await asyncio.wait_for(
-            client.chat.completions.create(
-                model=settings.MODEL_NAME,
-                messages=messages,
-                tools=schemas,
-                tool_choice="auto",
-                temperature=settings.MODEL_TEMPERATURE,
-                extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
-            ),
-            timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-        )
-        message = response.choices[0].message
-        tool_calls = getattr(message, "tool_calls", None)
-        assistant_payload: dict = {"role": "assistant", "content": message.content or ""}
-        reasoning_content = getattr(message, "reasoning_content", None)
-        if reasoning_content:
-            assistant_payload["reasoning_content"] = reasoning_content
-        if tool_calls:
-            assistant_payload["tool_calls"] = [call.model_dump() for call in tool_calls]
-        messages.append(assistant_payload)
-        if not tool_calls:
-            final_text = (message.content or "").strip()
-            break
-        for call in tool_calls:
-            await _child_event(child.id, "tool.started", f"调用只读工具 {call.function.name}", {
-                "tool_call_id": call.id,
-                "name": call.function.name,
-            })
-            try:
-                raw_args = json.loads(call.function.arguments or "{}")
-            except json.JSONDecodeError:
-                raw_args = {}
-            if call.function.name == "web_search" and raw_args.get("save_results"):
-                result = {"ok": False, "error": "Planning child Agents cannot save search results", "retryable": False}
-            elif call.function.name not in allowed_names:
-                result = {"ok": False, "error": "Tool is outside the planning child allowlist", "retryable": False}
-            else:
-                async with AsyncSessionLocal() as tool_db:
-                    result = await execute_tool(
-                        call.function.name,
-                        call.function.arguments,
-                        ToolContext(
-                            db=tool_db,
-                            owner_id=child.owner_id,
-                            run_id=child.id,
-                            trigger="subagent",
-                            plan_id=child.plan_id,
-                            session_id=child.session_id,
-                        ),
-                    )
-            await _child_event(child.id, "tool.completed", f"只读工具 {call.function.name} {'完成' if result.get('ok') else '失败'}", {
-                "tool_call_id": call.id,
-                "name": call.function.name,
-                "result": result,
-            })
-            content = json.dumps(result, ensure_ascii=False, default=str)
-            messages.append({"role": "tool", "tool_call_id": call.id, "content": content[:12000]})
-    return final_text or "子 Agent 已完成受限调查，但没有返回可用的总结。"
-
-
-async def _child_event(run_id: str, event_type: str, summary: str, payload: dict | None = None) -> None:
-    async with AsyncSessionLocal() as event_db:
-        await emit_event(event_db, run_id, event_type, summary, payload)
+    return await run_restricted_child(
+        client=client,
+        child=child,
+        objective=f"{assignment.role}: {assignment.objective}",
+        context=context,
+        allowlist=set(PLANNING_CHILD_ALLOWLIST),
+        max_steps=4,
+    )
 
 
 async def _cancel_child_runs(children: list[tuple[str, str]], parent_run_id: str) -> None:
