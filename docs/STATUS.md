@@ -51,9 +51,10 @@
 - 站内消息支持单条归档、批量归档全部已读、独立归档列表与恢复；归档不删除消息，并退出 Agent 的近期通知上下文。
 - 计划详情只有一个标题（计划名称），摘要和操作降为正文层级，任务保持纵向时间线。
 - 浏览器回归覆盖 375、768、1280、1440 和 2560×1440；没有文档横向溢出、重复 Header 或横向裁切按钮。
-- `pytest -q`：55 passed。
-- 前端生产构建通过：JS 274.96 kB（gzip 103.44 kB），CSS 62.15 kB（gzip 12.39 kB）；生产依赖审计 0 vulnerabilities。
-- 发布验收已冻结：版本 0.5.0、`CHANGELOG.md`、CI（pytest + 前端构建 + 生产依赖审计）、`scripts/reset-data.sh`（备份并清空）与 `scripts/seed-fixture.sh`（恢复浏览器回归夹具）均已就绪。
+- `pytest -q`：68 passed。
+- 前端生产构建通过：JS 276.48 kB（gzip 103.88 kB），CSS 63.14 kB（gzip 12.58 kB）；生产依赖审计 0 vulnerabilities。
+- 发布验收已冻结：版本 0.6.0、`CHANGELOG.md`、CI（pytest + 前端构建 + 生产依赖审计）、`scripts/reset-data.sh`（备份并清空）与 `scripts/seed-fixture.sh`（恢复浏览器回归夹具）均已就绪。
+- 0.6.0 稳定性与体验验收通过：邮件冷却统计、成就/连续天数、首页成就墙；真实 Hy3 冒烟与多视口浏览器回归通过。真实验证中 DuckDuckGo 主源连接失败、Bing 备选源成功返回 3 条结果（python.org 等），自动降级设计按预期生效。
 
 ## 已验证的学习闭环
 
