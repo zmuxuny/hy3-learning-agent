@@ -93,7 +93,7 @@ async function rejectProposal() {
     <footer><span>不需要一次填完所有背景；Agent 会自己判断何时信息已经充分。</span><button class="primary" :disabled="submitting" @click="answerQuestions">提交回答 <ArrowRightIcon /></button></footer>
   </section>
 
-  <section v-if="proposal" :class="['planning-panel', 'proposal-panel', proposal.status]">
+  <section v-if="proposal && proposal.status !== 'accepted'" :class="['planning-panel', 'proposal-panel', proposal.status]">
     <header>
       <span class="planning-icon"><ClipboardDocumentCheckIcon /></span>
       <div><small>计划提案 · {{ proposal.status === 'pending' ? '等待确认' : proposal.status === 'accepted' ? '已采用' : '已退回' }}</small><h3>{{ proposal.title }}</h3></div>

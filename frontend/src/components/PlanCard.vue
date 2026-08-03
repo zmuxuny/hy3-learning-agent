@@ -4,8 +4,11 @@ import { computed } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 
 const store = useWorkspaceStore();
+const props = defineProps({
+  plan: { type: Object, default: null },
+});
 const plan = computed(() => {
-  const created = store.createdPlanFromCurrentRun;
+  const created = props.plan || store.createdPlanFromCurrentRun;
   if (!created) return null;
   return [...store.plans, ...store.archivedPlans].find((item) => Number(item.id) === Number(created.id)) || created;
 });

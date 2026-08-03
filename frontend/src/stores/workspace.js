@@ -107,6 +107,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return plan || { id: Number(data.plan_id), title: data.title || `计划 ${data.plan_id}` };
   });
 
+  function planForRun(runId) {
+    const run = runs.value.find((item) => item.id === runId);
+    if (!run?.created_plan_id) return null;
+    return [...plans.value, ...archivedPlans.value].find(
+      (plan) => Number(plan.id) === Number(run.created_plan_id),
+    ) || { id: Number(run.created_plan_id), title: `计划 ${run.created_plan_id}` };
+  }
+
   async function loadWorkspace() {
     loading.value = true;
     error.value = '';
@@ -752,6 +760,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loading,
     error,
     pendingQueuedObjective,
+    planForRun,
     unreadCount,
     activePlans,
     pendingMemories,

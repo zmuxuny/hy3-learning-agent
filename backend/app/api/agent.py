@@ -482,6 +482,11 @@ async def decide_plan_proposal(
     proposal.status = "accepted"
     proposal.decided_at = datetime.now(timezone.utc)
     await db.commit()
+    if proposal.source_run_id:
+        source_run = await db.get(AgentRun, proposal.source_run_id)
+        if source_run is not None:
+            source_run.created_plan_id = plan.id
+            await db.commit()
     await db.refresh(proposal)
     return proposal
 

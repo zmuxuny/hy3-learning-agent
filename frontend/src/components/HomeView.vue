@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
 import AgentMessage from './AgentMessage.vue';
 import AgentRunTurn from './AgentRunTurn.vue';
+import PlanCard from './PlanCard.vue';
 import PlanningWorkspace from './PlanningWorkspace.vue';
 import UserMessage from './UserMessage.vue';
 
@@ -124,6 +125,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
             <div class="agent-content">
               <div class="agent-name">Learning Agent <span>Hy3</span></div>
               <div class="assistant-answer"><AgentMessage :content="message.content" /></div>
+              <PlanCard v-if="store.planForRun(message.run_id)" :plan="store.planForRun(message.run_id)" />
             </div>
           </div>
         </template>

@@ -239,6 +239,7 @@ class AgentRunRead(APIModel):
     pending_approval: dict[str, Any] | None
     budget_usage: dict[str, Any] | None
     output: str
+    created_plan_id: int | None
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime

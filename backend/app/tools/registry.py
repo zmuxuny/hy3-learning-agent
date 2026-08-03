@@ -6,7 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
-from app.models import LearningEvent, Memory, Operation, Plan, Quiz, ReviewSchedule, Stage, Task, ToolInvocation, UserProfile
+from app.models import AgentRun, LearningEvent, Memory, Operation, Plan, Quiz, ReviewSchedule, Stage, Task, ToolInvocation, UserProfile
 from app.notifications import NotificationService
 from app.schemas import PlanCreate, TaskUpdate
 from app.services import plans as plan_service
@@ -172,6 +172,9 @@ async def plan_create(ctx: ToolContext, args: PlanCreate) -> dict:
             )
         }
     plan = await plan_service.create_plan(ctx.db, ctx.owner_id, args, ctx.run_id, commit=False)
+    run = await ctx.db.get(AgentRun, ctx.run_id)
+    if run is not None:
+        run.created_plan_id = plan.id
     operation = Operation(
         owner_id=ctx.owner_id,
         run_id=ctx.run_id,

@@ -31,6 +31,7 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
         "pending_approval": "JSON",
         "budget_usage": "JSON",
         "output": "TEXT NOT NULL DEFAULT ''",
+        "created_plan_id": "INTEGER",
     },
 }
 
