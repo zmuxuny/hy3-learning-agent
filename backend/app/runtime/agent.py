@@ -86,6 +86,10 @@ def _call_to_dict(call) -> dict:
     }
 
 
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
 class AgentRuntime:
     def __init__(self):
         self.client: AsyncOpenAI | None = None
@@ -232,6 +236,21 @@ class AgentRuntime:
                     return
 
                 if not calls:
+                    budget = self._budget(run)
+                    reason = self._budget_reason(run, budget)
+                    if reason:
+                        budget["stopped_reason"] = reason
+                        run.budget_usage = budget
+                        final_text = "运行预算已用尽，已安全停止。"
+                        await db.commit()
+                        await emit_event(
+                            db,
+                            run.id,
+                            "run.budget_exceeded",
+                            f"预算上限已触发：{reason}",
+                            {"reason": reason, "budget_usage": budget},
+                        )
+                        break
                     response = await self._call_model(db, run, messages, failure_guard, step)
                     message = response.choices[0].message
                     assistant_payload: dict = {"role": "assistant", "content": message.content or ""}
@@ -255,8 +274,40 @@ class AgentRuntime:
                     if not message.tool_calls:
                         final_text = message.content or ""
                         break
+                    budget = self._budget(run)
+                    budget["model_calls"] += 1
+                    usage = getattr(response, "usage", None)
+                    if usage is not None:
+                        prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+                        completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+                        budget["prompt_tokens"] += prompt_tokens
+                        budget["completion_tokens"] += completion_tokens
+                        budget["estimated_cost_usd"] += (
+                            prompt_tokens / 1_000_000 * settings.MODEL_INPUT_PRICE_PER_1M
+                            + completion_tokens / 1_000_000 * settings.MODEL_OUTPUT_PRICE_PER_1M
+                        )
+                    run.budget_usage = budget
 
                 call = calls.pop(0)
+                budget = self._budget(run)
+                reason = self._budget_reason(run, budget)
+                if reason:
+                    budget["stopped_reason"] = reason
+                    run.budget_usage = budget
+                    final_text = "运行预算已用尽，已安全停止。"
+                    await db.commit()
+                    await emit_event(
+                        db,
+                        run.id,
+                        "run.budget_exceeded",
+                        f"预算上限已触发：{reason}",
+                        {"reason": reason, "budget_usage": budget},
+                    )
+                    break
+                budget["tool_calls"] += 1
+                if call["name"] in {"web_search", "web_open"}:
+                    budget["network_requests"] += 1
+                run.budget_usage = budget
                 run.checkpoint = {"step": step, "messages": messages, "pending_tool_calls": calls}
                 await db.commit()
 
@@ -425,6 +476,43 @@ class AgentRuntime:
             summary,
             {"code": error_code, "technical_error": f"{type(exc).__name__}: {exc}"},
         )
+
+    @staticmethod
+    def _default_budget() -> dict:
+        return {
+            "model_calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "tool_calls": 0,
+            "network_requests": 0,
+            "elapsed_ms": 0,
+            "estimated_cost_usd": 0.0,
+            "stopped_reason": "",
+        }
+
+    @staticmethod
+    def _budget(run: AgentRun) -> dict:
+        if not run.budget_usage:
+            return AgentRuntime._default_budget()
+        return {**AgentRuntime._default_budget(), **run.budget_usage}
+
+    @staticmethod
+    def _budget_reason(run: AgentRun, budget: dict) -> str | None:
+        started = run.started_at or run.created_at
+        if started:
+            budget["elapsed_ms"] = int((datetime.now(timezone.utc) - _aware(started)).total_seconds() * 1000)
+        if settings.AGENT_MAX_ELAPSED_SECONDS and budget["elapsed_ms"] >= settings.AGENT_MAX_ELAPSED_SECONDS * 1000:
+            return "elapsed_limit"
+        if budget["model_calls"] >= settings.AGENT_MAX_MODEL_CALLS:
+            return "model_call_limit"
+        if budget["tool_calls"] >= settings.AGENT_MAX_TOOL_CALLS:
+            return "tool_call_limit"
+        if (
+            settings.AGENT_MAX_ESTIMATED_COST_USD > 0
+            and budget["estimated_cost_usd"] >= settings.AGENT_MAX_ESTIMATED_COST_USD
+        ):
+            return "cost_limit"
+        return None
 
     async def _ensure_session(self, db, run: AgentRun) -> Session | None:
         if run.session_id:

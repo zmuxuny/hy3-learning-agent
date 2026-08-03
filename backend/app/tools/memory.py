@@ -39,5 +39,5 @@ async def memory_maintain(ctx: ToolContext, _: EmptyArgs) -> dict:
 
 MEMORY_TOOLS = [
     ToolDefinition("memory_search", "Retrieve relevant confirmed memory by scope, layer, recency, confidence, and query overlap.", MemorySearchArgs, memory_search),
-    ToolDefinition("memory_maintain", "Expire stale memory and refresh durable plan summaries without deleting raw events or conversations.", EmptyArgs, memory_maintain),
+    ToolDefinition("memory_maintain", "Expire stale memory and refresh durable plan summaries without deleting raw events or conversations.", EmptyArgs, memory_maintain, idempotent=True),
 ]

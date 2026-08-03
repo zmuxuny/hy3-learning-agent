@@ -293,6 +293,7 @@ class AgentRun(Base):
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     checkpoint: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     pending_approval: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    budget_usage: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     output: Mapped[str] = mapped_column(Text, default="")
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -300,6 +301,25 @@ class AgentRun(Base):
 
     events: Mapped[list[RunEvent]] = relationship(
         back_populates="run", cascade="all, delete-orphan", order_by="RunEvent.sequence", lazy="selectin"
+    )
+
+
+class ToolInvocation(Base):
+    """Persisted idempotency record for write tools inside one Agent run."""
+
+    __tablename__ = "tool_invocations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    tool_name: Mapped[str] = mapped_column(String(120))
+    args_hash: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(32), default="running", index=True)
+    result_payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
 

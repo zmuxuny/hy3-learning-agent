@@ -66,6 +66,10 @@ function undoLabel(operation) {
       <span>当前目标</span>
       <p>{{ store.currentRun.objective }}</p>
       <small>{{ store.currentRun.trigger }} · {{ store.currentRun.id.slice(0, 8) }}</small>
+      <small v-if="store.currentRun.budget_usage" class="run-budget">
+        模型调用 {{ store.currentRun.budget_usage.model_calls || 0 }} 次 · 工具 {{ store.currentRun.budget_usage.tool_calls || 0 }} 次
+        <template v-if="store.currentRun.budget_usage.estimated_cost_usd"> · 约 ${{ Number(store.currentRun.budget_usage.estimated_cost_usd).toFixed(4) }}</template>
+      </small>
     </div>
 
     <div class="trace-list">

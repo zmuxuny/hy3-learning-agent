@@ -31,6 +31,7 @@ class ToolDefinition:
     args_model: type[BaseModel]
     handler: ToolHandler
     output_model: type[BaseModel] | None = None
+    idempotent: bool = False
 
     def openai_schema(self) -> dict:
         output_fields = []
@@ -54,6 +55,7 @@ class ToolDefinition:
         return {
             "name": self.name,
             "description": self.description,
+            "idempotent": self.idempotent,
             "input_schema": self.args_model.model_json_schema(),
             "output_schema": self.output_model.model_json_schema(),
         }

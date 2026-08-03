@@ -267,7 +267,7 @@ def _catalog_metadata(url: str, title: str = "") -> dict[str, str]:
 
 
 WEB_TOOLS = [
-    ToolDefinition("web_search", "Search the public web. Results include inferred provider and resource type; raw auto-save is for capture only, not curriculum curation.", WebSearchArgs, web_search),
+    ToolDefinition("web_search", "Search the public web. Results include inferred provider and resource type; raw auto-save is for capture only, not curriculum curation.", WebSearchArgs, web_search, idempotent=True),
     ToolDefinition("web_open", "Open a public HTTP(S) page, validate every redirect hop, and extract readable text for source verification.", WebOpenArgs, web_open),
-    ToolDefinition("resource_save", "Save or update one deliberately selected learning resource after opening it. Record its course/tutorial type, level, language, summary, and why it fits this plan.", ResourceSaveArgs, resource_save),
+    ToolDefinition("resource_save", "Save or update one deliberately selected learning resource after opening it. Record its course/tutorial type, level, language, summary, and why it fits this plan.", ResourceSaveArgs, resource_save, idempotent=True),
 ]

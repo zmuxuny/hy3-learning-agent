@@ -414,6 +414,7 @@ PLANNING_TOOLS = [
         "Record confirmed requirements, renderable follow-up questions, and the Agent's evidence-based readiness judgment.",
         PlanningIntakeUpdateArgs,
         planning_intake_update,
+        idempotent=True,
     ),
     ToolDefinition(
         "planning_delegate",
@@ -426,5 +427,6 @@ PLANNING_TOOLS = [
         "Create or revise a reviewable plan proposal after the planning intake is ready; does not create the Plan until the user accepts it.",
         PlanProposalCreateArgs,
         plan_proposal_create,
+        idempotent=True,
     ),
 ]

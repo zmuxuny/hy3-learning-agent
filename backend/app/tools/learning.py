@@ -417,13 +417,13 @@ async def _award_completion(ctx: ToolContext, task: Task) -> dict:
 
 
 LEARNING_TOOLS = [
-    ToolDefinition("plan_patch", "Modify plan metadata or timing. Background goal/status changes require approval; successful changes are reversible.", PlanPatchArgs, plan_patch),
-    ToolDefinition("stage_create", "Append a reversible stage to the focused learning plan.", StageCreateArgs, stage_create),
-    ToolDefinition("task_create", "Add a reversible task to a stage in the focused learning plan.", TaskCreateArgs, task_create),
-    ToolDefinition("submission_create", "Submit text, code, file references, or links as durable evidence for a task.", SubmissionCreateArgs, submission_create),
+    ToolDefinition("plan_patch", "Modify plan metadata or timing. Background goal/status changes require approval; successful changes are reversible.", PlanPatchArgs, plan_patch, idempotent=True),
+    ToolDefinition("stage_create", "Append a reversible stage to the focused learning plan.", StageCreateArgs, stage_create, idempotent=True),
+    ToolDefinition("task_create", "Add a reversible task to a stage in the focused learning plan.", TaskCreateArgs, task_create, idempotent=True),
+    ToolDefinition("submission_create", "Submit text, code, file references, or links as durable evidence for a task.", SubmissionCreateArgs, submission_create, idempotent=True),
     ToolDefinition("submission_get", "Inspect one task submission and its artifacts before evaluating it.", SubmissionIdArgs, submission_get),
     ToolDefinition("submission_list", "List recent submissions for a task or focused plan.", SubmissionListArgs, submission_list),
-    ToolDefinition("submission_check", "Record an evidence-based submission verdict; accepted work completes the task and awards progress.", SubmissionCheckArgs, submission_check),
+    ToolDefinition("submission_check", "Record an evidence-based submission verdict; accepted work completes the task and awards progress.", SubmissionCheckArgs, submission_check, idempotent=True),
     ToolDefinition("resource_list", "List learning resources saved from web research for the focused plan.", ResourceListArgs, resource_list),
     ToolDefinition("learning_event_list", "Retrieve immutable learning events relevant to the current plan or task.", EventListArgs, learning_event_list),
     ToolDefinition("study_state_get", "Read one canonical, versioned progress snapshot with the current task, recommended next step, evidence, blockers, overdue work, reviews, and recent submissions.", StudyStateArgs, study_state_get),

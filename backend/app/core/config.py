@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     MODEL_REASONING_EFFORT: str = "high"
 
     AGENT_MAX_STEPS: int = Field(default=8, ge=1, le=24)
+    AGENT_MAX_MODEL_CALLS: int = Field(default=12, ge=1, le=100)
+    AGENT_MAX_TOOL_CALLS: int = Field(default=32, ge=1, le=200)
+    AGENT_MAX_ELAPSED_SECONDS: int = Field(default=600, ge=30, le=86400)
+    AGENT_MAX_ESTIMATED_COST_USD: float = Field(default=0.0, ge=0)
+    MODEL_INPUT_PRICE_PER_1M: float = Field(default=0.0, ge=0)
+    MODEL_OUTPUT_PRICE_PER_1M: float = Field(default=0.0, ge=0)
     AGENT_MODEL_TIMEOUT_SECONDS: int = Field(default=90, ge=10, le=300)
     AGENT_MODEL_RETRY_ATTEMPTS: int = Field(default=2, ge=1, le=3)
     AGENT_TOOL_TIMEOUT_SECONDS: int = Field(default=35, ge=5, le=120)

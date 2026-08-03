@@ -146,6 +146,6 @@ async def code_execute(_: ToolContext, args: CodeExecuteArgs) -> dict:
 WORKSPACE_TOOLS = [
     ToolDefinition("file_list", "List files inside the Agent's isolated personal workspace.", FileListArgs, file_list),
     ToolDefinition("file_read", "Read a UTF-8 text artifact from the isolated personal workspace.", FileReadArgs, file_read),
-    ToolDefinition("file_write", "Create or intentionally overwrite a text artifact in the isolated personal workspace.", FileWriteArgs, file_write),
+    ToolDefinition("file_write", "Create or intentionally overwrite a text artifact in the isolated personal workspace.", FileWriteArgs, file_write, idempotent=True),
     ToolDefinition("code_execute", "Run short Python or Bash code from the personal Agent workspace with strict time and output limits. The process is bounded but not a security sandbox.", CodeExecuteArgs, code_execute),
 ]

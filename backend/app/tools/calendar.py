@@ -113,6 +113,6 @@ async def calendar_patch(ctx: ToolContext, args: CalendarPatchArgs) -> dict:
 
 CALENDAR_TOOLS = [
     ToolDefinition("calendar_list", "Inspect scheduled personal study events, optionally limited to the focused plan.", CalendarListArgs, calendar_list),
-    ToolDefinition("calendar_create", "Create a reversible study calendar event for a plan or task.", CalendarCreateArgs, calendar_create),
-    ToolDefinition("calendar_patch", "Reschedule or update an existing study calendar event; changes are reversible.", CalendarPatchArgs, calendar_patch),
+    ToolDefinition("calendar_create", "Create a reversible study calendar event for a plan or task.", CalendarCreateArgs, calendar_create, idempotent=True),
+    ToolDefinition("calendar_patch", "Reschedule or update an existing study calendar event; changes are reversible.", CalendarPatchArgs, calendar_patch, idempotent=True),
 ]

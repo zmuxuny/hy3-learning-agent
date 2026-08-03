@@ -1,11 +1,12 @@
 import json
+import hashlib
 from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
-from app.models import LearningEvent, Memory, Operation, Plan, Quiz, ReviewSchedule, Stage, Task, UserProfile
+from app.models import LearningEvent, Memory, Operation, Plan, Quiz, ReviewSchedule, Stage, Task, ToolInvocation, UserProfile
 from app.notifications import NotificationService
 from app.schemas import PlanCreate, TaskUpdate
 from app.services import plans as plan_service
@@ -439,14 +440,14 @@ TOOLS = [
     ToolDefinition("profile_get", "Read the learner's global profile and notification preferences.", EmptyArgs, profile_get),
     ToolDefinition("plan_list", "List all learning plans and their current progress.", EmptyArgs, plan_list),
     ToolDefinition("plan_get", "Inspect one complete plan with stages and tasks.", PlanIdArgs, plan_get),
-    ToolDefinition("plan_create", "Create a complete learning plan requested by the user.", PlanCreate, plan_create),
-    ToolDefinition("task_patch", "Update a task status, due time, duration, or review time.", TaskPatchArgs, task_patch),
-    ToolDefinition("review_schedule", "Schedule a future review or proactive quiz.", ReviewScheduleArgs, review_schedule),
-    ToolDefinition("quiz_create", "Create an evidence-based quiz for an active plan.", QuizCreateArgs, quiz_create),
+    ToolDefinition("plan_create", "Create a complete learning plan requested by the user.", PlanCreate, plan_create, idempotent=True),
+    ToolDefinition("task_patch", "Update a task status, due time, duration, or review time.", TaskPatchArgs, task_patch, idempotent=True),
+    ToolDefinition("review_schedule", "Schedule a future review or proactive quiz.", ReviewScheduleArgs, review_schedule, idempotent=True),
+    ToolDefinition("quiz_create", "Create an evidence-based quiz for an active plan.", QuizCreateArgs, quiz_create, idempotent=True),
     ToolDefinition("quiz_get", "Read a quiz prompt and grading rubric before evaluating an answer.", QuizIdArgs, quiz_get),
-    ToolDefinition("quiz_grade", "Store an evidence-based quiz grade and schedule the next review.", QuizGradeArgs, quiz_grade),
+    ToolDefinition("quiz_grade", "Store an evidence-based quiz grade and schedule the next review.", QuizGradeArgs, quiz_grade, idempotent=True),
     ToolDefinition("memory_propose", "Propose a long-term memory for user confirmation.", MemoryProposalArgs, memory_propose),
-    ToolDefinition("notification_send", "Send an in-app notification and optionally queue email/browser delivery.", NotificationArgs, notification_send),
+    ToolDefinition("notification_send", "Send an in-app notification and optionally queue email/browser delivery.", NotificationArgs, notification_send, idempotent=True),
 ] + PLANNING_TOOLS + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS
 
 attach_output_contracts(TOOLS)
@@ -454,17 +455,56 @@ attach_output_contracts(TOOLS)
 TOOL_MAP = {tool.name: tool for tool in TOOLS}
 
 
+def _idempotency_key(run_id: str, tool_name: str, raw_arguments: str) -> str:
+    try:
+        normalized = json.dumps(json.loads(raw_arguments or "{}"), sort_keys=True, ensure_ascii=False)
+    except Exception:
+        normalized = raw_arguments or ""
+    digest = hashlib.sha256(f"{run_id}|{tool_name}|{normalized}".encode("utf-8")).hexdigest()
+    return f"{run_id[:8]}:{tool_name}:{digest[:48]}"
+
+
 async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
     tool = TOOL_MAP.get(name)
     if not tool:
         return {"ok": False, "error": f"Unknown tool: {name}"}
+    invocation = None
+    if tool.idempotent:
+        key = _idempotency_key(ctx.run_id, name, raw_arguments)
+        existing = (await ctx.db.execute(
+            select(ToolInvocation).where(ToolInvocation.idempotency_key == key)
+        )).scalar_one_or_none()
+        if existing and existing.status == "committed":
+            return {"ok": True, "data": dict(existing.result_payload or {}), "replayed": True}
+        if existing is None:
+            invocation = ToolInvocation(
+                owner_id=ctx.owner_id,
+                run_id=ctx.run_id,
+                idempotency_key=key,
+                tool_name=name,
+                args_hash=hashlib.sha256((raw_arguments or "").encode("utf-8")).hexdigest()[:32],
+                status="running",
+            )
+            ctx.db.add(invocation)
+            await ctx.db.flush()
+        else:
+            existing.status = "running"
+            existing.result_payload = {}
+            await ctx.db.flush()
+            invocation = existing
     try:
         payload = parse_arguments(raw_arguments)
         args = tool.args_model.model_validate(payload)
         data = await tool.handler(ctx, args)
         if "error" in data:
+            if invocation is not None:
+                invocation.status = "failed"
+                await ctx.db.commit()
             return {"ok": False, "error": str(data["error"]), "retryable": False}
         if data.get("approval_required"):
+            if invocation is not None:
+                invocation.status = "pending_approval"
+                await ctx.db.commit()
             # Proposal-style tools still expose and validate their full success
             # contract. Minimal guard-only approval responses intentionally do
             # not pretend to be successful tool data.
@@ -472,8 +512,12 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
                 data = tool.output_model.model_validate(data).model_dump(mode="json")
             except Exception:
                 pass
-        else:
-            data = tool.output_model.model_validate(data).model_dump(mode="json")
+            return {"ok": True, "data": data}
+        data = tool.output_model.model_validate(data).model_dump(mode="json")
+        if invocation is not None:
+            invocation.status = "committed"
+            invocation.result_payload = data
+            await ctx.db.commit()
         return {"ok": True, "data": data}
     except Exception as exc:
         await ctx.db.rollback()
