@@ -16,6 +16,14 @@ const store = useWorkspaceStore();
 const expanded = ref(new Set());
 const pendingUndoId = ref(null);
 const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
+const contextUsage = computed(() => {
+  const event = [...store.runEvents].reverse().find((item) => item.type === 'context.built');
+  if (!event?.payload?.estimated_tokens) return null;
+  return {
+    tokens: event.payload.estimated_tokens,
+    window: store.appSettings?.model_context_window || 128000,
+  };
+});
 const undoable = computed(() => store.operations.filter(
   (operation) => operation.run_id === store.currentRun?.id && operation.status === 'committed',
 ));
@@ -69,6 +77,9 @@ function undoLabel(operation) {
       <small v-if="store.currentRun.budget_usage" class="run-budget">
         模型调用 {{ store.currentRun.budget_usage.model_calls || 0 }} 次 · 工具 {{ store.currentRun.budget_usage.tool_calls || 0 }} 次
         <template v-if="store.currentRun.budget_usage.estimated_cost_usd"> · 约 ${{ Number(store.currentRun.budget_usage.estimated_cost_usd).toFixed(4) }}</template>
+      </small>
+      <small v-if="contextUsage" class="run-budget">
+        上下文 ≈ {{ Math.round(contextUsage.tokens / 100) / 10 }}k / {{ Math.round(contextUsage.window / 1000) }}k tokens
       </small>
     </div>
 
