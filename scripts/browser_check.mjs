@@ -83,7 +83,7 @@ async function inspect(label) {
       sidebarScrollOwner: getComputedStyle(document.querySelector('.sidebar')).overflowY,
       recentScrollOwner: getComputedStyle(document.querySelector('.recent-group') || document.body).overflowY,
       pinnedPlanArchiveActions: document.querySelectorAll('.side-plan-archive').length,
-      contextTransitions: document.querySelectorAll('.context-transition').length,
+      planInlineCards: document.querySelectorAll('.plan-inline-card').length,
       planningPanels: document.querySelectorAll('.planning-panel').length,
       planningQuestions: document.querySelectorAll('.planning-question').length,
       proposalStages: document.querySelectorAll('.proposal-stages article').length,
