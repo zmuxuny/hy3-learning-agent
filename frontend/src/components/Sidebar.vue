@@ -9,6 +9,7 @@ import {
   ChevronDownIcon,
   CircleStackIcon,
   ClockIcon,
+  CogIcon,
   MapIcon,
   PencilSquareIcon,
   PencilIcon,
@@ -28,6 +29,7 @@ const navigation = [
   { id: 'plans', label: '学习计划', icon: MapIcon },
   { id: 'inbox', label: '收件箱', icon: BellIcon },
   { id: 'memory', label: 'AI 记忆', icon: CircleStackIcon },
+  { id: 'settings', label: '设置', icon: CogIcon },
 ];
 
 const heartbeatLabel = computed(() => {

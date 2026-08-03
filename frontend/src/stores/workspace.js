@@ -460,6 +460,30 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  async function updateEmailSettings(payload) {
+    const response = await api.put('/settings/email', payload);
+    const configuration = await api.get('/settings/email');
+    emailConfiguration.value = configuration.data;
+    return response.data;
+  }
+
+  async function deleteEmailCredentials() {
+    const response = await api.delete('/settings/email');
+    const configuration = await api.get('/settings/email');
+    emailConfiguration.value = configuration.data;
+    return response.data;
+  }
+
+  async function updateModelSettings(payload) {
+    const response = await api.put('/settings/model', payload);
+    appSettings.value = { ...(appSettings.value || {}), ...response.data };
+    return response.data;
+  }
+
+  async function updateNotificationPolicy(payload) {
+    return (await api.put('/settings/notification', payload)).data;
+  }
+
   async function refreshProactiveState() {
     try {
       const knownIds = new Set(notifications.value.map((item) => item.id));
@@ -720,6 +744,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     continueInPlan,
     setPlanArchived,
     testEmail,
+    updateEmailSettings,
+    deleteEmailCredentials,
+    updateModelSettings,
+    updateNotificationPolicy,
     refreshProactiveState,
     startProactiveSync,
     stopProactiveSync,

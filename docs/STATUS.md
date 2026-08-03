@@ -15,6 +15,7 @@
 - 写工具幂等已落地：`ToolInvocation` 以 `run_id + 工具名 + 参数哈希` 生成 `idempotency_key`，同一 Run 内重复调用返回原结果并带 `replayed` 标记；阻塞审批期间记录为 `pending_approval`，批准执行后转为 `committed`。工具契约接口暴露 `idempotent` 标记。
 - Run 预算已接入：`budget_usage` 记录模型调用次数、Token、工具调用、网络请求、耗时与估算费用；`AGENT_MAX_MODEL_CALLS / AGENT_MAX_TOOL_CALLS / AGENT_MAX_ELAPSED_SECONDS / AGENT_MAX_ESTIMATED_COST_USD` 超限时发 `run.budget_exceeded` 事件并安全停止，前端运行轨迹显示预算用量。
 - Service Worker 已注册：通知通过 `showNotification` 展示（标签页关闭但浏览器运行时仍可显示），点击通知路由回收件箱；配置 `VAPID_*` 后可选 Web Push 推送，未配置时回退页面内通知。失效订阅（404/410）自动清理。电脑关机或浏览器完全退出无法唤醒，文档如实标注。
+- 设置页已上线：侧栏新增“设置”，覆盖模型（地址/名称/API Key 状态/温度）、邮件（SMTP/IMAP 字段、连接测试、删除凭据）与通知策略（免打扰、每日上限、冷却时间）。保存直接写 `.env`（0600 权限、原子替换），API 永不回传密码；模型与邮箱参数重启后生效，通知策略即时生效。
 
 - System Prompt 与 41 个真实 Function Calling 输入 Schema 进入同一个 Hy3 多轮 Runtime；41 个输出 Schema 由契约接口公开并在普通成功结果回填前校验。
 - `PlanningIntake` 持久保存已确认事实、结构化问题和 AI 的充分性理由；`PlanProposal` 在用户采用前不创建正式计划，重复采用保持幂等。

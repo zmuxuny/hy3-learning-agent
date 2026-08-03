@@ -48,6 +48,7 @@ def email_configuration() -> dict:
         "smtp_use_ssl": settings.SMTP_USE_SSL,
         "smtp_use_tls": settings.SMTP_USE_TLS,
         "smtp_username": _mask(settings.SMTP_USERNAME),
+        "smtp_from": _mask(sender),
         "smtp_to": _mask(settings.SMTP_TO),
         "imap_host": settings.IMAP_HOST,
         "imap_port": settings.IMAP_PORT,

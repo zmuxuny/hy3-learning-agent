@@ -6,6 +6,7 @@ import HomeView from './components/HomeView.vue';
 import InboxView from './components/InboxView.vue';
 import MemoryView from './components/MemoryView.vue';
 import PlansView from './components/PlansView.vue';
+import SettingsView from './components/SettingsView.vue';
 import Sidebar from './components/Sidebar.vue';
 import { useWorkspaceStore } from './stores/workspace';
 
@@ -29,6 +30,7 @@ onBeforeUnmount(() => store.stopProactiveSync());
         <PlansView v-else-if="store.activeView === 'plans'" />
         <MemoryView v-else-if="store.activeView === 'memory'" />
         <InboxView v-else-if="store.activeView === 'inbox'" />
+        <SettingsView v-else-if="store.activeView === 'settings'" />
       </template>
     </main>
     <button v-if="store.traceOpen" class="trace-backdrop" aria-label="关闭运行详情" @click="store.traceOpen = false"></button>
