@@ -137,6 +137,11 @@ function savePolicy() {
           </button>
         </div>
       </div>
+      <p class="settings-note">
+        数据库文件：{{ store.appSettings?.database_file || '未知' }}；当前数据量：计划 {{ store.appSettings?.data_counts?.plans ?? '-' }} ·
+        会话 {{ store.appSettings?.data_counts?.sessions ?? '-' }} · 站内消息 {{ store.appSettings?.data_counts?.notifications ?? '-' }} ·
+        确认记忆 {{ store.appSettings?.data_counts?.memories ?? '-' }}。清空数据请先停止服务，再运行 <code>./scripts/reset-data.sh</code>。
+      </p>
     </section>
 
     <section class="settings-section panel">

@@ -1,4 +1,5 @@
 from typing import Literal
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -7,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.envfile import clear_env_keys, update_env_file
 from app.core.config import settings
 from app.db.database import get_db
-from app.models import UserProfile
+from app.models import Memory, Notification, Plan, Session, UserProfile
 from app.tools.registry import tool_contracts
+from sqlalchemy import func, select
 from app.notifications.diagnostics import email_configuration, test_imap, test_smtp
 from app.runtime.scheduler import proactive_scheduler
 
@@ -51,14 +53,47 @@ class NotificationPolicyUpdate(BaseModel):
     cooldown_minutes: int | None = Field(default=None, ge=0, le=1440)
 
 
+def _database_path_label() -> str:
+    url = settings.DATABASE_URL
+    if url.startswith("sqlite+aiosqlite:///"):
+        raw = url[len("sqlite+aiosqlite:///"):]
+        path = Path(raw)
+        if not path.is_absolute():
+            path = Path(__file__).resolve().parents[3] / path
+        return str(path.resolve())
+    return url
+
+
 @router.get("")
-async def read_settings():
+async def read_settings(db: AsyncSession = Depends(get_db)):
+    counts = {
+        "plans": int((await db.scalar(
+            select(func.count(Plan.id)).where(Plan.owner_id == settings.DEFAULT_OWNER_ID)
+        )) or 0),
+        "sessions": int((await db.scalar(
+            select(func.count(Session.id)).where(Session.owner_id == settings.DEFAULT_OWNER_ID)
+        )) or 0),
+        "notifications": int((await db.scalar(
+            select(func.count(Notification.id)).where(
+                Notification.owner_id == settings.DEFAULT_OWNER_ID,
+                Notification.archived_at.is_(None),
+            )
+        )) or 0),
+        "memories": int((await db.scalar(
+            select(func.count(Memory.id)).where(
+                Memory.owner_id == settings.DEFAULT_OWNER_ID,
+                Memory.status == "confirmed",
+            )
+        )) or 0),
+    }
     return {
         "model": settings.MODEL_NAME,
         "base_url": settings.OPENAI_API_BASE,
         "api_key_configured": bool(settings.OPENAI_API_KEY),
         "model_context_window": settings.MODEL_CONTEXT_WINDOW,
         "context_token_budget": settings.AGENT_CONTEXT_TOKEN_BUDGET,
+        "database_file": _database_path_label(),
+        "data_counts": counts,
         "scheduler_enabled": settings.ENABLE_SCHEDULER,
         "heartbeat_seconds": settings.AGENT_HEARTBEAT_SECONDS,
         "email_configured": bool(settings.SMTP_HOST and settings.SMTP_USERNAME and settings.SMTP_PASSWORD and settings.SMTP_TO),

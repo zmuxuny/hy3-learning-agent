@@ -47,6 +47,9 @@ async def test_context_built_event_carries_memory_ids():
 
 @pytest.mark.asyncio
 async def test_settings_expose_model_context_window():
-    settings = await read_settings()
+    async with AsyncSessionLocal() as db:
+        settings = await read_settings(db)
     assert settings["model_context_window"] > 0
     assert settings["context_token_budget"] > 0
+    assert settings["database_file"].endswith("learning_companion.db")
+    assert settings["data_counts"]["plans"] >= 0
