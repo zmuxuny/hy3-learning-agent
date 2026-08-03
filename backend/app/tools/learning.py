@@ -413,6 +413,9 @@ async def _award_completion(ctx: ToolContext, task: Task) -> dict:
         day_before = {"xp": day.xp, "completed_tasks": day.completed_tasks, "passed_quizzes": day.passed_quizzes}
     day.completed_tasks += 1
     day.xp += 25 if task.is_core else 10
+    from app.services.gamification import evaluate_achievements
+
+    await evaluate_achievements(ctx.db, ctx.owner_id)
     return {"profile": profile_before, "day_id": day.id, "day": day_before}
 
 

@@ -1,5 +1,5 @@
 <script setup>
-import { BoltIcon, SparklesIcon } from '@heroicons/vue/24/outline';
+import { BoltIcon, SparklesIcon, TrophyIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
@@ -75,6 +75,16 @@ watch(() => store.runEvents.length, () => scrollToLatest());
             <button @click="store.openView('inbox')"><strong>{{ store.unreadCount }}</strong><span>待处理消息</span></button>
             <div class="mini-heatmap" title="最近 12 周真实学习活动">
               <i v-for="day in days" :key="day.index" :class="`heat-${day.value}`"></i>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="store.dashboard.achievements.length" class="achievement-strip">
+          <div class="achievement-heading"><TrophyIcon /><span>成就墙</span><small>{{ store.dashboard.achievements.length }} 枚徽章</small></div>
+          <div class="achievement-list">
+            <div v-for="item in store.dashboard.achievements" :key="item.key" class="achievement-badge" :title="item.description">
+              <span class="badge-icon"><TrophyIcon /></span>
+              <span><strong>{{ item.title }}</strong><small>{{ item.description }}</small></span>
             </div>
           </div>
         </div>

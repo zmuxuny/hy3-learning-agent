@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models import LearningEvent, Plan, ReviewSchedule, Stage, Task
 from app.schemas import PlanCreate, TaskUpdate
+from app.services.gamification import evaluate_achievements
 
 
 PLAN_LOAD = selectinload(Plan.stages).selectinload(Stage.tasks)
@@ -88,8 +89,11 @@ async def create_plan(
     )
     if commit:
         await db.commit()
+        await evaluate_achievements(db, owner_id)
+        await db.commit()
         return await get_plan(db, owner_id, plan.id)
     await db.flush()
+    await evaluate_achievements(db, owner_id)
     return plan
 
 

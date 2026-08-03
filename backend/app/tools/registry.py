@@ -367,6 +367,9 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         earned_xp = (30 if args.score >= 70 else 10) if before["status"] == "open" else 0
         profile.xp += earned_xp
         profile.level = 1 + profile.xp // 100
+        from app.services.gamification import evaluate_achievements
+
+        await evaluate_achievements(ctx.db, ctx.owner_id)
     await ctx.db.flush()
     operation = Operation(
         owner_id=ctx.owner_id,

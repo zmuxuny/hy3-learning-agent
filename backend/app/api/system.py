@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.database import get_db
 from app.models import Achievement, LearningEvent, Quiz, ReviewSchedule
+from app.services.gamification import evaluate_achievements
 
 
 router = APIRouter()
@@ -24,6 +25,8 @@ async def health():
 
 @router.get("/dashboard")
 async def dashboard(db: AsyncSession = Depends(get_db)):
+    await evaluate_achievements(db, settings.DEFAULT_OWNER_ID)
+    await db.commit()
     start = datetime.now(timezone.utc) - timedelta(days=83)
     event_result = await db.execute(
         select(LearningEvent)
