@@ -134,6 +134,8 @@ npm --prefix frontend audit --omit=dev
 
 ## 项目文档
 
+- 分支约定：`main` 保留归档版本，`develop` 为开发主线；发布标签从 `develop` 创建。
+
 - [产品定义](docs/PRODUCT.md)
 - [架构与上下文](docs/ARCHITECTURE.md)
 - [Harness 完整性标准](docs/HARNESS.md)
