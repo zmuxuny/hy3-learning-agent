@@ -73,6 +73,12 @@ async function inspect(label) {
       runActivityExpanded: document.querySelectorAll('.run-activity.expanded').length,
       achievementStrip: document.querySelectorAll('.achievement-strip').length,
       achievementBadges: document.querySelectorAll('.achievement-badge').length,
+      composerStop: document.querySelectorAll('.composer-stop').length,
+      contextUsage: document.querySelectorAll('.context-usage').length,
+      planningAnswersCards: document.querySelectorAll('.planning-answers-card').length,
+      subagentRows: document.querySelectorAll('.subagent-row').length,
+      memoryChips: document.querySelectorAll('.memory-chip').length,
+      memoryToolbar: document.querySelectorAll('.memory-toolbar').length,
       markdownTables: document.querySelectorAll('.agent-markdown table').length,
       sidebarScrollOwner: getComputedStyle(document.querySelector('.sidebar')).overflowY,
       recentScrollOwner: getComputedStyle(document.querySelector('.recent-group') || document.body).overflowY,
@@ -184,6 +190,11 @@ await wait(350);
 await evaluate(`(() => { const cards = [...document.querySelectorAll('.plan-list-open')]; const card = cards.find((node) => node.textContent.includes('FastAPI')) || cards[0]; if (card) card.click(); return Boolean(card); })()`);
 await wait(700);
 report.push(await inspect('plan-resources-1440'));
+
+await viewport(1440, 1000);
+await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('AI 记忆')); if (item) item.click(); return Boolean(item); })()`);
+await wait(450);
+report.push(await inspect('memory-1440'));
 
 await viewport(1440, 1000);
 await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('收件箱')); if (item) item.click(); return Boolean(item); })()`);

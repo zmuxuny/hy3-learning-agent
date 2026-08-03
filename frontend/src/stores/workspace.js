@@ -76,6 +76,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const runEvents = ref([]);
   const loading = ref(false);
   const error = ref('');
+  const pendingQueuedObjective = ref(null);
   let eventSource = null;
   let proactiveTimer = null;
 
@@ -220,9 +221,23 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     activeView.value = view;
   }
 
-  async function startRun(objective, planId = undefined) {
+  async function startRun(objective, planId = undefined, options = {}) {
     if (!objective.trim()) return false;
     const resolvedPlanId = planId === undefined ? focusPlanId.value : planId;
+    if (options.mode === 'queue' && currentRun.value && ['queued', 'running', 'waiting_approval'].includes(currentRun.value.status)) {
+      pendingQueuedObjective.value = { objective, plan_id: resolvedPlanId };
+      return 'queued';
+    }
+    if (options.mode === 'interrupt' && currentRun.value && ['queued', 'running'].includes(currentRun.value.status)) {
+      await api.post(`/agent/runs/${currentRun.value.id}/cancel`);
+      const deadline = Date.now() + 8000;
+      while (Date.now() < deadline) {
+        const polled = (await api.get(`/agent/runs/${currentRun.value.id}`)).data;
+        currentRun.value = polled;
+        if (!['queued', 'running'].includes(polled.status)) break;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
     closeEventSource();
     runEvents.value = [];
     error.value = '';
@@ -532,6 +547,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
           currentRun.value = { ...currentRun.value, status: eventName.split('.')[1] };
           closeEventSource();
           await refreshAfterRun();
+          if (pendingQueuedObjective.value) {
+            const queued = pendingQueuedObjective.value;
+            pendingQueuedObjective.value = null;
+            await startRun(queued.objective, queued.plan_id);
+          }
         }
       });
     });
@@ -554,6 +574,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       error.value = requestError.response?.data?.detail || requestError.message;
       return false;
     }
+  }
+
+  async function fetchChildRunEvents(childId) {
+    const response = await api.get(`/agent/runs/${childId}/events`);
+    return response.data;
+  }
+
+  function clearQueued() {
+    pendingQueuedObjective.value = null;
   }
 
   async function confirmMemory(memoryId) {
@@ -722,6 +751,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     runEvents,
     loading,
     error,
+    pendingQueuedObjective,
     unreadCount,
     activePlans,
     pendingMemories,
@@ -754,6 +784,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     dismissProactiveNotice,
     cancelCurrentRun,
     decideRunApproval,
+    fetchChildRunEvents,
+    clearQueued,
     confirmMemory,
     deleteMemory,
     markNotificationRead,

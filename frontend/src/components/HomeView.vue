@@ -1,5 +1,5 @@
 <script setup>
-import { BoltIcon, SparklesIcon, TrophyIcon } from '@heroicons/vue/24/outline';
+import { BoltIcon, CircleStackIcon, SparklesIcon, TrophyIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
@@ -27,6 +27,10 @@ const suggestions = [
   '检查我现在的计划，告诉我今天最该做什么',
   '根据最近表现主动抽查我',
 ];
+const confirmedMemories = computed(() => store.memories.filter((memory) => memory.status === 'confirmed'));
+const latestMemories = computed(() => [...confirmedMemories.value]
+  .sort((left, right) => new Date(right.updated_at) - new Date(left.updated_at))
+  .slice(0, 2));
 
 function onScroll() {
   if (!scrollArea.value) return;
@@ -88,6 +92,16 @@ watch(() => store.runEvents.length, () => scrollToLatest());
             </div>
           </div>
         </div>
+
+        <div v-if="latestMemories.length" class="memory-overview">
+          <div class="memory-overview-heading"><CircleStackIcon /><span>记忆概览</span><small>{{ confirmedMemories.length }} 条确认记忆</small></div>
+          <div class="memory-overview-list">
+            <div v-for="memory in latestMemories" :key="memory.id" class="memory-overview-item">
+              <small>{{ memory.layer }}/{{ memory.scope }}</small>
+              <p>{{ memory.content }}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-else class="thread">
@@ -99,6 +113,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
           <AgentRunTurn
             v-if="message.role === 'user' && message.run_id === store.currentRun?.id"
             :answer="currentRunAssistant?.content || ''"
+            :user-message="currentRunUser"
           />
 
           <div
@@ -117,7 +132,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
           <div class="user-turn run-objective-turn">
             <div class="message-bubble">{{ store.currentRun.objective }}</div>
           </div>
-          <AgentRunTurn :answer="currentRunAssistant?.content || ''" />
+          <AgentRunTurn :answer="currentRunAssistant?.content || ''" :user-message="currentRunUser" />
         </template>
 
         <PlanningWorkspace />

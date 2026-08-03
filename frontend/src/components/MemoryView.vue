@@ -1,9 +1,25 @@
 <script setup>
-import { CheckIcon, ClockIcon, DocumentTextIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { CheckIcon, ClockIcon, DocumentTextIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import RunTraceButton from './RunTraceButton.vue';
 
 const store = useWorkspaceStore();
+const search = ref('');
+const filteredMemories = computed(() => {
+  const query = search.value.trim().toLowerCase();
+  if (!query) return store.memories;
+  return store.memories.filter((memory) => (
+    `${memory.content} ${memory.scope} ${memory.layer} ${memory.status}`.toLowerCase().includes(query)
+  ));
+});
+const confirmedCount = computed(() => store.memories.filter((memory) => memory.status === 'confirmed').length);
+const proposedCount = computed(() => store.memories.filter((memory) => memory.status === 'proposed').length);
+const scopeCounts = computed(() => ({
+  global: store.memories.filter((memory) => memory.scope === 'global').length,
+  plan: store.memories.filter((memory) => memory.scope === 'plan').length,
+  session: store.memories.filter((memory) => memory.scope === 'session').length,
+}));
 </script>
 
 <template>
@@ -29,7 +45,13 @@ const store = useWorkspaceStore();
       </article>
 
       <div class="memory-list">
-        <article v-for="memory in store.memories" :key="memory.id" class="panel memory-card">
+        <div class="memory-toolbar">
+          <label class="memory-search"><MagnifyingGlassIcon /><input v-model="search" placeholder="搜索记忆内容、作用域或层级" /></label>
+          <span class="memory-filter-counts">
+            <em>确认 {{ confirmedCount }}</em><em>待确认 {{ proposedCount }}</em><em>全局 {{ scopeCounts.global }}</em><em>计划 {{ scopeCounts.plan }}</em><em>会话 {{ scopeCounts.session }}</em>
+          </span>
+        </div>
+        <article v-for="memory in filteredMemories" :key="memory.id" class="panel memory-card">
           <div class="memory-icon"><DocumentTextIcon /></div>
           <div class="memory-body">
             <header><span>{{ memory.scope }} / {{ memory.layer }}</span><em :class="memory.status">{{ memory.status }}</em></header>
@@ -41,7 +63,7 @@ const store = useWorkspaceStore();
             <button title="删除记忆" @click="store.deleteMemory(memory.id)"><TrashIcon /></button>
           </div>
         </article>
-        <div v-if="!store.memories.length" class="panel empty-state"><ClockIcon />Agent 尚未提出长期记忆。它不会把临时推断偷偷写入画像。</div>
+        <div v-if="!filteredMemories.length" class="panel empty-state"><ClockIcon />{{ search ? '没有匹配的记忆。' : 'Agent 尚未提出长期记忆。它不会把临时推断偷偷写入画像。' }}</div>
       </div>
     </div>
   </section>
