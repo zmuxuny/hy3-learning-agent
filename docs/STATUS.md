@@ -45,8 +45,9 @@
 - 站内消息支持单条归档、批量归档全部已读、独立归档列表与恢复；归档不删除消息，并退出 Agent 的近期通知上下文。
 - 计划详情只有一个标题（计划名称），摘要和操作降为正文层级，任务保持纵向时间线。
 - 浏览器回归覆盖 375、768、1280、1440 和 2560×1440；没有文档横向溢出、重复 Header 或横向裁切按钮。
-- `pytest -q`：26 passed。
-- 前端生产构建通过：JS 260.12 kB（gzip 99.20 kB），CSS 59.49 kB（gzip 12.00 kB）；生产依赖审计 0 vulnerabilities。
+- `pytest -q`：55 passed。
+- 前端生产构建通过：JS 274.96 kB（gzip 103.44 kB），CSS 62.15 kB（gzip 12.39 kB）；生产依赖审计 0 vulnerabilities。
+- 发布验收已冻结：版本 0.5.0、`CHANGELOG.md`、CI（pytest + 前端构建 + 生产依赖审计）、`scripts/reset-data.sh`（备份并清空）与 `scripts/seed-fixture.sh`（恢复浏览器回归夹具）均已就绪。
 
 ## 已验证的学习闭环
 

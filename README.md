@@ -114,6 +114,13 @@ npm --prefix frontend run build
 npm --prefix frontend audit --omit=dev
 ```
 
+本地数据管理：
+
+```bash
+./scripts/reset-data.sh      # 把数据库/上下文/工作区备份到 data/backups/ 后清空
+./scripts/seed-fixture.sh    # 从最近备份恢复浏览器回归夹具（服务需停止）
+```
+
 自动化测试使用隔离数据库和模拟模型响应，验证工具循环但不冒充真实 Hy3 调用。当前已经额外完成真实 TokenHub Hy3 的连续 Session、搜索和页面核验；模型超时会先进行一次可观察重试，最终失败仍会保留状态并显示稳定错误编号，不在界面中伪装成功。
 
 ## 数据与安全
