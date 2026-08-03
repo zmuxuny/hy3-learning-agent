@@ -41,5 +41,6 @@ for name in learning_companion.db learning_companion.db-shm learning_companion.d
     cp -a "$latest_backup/$name" "data/$name"
   fi
 done
+chmod 644 data/learning_companion.db 2>/dev/null || true
 mkdir -p data/context/plans data/context/decisions data/workspace
 echo "Restored browser-regression fixture from: $latest_backup"

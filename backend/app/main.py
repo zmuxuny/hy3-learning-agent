@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.api.api import api_router
 from app.core.config import PROJECT_ROOT, settings
@@ -40,6 +40,19 @@ async def ensure_local_owner() -> None:
         elif profile.agent_style == "supervising_coach":
             profile.agent_style = "adaptive_study_partner"
         await db.commit()
+
+
+async def verify_database_writable() -> None:
+    """Fail fast with a clear message when the local SQLite file is not writable."""
+    async with AsyncSessionLocal() as db:
+        try:
+            await db.execute(text("CREATE TABLE IF NOT EXISTS _write_probe (id INTEGER)"))
+            await db.execute(text("DELETE FROM _write_probe"))
+            await db.commit()
+        except Exception as exc:
+            raise RuntimeError(
+                f"Database is not writable ({settings.DATABASE_URL}): {type(exc).__name__}: {exc}"
+            ) from exc
 
 
 async def reconcile_interrupted_runs() -> list[str]:
@@ -88,6 +101,7 @@ async def reconcile_interrupted_runs() -> list[str]:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await create_schema()
+    await verify_database_writable()
     await ensure_local_owner()
     resumable_runs = await reconcile_interrupted_runs()
     proactive_scheduler.start()

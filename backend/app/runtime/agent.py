@@ -510,29 +510,38 @@ class AgentRuntime:
         return response
 
     async def _fail(self, db, run_id: str, exc: Exception) -> None:
-        await db.rollback()
-        run = await db.get(AgentRun, run_id)
-        if not run:
-            return
-        run.status = "failed"
-        run.completed_at = datetime.now(timezone.utc)
-        await db.commit()
-        if isinstance(exc, AgentModelTimeout):
-            summary = "模型暂时没有响应。本轮已执行的工具结果和会话内容均已保留，可以直接重试。"
-            error_code = "model_timeout"
-        elif isinstance(exc, TimeoutError):
-            summary = "某个工具执行超时。本轮状态已安全保留，请重试或查看运行详情。"
-            error_code = "tool_timeout"
-        else:
-            summary = "运行遇到内部错误，状态已安全保留。请重试；技术详情已记录在运行轨迹中。"
-            error_code = "internal_error"
-        await emit_event(
-            db,
-            run_id,
-            "run.failed",
-            summary,
-            {"code": error_code, "technical_error": f"{type(exc).__name__}: {exc}"},
-        )
+        """Mark a run as failed using a fresh session so a broken caller session cannot cascade."""
+        try:
+            async with AsyncSessionLocal() as failure_db:
+                run = await failure_db.get(AgentRun, run_id)
+                if not run:
+                    return
+                run.status = "failed"
+                run.completed_at = datetime.now(timezone.utc)
+                await failure_db.commit()
+                if isinstance(exc, AgentModelTimeout):
+                    summary = "模型暂时没有响应。本轮已执行的工具结果和会话内容均已保留，可以直接重试。"
+                    error_code = "model_timeout"
+                elif isinstance(exc, TimeoutError):
+                    summary = "某个工具执行超时。本轮状态已安全保留，请重试或查看运行详情。"
+                    error_code = "tool_timeout"
+                else:
+                    summary = "运行遇到内部错误，状态已安全保留。请重试；技术详情已记录在运行轨迹中。"
+                    error_code = "internal_error"
+                await emit_event(
+                    failure_db,
+                    run_id,
+                    "run.failed",
+                    summary,
+                    {"code": error_code, "technical_error": f"{type(exc).__name__}: {exc}"},
+                )
+        except Exception as record_error:
+            # If even the failure record cannot be written (e.g. readonly DB), surface it loudly.
+            print(
+                f"[learning-agent] run {run_id} failed ({type(exc).__name__}: {exc}) "
+                f"and failure record also failed ({type(record_error).__name__}: {record_error})",
+                flush=True,
+            )
 
     @staticmethod
     def _default_budget() -> dict:

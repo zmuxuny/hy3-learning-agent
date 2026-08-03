@@ -12,6 +12,7 @@ from app.runtime.agent import AgentRuntime
 from app.schemas import PlanCreate, StageCreate, TaskCreate
 from app.services import plans as plan_service
 from app.context.memory import MemoryManager
+from app.main import verify_database_writable
 
 
 class CapturingCompletions:
@@ -188,3 +189,27 @@ async def test_orphan_plan_memories_are_archived_on_maintain():
         by_scope = {memory.scope_id: memory.status for memory in rows}
         assert by_scope["999"] == "archived"
         assert by_scope[str(plan.id)] == "confirmed"
+
+
+@pytest.mark.asyncio
+async def test_database_writability_check_passes():
+    await verify_database_writable()
+
+
+@pytest.mark.asyncio
+async def test_fail_records_run_failure_with_fresh_session():
+    async with AsyncSessionLocal() as db:
+        run = AgentRun(owner_id="local", trigger="user_message", objective="会失败")
+        db.add(run)
+        await db.commit()
+        run_id = run.id
+
+    broken_db = object()  # a broken session must not cascade into failure recording
+    runtime = AgentRuntime()
+    await runtime._fail(broken_db, run_id, RuntimeError("boom"))
+
+    async with AsyncSessionLocal() as db:
+        failed = await db.get(AgentRun, run_id)
+        assert failed.status == "failed"
+        events = list((await db.execute(select(RunEvent).where(RunEvent.run_id == run_id))).scalars())
+        assert any(event.event_type == "run.failed" for event in events)
