@@ -10,6 +10,8 @@
 
 - 混合语义检索已接入：纯 Python BM25 关键词 + 本地 SimHash 向量（零新增依赖），RRF 融合并叠加作用域/层级/置信度/时间衰减；`memory_search` 返回每条结果的 `score_breakdown`，无向量或无检索词时自动回退到权重排序。
 - 确认记忆在 `memory_maintain` 时持久化 64 位本地向量（`memories.embedding` / `embedding_provider`），旧库通过增量迁移自动补列。
+- Run 状态机已支持真实 `waiting_approval` 暂停：带 `blocking: true` 的工具审批会持久化待批调用并停止本轮，`POST /agent/runs/{id}/approval` 批准后从检查点恢复执行、拒绝后把拒绝结果回填给模型继续调整；`memory_propose` 等候选式确认不中断 Run。
+- 每个工具轮次前持久化 `checkpoint`（消息、步骤、剩余工具调用）；应用重启时，有检查点的 `queued/running` Run 恢复为 `queued` 并自动续跑，无检查点的仍安全标 `failed(process_interrupted)`。前端在 Run 内联区显示批准/拒绝卡片。
 
 - System Prompt 与 37 个真实 Function Calling 输入 Schema 进入同一个 Hy3 多轮 Runtime；37 个输出 Schema 由契约接口公开并在普通成功结果回填前校验。
 - `PlanningIntake` 持久保存已确认事实、结构化问题和 AI 的充分性理由；`PlanProposal` 在用户采用前不创建正式计划，重复采用保持幂等。

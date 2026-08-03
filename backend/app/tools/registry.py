@@ -156,8 +156,12 @@ async def plan_get(ctx: ToolContext, args: PlanIdArgs) -> dict:
 
 
 async def plan_create(ctx: ToolContext, args: PlanCreate) -> dict:
-    if ctx.trigger not in {"user_message"}:
-        return {"approval_required": True, "reason": "Background runs cannot create a plan without user approval."}
+    if ctx.trigger not in {"user_message"} and not ctx.approval_granted:
+        return {
+            "approval_required": True,
+            "blocking": True,
+            "reason": "Background runs cannot create a plan without user approval.",
+        }
     if ctx.session_id:
         return {
             "error": (
@@ -204,8 +208,16 @@ async def task_patch(ctx: ToolContext, args: TaskPatchArgs) -> dict:
     task_plan = await plan_service.get_plan(ctx.db, ctx.owner_id, task_plan_id)
     if args.expected_plan_version is not None and task_plan.version != args.expected_plan_version:
         return {"error": f"Plan version conflict: expected {args.expected_plan_version}, current {task_plan.version}"}
-    if ctx.trigger != "user_message" and {"is_core", "evidence_required"}.intersection(changes):
-        return {"approval_required": True, "reason": "Background runs cannot change task evidence policy"}
+    if (
+        ctx.trigger != "user_message"
+        and {"is_core", "evidence_required"}.intersection(changes)
+        and not ctx.approval_granted
+    ):
+        return {
+            "approval_required": True,
+            "blocking": True,
+            "reason": "Background runs cannot change task evidence policy",
+        }
     mutable_changes = {key: value for key, value in changes.items() if key != "evidence"}
     before = {key: getattr(task, key) for key in mutable_changes}
     if "status" in mutable_changes:

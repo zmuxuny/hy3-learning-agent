@@ -15,7 +15,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 const store = useWorkspaceStore();
 const expanded = ref(new Set());
 const pendingUndoId = ref(null);
-const running = computed(() => ['queued', 'running'].includes(store.currentRun?.status));
+const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
 const undoable = computed(() => store.operations.filter(
   (operation) => operation.run_id === store.currentRun?.id && operation.status === 'committed',
 ));

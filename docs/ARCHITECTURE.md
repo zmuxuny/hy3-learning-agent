@@ -236,4 +236,4 @@ Plan Workspace
 
 通用 spawn/join/cancel、每类子 Agent 工具白名单、费用预算和崩溃检查点按 `ROADMAP.md` 的后续顺序实现；当前规划子 Run 的失败会作为报告返回，主 Agent 可降级完成。
 
-应用启动时会把上一个进程遗留的 `queued/running` Run 标记为 `failed(process_interrupted)` 并追加可见事件，保留原消息、工具结果和操作记录，同时解除 Session 的假占用。这是安全收口，不是检查点续跑；真正的进程恢复仍在 Roadmap 中。
+应用启动时会扫描遗留的 `queued/running` Run：有 `checkpoint` 的恢复为 `queued` 并从断点续跑；没有检查点的标记为 `failed(process_interrupted)` 并追加可见事件，保留原消息、工具结果和操作记录，同时解除 Session 的假占用。阻塞型审批在 `waiting_approval` 状态下持久化待批工具与参数，批准后从检查点恢复，拒绝后把拒绝结果回填给模型继续调整。

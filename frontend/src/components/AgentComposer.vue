@@ -8,7 +8,7 @@ const store = useWorkspaceStore();
 const prompt = ref('');
 const fileInput = ref(null);
 const uploading = ref(false);
-const running = computed(() => ['queued', 'running'].includes(store.currentRun?.status));
+const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
 const archivedContext = computed(() => (
   Boolean(store.activeSession?.archived_at) || store.focusedPlan?.status === 'archived'
 ));

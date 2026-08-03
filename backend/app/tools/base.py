@@ -18,6 +18,7 @@ class ToolContext:
     trigger: str
     plan_id: int | None = None
     session_id: str | None = None
+    approval_granted: bool = False
 
 
 ToolHandler = Callable[[ToolContext, BaseModel], Awaitable[dict[str, Any]]]

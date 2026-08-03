@@ -26,6 +26,11 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
         "embedding": "JSON",
         "embedding_provider": "VARCHAR(64)",
     },
+    "agent_runs": {
+        "checkpoint": "JSON",
+        "pending_approval": "JSON",
+        "output": "TEXT NOT NULL DEFAULT ''",
+    },
 }
 
 

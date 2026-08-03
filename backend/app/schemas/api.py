@@ -222,9 +222,17 @@ class AgentRunRead(APIModel):
     status: str
     model: str
     cancel_requested: bool
+    checkpoint: dict[str, Any] | None
+    pending_approval: dict[str, Any] | None
+    output: str
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
+
+
+class RunApprovalRequest(BaseModel):
+    approved: bool
+    note: str | None = Field(default=None, max_length=1000)
 
 
 class SessionRead(APIModel):

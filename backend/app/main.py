@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +13,7 @@ from app.api.api import api_router
 from app.core.config import PROJECT_ROOT, settings
 from app.db.database import AsyncSessionLocal, create_schema
 from app.models import AgentRun, Owner, UserProfile  # noqa: F401 - imports register every mapped entity
+from app.runtime.agent import AgentRuntime
 from app.runtime.events import emit_event
 from app.runtime.scheduler import proactive_scheduler
 
@@ -40,37 +42,46 @@ async def ensure_local_owner() -> None:
         await db.commit()
 
 
-async def reconcile_interrupted_runs() -> int:
-    """Fail in-memory Runs left active by a previous process without erasing their trace."""
+async def reconcile_interrupted_runs() -> list[str]:
+    """Recover checkpointed Runs and safely close in-memory Runs left by a previous process."""
     async with AsyncSessionLocal() as db:
         interrupted = list((await db.execute(
             select(AgentRun).where(AgentRun.status.in_(["queued", "running"]))
         )).scalars())
         if not interrupted:
-            return 0
+            return []
         now = datetime.now(timezone.utc)
+        resumable: list[str] = []
         for run in interrupted:
-            run.status = "failed"
-            run.completed_at = now
+            if run.checkpoint:
+                run.status = "queued"
+                run.checkpoint = dict(run.checkpoint)
+                resumable.append(run.id)
+            else:
+                run.status = "failed"
+                run.completed_at = now
         await db.commit()
         for run in interrupted:
-            await emit_event(
-                db,
-                run.id,
-                "run.failed",
-                "上一次应用进程结束，本 Run 已安全收口；既有消息、工具结果和操作记录均保留。",
-                {"code": "process_interrupted", "recoverable": False},
-            )
-        return len(interrupted)
+            if run.id not in resumable:
+                await emit_event(
+                    db,
+                    run.id,
+                    "run.failed",
+                    "上一次应用进程结束，本 Run 已安全收口；既有消息、工具结果和操作记录均保留。",
+                    {"code": "process_interrupted", "recoverable": False},
+                )
+        return resumable
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await create_schema()
     await ensure_local_owner()
-    await reconcile_interrupted_runs()
+    resumable_runs = await reconcile_interrupted_runs()
     proactive_scheduler.start()
     try:
+        for run_id in resumable_runs:
+            asyncio.create_task(AgentRuntime().run(run_id, resume=True))
         yield
     finally:
         await proactive_scheduler.stop()

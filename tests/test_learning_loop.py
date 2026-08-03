@@ -104,7 +104,8 @@ async def test_startup_reconciles_interrupted_runs_without_losing_trace():
         interrupted_id = interrupted.id
         completed_id = completed.id
 
-    assert await reconcile_interrupted_runs() == 1
+    resumable = await reconcile_interrupted_runs()
+    assert resumable == []
 
     async with AsyncSessionLocal() as db:
         interrupted = await db.get(AgentRun, interrupted_id)

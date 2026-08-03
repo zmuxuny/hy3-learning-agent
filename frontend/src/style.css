@@ -307,6 +307,14 @@ svg { width: 19px; height: 19px; }
 .context-transition-actions button { height: 31px; display: flex; align-items: center; gap: 5px; padding: 0 9px; color: #666762; background: white; border: 1px solid var(--line); border-radius: 8px; font-size: 8px; white-space: nowrap; }
 .context-transition-actions button.primary { color: white; background: #282925; border-color: #282925; }
 .context-transition-actions svg { width: 12px; }
+.approval-card { width: min(680px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; margin: 0 0 16px; padding: 13px 14px; background: #fffbee; border: 1px solid #eadfc0; border-radius: 11px; }
+.approval-copy small, .approval-copy strong { display: block; }
+.approval-copy small { color: #a08a4e; font-size: 8px; }
+.approval-copy strong { margin-top: 3px; font-size: 11px; }
+.approval-copy p { margin: 4px 0 0; color: #6f6a58; font-size: 8px; line-height: 1.5; }
+.approval-actions { display: flex; align-items: center; gap: 6px; }
+.approval-actions .secondary-button { height: 31px; font-size: 9px; }
+.approval-actions .primary-button { height: 31px; font-size: 9px; }
 
 .plan-filter-tabs { gap: 3px !important; padding: 3px; background: #f1f2ef; border-radius: 9px; }
 .plan-filter-tabs button { height: 27px; display: flex; align-items: center; gap: 6px; padding: 0 9px; color: #7d7e79; background: transparent; border-radius: 7px; font-size: 9px; }

@@ -19,7 +19,13 @@ const props = defineProps({
 });
 const store = useWorkspaceStore();
 const processExpanded = ref(false);
-const running = computed(() => ['queued', 'running'].includes(store.currentRun?.status));
+const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
+const approvalPending = computed(() => (
+  store.currentRun?.status === 'waiting_approval' && Boolean(store.currentRun?.pending_approval)
+));
+const approvalEvent = computed(() => [...store.runEvents].reverse().find(
+  (event) => event.type === 'approval.required' && event.payload?.blocking,
+));
 const activityEvents = computed(() => {
   const rows = [];
   for (const event of store.runEvents) {
@@ -54,6 +60,7 @@ const durationLabel = computed(() => {
   return `${minutes}m ${seconds % 60}s`;
 });
 const activitySummary = computed(() => {
+  if (approvalPending.value) return '等待你批准一个操作';
   if (running.value) return latestActivity.value ? eventTitle(latestActivity.value) : '正在准备学习上下文';
   if (store.currentRun?.status === 'failed') return '本次运行已失败';
   if (store.currentRun?.status === 'cancelled') return '本次运行已停止';
@@ -121,6 +128,18 @@ async function continueInCreatedPlan() {
           <button class="full-trace-link" @click="store.traceOpen = true">查看完整运行轨迹</button>
         </div>
       </div>
+
+      <section v-if="approvalPending" class="approval-card">
+        <div class="approval-copy">
+          <small>需要你的确认</small>
+          <strong>{{ approvalEvent?.payload?.tool_name || 'Agent 操作' }}</strong>
+          <p>{{ approvalEvent?.payload?.reason || store.currentRun.pending_approval?.reason || '该操作需要你批准后才会执行。' }}</p>
+        </div>
+        <div class="approval-actions">
+          <button class="secondary-button" @click="store.decideRunApproval(store.currentRun.id, false)">拒绝</button>
+          <button class="primary-button" @click="store.decideRunApproval(store.currentRun.id, true)">批准</button>
+        </div>
+      </section>
 
       <div v-if="answerText" :class="['assistant-answer', { failed: finalEvent?.type === 'run.failed' }]">
         <AgentMessage :content="answerText" />

@@ -4,6 +4,7 @@ import api from '../api/client';
 
 const RUN_EVENTS = [
   'run.started',
+  'run.resumed',
   'run.retrying',
   'context.built',
   'assistant.status',
@@ -11,6 +12,7 @@ const RUN_EVENTS = [
   'tool.started',
   'tool.completed',
   'approval.required',
+  'approval.resolved',
   'operation.committed',
   'notification.sent',
   'subagent.started',
@@ -492,6 +494,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await api.post(`/agent/runs/${currentRun.value.id}/cancel`);
   }
 
+  async function decideRunApproval(runId, approved) {
+    error.value = '';
+    try {
+      const response = await api.post(`/agent/runs/${runId}/approval`, { approved });
+      currentRun.value = response.data;
+      subscribeToRun(runId, false);
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
+  }
+
   async function confirmMemory(memoryId) {
     await api.post(`/memories/${memoryId}/confirm`);
     const response = await api.get('/memories');
@@ -653,6 +668,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     stopProactiveSync,
     dismissProactiveNotice,
     cancelCurrentRun,
+    decideRunApproval,
     confirmMemory,
     deleteMemory,
     markNotificationRead,

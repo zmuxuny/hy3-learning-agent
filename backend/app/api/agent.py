@@ -36,6 +36,7 @@ from app.schemas import (
     PlanProposalRead,
     PlanningStateRead,
     RunEventRead,
+    RunApprovalRequest,
     SessionHandoffCreate,
     SessionRead,
     SessionUpdate,
@@ -53,8 +54,8 @@ def _visible_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
     return [message for message in messages if not message.message_metadata.get("superseded_by_edit")]
 
 
-def _start_runtime(run_id: str) -> None:
-    task = asyncio.create_task(runtime.run(run_id))
+def _start_runtime(run_id: str, **kwargs) -> None:
+    task = asyncio.create_task(runtime.run(run_id, **kwargs))
     active_tasks.add(task)
     task.add_done_callback(active_tasks.discard)
 
@@ -630,6 +631,32 @@ async def cancel_run(run_id: str, db: AsyncSession = Depends(get_db)):
     run.cancel_requested = True
     await db.commit()
     await db.refresh(run)
+    return run
+
+
+@router.post("/runs/{run_id}/approval", response_model=AgentRunRead)
+async def decide_run_approval(
+    run_id: str,
+    data: RunApprovalRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    run = await db.get(AgentRun, run_id)
+    if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.status != "waiting_approval" or not run.pending_approval:
+        raise HTTPException(status_code=409, detail="This run has no pending approval request")
+    if data.note:
+        pending = dict(run.pending_approval)
+        pending["note"] = data.note
+        run.pending_approval = pending
+    run.status = "queued"
+    await db.commit()
+    await db.refresh(run)
+    _start_runtime(
+        run.id,
+        resume=True,
+        approval_decision="approve" if data.approved else "reject",
+    )
     return run
 
 
