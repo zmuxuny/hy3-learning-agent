@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import Notification, UserProfile
+from app.models import Notification, Plan, UserProfile
 from app.notifications.diagnostics import smtp_connection
 from app.notifications.push import push_service
 
@@ -31,6 +31,10 @@ class NotificationService:
         allowed, reason = await self._guard(owner_id, trigger, plan_id)
         if not allowed:
             return {"blocked": True, "reason": reason, "notifications": []}
+        if plan_id is not None:
+            plan = await self.db.get(Plan, plan_id)
+            if not plan or plan.owner_id != owner_id or plan.status == "archived":
+                return {"blocked": True, "reason": "plan no longer active", "notifications": []}
 
         created: list[dict] = []
         requested = list(dict.fromkeys(["in_app", *channels]))

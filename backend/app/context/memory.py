@@ -157,6 +157,15 @@ class MemoryManager:
         plans = list((await self.db.execute(
             select(Plan).where(Plan.owner_id == owner_id).options(selectinload(Plan.stages).selectinload(Stage.tasks))
         )).scalars().unique())
+        existing_plan_ids = {str(plan.id) for plan in plans}
+        for memory in memories:
+            if (
+                memory.status == "confirmed"
+                and memory.scope == "plan"
+                and memory.scope_id not in existing_plan_ids
+            ):
+                memory.status = "archived"
+                archived += 1
         for plan in plans:
             tasks = [task for stage in plan.stages for task in stage.tasks]
             completed = [task for task in tasks if task.status == "completed"]

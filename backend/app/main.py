@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app.api.api import api_router
 from app.core.config import PROJECT_ROOT, settings
 from app.db.database import AsyncSessionLocal, create_schema
-from app.models import AgentRun, Owner, UserProfile  # noqa: F401 - imports register every mapped entity
+from app.models import AgentRun, Owner, Plan, UserProfile  # noqa: F401 - imports register every mapped entity
 from app.runtime.agent import AgentRuntime
 from app.runtime.events import emit_event
 from app.runtime.scheduler import proactive_scheduler
@@ -54,9 +54,21 @@ async def reconcile_interrupted_runs() -> list[str]:
         resumable: list[str] = []
         for run in interrupted:
             if run.checkpoint:
-                run.status = "queued"
-                run.checkpoint = dict(run.checkpoint)
-                resumable.append(run.id)
+                plan_exists = True
+                if run.plan_id is not None:
+                    plan_exists = (await db.execute(
+                        select(Plan.id).where(
+                            Plan.id == run.plan_id,
+                            Plan.owner_id == run.owner_id,
+                        )
+                    )).scalar_one_or_none() is not None
+                if plan_exists:
+                    run.status = "queued"
+                    run.checkpoint = dict(run.checkpoint)
+                    resumable.append(run.id)
+                else:
+                    run.status = "failed"
+                    run.completed_at = now
             else:
                 run.status = "failed"
                 run.completed_at = now

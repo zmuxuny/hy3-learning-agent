@@ -214,9 +214,54 @@ class AgentRuntime:
             if self.client is None:
                 self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
             session = await db.get(Session, run.session_id) if run.session_id else None
+            if run.session_id is None and run.trigger in {"heartbeat", "manual_heartbeat", "task_event", "review_due"}:
+                messages = await self._refresh_stateless_context(db, run, messages)
             await self._loop(db, run, messages, start_step=start_step, pending_calls=pending_calls, granted=granted, session=session)
         except Exception as exc:
             await self._fail(db, run.id, exc)
+
+    async def _refresh_stateless_context(self, db, run: AgentRun, messages: list[dict]) -> list[dict]:
+        """Rebuild the context snapshot for stateless background runs resumed after restart.
+
+        Checkpoints store the markdown assembled before the process stopped; the world may
+        have changed (plans deleted, data reset, memories updated). Rebuilding guarantees the
+        model observes the current database instead of a stale snapshot.
+        """
+        snapshot = await ContextAssembler(db).build(
+            run.owner_id,
+            plan_id=run.plan_id,
+            session_id=None,
+            run_id=run.id,
+            objective=run.objective,
+        )
+        await db.commit()
+        memory_ids = [
+            item["id"]
+            for item in snapshot.source_manifest
+            if item.get("type") == "memory"
+        ]
+        await emit_event(
+            db,
+            run.id,
+            "context.built",
+            "已按当前数据重建上下文",
+            {
+                "snapshot_id": snapshot.id,
+                "estimated_tokens": snapshot.estimated_tokens,
+                "memory_ids": memory_ids,
+                "refreshed_on_resume": True,
+            },
+        )
+        replacement = f"Trigger: {run.trigger}\nObjective: {run.objective}\n\n{snapshot.markdown}"
+        replaced = False
+        for index, message in enumerate(messages):
+            if message.get("role") == "user" and str(message.get("content", "")).startswith("Trigger:"):
+                messages[index] = {**message, "content": replacement}
+                replaced = True
+                break
+        if not replaced:
+            messages.insert(1, {"role": "user", "content": replacement})
+        return messages
 
     async def _loop(
         self,

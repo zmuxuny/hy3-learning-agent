@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     )
 
     PROJECT_NAME: str = "Learning Agent"
-    VERSION: str = "0.7.1"
+    VERSION: str = "0.7.2"
     API_V1_STR: str = "/api/v1"
     DEFAULT_OWNER_ID: str = "local"
     DEFAULT_TIMEZONE: str = "Asia/Shanghai"
