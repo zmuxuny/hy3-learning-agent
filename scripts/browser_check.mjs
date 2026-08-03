@@ -71,6 +71,8 @@ async function inspect(label) {
         : 0,
       runActivity: document.querySelectorAll('.run-activity').length,
       runActivityExpanded: document.querySelectorAll('.run-activity.expanded').length,
+      achievementStrip: document.querySelectorAll('.achievement-strip').length,
+      achievementBadges: document.querySelectorAll('.achievement-badge').length,
       markdownTables: document.querySelectorAll('.agent-markdown table').length,
       sidebarScrollOwner: getComputedStyle(document.querySelector('.sidebar')).overflowY,
       recentScrollOwner: getComputedStyle(document.querySelector('.recent-group') || document.body).overflowY,

@@ -72,6 +72,7 @@ async def read_settings():
             and settings.VAPID_SUBJECT
         ),
         "vapid_public_key": settings.VAPID_PUBLIC_KEY,
+        "notification_cooldown_minutes": settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES,
         "timezone": settings.DEFAULT_TIMEZONE,
     }
 

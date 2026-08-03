@@ -53,7 +53,7 @@ onMounted(() => {
     policy.quiet_end = profile.quiet_hours?.end || '08:00';
     policy.daily_limit = profile.daily_notification_limit ?? 3;
   }
-  if (store.schedulerStatus) policy.cooldown_minutes = 180;
+  if (store.schedulerStatus) policy.cooldown_minutes = app?.notification_cooldown_minutes ?? 180;
 });
 
 async function run(label, action) {
