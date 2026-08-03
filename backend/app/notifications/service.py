@@ -96,7 +96,7 @@ class NotificationService:
         result = await self.db.execute(
             select(func.count(Notification.id)).where(
                 Notification.owner_id == owner_id,
-                Notification.channel == "in_app",
+                Notification.channel.in_(["in_app", "email"]),
                 Notification.sent_at >= utc_midnight,
             )
         )
@@ -108,7 +108,7 @@ class NotificationService:
         cooldown_dt = datetime.fromtimestamp(cooldown_start, tz=timezone.utc)
         cooldown_query = select(Notification.id).where(
             Notification.owner_id == owner_id,
-            Notification.channel == "in_app",
+            Notification.channel.in_(["in_app", "email"]),
             Notification.sent_at >= cooldown_dt,
         )
         if plan_id is not None:

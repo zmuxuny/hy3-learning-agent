@@ -55,7 +55,7 @@
 
 | 工具 | 作用 |
 | --- | --- |
-| `web_search` / `web_open` | 通过可替换 Provider 搜索公开资料；逐跳校验重定向并核验正文 |
+| `web_search` / `web_open` | 通过可替换 Provider（DuckDuckGo 主源 + Bing 备选源）搜索公开资料；主源失败/超时/空结果时自动降级并带 `fallback_used` 标记；逐跳校验重定向并核验正文 |
 | `resource_save` | 把核验过的具体课程、教程、实验或参考资料保存到计划；记录来源、难度、语言、摘要和适配理由，并支持撤销 |
 | `file_list` / `file_read` / `file_write` | 操作个人 Agent 工作区内的学习文件 |
 | `code_execute` | 有超时和输出上限地运行 Python/Bash；不是安全容器 |

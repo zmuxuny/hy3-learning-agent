@@ -72,8 +72,22 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
         if not plan or plan.owner_id != ctx.owner_id:
             return {"error": "Plan not found"}
 
-    provider = get_search_provider(settings.WEB_SEARCH_PROVIDER)
-    results = await provider.search(args.query, args.limit)
+    primary_name = settings.WEB_SEARCH_PROVIDER
+    fallback_name = settings.WEB_SEARCH_FALLBACK_PROVIDER
+    provider = get_search_provider(primary_name)
+    fallback_used = False
+    try:
+        results = await provider.search(args.query, args.limit)
+    except Exception:
+        if not fallback_name or fallback_name.lower() == "none" or fallback_name.lower() == primary_name.lower():
+            raise
+        provider = get_search_provider(fallback_name)
+        results = await provider.search(args.query, args.limit)
+        fallback_used = True
+    if not results and fallback_name and fallback_name.lower() not in {"none", primary_name.lower()}:
+        provider = get_search_provider(fallback_name)
+        results = await provider.search(args.query, args.limit)
+        fallback_used = True
     result_rows = []
     for result in results:
         row = result.as_dict()
@@ -111,6 +125,7 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
         "query": args.query,
         "results": result_rows,
         "saved_resource_ids": saved_ids,
+        "fallback_used": fallback_used,
     }
 
 

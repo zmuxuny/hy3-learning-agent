@@ -76,6 +76,7 @@ class Settings(BaseSettings):
 
     WEB_SEARCH_TIMEOUT_SECONDS: int = Field(default=12, ge=3, le=60)
     WEB_SEARCH_PROVIDER: str = "duckduckgo"
+    WEB_SEARCH_FALLBACK_PROVIDER: str = "bing"
     WEB_MAX_REDIRECTS: int = Field(default=5, ge=0, le=10)
     WEB_ALLOW_SYNTHETIC_DNS: bool = True
     TOOL_EXECUTION_TIMEOUT_SECONDS: int = Field(default=10, ge=1, le=60)
