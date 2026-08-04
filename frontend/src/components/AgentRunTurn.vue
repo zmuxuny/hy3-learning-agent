@@ -25,7 +25,18 @@ const store = useWorkspaceStore();
 const processExpanded = ref(false);
 const childExpanded = ref(new Set());
 const childDetails = ref({});
+const approvalAnswer = ref('');
+const displayAnswer = ref('');
+let answerFrame = 0;
 const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
+const streaming = computed(() => (
+  store.streamingRunId === store.currentRun?.id && Boolean(store.streamingText)
+));
+const thinking = computed(() => (
+  store.streamingRunId === store.currentRun?.id
+  && Boolean(store.streamingReasoning)
+  && !Boolean(store.streamingText)
+));
 const approvalPending = computed(() => (
   store.currentRun?.status === 'waiting_approval' && Boolean(store.currentRun?.pending_approval)
 ));
@@ -53,7 +64,17 @@ const latestActivity = computed(() => activityEvents.value[activityEvents.value.
 const finalEvent = computed(() => [...store.runEvents].reverse().find(
   (event) => ['assistant.message', 'run.completed', 'run.failed', 'run.cancelled'].includes(event.type),
 ));
-const answerText = computed(() => props.answer || finalEvent.value?.summary || '');
+const answerText = computed(() => (
+  store.streamingRunId === store.currentRun?.id && store.streamingText
+    ? store.streamingText
+    : props.answer || finalEvent.value?.summary || ''
+));
+watch(answerText, (text) => {
+  cancelAnimationFrame(answerFrame);
+  answerFrame = requestAnimationFrame(() => {
+    displayAnswer.value = text;
+  });
+}, { immediate: true });
 const liveIntakeMatches = computed(() => (
   props.cards.length === 0
   && store.planningState.intake?.source_run_id === store.currentRun?.id
@@ -256,14 +277,28 @@ async function copyAnswer() {
           <strong>{{ approvalEvent?.payload?.tool_name || 'Agent 操作' }}</strong>
           <p>{{ approvalEvent?.payload?.reason || store.currentRun.pending_approval?.reason || '该操作需要你批准后才会执行。' }}</p>
         </div>
+        <textarea
+          v-model="approvalAnswer"
+          class="approval-answer"
+          rows="2"
+          placeholder="也可以直接回答 Agent 的问题，它会据此调整…"
+        ></textarea>
         <div class="approval-actions">
           <button class="secondary-button" @click="store.decideRunApproval(store.currentRun.id, false)">拒绝</button>
+          <button
+            v-if="approvalAnswer.trim()"
+            class="secondary-button"
+            @click="store.decideRunApproval(store.currentRun.id, false, approvalAnswer.trim())"
+          >回答并继续</button>
           <button class="primary-button" @click="store.decideRunApproval(store.currentRun.id, true)">批准</button>
         </div>
       </section>
 
-      <div v-if="answerText" :class="['assistant-answer', { failed: finalEvent?.type === 'run.failed' }]">
-        <AgentMessage :content="answerText" />
+      <div v-if="thinking" class="thinking-row inline-thinking"><span></span><span></span><span></span><p>正在思考学习计划与下一步</p></div>
+
+      <div v-if="displayAnswer" :class="['assistant-answer', { failed: finalEvent?.type === 'run.failed', streaming }]">
+        <AgentMessage :content="displayAnswer" />
+        <span v-if="streaming" class="stream-cursor" aria-hidden="true"></span>
         <small v-if="finalEvent?.type === 'run.failed'">错误编号：{{ finalEvent.payload?.code || 'run_failed' }}</small>
       </div>
 

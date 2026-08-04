@@ -33,6 +33,10 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
         "output": "TEXT NOT NULL DEFAULT ''",
         "created_plan_id": "INTEGER",
     },
+    "user_profiles": {
+        "follow_up_behavior": "VARCHAR(16) NOT NULL DEFAULT 'steer'",
+        "proactive_paused": "BOOLEAN NOT NULL DEFAULT 0",
+    },
 }
 
 
@@ -59,6 +63,38 @@ async def migrate_sqlite_schema(connection: AsyncConnection) -> None:
     ))
     await connection.execute(text(
         "CREATE INDEX IF NOT EXISTS ix_notifications_archived_at ON notifications (archived_at)"
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS queued_messages (
+            id VARCHAR(64) PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            session_id VARCHAR(64),
+            plan_id INTEGER,
+            objective TEXT NOT NULL,
+            position INTEGER NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS run_steer_messages (
+            id VARCHAR(64) PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            run_id VARCHAR(64) NOT NULL,
+            content TEXT NOT NULL,
+            applied_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_queued_messages_session_id ON queued_messages (session_id)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_run_steer_messages_run_id ON run_steer_messages (run_id)"
     ))
     await connection.execute(text(
         """

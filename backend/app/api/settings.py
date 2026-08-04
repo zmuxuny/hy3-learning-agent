@@ -53,6 +53,14 @@ class NotificationPolicyUpdate(BaseModel):
     cooldown_minutes: int | None = Field(default=None, ge=0, le=1440)
 
 
+class FollowUpBehaviorUpdate(BaseModel):
+    follow_up_behavior: Literal["steer", "queue"]
+
+
+class ProactivePauseUpdate(BaseModel):
+    paused: bool
+
+
 def _database_path_label() -> str:
     url = settings.DATABASE_URL
     if url.startswith("sqlite+aiosqlite:///"):
@@ -122,6 +130,37 @@ async def read_tool_contracts():
 @router.get("/proactive")
 async def read_proactive_status():
     return await proactive_scheduler.describe()
+
+
+@router.get("/followup")
+async def read_followup_behavior(db: AsyncSession = Depends(get_db)):
+    profile = await db.get(UserProfile, settings.DEFAULT_OWNER_ID)
+    return {"follow_up_behavior": profile.follow_up_behavior if profile else "steer"}
+
+
+@router.put("/followup")
+async def update_followup_behavior(
+    data: FollowUpBehaviorUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    profile = await db.get(UserProfile, settings.DEFAULT_OWNER_ID)
+    if profile is None:
+        profile = UserProfile(owner_id=settings.DEFAULT_OWNER_ID)
+        db.add(profile)
+    profile.follow_up_behavior = data.follow_up_behavior
+    await db.commit()
+    return {"follow_up_behavior": profile.follow_up_behavior}
+
+
+@router.put("/proactive")
+async def update_proactive_pause(data: ProactivePauseUpdate, db: AsyncSession = Depends(get_db)):
+    profile = await db.get(UserProfile, settings.DEFAULT_OWNER_ID)
+    if profile is None:
+        profile = UserProfile(owner_id=settings.DEFAULT_OWNER_ID)
+        db.add(profile)
+    profile.proactive_paused = data.paused
+    await db.commit()
+    return {**await proactive_scheduler.describe(), "paused": profile.proactive_paused}
 
 
 @router.get("/email")

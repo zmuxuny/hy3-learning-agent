@@ -9,6 +9,9 @@ const RUN_EVENTS = [
   'context.built',
   'assistant.status',
   'assistant.message',
+  'assistant.reasoning',
+  'assistant.delta',
+  'steer.received',
   'tool.started',
   'tool.completed',
   'approval.required',
@@ -73,10 +76,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const activeSessionId = ref(null);
   const conversationMessages = ref([]);
   const planningState = ref({ intake: null, proposal: null });
+  const queuedMessages = ref([]);
+  const followUpBehavior = ref('steer');
+  const streamingText = ref('');
+  const streamingReasoning = ref('');
+  const streamingRunId = ref(null);
   const runEvents = ref([]);
   const loading = ref(false);
   const error = ref('');
-  const pendingQueuedObjective = ref(null);
+  const drainingQueue = ref(false);
   let eventSource = null;
   let proactiveTimer = null;
 
@@ -89,6 +97,26 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const activeSession = computed(() => (
     [...sessions.value, ...archivedSessions.value].find((session) => session.id === activeSessionId.value) || null
   ));
+  const activeSubagents = computed(() => {
+    if (!currentRun.value) return [];
+    const started = runEvents.value.filter((event) => event.type === 'subagent.started');
+    return started
+      .map((event) => {
+        const childId = event.payload?.child_run_id;
+        const terminal = [...runEvents.value].reverse().find(
+          (item) => (
+            item.type === 'subagent.completed' || item.type === 'subagent.cancelled'
+          ) && item.payload?.child_run_id === childId,
+        );
+        return {
+          child_run_id: childId,
+          role: event.payload?.role || '子 Agent',
+          objective: event.payload?.objective || '',
+          status: terminal ? 'done' : 'running',
+        };
+      })
+      .filter((agent) => agent.status === 'running');
+  });
   const createdPlanFromCurrentRun = computed(() => {
     if (planningState.value.proposal?.status === 'accepted' && planningState.value.proposal?.plan_id) {
       const proposal = planningState.value.proposal;
@@ -119,7 +147,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loading.value = true;
     error.value = '';
     try {
-      const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, archivedNotificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes, proactiveRes, settingsRes] = await Promise.all([
+      const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, archivedNotificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes, proactiveRes, settingsRes, followupRes, queueRes] = await Promise.all([
         api.get('/profile'),
         api.get('/plans'),
         api.get('/plans?archived=true'),
@@ -134,6 +162,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         api.get('/settings/email'),
         api.get('/settings/proactive'),
         api.get('/settings'),
+        api.get('/settings/followup'),
+        api.get('/agent/queue'),
       ]);
       profile.value = profileRes.data;
       plans.value = plansRes.data;
@@ -149,6 +179,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       emailConfiguration.value = emailRes.data;
       appSettings.value = settingsRes.data;
       schedulerStatus.value = proactiveRes.data;
+      followUpBehavior.value = followupRes.data?.follow_up_behavior || 'steer';
+      queuedMessages.value = queueRes.data || [];
       await refreshCurrentPlan();
     } catch (requestError) {
       error.value = requestError.response?.data?.detail || requestError.message;
@@ -180,6 +212,85 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       conversationMessages.value = response.data;
       planningState.value = planningResponse.data;
     }
+  }
+
+  async function loadQueue() {
+    const params = activeSessionId.value ? `?session_id=${encodeURIComponent(activeSessionId.value)}` : '';
+    const response = await api.get(`/agent/queue${params}`);
+    queuedMessages.value = response.data;
+  }
+
+  async function enqueueMessage(objective) {
+    const response = await api.post('/agent/queue', {
+      objective,
+      session_id: activeSessionId.value || null,
+      plan_id: focusPlanId.value ?? null,
+    });
+    await loadQueue();
+    return response.data;
+  }
+
+  async function updateQueuedMessage(messageId, patch) {
+    await api.patch(`/agent/queue/${messageId}`, patch);
+    await loadQueue();
+  }
+
+  async function deleteQueuedMessage(messageId) {
+    await api.delete(`/agent/queue/${messageId}`);
+    await loadQueue();
+  }
+
+  async function moveQueuedMessage(messageId, direction) {
+    const index = queuedMessages.value.findIndex((item) => item.id === messageId);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= queuedMessages.value.length) return;
+    const targetMessage = queuedMessages.value[target];
+    await updateQueuedMessage(messageId, { position: targetMessage.position });
+    await updateQueuedMessage(targetMessage.id, { position: queuedMessages.value[index].position });
+  }
+
+  async function sendQueuedMessage(messageId) {
+    closeEventSource();
+    runEvents.value = [];
+    error.value = '';
+    try {
+      const response = await api.post(`/agent/queue/${messageId}/send`);
+      currentRun.value = response.data;
+      focusPlanId.value = response.data.plan_id ?? focusPlanId.value;
+      activeSessionId.value = response.data.session_id || activeSessionId.value;
+      activeView.value = 'home';
+      runs.value.unshift(response.data);
+      await loadSessions();
+      await loadQueue();
+      subscribeToRun(response.data.id);
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
+  }
+
+  async function steerRun(runId, content) {
+    try {
+      const response = await api.post(`/agent/runs/${runId}/steer`, { content });
+      currentRun.value = response.data;
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
+  }
+
+  async function setFollowUpBehavior(behavior) {
+    const response = await api.put('/settings/followup', { follow_up_behavior: behavior });
+    followUpBehavior.value = response.data?.follow_up_behavior || behavior;
+    return response.data;
+  }
+
+  async function setProactivePaused(paused) {
+    const response = await api.put('/settings/proactive', { paused });
+    schedulerStatus.value = response.data;
+    return response.data;
   }
 
   async function loadSessions() {
@@ -233,7 +344,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!objective.trim()) return false;
     const resolvedPlanId = planId === undefined ? focusPlanId.value : planId;
     if (options.mode === 'queue' && currentRun.value && ['queued', 'running', 'waiting_approval'].includes(currentRun.value.status)) {
-      pendingQueuedObjective.value = { objective, plan_id: resolvedPlanId };
+      await enqueueMessage(objective);
       return 'queued';
     }
     if (options.mode === 'interrupt' && currentRun.value && ['queued', 'running'].includes(currentRun.value.status)) {
@@ -310,6 +421,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const [response] = await Promise.all([
       api.get(`/agent/runs/${run.id}/events`),
       loadConversation(activeSessionId.value),
+      loadQueue(),
     ]);
     runEvents.value = response.data.map((event) => ({
       sequence: event.sequence,
@@ -327,6 +439,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     focusPlanId.value = session.plan_id ?? null;
     activeView.value = 'home';
     await loadConversation(session.id);
+    await loadQueue();
     let run = runs.value.find((item) => item.id === session.last_run_id);
     if (!run && session.last_run_id) {
       run = (await api.get(`/agent/runs/${session.last_run_id}`)).data;
@@ -548,7 +661,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     RUN_EVENTS.forEach((eventName) => {
       eventSource.addEventListener(eventName, async (event) => {
         const payload = JSON.parse(event.data);
-        if (!runEvents.value.some((item) => item.sequence === payload.sequence)) {
+        if (payload.sequence != null && !runEvents.value.some((item) => item.sequence === payload.sequence)) {
           runEvents.value.push(payload);
         }
         if (eventName === 'tool.completed') {
@@ -568,14 +681,57 @@ export const useWorkspaceStore = defineStore('workspace', () => {
             }
           }
         }
+        if (eventName === 'assistant.delta' && payload.payload?.text != null) {
+          streamingRunId.value = runId;
+          streamingText.value = payload.payload.text;
+          streamingReasoning.value = '';
+        }
+        if (eventName === 'assistant.reasoning' && payload.payload?.text != null) {
+          streamingRunId.value = runId;
+          streamingReasoning.value = payload.payload.text;
+        }
+        if (eventName === 'assistant.status' || eventName === 'assistant.message') {
+          streamingRunId.value = runId;
+          streamingText.value = payload.summary || payload.payload?.content || '';
+          streamingReasoning.value = '';
+        }
+        if (eventName === 'steer.received') {
+          const steerContent = payload.payload?.content || '';
+          if (steerContent && !conversationMessages.value.some((message) => (
+            message.run_id === runId
+            && message.role === 'user'
+            && message.message_metadata?.ui_kind === 'steer'
+            && message.content === steerContent
+          ))) {
+            conversationMessages.value.push({
+              id: `steer-${payload.sequence}-${payload.payload?.steer_id || ''}`,
+              session_id: activeSessionId.value,
+              run_id: runId,
+              role: 'user',
+              content: steerContent,
+              message_metadata: { ui_kind: 'steer' },
+              created_at: new Date().toISOString(),
+            });
+          }
+        }
         if (eventName === 'run.completed' || eventName === 'run.failed' || eventName === 'run.cancelled') {
+          streamingRunId.value = null;
+          streamingText.value = '';
+          streamingReasoning.value = '';
           currentRun.value = { ...currentRun.value, status: eventName.split('.')[1] };
           closeEventSource();
           await refreshAfterRun();
-          if (pendingQueuedObjective.value) {
-            const queued = pendingQueuedObjective.value;
-            pendingQueuedObjective.value = null;
-            await startRun(queued.objective, queued.plan_id);
+          const sessionQueue = queuedMessages.value.filter((item) => (
+            item.session_id === (activeSessionId.value || null)
+          ));
+          if (!drainingQueue.value && sessionQueue.length) {
+            drainingQueue.value = true;
+            try {
+              const next = sessionQueue[0];
+              await sendQueuedMessage(next.id);
+            } finally {
+              drainingQueue.value = false;
+            }
           }
         }
       });
@@ -588,10 +744,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await api.post(`/agent/runs/${currentRun.value.id}/cancel`);
   }
 
-  async function decideRunApproval(runId, approved) {
+  async function decideRunApproval(runId, approved, answer = '') {
     error.value = '';
     try {
-      const response = await api.post(`/agent/runs/${runId}/approval`, { approved });
+      const response = await api.post(`/agent/runs/${runId}/approval`, {
+        approved,
+        answer: answer || undefined,
+      });
       currentRun.value = response.data;
       subscribeToRun(runId, false);
       return true;
@@ -604,10 +763,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function fetchChildRunEvents(childId) {
     const response = await api.get(`/agent/runs/${childId}/events`);
     return response.data;
-  }
-
-  function clearQueued() {
-    pendingQueuedObjective.value = null;
   }
 
   async function confirmMemory(memoryId) {
@@ -657,7 +812,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function refreshAfterRun() {
     const knownNotificationIds = new Set(notifications.value.map((item) => item.id));
-    const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, archivedNotificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes] = await Promise.all([
+    const [profileRes, plansRes, archivedPlansRes, dashboardRes, memoriesRes, notificationsRes, archivedNotificationsRes, operationsRes, runsRes, sessionsRes, archivedSessionsRes, emailRes, queueRes] = await Promise.all([
       api.get('/profile'),
       api.get('/plans'),
       api.get('/plans?archived=true'),
@@ -670,6 +825,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       api.get('/agent/sessions'),
       api.get('/agent/sessions?archived=true'),
       api.get('/settings/email'),
+      api.get('/agent/queue'),
     ]);
     profile.value = profileRes.data;
     plans.value = plansRes.data;
@@ -686,6 +842,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     sessions.value = sessionsRes.data;
     archivedSessions.value = archivedSessionsRes.data;
     emailConfiguration.value = emailRes.data;
+    queuedMessages.value = queueRes.data || [];
     await refreshCurrentPlan();
     await loadConversation(activeSessionId.value);
     await refreshProactiveState();
@@ -703,14 +860,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     currentRun.value = null;
     conversationMessages.value = [];
     planningState.value = { intake: null, proposal: null };
+    streamingRunId.value = null;
+    streamingText.value = '';
+    streamingReasoning.value = '';
     runEvents.value = [];
     closeEventSource();
   }
 
-  function startNewConversation() {
+  async function startNewConversation() {
     resetConversationState();
     focusPlanId.value = null;
     activeView.value = 'home';
+    await loadQueue();
   }
 
   async function enableBrowserNotifications() {
@@ -773,10 +934,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     activeSessionId,
     conversationMessages,
     planningState,
+    queuedMessages,
+    followUpBehavior,
+    streamingText,
+    streamingReasoning,
+    streamingRunId,
     runEvents,
     loading,
     error,
-    pendingQueuedObjective,
+    activeSubagents,
     planForRun,
     unreadCount,
     activePlans,
@@ -799,6 +965,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     decidePlanProposal,
     continueInPlan,
     setPlanArchived,
+    loadQueue,
+    enqueueMessage,
+    updateQueuedMessage,
+    deleteQueuedMessage,
+    moveQueuedMessage,
+    sendQueuedMessage,
+    steerRun,
+    setFollowUpBehavior,
+    setProactivePaused,
     testEmail,
     updateEmailSettings,
     deleteEmailCredentials,
@@ -811,7 +986,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     cancelCurrentRun,
     decideRunApproval,
     fetchChildRunEvents,
-    clearQueued,
     confirmMemory,
     deleteMemory,
     markNotificationRead,

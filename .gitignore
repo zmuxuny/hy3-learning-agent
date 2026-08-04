@@ -54,6 +54,9 @@ data/uploads/
 data/backups/
 data/context/
 data/workspace/
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
 # JavaScript dependencies and generated frontend assets
 node_modules/

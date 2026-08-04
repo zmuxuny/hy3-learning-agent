@@ -36,6 +36,8 @@ class UserProfile(Base):
     xp: Mapped[int] = mapped_column(Integer, default=0)
     level: Mapped[int] = mapped_column(Integer, default=1)
     streak_days: Mapped[int] = mapped_column(Integer, default=0)
+    follow_up_behavior: Mapped[str] = mapped_column(String(16), default="steer")
+    proactive_paused: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
@@ -339,6 +341,38 @@ class RunEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     run: Mapped[AgentRun] = relationship(back_populates="events")
+
+
+class QueuedMessage(Base):
+    """Messages the user queued while the Agent is busy; run after the current run."""
+
+    __tablename__ = "queued_messages"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    session_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True)
+    objective: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class RunSteerMessage(Base):
+    """Mid-turn steering: a user message injected into a running Run without stopping it."""
+
+    __tablename__ = "run_steer_messages"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
+    content: Mapped[str] = mapped_column(Text)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class LearningEvent(Base):

@@ -1,10 +1,11 @@
 import asyncio
 import json
+from contextlib import suppress
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -18,17 +19,24 @@ from app.models import (
     Plan,
     PlanProposal,
     PlanningIntake,
+    QueuedMessage,
     RunEvent,
+    RunSteerMessage,
     Session,
     SessionPlanLink,
+    UserProfile,
 )
 from app.runtime import AgentRuntime
+from app.runtime.events import emit_event, subscribe_stream, unsubscribe_stream
 from app.runtime.session_titles import initial_session_title
 from app.runtime.scheduler import proactive_scheduler
 from app.schemas import (
     AgentRunCreate,
     AgentRunRead,
     ChatMessageRead,
+    QueuedMessageCreate,
+    QueuedMessageRead,
+    QueuedMessageUpdate,
     MessageEdit,
     PlanCreate,
     PlanningAnswersSubmit,
@@ -37,6 +45,7 @@ from app.schemas import (
     PlanningStateRead,
     RunEventRead,
     RunApprovalRequest,
+    RunSteerCreate,
     SessionHandoffCreate,
     SessionRead,
     SessionUpdate,
@@ -598,32 +607,65 @@ async def read_run_events(run_id: str, after: int = 0, db: AsyncSession = Depend
 async def stream_run_events(run_id: str):
     async def event_stream():
         last_sequence = 0
-        while True:
-            async with AsyncSessionLocal() as db:
-                run = await db.get(AgentRun, run_id)
-                if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
-                    yield "event: error\ndata: {\"error\": \"Run not found\"}\n\n"
+        seen_sequences: set[int] = set()
+        event_queue = await subscribe_stream(run_id)
+        terminal_grace = 0
+        try:
+            while True:
+                try:
+                    db = AsyncSessionLocal()
+                    try:
+                        run = await db.get(AgentRun, run_id)
+                        if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
+                            yield "event: error\ndata: {\"error\": \"Run not found\"}\n\n"
+                            return
+                        result = await db.execute(
+                            select(RunEvent)
+                            .where(RunEvent.run_id == run_id, RunEvent.sequence > last_sequence)
+                            .order_by(RunEvent.sequence)
+                        )
+                        events = list(result.scalars())
+                        fresh_events = [event for event in events if event.sequence not in seen_sequences]
+                        for event in events:
+                            seen_sequences.add(event.sequence)
+                            last_sequence = event.sequence
+                        for event in fresh_events:
+                            payload = {
+                                "sequence": event.sequence,
+                                "type": event.event_type,
+                                "summary": event.summary,
+                                "payload": event.payload,
+                                "created_at": event.created_at.isoformat(),
+                            }
+                            yield f"event: {event.event_type}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                        if run.status in {"completed", "failed", "cancelled"}:
+                            if not fresh_events:
+                                terminal_grace += 1
+                                if terminal_grace >= 4:
+                                    return
+                        else:
+                            terminal_grace = 0
+                    finally:
+                        with suppress(Exception):
+                            await db.close()
+                except asyncio.CancelledError:
                     return
-                result = await db.execute(
-                    select(RunEvent)
-                    .where(RunEvent.run_id == run_id, RunEvent.sequence > last_sequence)
-                    .order_by(RunEvent.sequence)
-                )
-                events = list(result.scalars())
-                for event in events:
-                    last_sequence = event.sequence
-                    payload = {
-                        "sequence": event.sequence,
-                        "type": event.event_type,
-                        "summary": event.summary,
-                        "payload": event.payload,
-                        "created_at": event.created_at.isoformat(),
-                    }
-                    yield f"event: {event.event_type}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
-                if run.status in {"completed", "failed", "cancelled"} and not events:
-                    return
-            yield ": keep-alive\n\n"
-            await asyncio.sleep(0.5)
+                except Exception:
+                    # A transient database lock must never kill the live event stream.
+                    await asyncio.sleep(0.5)
+                    continue
+                try:
+                    item = await asyncio.wait_for(event_queue.get(), timeout=0.5)
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
+                    continue
+                if "sequence" in item and int(item.get("sequence") or 0) <= last_sequence:
+                    continue
+                if "sequence" in item:
+                    seen_sequences.add(int(item["sequence"]))
+                yield f"event: {item['type']}\ndata: {json.dumps(item, ensure_ascii=False)}\n\n"
+        finally:
+            unsubscribe_stream(run_id, event_queue)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -654,6 +696,10 @@ async def decide_run_approval(
         pending = dict(run.pending_approval)
         pending["note"] = data.note
         run.pending_approval = pending
+    if data.answer:
+        pending = dict(run.pending_approval)
+        pending["answer"] = data.answer
+        run.pending_approval = pending
     run.status = "queued"
     await db.commit()
     await db.refresh(run)
@@ -662,6 +708,146 @@ async def decide_run_approval(
         resume=True,
         approval_decision="approve" if data.approved else "reject",
     )
+    return run
+
+
+@router.post("/runs/{run_id}/steer", response_model=AgentRunRead)
+async def steer_run(run_id: str, data: RunSteerCreate, db: AsyncSession = Depends(get_db)):
+    run = await db.get(AgentRun, run_id)
+    if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.status not in {"queued", "running", "waiting_approval"}:
+        raise HTTPException(status_code=409, detail="Only an active run can be steered")
+    steer = RunSteerMessage(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        run_id=run.id,
+        content=data.content,
+    )
+    db.add(steer)
+    if run.session_id:
+        db.add(ChatMessage(
+            session_id=run.session_id,
+            run_id=run.id,
+            role="user",
+            content=data.content,
+            message_metadata={"ui_kind": "steer"},
+        ))
+    await db.commit()
+    await db.refresh(steer)
+    await emit_event(db, run.id, "steer.received", "已收到你的中途转向", {
+        "steer_id": steer.id,
+        "content": data.content,
+    })
+    await db.refresh(run)
+    return run
+
+
+@router.get("/queue", response_model=list[QueuedMessageRead])
+async def list_queue(
+    session_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(QueuedMessage).where(QueuedMessage.owner_id == settings.DEFAULT_OWNER_ID)
+    if session_id:
+        query = query.where(QueuedMessage.session_id == session_id)
+    result = await db.execute(query.order_by(QueuedMessage.position, QueuedMessage.created_at))
+    return list(result.scalars())
+
+
+@router.post("/queue", response_model=QueuedMessageRead, status_code=201)
+async def enqueue_message(data: QueuedMessageCreate, db: AsyncSession = Depends(get_db)):
+    scope_filter = QueuedMessage.session_id == data.session_id if data.session_id else QueuedMessage.session_id.is_(None)
+    max_position = await db.scalar(
+        select(func.coalesce(func.max(QueuedMessage.position), -1)).where(
+            QueuedMessage.owner_id == settings.DEFAULT_OWNER_ID,
+            scope_filter,
+        )
+    )
+    if max_position is None:
+        max_position = -1
+    message = QueuedMessage(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        session_id=data.session_id,
+        plan_id=data.plan_id,
+        objective=data.objective,
+        position=int(max_position) + 1,
+    )
+    db.add(message)
+    await db.commit()
+    await db.refresh(message)
+    return message
+
+
+@router.patch("/queue/{message_id}", response_model=QueuedMessageRead)
+async def update_queued_message(
+    message_id: str,
+    data: QueuedMessageUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    message = await db.get(QueuedMessage, message_id)
+    if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Queued message not found")
+    if data.objective is not None:
+        message.objective = data.objective
+    if data.position is not None and data.position != message.position:
+        scope_filter = (
+            QueuedMessage.session_id == message.session_id
+            if message.session_id
+            else QueuedMessage.session_id.is_(None)
+        )
+        swapped = (await db.execute(
+            select(QueuedMessage).where(
+                QueuedMessage.owner_id == settings.DEFAULT_OWNER_ID,
+                scope_filter,
+                QueuedMessage.position == data.position,
+            ).limit(1)
+        )).scalars().one_or_none()
+        if swapped and swapped.id != message.id:
+            swapped.position = message.position
+        message.position = data.position
+    await db.commit()
+    await db.refresh(message)
+    return message
+
+
+@router.delete("/queue/{message_id}", status_code=204)
+async def delete_queued_message(message_id: str, db: AsyncSession = Depends(get_db)):
+    message = await db.get(QueuedMessage, message_id)
+    if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Queued message not found")
+    await db.delete(message)
+    await db.commit()
+
+
+@router.post("/queue/{message_id}/send", response_model=AgentRunRead, status_code=202)
+async def send_queued_message(message_id: str, db: AsyncSession = Depends(get_db)):
+    message = await db.get(QueuedMessage, message_id)
+    if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Queued message not found")
+    if message.session_id:
+        active_run = (await db.execute(
+            select(AgentRun.id).where(
+                AgentRun.session_id == message.session_id,
+                AgentRun.parent_run_id.is_(None),
+                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if active_run:
+            raise HTTPException(status_code=409, detail="当前运行结束后会自动发送这条排队消息")
+    run = AgentRun(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        session_id=message.session_id,
+        plan_id=message.plan_id,
+        trigger="user_message",
+        objective=message.objective,
+        model=settings.MODEL_NAME,
+    )
+    db.add(run)
+    await db.flush()
+    await db.delete(message)
+    await db.commit()
+    await db.refresh(run)
+    _start_runtime(run.id)
     return run
 
 

@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
-from app.models import AgentRun, LearningEvent, Notification, Plan, ReviewSchedule, Stage, Task
+from app.models import AgentRun, LearningEvent, Notification, Plan, ReviewSchedule, Stage, Task, UserProfile
 from app.notifications.email import EmailReplyPoller
 from app.runtime.agent import AgentRuntime
 
@@ -78,6 +78,9 @@ class ProactiveScheduler:
             self._next_cycle_at = self._last_cycle_at + timedelta(seconds=settings.AGENT_HEARTBEAT_SECONDS)
             try:
                 await self._poll_email_replies()
+                if await self._paused_by_user():
+                    self._last_decision = "paused_by_user"
+                    continue
                 candidate = await self._next_candidate()
                 if candidate:
                     await self.trigger_now("heartbeat", plan_id=candidate["plan_id"], objective=candidate["objective"])
@@ -90,6 +93,11 @@ class ProactiveScheduler:
             except Exception:
                 self._last_decision = "cycle_error"
                 continue
+
+    async def _paused_by_user(self) -> bool:
+        async with AsyncSessionLocal() as db:
+            profile = await db.get(UserProfile, settings.DEFAULT_OWNER_ID)
+            return bool(profile and profile.proactive_paused)
 
     async def describe(self) -> dict:
         async with AsyncSessionLocal() as db:
@@ -109,6 +117,7 @@ class ProactiveScheduler:
             "last_cycle_at": self._last_cycle_at.isoformat() if self._last_cycle_at else None,
             "next_cycle_at": self._next_cycle_at.isoformat() if self._next_cycle_at else None,
             "last_decision": self._last_decision,
+            "paused": await self._paused_by_user(),
             "active": bool(latest and latest.status in {"queued", "running"}),
             "last_run": ({
                 "id": latest.id,

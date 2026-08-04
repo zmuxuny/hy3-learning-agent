@@ -25,6 +25,15 @@ const showArchivedSessions = ref(false);
 const displayedSessions = computed(() => (
   showArchivedSessions.value ? store.archivedSessions : store.sessions
 ));
+const unreadBySession = computed(() => {
+  const counts = {};
+  for (const item of store.notifications) {
+    if (item.session_id && !item.read_at) {
+      counts[item.session_id] = (counts[item.session_id] || 0) + 1;
+    }
+  }
+  return counts;
+});
 const navigation = [
   { id: 'plans', label: '学习计划', icon: MapIcon },
   { id: 'inbox', label: '收件箱', icon: BellIcon },
@@ -45,6 +54,10 @@ function sessionMeta(session) {
   const plan = [...store.plans, ...store.archivedPlans].find((item) => item.id === session.plan_id);
   if (plan) return plan.title;
   return session.message_count > 1 ? `${session.message_count} 条消息` : '全局对话';
+}
+
+function sessionNeedsInput(session) {
+  return (unreadBySession.value[session.id] || 0) > 0;
 }
 
 async function beginRename(session) {
@@ -148,8 +161,22 @@ function setSessionTitleInput(element) {
           <strong>{{ session.title }}</strong>
           <small>{{ sessionMeta(session) }}</small>
         </span>
-        <i v-if="['queued', 'running'].includes(session.last_run_status)" class="session-running"></i>
-        <div v-else class="session-actions" @click.stop>
+        <i
+          v-if="sessionNeedsInput(session)"
+          class="session-status-dot needs-input"
+          title="有待处理消息"
+        ></i>
+        <i
+          v-else-if="['queued', 'running'].includes(session.last_run_status)"
+          class="session-status-dot running"
+          title="运行中"
+        ></i>
+        <i
+          v-else-if="session.last_run_status === 'waiting_approval'"
+          class="session-status-dot waiting"
+          title="等待你的确认"
+        ></i>
+        <div v-if="!['queued', 'running', 'waiting_approval'].includes(session.last_run_status)" class="session-actions" @click.stop>
           <button v-if="!session.archived_at" title="重命名对话" @click="beginRename(session)"><PencilIcon /></button>
           <button
             :title="session.archived_at ? '恢复对话' : '归档对话'"

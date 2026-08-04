@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue';
 import {
   BellIcon,
   CheckCircleIcon,
+  ChatBubbleLeftRightIcon,
   EnvelopeIcon,
   ServerStackIcon,
   SparklesIcon,
@@ -24,6 +25,7 @@ const email = reactive({
   imap_host: '', imap_port: 993, imap_username: '', imap_password: '', imap_folder: 'INBOX',
 });
 const policy = reactive({ quiet_start: '23:00', quiet_end: '08:00', daily_limit: 3, cooldown_minutes: 180 });
+const followup = ref('steer');
 
 onMounted(() => {
   const app = store.appSettings;
@@ -54,6 +56,7 @@ onMounted(() => {
     policy.daily_limit = profile.daily_notification_limit ?? 3;
   }
   if (store.schedulerStatus) policy.cooldown_minutes = app?.notification_cooldown_minutes ?? 180;
+  followup.value = store.followUpBehavior || 'steer';
 });
 
 async function run(label, action) {
@@ -62,7 +65,7 @@ async function run(label, action) {
   feedbackError.value = false;
   try {
     await action();
-    feedback.value = '设置已保存；邮箱与模型参数在重启服务后生效，通知策略即时生效。';
+    feedback.value = '设置已保存；邮箱与模型参数在重启服务后生效，通知与交互偏好即时生效。';
   } catch (requestError) {
     feedbackError.value = true;
     feedback.value = requestError.response?.data?.detail || requestError.message;
@@ -81,6 +84,12 @@ function saveModel() {
     if (model.api_key.trim()) payload.api_key = model.api_key.trim();
     await store.updateModelSettings(payload);
     model.api_key = '';
+  });
+}
+
+function saveFollowup() {
+  return run('followup', async () => {
+    await store.setFollowUpBehavior(followup.value);
   });
 }
 
@@ -142,6 +151,28 @@ function savePolicy() {
         会话 {{ store.appSettings?.data_counts?.sessions ?? '-' }} · 站内消息 {{ store.appSettings?.data_counts?.notifications ?? '-' }} ·
         确认记忆 {{ store.appSettings?.data_counts?.memories ?? '-' }}。清空数据请先停止服务，再运行 <code>./scripts/reset-data.sh</code>。
       </p>
+    </section>
+
+    <section class="settings-section panel">
+      <header>
+        <div class="settings-icon"><ChatBubbleLeftRightIcon /></div>
+        <div><small>INTERACTION</small><h2>对话交互</h2></div>
+      </header>
+      <div class="settings-form">
+        <label class="settings-field settings-select-field">
+          <span>运行中发送消息的默认行为</span>
+          <select v-model="followup">
+            <option value="steer">转向当前运行（消息立即进入当前轮，不停止）</option>
+            <option value="queue">排队到下一轮（当前运行结束后自动发送）</option>
+          </select>
+          <small>运行中按 Enter 使用此默认行为，按 Tab 直接排队；也可以点击输入框旁的按钮临时选择。</small>
+        </label>
+        <div class="settings-actions">
+          <button class="primary-button" :disabled="saving === 'followup'" @click="saveFollowup">
+            {{ saving === 'followup' ? '保存中…' : '保存交互偏好' }}
+          </button>
+        </div>
+      </div>
     </section>
 
     <section class="settings-section panel">

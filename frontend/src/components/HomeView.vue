@@ -8,6 +8,7 @@ import AgentRunTurn from './AgentRunTurn.vue';
 import PlanCard from './PlanCard.vue';
 import PlanningProposalPanel from './PlanningProposalPanel.vue';
 import PlanningQuestionsPanel from './PlanningQuestionsPanel.vue';
+import SubagentPanel from './SubagentPanel.vue';
 import UserMessage from './UserMessage.vue';
 
 const store = useWorkspaceStore();
@@ -146,6 +147,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
       </div>
     </div>
 
+    <SubagentPanel />
     <AgentComposer />
   </section>
 </template>

@@ -1,6 +1,7 @@
 import asyncio
 import json
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from openai import AsyncOpenAI
 from sqlalchemy import select
@@ -9,14 +10,42 @@ from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
-from app.models import AgentRun, ChatMessage, PlanProposal, Session
-from app.runtime.events import emit_event
+from app.models import AgentRun, ChatMessage, PlanProposal, RunSteerMessage, Session
+from app.runtime.events import emit_event, publish_stream_event
 from app.runtime.prompt import SYSTEM_PROMPT
 from app.runtime.session_titles import generate_session_title, initial_session_title
 
 
 class AgentModelTimeout(RuntimeError):
     pass
+
+
+class _StreamingToolCall:
+    """Accumulate an OpenAI-compatible tool call from streamed deltas."""
+
+    def __init__(self) -> None:
+        self.id = ""
+        self.type = "function"
+        self.name = ""
+        self.arguments = ""
+
+    @property
+    def function(self) -> SimpleNamespace:
+        return SimpleNamespace(name=self.name, arguments=self.arguments)
+
+    def model_dump(self) -> dict:
+        return {
+            "id": self.id,
+            "type": self.type,
+            "function": {"name": self.name, "arguments": self.arguments},
+        }
+
+
+class _StreamingMessage:
+    def __init__(self, content: str, reasoning_content: str, tool_calls: list[_StreamingToolCall]) -> None:
+        self.content = content
+        self.reasoning_content = reasoning_content or None
+        self.tool_calls = tool_calls or None
 
 
 class ToolFailureGuard:
@@ -192,6 +221,7 @@ class AgentRuntime:
                     "content": f"Trigger: {run.trigger}\nObjective: {run.objective}\n\n{snapshot.markdown}",
                 },
             ]
+            messages = await self._apply_pending_steer(db, run, messages)
             await self._loop(db, run, messages, start_step=0, pending_calls=[], granted=set(), session=session)
         except Exception as exc:
             await self._fail(db, run.id, exc)
@@ -211,18 +241,24 @@ class AgentRuntime:
                 pending_calls = [approval["tool_call"]] + list(approval.get("remaining_tool_calls") or [])
                 granted.add(approval["tool_call"]["id"])
             else:
+                tool_result = {
+                    "ok": False,
+                    "error": "用户拒绝了该操作",
+                    "approval": "rejected",
+                    "retryable": True,
+                }
+                if approval.get("answer"):
+                    tool_result = {
+                        **tool_result,
+                        "approval": "answered",
+                        "answer": approval["answer"],
+                    }
+                if approval.get("note"):
+                    tool_result["note"] = approval["note"]
                 messages.append({
                     "role": "tool",
                     "tool_call_id": approval["tool_call"]["id"],
-                    "content": json.dumps(
-                        {
-                            "ok": False,
-                            "error": "用户拒绝了该操作",
-                            "approval": "rejected",
-                            "retryable": True,
-                        },
-                        ensure_ascii=False,
-                    ),
+                    "content": json.dumps(tool_result, ensure_ascii=False),
                 })
                 pending_calls = list(approval.get("remaining_tool_calls") or [])
 
@@ -247,6 +283,7 @@ class AgentRuntime:
             session = await db.get(Session, run.session_id) if run.session_id else None
             if run.session_id is None and run.trigger in {"heartbeat", "manual_heartbeat", "task_event", "review_due"}:
                 messages = await self._refresh_stateless_context(db, run, messages)
+            messages = await self._apply_pending_steer(db, run, messages)
             await self._loop(db, run, messages, start_step=start_step, pending_calls=pending_calls, granted=granted, session=session)
         except Exception as exc:
             await self._fail(db, run.id, exc)
@@ -322,6 +359,8 @@ class AgentRuntime:
                     await emit_event(db, run.id, "run.cancelled", "Agent run cancelled")
                     return
 
+                messages = await self._apply_pending_steer(db, run, messages)
+
                 if not calls:
                     budget = self._budget(run)
                     reason = self._budget_reason(run, budget)
@@ -338,8 +377,7 @@ class AgentRuntime:
                             {"reason": reason, "budget_usage": budget},
                         )
                         break
-                    response = await self._call_model(db, run, messages, failure_guard, step)
-                    message = response.choices[0].message
+                    message, usage = await self._call_model(db, run, messages, failure_guard, step)
                     assistant_payload: dict = {"role": "assistant", "content": message.content or ""}
                     reasoning_content = getattr(message, "reasoning_content", None)
                     if reasoning_content:
@@ -358,12 +396,8 @@ class AgentRuntime:
                             {"step": step + 1},
                         )
 
-                    if not message.tool_calls:
-                        final_text = message.content or ""
-                        break
                     budget = self._budget(run)
                     budget["model_calls"] += 1
-                    usage = getattr(response, "usage", None)
                     if usage is not None:
                         prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
                         completion_tokens = getattr(usage, "completion_tokens", 0) or 0
@@ -374,6 +408,10 @@ class AgentRuntime:
                             + completion_tokens / 1_000_000 * settings.MODEL_OUTPUT_PRICE_PER_1M
                         )
                     run.budget_usage = budget
+
+                    if not message.tool_calls:
+                        final_text = message.content or ""
+                        break
 
                 call = calls.pop(0)
                 budget = self._budget(run)
@@ -529,7 +567,6 @@ class AgentRuntime:
     async def _call_model(self, db, run: AgentRun, messages: list[dict], failure_guard: ToolFailureGuard, step: int):
         from app.tools import openai_tools
 
-        response = None
         for attempt in range(settings.AGENT_MODEL_RETRY_ATTEMPTS):
             try:
                 model_tools = [
@@ -545,11 +582,31 @@ class AgentRuntime:
                 }
                 if model_tools:
                     request.update({"tools": model_tools, "tool_choice": "auto"})
-                response = await asyncio.wait_for(
-                    self.client.chat.completions.create(**request),
-                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-                )
-                break
+                try:
+                    response = await asyncio.wait_for(
+                        self.client.chat.completions.create(
+                            **request,
+                            stream=True,
+                            stream_options={"include_usage": True},
+                        ),
+                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                    )
+                except Exception as stream_exc:
+                    if "stream_options" not in str(stream_exc):
+                        raise
+                    response = await asyncio.wait_for(
+                        self.client.chat.completions.create(**request, stream=True),
+                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                    )
+                if hasattr(response, "__aiter__"):
+                    message, usage = await asyncio.wait_for(
+                        self._drain_stream(response, run, step),
+                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                    )
+                else:
+                    message = response.choices[0].message
+                    usage = getattr(response, "usage", None)
+                return message, usage
             except TimeoutError as exc:
                 if attempt + 1 >= settings.AGENT_MODEL_RETRY_ATTEMPTS:
                     raise AgentModelTimeout("模型连续响应超时") from exc
@@ -560,9 +617,83 @@ class AgentRuntime:
                     "模型响应超时，正在重新连接并保留当前进度",
                     {"attempt": attempt + 2, "max_attempts": settings.AGENT_MODEL_RETRY_ATTEMPTS},
                 )
-        if response is None:
-            raise AgentModelTimeout("模型未返回响应")
-        return response
+        raise AgentModelTimeout("模型未返回响应")
+
+    async def _drain_stream(self, stream, run: AgentRun, step: int):
+        """Collect an OpenAI-compatible token stream and publish live deltas."""
+        content_parts: list[str] = []
+        reasoning_parts: list[str] = []
+        tool_calls: dict[int, _StreamingToolCall] = {}
+        usage = None
+        async for chunk in stream:
+            if not getattr(chunk, "choices", None):
+                if getattr(chunk, "usage", None):
+                    usage = chunk.usage
+                continue
+            choice = chunk.choices[0]
+            delta = getattr(choice, "delta", None) or getattr(choice, "message", None)
+            if delta is None:
+                continue
+            reasoning = getattr(delta, "reasoning_content", None)
+            if reasoning:
+                reasoning_parts.append(reasoning)
+                publish_stream_event(run.id, {
+                    "type": "assistant.reasoning",
+                    "summary": "",
+                    "payload": {
+                        "step": step + 1,
+                        "delta": reasoning,
+                        "text": "".join(reasoning_parts),
+                    },
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+            content = getattr(delta, "content", None)
+            if content:
+                content_parts.append(content)
+                publish_stream_event(run.id, {
+                    "type": "assistant.delta",
+                    "summary": "",
+                    "payload": {
+                        "step": step + 1,
+                        "delta": content,
+                        "text": "".join(content_parts),
+                    },
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+            tool_deltas = getattr(delta, "tool_calls", None)
+            if tool_deltas:
+                for tool_delta in tool_deltas:
+                    index = int(getattr(tool_delta, "index", 0))
+                    entry = tool_calls.setdefault(index, _StreamingToolCall())
+                    if getattr(tool_delta, "id", None):
+                        entry.id = tool_delta.id
+                    function = getattr(tool_delta, "function", None)
+                    if function:
+                        if getattr(function, "name", None):
+                            entry.name += function.name
+                        if getattr(function, "arguments", None):
+                            entry.arguments += function.arguments
+        return _StreamingMessage(
+            "".join(content_parts),
+            "".join(reasoning_parts),
+            list(tool_calls.values()),
+        ), usage
+
+    async def _apply_pending_steer(self, db, run: AgentRun, messages: list[dict]) -> list[dict]:
+        """Inject user steering messages into the model context without stopping the run."""
+        pending = list((await db.execute(
+            select(RunSteerMessage).where(
+                RunSteerMessage.run_id == run.id,
+                RunSteerMessage.applied_at.is_(None),
+            ).order_by(RunSteerMessage.created_at)
+        )).scalars())
+        if not pending:
+            return messages
+        for steer in pending:
+            steer.applied_at = datetime.now(timezone.utc)
+            messages.append({"role": "user", "content": f"[中途转向] {steer.content}"})
+        await db.commit()
+        return messages
 
     async def _fail(self, db, run_id: str, exc: Exception) -> None:
         """Mark a run as failed using a fresh session so a broken caller session cannot cascade."""

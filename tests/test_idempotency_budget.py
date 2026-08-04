@@ -206,7 +206,7 @@ async def test_budget_usage_tracks_tokens_and_estimated_cost(monkeypatch):
     async with AsyncSessionLocal() as db:
         completed = await db.get(AgentRun, run_id)
         budget = completed.budget_usage
-        assert budget["model_calls"] == 1
-        assert budget["prompt_tokens"] == 1000
-        assert budget["completion_tokens"] == 500
-        assert budget["estimated_cost_usd"] == pytest.approx(0.002)
+        assert budget["model_calls"] == 2
+        assert budget["prompt_tokens"] == 2000
+        assert budget["completion_tokens"] == 1000
+        assert budget["estimated_cost_usd"] == pytest.approx(0.004)

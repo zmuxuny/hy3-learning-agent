@@ -248,6 +248,62 @@ class AgentRunRead(APIModel):
 class RunApprovalRequest(BaseModel):
     approved: bool
     note: str | None = Field(default=None, max_length=1000)
+    answer: str | None = Field(default=None, max_length=4000)
+
+
+class QueuedMessageCreate(BaseModel):
+    objective: str = Field(min_length=1, max_length=50000)
+    session_id: str | None = None
+    plan_id: int | None = None
+
+    @field_validator("objective")
+    @classmethod
+    def normalize_objective(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("message cannot be blank")
+        return normalized
+
+
+class QueuedMessageUpdate(BaseModel):
+    objective: str | None = Field(default=None, min_length=1, max_length=50000)
+    position: int | None = Field(default=None, ge=0, le=1000)
+
+    @field_validator("objective")
+    @classmethod
+    def normalize_objective(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("message cannot be blank")
+        return normalized
+
+
+class QueuedMessageRead(APIModel):
+    id: str
+    session_id: str | None
+    plan_id: int | None
+    objective: str
+    position: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class RunSteerCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=50000)
+
+    @field_validator("content")
+    @classmethod
+    def normalize_content(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("message cannot be blank")
+        return normalized
+
+
+class FollowUpBehaviorUpdate(BaseModel):
+    follow_up_behavior: Literal["steer", "queue"]
 
 
 class SessionRead(APIModel):
