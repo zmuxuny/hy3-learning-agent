@@ -9,7 +9,7 @@ from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
-from app.models import AgentRun, ChatMessage, Session
+from app.models import AgentRun, ChatMessage, PlanProposal, Session
 from app.runtime.events import emit_event
 from app.runtime.prompt import SYSTEM_PROMPT
 from app.runtime.session_titles import generate_session_title, initial_session_title
@@ -87,6 +87,37 @@ def _call_to_dict(call) -> dict:
 
 def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _upsert_card(run_cards: list[dict], card: dict) -> None:
+    """Keep one snapshot per card kind so a message never duplicates its artifact."""
+    for index, existing in enumerate(run_cards):
+        if existing.get("kind") == card.get("kind"):
+            run_cards[index] = card
+            return
+    run_cards.append(card)
+
+
+async def _proposal_snapshot(proposal_id: str) -> dict | None:
+    """Read the committed proposal on a fresh session and shape it like PlanProposalRead."""
+    async with AsyncSessionLocal() as snapshot_db:
+        row = await snapshot_db.get(PlanProposal, proposal_id)
+        if row is None:
+            return None
+        return {
+            "id": row.id,
+            "session_id": row.session_id,
+            "source_run_id": row.source_run_id,
+            "title": row.title,
+            "rationale": row.rationale,
+            "plan_payload": row.plan_payload,
+            "specialist_reports": row.specialist_reports,
+            "status": row.status,
+            "plan_id": row.plan_id,
+            "decided_at": row.decided_at.isoformat() if row.decided_at else None,
+            "created_at": row.created_at.isoformat(),
+            "updated_at": row.updated_at.isoformat(),
+        }
 
 
 class AgentRuntime:
@@ -280,6 +311,7 @@ class AgentRuntime:
         failure_guard = ToolFailureGuard(settings.AGENT_TOOL_FAILURE_LIMIT)
         step = start_step
         calls = list(pending_calls)
+        run_cards: list[dict] = []
         try:
             while step < settings.AGENT_MAX_STEPS:
                 await db.refresh(run)
@@ -413,6 +445,22 @@ class AgentRuntime:
                     }
                 )
                 data = result.get("data") or {}
+                if result.get("ok") and call["name"] == "planning_intake_update" and data.get("open_questions"):
+                    _upsert_card(run_cards, {
+                        "kind": "planning_questions",
+                        "source_run_id": run.id,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "intake": {**data, "source_run_id": run.id},
+                    })
+                if result.get("ok") and call["name"] == "plan_proposal_create" and data.get("proposal_id"):
+                    proposal_snapshot = await _proposal_snapshot(str(data["proposal_id"]))
+                    if proposal_snapshot:
+                        _upsert_card(run_cards, {
+                            "kind": "plan_proposal",
+                            "source_run_id": run.id,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "proposal": proposal_snapshot,
+                        })
                 if data.get("approval_required") and data.get("blocking"):
                     run.pending_approval = {
                         "tool_call": call,
@@ -454,7 +502,14 @@ class AgentRuntime:
             run.pending_approval = None
             run.output = final_text
             if session and final_text:
-                db.add(ChatMessage(session_id=session.id, run_id=run.id, role="assistant", content=final_text))
+                message_metadata = {"cards": run_cards} if run_cards else {}
+                db.add(ChatMessage(
+                    session_id=session.id,
+                    run_id=run.id,
+                    role="assistant",
+                    content=final_text,
+                    message_metadata=message_metadata,
+                ))
                 session.updated_at = datetime.now(timezone.utc)
                 await db.flush()
                 await generate_session_title(

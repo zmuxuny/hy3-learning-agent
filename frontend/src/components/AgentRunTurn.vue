@@ -13,14 +13,16 @@ import { computed, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentMessage from './AgentMessage.vue';
 import PlanCard from './PlanCard.vue';
+import PlanningProposalPanel from './PlanningProposalPanel.vue';
+import PlanningQuestionsPanel from './PlanningQuestionsPanel.vue';
 
 const props = defineProps({
   answer: { type: String, default: '' },
   userMessage: { type: Object, default: null },
+  cards: { type: Array, default: () => [] },
 });
 const store = useWorkspaceStore();
 const processExpanded = ref(false);
-const answersExpanded = ref(false);
 const childExpanded = ref(new Set());
 const childDetails = ref({});
 const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
@@ -52,11 +54,31 @@ const finalEvent = computed(() => [...store.runEvents].reverse().find(
   (event) => ['assistant.message', 'run.completed', 'run.failed', 'run.cancelled'].includes(event.type),
 ));
 const answerText = computed(() => props.answer || finalEvent.value?.summary || '');
-const planningAnswers = computed(() => (
-  props.userMessage?.message_metadata?.ui_kind === 'planning_answers'
-    ? (props.userMessage.message_metadata.answers || [])
-    : null
+const liveIntakeMatches = computed(() => (
+  props.cards.length === 0
+  && store.planningState.intake?.source_run_id === store.currentRun?.id
+  && (store.planningState.intake?.open_questions || []).length > 0
 ));
+const liveProposalMatches = computed(() => (
+  props.cards.length === 0
+  && store.planningState.proposal?.source_run_id === store.currentRun?.id
+  && store.planningState.proposal?.status !== 'accepted'
+));
+const snapshotCards = computed(() => props.cards.map((card) => {
+  if (card.kind === 'planning_questions') {
+    const live = store.planningState.intake;
+    const current = Boolean(
+      live && live.source_run_id === card.source_run_id && (live.open_questions || []).length > 0,
+    );
+    return { ...card, current };
+  }
+  if (card.kind === 'plan_proposal') {
+    const live = store.planningState.proposal;
+    const current = Boolean(live && live.id === card.proposal?.id && live.status === 'pending');
+    return { ...card, current };
+  }
+  return { ...card, current: false };
+}));
 const contextEvent = computed(() => [...store.runEvents].reverse().find(
   (event) => event.type === 'context.built',
 ));
@@ -211,19 +233,22 @@ async function copyAnswer() {
         </div>
       </div>
 
-      <section v-if="planningAnswers" class="planning-answers-card">
-        <button class="planning-answers-summary" @click="answersExpanded = !answersExpanded">
-          <CircleStackIcon />
-          <span><strong>计划澄清已提交 · {{ planningAnswers.length }} 个回答</strong><small>{{ answersExpanded ? '收起' : '点击展开查看回答' }}</small></span>
-          <ChevronDownIcon class="activity-chevron" />
-        </button>
-        <div v-if="answersExpanded" class="planning-answers-body">
-          <div v-for="answer in planningAnswers" :key="answer.question_id" class="planning-answer-row">
-            <small>{{ answer.question_id }}</small>
-            <p>{{ answer.answer }}</p>
-          </div>
-        </div>
-      </section>
+      <template v-for="card in snapshotCards" :key="`${card.kind}-${card.created_at}`">
+        <PlanningQuestionsPanel
+          v-if="card.kind === 'planning_questions'"
+          :intake="card.current ? null : card.intake"
+          :readonly="!card.current"
+        />
+        <PlanningProposalPanel
+          v-else-if="card.kind === 'plan_proposal'"
+          :proposal="card.current ? null : card.proposal"
+          :readonly="!card.current"
+        />
+      </template>
+      <template v-if="props.cards.length === 0">
+        <PlanningQuestionsPanel v-if="liveIntakeMatches" />
+        <PlanningProposalPanel v-if="liveProposalMatches" />
+      </template>
 
       <section v-if="approvalPending" class="approval-card">
         <div class="approval-copy">

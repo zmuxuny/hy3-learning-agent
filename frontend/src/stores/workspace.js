@@ -551,6 +551,23 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         if (!runEvents.value.some((item) => item.sequence === payload.sequence)) {
           runEvents.value.push(payload);
         }
+        if (eventName === 'tool.completed') {
+          const toolName = payload.payload?.name;
+          const result = payload.payload?.result || {};
+          if (result.ok && toolName === 'planning_intake_update' && result.data?.open_questions) {
+            planningState.value = {
+              ...planningState.value,
+              intake: { ...result.data, source_run_id: currentRun.value?.id },
+            };
+          } else if (result.ok && toolName === 'plan_proposal_create') {
+            try {
+              const planningResponse = await api.get(`/agent/sessions/${activeSessionId.value}/planning`);
+              planningState.value = planningResponse.data;
+            } catch {
+              // The run-completion refresh will reconcile planning state.
+            }
+          }
+        }
         if (eventName === 'run.completed' || eventName === 'run.failed' || eventName === 'run.cancelled') {
           currentRun.value = { ...currentRun.value, status: eventName.split('.')[1] };
           closeEventSource();
