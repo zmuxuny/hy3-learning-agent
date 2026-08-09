@@ -87,6 +87,9 @@ async function inspect(label) {
       planInlineCards: document.querySelectorAll('.plan-artifact').length,
       artifactCards: document.querySelectorAll('.artifact-preview').length,
       agentChips: document.querySelectorAll('.agent-chip').length,
+      expandedAgentChips: document.querySelectorAll('.agent-chip.open').length,
+      childWorklogs: document.querySelectorAll('.child-worklog').length,
+      childReports: document.querySelectorAll('.child-report').length,
       planningPanels: document.querySelectorAll('.planning-panel').length,
       planningQuestions: document.querySelectorAll('.planning-question').length,
       proposalStages: document.querySelectorAll('.proposal-stages article').length,
@@ -202,6 +205,20 @@ const openedArtifactFixture = await evaluate(`(() => {
 })()`);
 if (openedArtifactFixture) {
   await wait(900);
+  const openedChild = await evaluate(`(async () => {
+    document.querySelectorAll('.run-disclosure-toggle[aria-expanded="false"]').forEach((button) => button.click());
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    const chip = [...document.querySelectorAll('.agent-chip')].find((node) => node.textContent.includes('水上安全'))
+      || document.querySelector('.agent-chip');
+    if (chip) chip.click();
+    return Boolean(chip);
+  })()`);
+  if (openedChild) {
+    await wait(700);
+    await evaluate(`document.querySelector('.agent-chip-detail')?.scrollIntoView({ block: 'center' })`);
+    await wait(250);
+    report.push(await inspect('conversation-subagent-expanded-1440'));
+  }
   const artifacts = await evaluate(`document.querySelectorAll('.artifact-preview').length`);
   if (artifacts) {
     await evaluate(`document.querySelector('.artifact-preview')?.scrollIntoView({ block: 'center' })`);
@@ -234,12 +251,12 @@ await wait(700);
 report.push(await inspect('plan-resources-1440'));
 
 await viewport(1440, 1000);
-await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.trim() === '记忆'); if (item) item.click(); return Boolean(item); })()`);
+await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('学习记忆')); if (item) item.click(); return Boolean(item); })()`);
 await wait(450);
 report.push(await inspect('memory-1440'));
 
 await viewport(1440, 1000);
-await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('已安排')); if (item) item.click(); return Boolean(item); })()`);
+await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('收件箱')); if (item) item.click(); return Boolean(item); })()`);
 await wait(500);
 report.push(await inspect('inbox-1440'));
 

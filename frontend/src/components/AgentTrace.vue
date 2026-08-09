@@ -27,6 +27,33 @@ const contextUsage = computed(() => {
 const undoable = computed(() => store.operations.filter(
   (operation) => operation.run_id === store.currentRun?.id && operation.status === 'committed',
 ));
+const runStatusLabel = computed(() => ({
+  queued: '等待处理',
+  running: '处理中',
+  waiting_approval: '等待确认',
+  completed: '已完成',
+  failed: '失败',
+  cancelled: '已停止',
+}[store.currentRun?.status] || '空闲'));
+
+function triggerLabel(trigger) {
+  return {
+    user_message: '用户消息',
+    heartbeat: '主动检查',
+    email_reply: '邮件回复',
+    subagent: '子 Agent 调查',
+  }[trigger] || trigger || '未知来源';
+}
+
+function eventTypeLabel(type) {
+  if (type === 'context.built') return '上下文';
+  if (type?.startsWith('tool.')) return '工具操作';
+  if (type?.startsWith('subagent.')) return '子 Agent';
+  if (type?.startsWith('approval.')) return '用户确认';
+  if (type?.startsWith('assistant.')) return 'Agent 更新';
+  if (type?.startsWith('run.')) return '处理状态';
+  return '操作记录';
+}
 
 function iconFor(type) {
   if (type === 'tool.started' || type === 'tool.completed') return CommandLineIcon;
@@ -61,11 +88,11 @@ function undoLabel(operation) {
   <aside class="trace-panel">
     <header class="trace-header">
       <div>
-        <span class="eyebrow">AGENT HARNESS</span>
-        <h2>运行轨迹</h2>
+        <span class="eyebrow">本次对话</span>
+        <h2>处理记录</h2>
       </div>
       <div class="trace-header-actions">
-        <span :class="['run-status', store.currentRun?.status || 'idle']">{{ store.currentRun?.status || 'idle' }}</span>
+        <span :class="['run-status', store.currentRun?.status || 'idle']">{{ runStatusLabel }}</span>
         <button class="trace-close" @click="store.traceOpen = false"><XMarkIcon /></button>
       </div>
     </header>
@@ -73,7 +100,7 @@ function undoLabel(operation) {
     <div v-if="store.currentRun" class="run-objective">
       <span>当前目标</span>
       <p>{{ store.currentRun.objective }}</p>
-      <small>{{ store.currentRun.trigger }} · {{ store.currentRun.id.slice(0, 8) }}</small>
+      <small>{{ triggerLabel(store.currentRun.trigger) }} · {{ store.currentRun.id.slice(0, 8) }}</small>
       <small v-if="store.currentRun.budget_usage" class="run-budget">
         模型调用 {{ store.currentRun.budget_usage.model_calls || 0 }} 次 · 工具 {{ store.currentRun.budget_usage.tool_calls || 0 }} 次
         <template v-if="store.currentRun.budget_usage.estimated_cost_usd"> · 约 ${{ Number(store.currentRun.budget_usage.estimated_cost_usd).toFixed(4) }}</template>
@@ -94,7 +121,7 @@ function undoLabel(operation) {
           <component :is="iconFor(event.type)" />
         </span>
         <span class="event-copy">
-          <small>{{ event.type }}</small>
+          <small>{{ eventTypeLabel(event.type) }}</small>
           <strong>{{ event.summary || '事件已记录' }}</strong>
           <pre v-if="expanded.has(event.sequence)">{{ JSON.stringify(event.payload, null, 2) }}</pre>
         </span>
@@ -108,8 +135,8 @@ function undoLabel(operation) {
 
       <div v-if="!store.currentRun" class="trace-empty">
         <CommandLineIcon />
-        <strong>还没有运行记录</strong>
-        <p>向 Agent 提出目标后，这里会实时展示上下文、工具和操作结果。</p>
+        <strong>还没有处理记录</strong>
+        <p>提出学习目标后，这里会实时展示读取的上下文、使用的工具和操作结果。</p>
       </div>
     </div>
 
@@ -125,7 +152,7 @@ function undoLabel(operation) {
         </div>
       </div>
       <button v-if="running" class="stop-button" @click="store.cancelCurrentRun">
-        <StopIcon /> 停止运行
+        <StopIcon /> 停止处理
       </button>
       <p>展示行动摘要，不展示模型私有思维链</p>
     </footer>

@@ -197,20 +197,29 @@ async function switchSession(event) {
       <textarea
         v-model="prompt"
         rows="1"
-        :placeholder="childContext ? '子 Agent 线程为只读，请返回主对话继续交流' : archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : running ? `继续补充要求 · Enter=${defaultActionLabel} · Tab=排队` : '使用 Learning Agent'"
+        :placeholder="childContext ? '子 Agent 线程为只读，请返回主对话继续交流' : archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : running ? `继续补充要求 · Enter=${defaultActionLabel} · Tab=排队` : '说说你想学什么，或询问现在该做什么'"
         :disabled="composerDisabled"
         @keydown.enter.exact.prevent="submit"
         @keydown.tab.exact="tabAction"
       ></textarea>
       <div class="composer-utility-bar">
         <button class="composer-plus" :disabled="running || uploading || composerDisabled" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
-        <button :class="['composer-scope', { focused: store.focusedPlan }]" @click="store.focusedPlan ? store.selectPlan(store.focusedPlan.id) : null">
-          <MapIcon v-if="store.focusedPlan" /><SparklesIcon v-else />
-          <span>{{ store.focusedPlan ? store.focusedPlan.title : '全局访问' }}</span>
+        <button
+          v-if="store.focusedPlan"
+          class="composer-scope focused"
+          title="打开当前学习计划"
+          @click="store.selectPlan(store.focusedPlan.id)"
+        >
+          <MapIcon />
+          <span>{{ store.focusedPlan.title }}</span>
         </button>
+        <span v-else class="composer-scope composer-scope-static" title="使用学习画像、计划摘要和长期记忆">
+          <SparklesIcon />
+          <span>综合学习上下文</span>
+        </span>
         <small v-if="contextUsage" class="context-usage" :title="`上下文约 ${contextUsage.tokens.toLocaleString()} / ${contextUsage.window.toLocaleString()} tokens`">{{ contextLabel }}</small>
         <span class="composer-mode">Hy3</span>
-        <span class="composer-effort">深度</span>
+        <span class="composer-effort">深入思考</span>
         <div class="composer-actions">
         <button
           v-if="running"

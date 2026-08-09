@@ -281,6 +281,47 @@ async def test_checkpointed_subagent_resumes_with_its_own_runtime(monkeypatch):
         assert recovered.checkpoint is None
 
 
+@pytest.mark.asyncio
+async def test_subagent_reserves_a_tools_disabled_turn_for_final_report(monkeypatch):
+    class ResearchCompletions:
+        def __init__(self):
+            self.calls = []
+
+        async def create(self, **kwargs):
+            self.calls.append(kwargs)
+            if kwargs.get("tools"):
+                return tool_message("plan_list")
+            return final_message("最终报告：已基于现有计划完成调查并给出可执行建议。")
+
+    completions = ResearchCompletions()
+
+    class ResearchClient:
+        def __init__(self, **_kwargs):
+            self.chat = SimpleNamespace(completions=completions)
+
+    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", ResearchClient)
+    async with AsyncSessionLocal() as db:
+        parent = AgentRun(owner_id="local", trigger="user_message", objective="持续调用工具的调查")
+        db.add(parent)
+        await db.commit()
+        ctx = ToolContext(db=db, owner_id="local", run_id=parent.id, trigger="user_message")
+
+        spawned = await execute_tool(
+            "subagent_spawn",
+            json.dumps({"role": "资源调查", "objective": "读取计划后形成报告", "max_steps": 2}),
+            ctx,
+        )
+        joined = await execute_tool(
+            "subagent_join",
+            json.dumps({"run_id": spawned["data"]["run_id"], "timeout_seconds": 15}),
+            ctx,
+        )
+
+        assert joined["data"]["status"] == "completed"
+        assert "最终报告" in joined["data"]["output"]
+        assert completions.calls[-1].get("tools") is None
+
+
 def test_subagent_tools_expose_input_and_output_contracts():
     contracts = tool_contracts()
     names = {item["name"] for item in contracts}

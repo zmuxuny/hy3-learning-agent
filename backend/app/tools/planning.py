@@ -232,12 +232,13 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
     for child, assignment, outcome in zip(child_runs, args.assignments, outcomes, strict=True):
         if isinstance(outcome, Exception):
             child.status = "failed"
-            report = f"Specialist failed: {type(outcome).__name__}"
+            report = f"子 Agent 调查失败：{type(outcome).__name__}"
             event_type = "run.failed"
         else:
             child.status = "completed"
             report = outcome
             event_type = "run.completed"
+        child.output = report
         child.completed_at = datetime.now(timezone.utc)
         await ctx.db.commit()
         await emit_event(ctx.db, child.id, event_type, report, {"role": assignment.role})

@@ -21,6 +21,9 @@ const store = useWorkspaceStore();
 const expanded = ref(false);
 const childExpanded = ref(new Set());
 const childDetails = ref({});
+const childLoading = ref(new Set());
+const childErrors = ref({});
+const childEventExpanded = ref(new Set());
 const eventExpanded = ref(new Set());
 
 const TOOL_LABELS = {
@@ -144,24 +147,86 @@ function toggle() {
 }
 
 async function toggleChild(childId) {
+  if (!childId) return;
   const next = new Set(childExpanded.value);
   next.has(childId) ? next.delete(childId) : next.add(childId);
   childExpanded.value = next;
   if (next.has(childId) && !childDetails.value[childId]) {
+    const loading = new Set(childLoading.value);
+    loading.add(childId);
+    childLoading.value = loading;
+    childErrors.value = { ...childErrors.value, [childId]: '' };
     try {
       const events = await store.fetchChildRunEvents(childId);
       childDetails.value = { ...childDetails.value, [childId]: events };
-    } catch {
-      childDetails.value = { ...childDetails.value, [childId]: [] };
+    } catch (error) {
+      childErrors.value = {
+        ...childErrors.value,
+        [childId]: error.response?.data?.detail || error.message || '工作记录读取失败',
+      };
+    } finally {
+      const finished = new Set(childLoading.value);
+      finished.delete(childId);
+      childLoading.value = finished;
     }
   }
+}
+
+async function retryChild(childId) {
+  childDetails.value = { ...childDetails.value, [childId]: null };
+  childErrors.value = { ...childErrors.value, [childId]: '' };
+  const collapsed = new Set(childExpanded.value);
+  collapsed.delete(childId);
+  childExpanded.value = collapsed;
+  await toggleChild(childId);
+}
+
+function childEvents(childId) {
+  const events = (childDetails.value[childId] || []).map((event) => ({
+    ...event,
+    type: event.type || event.event_type,
+  }));
+  const rows = [];
+  for (const event of events) {
+    if (['run.started', 'run.completed', 'run.failed', 'run.cancelled', 'assistant.delta'].includes(event.type)) continue;
+    if (event.type === 'tool.started') {
+      const completed = events.find((item) => (
+        item.type === 'tool.completed'
+        && item.payload?.tool_call_id === event.payload?.tool_call_id
+      ));
+      rows.push(completed || event);
+      continue;
+    }
+    if (event.type === 'tool.completed' && rows.some((item) => (
+      item.payload?.tool_call_id === event.payload?.tool_call_id
+    ))) continue;
+    rows.push(event);
+  }
+  return rows;
 }
 
 function childReport(childId) {
   const finalEvent = [...(childDetails.value[childId] || [])].reverse().find((event) => (
     ['run.completed', 'run.failed', 'run.cancelled'].includes(event.event_type || event.type)
   ));
-  return finalEvent?.summary || '';
+  const report = finalEvent?.summary || '';
+  const legacyFailure = report.match(/^Specialist failed:\s*(.+)$/i);
+  if (legacyFailure?.[1] === 'OperationalError') {
+    return '这次子 Agent 调查因旧版本的数据库并发写入冲突而中断；已完成的搜索和网页读取记录仍保留在上方。';
+  }
+  return legacyFailure ? `子 Agent 调查失败：${legacyFailure[1]}` : report;
+}
+
+function childEventKey(childId, event) {
+  return `${childId}:${eventKey(event)}`;
+}
+
+function toggleChildEvent(childId, event) {
+  if (!eventExpandable(event)) return;
+  const key = childEventKey(childId, event);
+  const next = new Set(childEventExpanded.value);
+  next.has(key) ? next.delete(key) : next.add(key);
+  childEventExpanded.value = next;
 }
 
 function toolLabel(name) {
@@ -170,7 +235,22 @@ function toolLabel(name) {
 
 function resultError(result) {
   if (!result?.error) return '';
-  return typeof result.error === 'string' ? result.error : result.error.message || JSON.stringify(result.error);
+  const value = typeof result.error === 'string' ? result.error : result.error.message || JSON.stringify(result.error);
+  return value.length > 140 ? `${value.slice(0, 140)}…` : value;
+}
+
+function toolSubject(event) {
+  const name = event.payload?.name;
+  const data = event.payload?.result?.data || {};
+  if (name === 'web_search' && data.query) return `“${String(data.query).slice(0, 46)}${String(data.query).length > 46 ? '…' : ''}”`;
+  if (name === 'web_open' && data.url) {
+    try {
+      return new URL(data.url).hostname.replace(/^www\./, '');
+    } catch {
+      return String(data.url).slice(0, 46);
+    }
+  }
+  return '';
 }
 
 function eventLabel(event) {
@@ -179,7 +259,8 @@ function eventLabel(event) {
   if (event.type === 'tool.completed' || event.type === 'tool.started') {
     const name = toolLabel(event.payload?.name);
     if (result?.ok === false) return `${name}未完成：${resultError(result) || '调用失败'}`;
-    return `${name}${event.type === 'tool.started' ? '…' : ''}`;
+    const subject = toolSubject(event);
+    return `${name}${subject ? ` ${subject}` : ''}${event.type === 'tool.started' ? '…' : ''}`;
   }
   if (event.type === 'assistant.status') return event.summary || '继续处理';
   if (event.type === 'assistant.reasoning') return event.summary || event.payload?.text || '正在分析下一步';
@@ -260,20 +341,63 @@ function eventIcon(event) {
             :key="agent.id"
             :class="['agent-chip', { open: childExpanded.has(agent.id) }]"
             type="button"
+            :aria-expanded="childExpanded.has(agent.id)"
+            :aria-controls="`child-run-${agent.id}`"
             @click="toggleChild(agent.id)"
           >
             <UserGroupIcon />
             <span>{{ agent.role }}</span>
             <small>{{ agent.status }}</small>
+            <ChevronRightIcon class="agent-chip-chevron" />
           </button>
           <div
             v-for="agent in subagents.filter((item) => childExpanded.has(item.id))"
             :key="`detail-${agent.id}`"
+            :id="`child-run-${agent.id}`"
             class="agent-chip-detail"
           >
-            <p>{{ agent.objective }}</p>
-            <AgentMessage v-if="childReport(agent.id)" :content="childReport(agent.id)" />
-            <small v-else>正在读取这个子 Agent 的工作记录…</small>
+            <div class="child-run-heading">
+              <small>调查任务</small>
+              <p>{{ agent.objective }}</p>
+            </div>
+            <p v-if="childLoading.has(agent.id)" class="child-run-state">正在读取调查过程…</p>
+            <p v-else-if="childErrors[agent.id]" class="child-run-state error">
+              无法读取调查过程：{{ childErrors[agent.id] }}
+              <button type="button" @click="retryChild(agent.id)">重试</button>
+            </p>
+            <template v-else>
+              <div v-if="childEvents(agent.id).length" class="child-worklog">
+                <div
+                  v-for="event in childEvents(agent.id)"
+                  :key="childEventKey(agent.id, event)"
+                  :class="['run-action-item', { open: childEventExpanded.has(childEventKey(agent.id, event)), error: event.payload?.result?.ok === false || event.type === 'run.failed' }]"
+                >
+                  <button
+                    :class="['run-action-line', { expandable: eventExpandable(event) }]"
+                    type="button"
+                    :aria-expanded="eventExpandable(event) ? childEventExpanded.has(childEventKey(agent.id, event)) : undefined"
+                    @click="toggleChildEvent(agent.id, event)"
+                  >
+                    <component :is="eventIcon(event)" v-if="eventIcon(event)" />
+                    <i v-else class="action-icon-spacer" aria-hidden="true"></i>
+                    <span>{{ eventLabel(event) }}</span>
+                    <small v-if="event.payload?.result?.budget_exceeded">已达调查上限</small>
+                    <ChevronRightIcon v-if="eventExpandable(event)" class="action-chevron" />
+                  </button>
+                  <div v-if="childEventExpanded.has(childEventKey(agent.id, event))" class="run-action-detail">
+                    <section v-for="section in detailSections(event)" :key="section.label">
+                      <small>{{ section.label }}</small>
+                      <pre>{{ prettyJson(section.value) }}</pre>
+                    </section>
+                  </div>
+                </div>
+              </div>
+              <section v-if="childReport(agent.id)" class="child-report">
+                <small>{{ agent.status === '失败' ? '失败说明' : '调查结论' }}</small>
+                <AgentMessage :content="childReport(agent.id)" />
+              </section>
+              <p v-else class="child-run-state">这次调查没有生成最终结论，可查看上面的工具记录。</p>
+            </template>
           </div>
         </div>
         <div

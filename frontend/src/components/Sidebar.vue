@@ -5,7 +5,6 @@ import {
   BellIcon,
   BoltIcon,
   ChatBubbleLeftRightIcon,
-  ChevronDownIcon,
   CircleStackIcon,
   CogIcon,
   MapIcon,
@@ -41,8 +40,8 @@ const unreadBySession = computed(() => {
 });
 const navigation = [
   { id: 'plans', label: '学习计划', icon: MapIcon },
-  { id: 'inbox', label: '已安排', icon: BellIcon },
-  { id: 'memory', label: '记忆', icon: CircleStackIcon },
+  { id: 'inbox', label: '收件箱', icon: BellIcon },
+  { id: 'memory', label: '学习记忆', icon: CircleStackIcon },
 ];
 
 const heartbeatLabel = computed(() => {
@@ -97,11 +96,11 @@ async function toggleSearch() {
 <template>
   <aside class="sidebar">
     <div class="sidebar-heading">
-      <button class="brand" @click="store.openView('home')">
-        <strong>工作</strong><ChevronDownIcon />
+      <button class="brand" title="返回学习对话" @click="store.openView('home')">
+        <strong>Learning Agent</strong>
       </button>
       <button :class="['sidebar-utility', { active: searchOpen }]" title="搜索对话" @click="toggleSearch"><MagnifyingGlassIcon /></button>
-      <button class="sidebar-utility" title="打开已安排" @click="store.openView('inbox')"><BellIcon /></button>
+      <button class="sidebar-utility" title="打开学习收件箱" @click="store.openView('inbox')"><BellIcon /></button>
     </div>
     <label v-if="searchOpen" class="sidebar-search">
       <MagnifyingGlassIcon />
@@ -211,12 +210,12 @@ async function toggleSearch() {
     <div class="sidebar-footer">
       <button class="agent-status" @click="store.triggerHeartbeat">
         <span class="agent-status-icon"><BoltIcon /></span>
-        <span><strong>学习 Agent 在线</strong><small>{{ heartbeatLabel }} · 点击立即检查</small></span>
+        <span><strong>检查学习进度</strong><small>{{ heartbeatLabel }}</small></span>
         <i></i>
       </button>
       <button class="profile-card" v-if="store.profile" @click="store.openView('settings')">
         <div class="avatar">{{ store.profile.level }}</div>
-        <span><strong>本地学习者</strong><small>Lv.{{ store.profile.level }} · {{ store.profile.xp }} XP</small></span>
+        <span><strong>个人设置</strong><small>Lv.{{ store.profile.level }} · {{ store.profile.xp }} XP</small></span>
         <CogIcon />
       </button>
     </div>

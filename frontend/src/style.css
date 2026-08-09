@@ -530,7 +530,7 @@ svg { width: 19px; height: 19px; }
 .sidebar { padding: 14px 10px 10px; border-right: 0; }
 .sidebar-heading { display: grid; grid-template-columns: minmax(0, 1fr) 34px 34px; align-items: center; gap: 2px; margin-bottom: 12px; }
 .sidebar-heading .brand { height: 38px; justify-content: flex-start; gap: 4px; padding: 0 10px; }
-.sidebar-heading .brand strong { flex: 0 1 auto; font-size: 20px; font-weight: 650; letter-spacing: -.03em; }
+.sidebar-heading .brand strong { flex: 0 1 auto; font-size: 18px; font-weight: 650; letter-spacing: -.025em; white-space: nowrap; }
 .sidebar-heading .brand > svg { width: 14px; }
 .sidebar-utility { width: 34px; height: 34px; display: grid; place-items: center; color: #6f706c; background: transparent; border-radius: 9px; }
 .sidebar-utility:hover { background: var(--hover); color: var(--ink); }
@@ -607,16 +607,26 @@ svg { width: 19px; height: 19px; }
 .run-action-detail pre { max-height: 260px; margin: 0; padding: 0; overflow: auto; color: #555550; background: transparent; border: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .run-loading { margin: 0; color: var(--subtle); font-size: 14px; }
 .agent-chip-row { display: flex; flex-wrap: wrap; gap: 7px; }
-.agent-chip { max-width: 100%; height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; color: #666660; background: #fff; border: 1px solid var(--line); border-radius: 17px; font-size: 14px; }
+.agent-chip { max-width: 100%; height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px 0 11px; color: #666660; background: #fff; border: 1px solid var(--line); border-radius: 17px; font-size: 14px; }
 .agent-chip:hover, .agent-chip.open { background: var(--soft); border-color: #d5d5d1; }
 .agent-chip svg { width: 16px; color: #7770c8; }
 .agent-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agent-chip small { color: #969691; white-space: nowrap; }
-.agent-chip-detail { flex: 1 0 100%; padding: 3px 1px 7px 24px; }
-.agent-chip-detail p { margin: 0 0 3px; font-size: 14px; line-height: 1.55; }
-.agent-chip-detail small { color: var(--muted); font-size: 13px; line-height: 1.5; }
-.agent-chip-detail .agent-markdown { color: var(--muted); font-size: 13px; line-height: 1.55; }
-.agent-chip-detail .agent-markdown p { margin: 4px 0; }
+.agent-chip .agent-chip-chevron { width: 13px; color: #aaa9a4; transition: transform .18s ease; }
+.agent-chip.open .agent-chip-chevron { transform: rotate(90deg); }
+.agent-chip-detail { flex: 1 0 100%; min-width: 0; margin: 5px 0 9px 5px; padding: 13px 0 3px 18px; border-left: 2px solid #e4e4e0; }
+.child-run-heading { margin-bottom: 13px; }
+.child-run-heading > small, .child-report > small { display: block; margin-bottom: 4px; color: #92928d; font-size: 12px; }
+.child-run-heading > p { margin: 0; color: #555550; font-size: 13px; line-height: 1.55; }
+.child-worklog { display: grid; gap: 10px; }
+.child-worklog .run-action-line { font-size: 13px; }
+.child-worklog .run-action-detail { margin-left: 24px; }
+.child-report { margin-top: 15px; padding-top: 13px; border-top: 1px solid #ecece9; }
+.child-report .agent-markdown { color: #4c4c48; font-size: 14px; line-height: 1.65; }
+.child-report .agent-markdown p { margin: 6px 0 10px; }
+.child-run-state { margin: 3px 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.child-run-state.error { color: var(--danger); }
+.child-run-state button { margin-left: 6px; padding: 2px 6px; color: inherit; background: transparent; border-bottom: 1px solid currentColor; font-size: inherit; }
 @keyframes run-disclosure-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
 .assistant-answer { position: relative; font-size: 15px; line-height: 1.7; }
@@ -686,6 +696,8 @@ svg { width: 19px; height: 19px; }
 .composer-plus:hover { background: #f0f0ed; }
 .composer-scope { min-width: 0; max-width: 260px; height: 30px; display: flex; align-items: center; gap: 5px; padding: 0 8px; color: #777772; background: transparent; border-radius: 8px; font-size: 13px; }
 .composer-scope:hover { background: var(--soft); color: var(--ink); }
+.composer-scope-static { cursor: default; }
+.composer-scope-static:hover { color: #777772; background: transparent; }
 .composer-scope svg { width: 14px; flex: 0 0 auto; }
 .composer-scope span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .composer-scope.focused { color: #5e589b; }

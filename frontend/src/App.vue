@@ -40,7 +40,7 @@ onBeforeUnmount(() => store.stopProactiveSync());
     <aside v-if="store.proactiveNotice" class="proactive-toast" aria-live="polite">
       <BellIcon />
       <button class="proactive-toast-copy" @click="store.openView('inbox'); store.dismissProactiveNotice()">
-        <small>Learning Agent 主动消息</small>
+        <small>学习进度提醒</small>
         <strong>{{ store.proactiveNotice.title }}</strong>
         <span>{{ store.proactiveNotice.body }}</span>
       </button>

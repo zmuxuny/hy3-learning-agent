@@ -6,7 +6,7 @@
 
 个人学习场景已经形成完整的端到端 Harness：计划从对话式需求澄清、受限子 Run 分工和可审阅提案开始，用户采用后才成为正式计划；随后 Hy3 可以跟踪/教学、搜索核验资源、修改计划、读取文件、检查提交、运行代码、安排复习与日历，并由后台候选扫描决定是否发送站内提醒或邮件。
 
-1.0.0 工作台以连续 Session 和消息内 Run 为中心：普通回答、可展开操作、审批、子 Agent、计划提问和文档 Artifact 都留在产生它们的消息位置，不再由 composer 上方的独立状态面板割裂会话。该协议已用本机当前 Codex 桌面端资源与用户实机截图交叉核对。
+1.0.1 工作台以连续 Session 和消息内 Run 为中心：普通回答、可展开操作、审批、子 Agent、计划提问和文档 Artifact 都留在产生它们的消息位置，不再由 composer 上方的独立状态面板割裂会话。视觉协议参考本机当前 Codex 桌面端资源与用户实机截图，但导航、上下文和主动检查均使用学习场景自己的产品语义。
 
 分支约定：`main` 固定为归档快照（`6e29e55`，0.6.0 之前的产品版本），`develop` 是持续开发线；所有新功能与修复先进入 `develop`。
 
@@ -27,7 +27,7 @@
 
 - System Prompt 与 41 个真实 Function Calling 输入 Schema 进入同一个 Hy3 多轮 Runtime；41 个输出 Schema 由契约接口公开并在普通成功结果回填前校验。
 - `PlanningIntake` 持久保存已确认事实、结构化问题和 AI 的充分性理由；`PlanProposal` 在用户采用前不创建正式计划，重复采用保持幂等。
-- `planning_delegate` 与通用子 Agent 共用只读执行器；`subagent_spawn / status / join / cancel` 已开放，v1 强制只读白名单、独立轮次上限和结构化报告，父 Agent 仍是唯一写入口。通用子 Run 逐轮保存消息、待执行调用和最小上下文，异常会进入 `failed` 并通知父 Run，进程重启交给子 Agent 专用恢复器。
+- `planning_delegate` 与通用子 Agent 共用只读执行器；`subagent_spawn / status / join / cancel` 已开放，v1 强制只读白名单、独立轮次/工具上限和结构化报告，父 Agent 仍是唯一写入口。通用子 Run 逐轮保存消息、待执行调用和最小上下文，异常会进入 `failed` 并通知父 Run，进程重启交给子 Agent 专用恢复器。SQLite 事件写入跨 Run 串行并对短暂锁重试；调查轮次用尽后保留一次禁用工具的最终总结，报告持久化到 `AgentRun.output`。
 - `study_state_get` 为计划跟踪/教学提供统一版本化快照，新计划会选择首个 pending 任务而不是返回“当前无任务”。
 - 用户消息支持复制和非破坏式编辑；旧版本进入 `ChatMessageRevision`，旧下游退出当前上下文，原 Run/快照/Operation 保留，同一 Session 重新运行。
 - 计划焦点由后端 Guard 强制；计划内 Run 不能操作其他计划私有数据。
@@ -53,10 +53,11 @@
 - 站内消息支持单条归档、批量归档全部已读、独立归档列表与恢复；归档不删除消息，并退出 Agent 的近期通知上下文。
 - 计划详情只有一个标题（计划名称），摘要和操作降为正文层级，任务保持纵向时间线。
 - 浏览器回归覆盖 375、768、1280、1440 和 2560×1440；没有文档横向溢出、重复 Header 或横向裁切按钮。
-- `pytest -q`：91 passed。
-- 前端生产构建通过：JS 304.39 kB（gzip 111.77 kB），CSS 82.32 kB（gzip 16.12 kB）；生产依赖审计 0 vulnerabilities。
-- 当前发布基线为 1.0.0；`CHANGELOG.md`、CI（pytest + 前端构建 + 生产依赖审计）、`scripts/reset-data.sh`（备份并清空）与 `scripts/seed-fixture.sh`（恢复浏览器回归夹具）均已就绪。
+- `pytest -q`：94 passed。
+- 前端生产构建通过：JS 308.49 kB（gzip 113.11 kB），CSS 83.18 kB（gzip 16.29 kB）；生产依赖审计 0 vulnerabilities。
+- 当前发布基线为 1.0.1；`CHANGELOG.md`、CI（pytest + 前端构建 + 生产依赖审计）、`scripts/reset-data.sh`（备份并清空）与 `scripts/seed-fixture.sh`（恢复浏览器回归夹具）均已就绪。
 - 真实 Hy3 1.0 冒烟：一个全局 Session 连续完成 `plan_list → profile_get`，2 次模型调用、2 次工具调用，Run 正常结束；事件中持久化了有界 `arguments/result`，测试 Session 随后归档。
+- 真实 Hy3 1.0.1 子 Agent 冒烟：只读子 Run 完成 `plan_list` 后形成包含计划数量与下一步建议的最终报告并正常进入 `completed`；临时父/子 Run 随后清理。浏览器回归新增历史游泳规划 Run 的子 Agent 展开态，可见搜索、网页读取、403 与旧数据库冲突说明。
 - 0.6.0 稳定性与体验验收通过：邮件冷却统计、成就/连续天数、首页成就墙；真实 Hy3 冒烟与多视口浏览器回归通过。真实验证中 DuckDuckGo 主源连接失败、Bing 备选源成功返回 3 条结果（python.org 等），自动降级设计按预期生效。
 - 0.7.0 对话体验验收通过：计划澄清问答提交后可展开、运行记录展示记忆引用与子 Agent 活动、运行中可停止/排队/打断、代码块与回答复制、上下文占用显示、记忆页搜索与首页记忆概览；多视口浏览器回归无溢出。
 - 数据滞后提醒已定位并加固：根因是重置前仍有后端进程持有已移走的旧 SQLite 文件（进程继续读旧 inode）。`/settings` 现返回实际数据库路径与数据量，设置页展示数据状态；`demo-data.sh reset` 同时清理根目录/`backend/` 遗留数据库文件。

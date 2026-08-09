@@ -45,6 +45,38 @@ PLANNING_CHILD_ALLOWLIST: set[str] = {
 }
 
 
+def _compact_child_observation(result: dict) -> str:
+    """Keep research evidence useful without exhausting the child context."""
+    limit = min(settings.AGENT_TOOL_MESSAGE_CHAR_LIMIT, 8000)
+
+    def compact(value):
+        if isinstance(value, str):
+            return value if len(value) <= 2600 else f"{value[:2600]}…[truncated]"
+        if isinstance(value, list):
+            return [compact(item) for item in value[:12]]
+        if isinstance(value, dict):
+            return {str(key): compact(item) for key, item in value.items()}
+        return value
+
+    encoded = json.dumps(compact(result), ensure_ascii=False, default=str)
+    if len(encoded) <= limit:
+        return encoded
+    return json.dumps(
+        {"ok": result.get("ok", False), "truncated": True, "observation": encoded[:limit]},
+        ensure_ascii=False,
+    )
+
+
+def _bounded_child_event_result(result: dict) -> dict:
+    """Persist an inspectable result preview instead of entire fetched pages."""
+    encoded = _compact_child_observation(result)
+    try:
+        value = json.loads(encoded)
+    except json.JSONDecodeError:  # pragma: no cover - json.dumps above is authoritative
+        return {"ok": result.get("ok", False), "preview": encoded}
+    return value if isinstance(value, dict) else {"value": value}
+
+
 async def run_restricted_child(
     *,
     client: Any,
@@ -88,6 +120,8 @@ async def run_restricted_child(
         ]
     step = int(checkpoint.get("step") or 0)
     pending_calls: list[dict] = list(checkpoint.get("pending_tool_calls") or [])
+    tool_calls_used = int(checkpoint.get("tool_calls_used") or 0)
+    tool_call_limit = min(settings.AGENT_MAX_TOOL_CALLS, max(4, max_steps * 4))
 
     async def save_checkpoint() -> None:
         if checkpoint_callback is not None:
@@ -95,6 +129,7 @@ async def run_restricted_child(
                 "step": step,
                 "messages": messages,
                 "pending_tool_calls": pending_calls,
+                "tool_calls_used": tool_calls_used,
             })
 
     final_text = ""
@@ -148,7 +183,15 @@ async def run_restricted_child(
                 "name": call["name"],
                 "arguments": raw_args,
             })
-            if call["name"] not in allowlist:
+            tool_calls_used += 1
+            if tool_calls_used > tool_call_limit:
+                result = {
+                    "ok": False,
+                    "error": "Sub-agent tool budget reached; synthesize from collected evidence",
+                    "retryable": False,
+                    "budget_exceeded": True,
+                }
+            elif call["name"] not in allowlist:
                 result = {
                     "ok": False,
                     "error": "Tool is outside this sub-agent's read-only allowlist",
@@ -176,10 +219,13 @@ async def run_restricted_child(
                 "tool_call_id": call["id"],
                 "name": call["name"],
                 "arguments": raw_args,
-                "result": result,
+                "result": _bounded_child_event_result(result),
             })
-            content = json.dumps(result, ensure_ascii=False, default=str)
-            messages.append({"role": "tool", "tool_call_id": call["id"], "content": content[:12000]})
+            messages.append({
+                "role": "tool",
+                "tool_call_id": call["id"],
+                "content": _compact_child_observation(result),
+            })
             await save_checkpoint()
             if cancel_check is not None and await cancel_check():
                 final_text = "子 Agent 已按要求停止。"
@@ -188,7 +234,29 @@ async def run_restricted_child(
             break
         step += 1
         await save_checkpoint()
-    return final_text or "子 Agent 已完成受限调查，但没有返回可用的总结。"
+    if not final_text:
+        # A research model may spend every allowed turn calling tools. Reserve
+        # one tools-disabled call for the deliverable so a successful child Run
+        # never degrades into an empty "completed" result.
+        synthesis_messages = [*messages, {
+            "role": "user",
+            "content": (
+                "工具调查阶段已经结束。请仅依据上面的证据直接给出最终调研报告：包含结论、具体资源或依据、"
+                "建议、风险与仍需主 Agent 判断的问题。不要再调用工具，不要描述内部思维过程。"
+            ),
+        }]
+        await save_checkpoint()
+        response = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=settings.MODEL_NAME,
+                messages=synthesis_messages,
+                temperature=settings.MODEL_TEMPERATURE,
+                extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
+            ),
+            timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+        )
+        final_text = (response.choices[0].message.content or "").strip()
+    return final_text or "子 Agent 已完成调查，但模型没有生成最终报告。"
 
 
 async def child_event(run_id: str, event_type: str, summary: str, payload: dict | None = None) -> None:

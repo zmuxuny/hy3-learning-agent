@@ -126,7 +126,7 @@ Hy3 支持长上下文，但系统仍需选择、分层和压缩。长上下文�
 
 ## 5.1 Harness 运行事件
 
-前端展示可审计过程，不展示模型私有思维链。最新 Run 在消息下方显示一行可折叠活动摘要，展开后查看状态、工具与子 Agent 事件；完整载荷仍进入右侧轨迹抽屉：
+前端展示可审计过程，不展示模型私有思维链。每个历史或实时 Run 都在所属消息中显示可折叠摘要；展开后可查看工具与子 Agent 事件，每项工具还可继续展开有界的结构化输入/结果。右侧处理记录面板提供同一事件流的全局审计视图：
 
 ```text
 run.started
@@ -232,13 +232,13 @@ Plan Workspace
 
 当前注册 `planning_delegate`，可一次把最多三个规划调查分给独立 `AgentRun(trigger=subagent, parent_run_id=...)`；通用 `subagent_spawn/status/join/cancel` 使用同一只读执行器。子 Run 只接收父 Run 的只读上下文快照和单一任务；工具白名单限于画像/记忆/文件/日历读取及 `web_search/web_open`，并强制拒绝保存搜索结果和全部业务写工具。通用子 Run 在安全边界保存模型消息、轮次和待执行工具；异常进入 `failed`，重启按 `checkpoint.kind=subagent` 路由到专用恢复器。子 Run 不写主 Session 消息，返回报告后由主 Agent解决冲突和提交写操作。父事件流记录 `subagent.started/completed`，侧边栏与最近 Run 查询只投影根 Run，不把子 Run 冒充新对话。
 
-这是针对计划共创的受限委员会，不等于通用 Agent 编排。后续通用能力仍必须：
+这是以只读调查为边界的通用子 Agent v1；计划共创只是它的一种调用方式。其长期约束保持为：
 
 - 只继承最小必要上下文和工具。
 - 默认不能直接修改计划或长期记忆。
 - 返回结果与证据给主 Agent，由主 Agent决定后续动作。
 - 产生独立 `run_id`，并在父 Run 的事件流中可见。
 
-通用 spawn/join/cancel、每类子 Agent 工具白名单、费用预算和崩溃检查点按 `ROADMAP.md` 的后续顺序实现；当前规划子 Run 的失败会作为报告返回，主 Agent 可降级完成。
+通用 spawn/status/join/cancel、只读工具白名单、独立轮次/工具上限和崩溃检查点已经实现。SQLite 部署使用跨 Run 的事件单写者锁并对短暂 `locked/busy` 退避重试；工具观察和事件结果有界压缩，研究轮次耗尽后额外执行一次禁用工具的最终总结。规划子 Run 的成功报告或失败说明同时写入 `AgentRun.output` 并投影回父事件，主 Agent 可据此解决冲突或降级完成。
 
 应用启动时会扫描遗留的 `queued/running` Run：有 `checkpoint` 的恢复为 `queued` 并从断点续跑；没有检查点的标记为 `failed(process_interrupted)` 并追加可见事件，保留原消息、工具结果和操作记录，同时解除 Session 的假占用。心跳等无会话 Run 恢复时会按当前数据库重建上下文（不重放旧快照），指向已删除计划的待恢复 Run 直接安全收口。阻塞型审批在 `waiting_approval` 状态下持久化待批工具与参数，批准后从检查点恢复，拒绝后把拒绝结果回填给模型继续调整。

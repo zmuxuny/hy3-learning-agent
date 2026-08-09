@@ -137,7 +137,7 @@ Harness 不是一组“按钮 + Prompt + 固定工具流”。用户消息、后
 
 ## 视觉与游戏化
 
-界面采用 ChatGPT/Codex 桌面端风格的专业工作台：浅色侧栏、大面积留白、克制边框、悬浮输入框、消息内 Run disclosure 与 Writing Block 式计划 Artifact，并加入轻游戏化基础：
+界面采用 ChatGPT/Codex 桌面端的信息密度与交互协议：浅色侧栏、大面积留白、克制边框、悬浮输入框、消息内 Run disclosure 与 Writing Block 式计划 Artifact。产品导航不照搬通用工作区栏目，而使用学习计划、收件箱、学习记忆、检查学习进度和综合学习上下文等场景语义，并加入轻游戏化基础：
 
 - GitHub 风格学习热力图
 - XP、等级和连续学习天数

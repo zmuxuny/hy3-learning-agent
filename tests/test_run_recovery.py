@@ -1,15 +1,18 @@
+import asyncio
 import json
 from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
 from app.api.agent import decide_run_approval
 from app.db.database import AsyncSessionLocal
 from app.main import reconcile_interrupted_runs
 from app.models import AgentRun, ChatMessage, Plan, RunEvent, Session
 from app.runtime.agent import AgentRuntime
+from app.runtime.events import emit_event
 from app.schemas import RunApprovalRequest
 from app.services import plans as plan_service
 
@@ -67,6 +70,57 @@ class ApprovalCompletions:
             reasoning_content=None,
             tool_calls=None,
         ))])
+
+
+@pytest.mark.asyncio
+async def test_sqlite_event_write_retries_transient_lock(monkeypatch):
+    async with AsyncSessionLocal() as db:
+        run = AgentRun(owner_id="local", trigger="user_message", objective="事件锁重试")
+        db.add(run)
+        await db.commit()
+        run_id = run.id
+
+        original_commit = db.commit
+        attempts = 0
+
+        async def flaky_commit():
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise OperationalError("INSERT run_events", {}, Exception("database is locked"))
+            await original_commit()
+
+        monkeypatch.setattr(db, "commit", flaky_commit)
+        event = await emit_event(db, run_id, "assistant.status", "已恢复事件写入")
+
+        assert event.sequence == 1
+        assert attempts == 2
+
+
+@pytest.mark.asyncio
+async def test_sqlite_events_from_parallel_child_runs_are_serialized():
+    async with AsyncSessionLocal() as db:
+        runs = [AgentRun(owner_id="local", trigger="subagent", objective=f"并发子任务 {index}") for index in range(3)]
+        db.add_all(runs)
+        await db.commit()
+        run_ids = [run.id for run in runs]
+
+    async def write_event(run_id, index):
+        async with AsyncSessionLocal() as event_db:
+            await emit_event(event_db, run_id, "tool.completed", f"步骤 {index}")
+
+    await asyncio.gather(*[
+        write_event(run_id, index)
+        for run_id in run_ids
+        for index in range(8)
+    ])
+
+    async with AsyncSessionLocal() as db:
+        for run_id in run_ids:
+            events = list((await db.execute(
+                select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.sequence)
+            )).scalars())
+            assert [event.sequence for event in events] == list(range(1, 9))
 
 
 @pytest.mark.asyncio

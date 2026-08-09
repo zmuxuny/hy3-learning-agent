@@ -1191,6 +1191,7 @@ async def test_planning_delegate_creates_joined_child_runs(monkeypatch):
             AgentRun.parent_run_id == parent.id
         ))).scalars())
         assert {child.status for child in children} == {"completed"}
+        assert all("核心交付" in child.output for child in children)
         assert all(child.trigger == "subagent" for child in children)
         assert all(child.session_id == session.id for child in children)
         assert not list((await db.execute(select(ChatMessage).where(
