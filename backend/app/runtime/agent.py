@@ -114,6 +114,18 @@ def _call_to_dict(call) -> dict:
     }
 
 
+def _event_tool_arguments(raw_arguments: str) -> dict:
+    """Keep a bounded, structured input snapshot for the expandable Run UI."""
+    try:
+        value = json.loads(raw_arguments or "{}")
+    except json.JSONDecodeError:
+        return {"raw": (raw_arguments or "")[:2000]}
+    encoded = json.dumps(value, ensure_ascii=False, default=str)
+    if len(encoded) > 6000:
+        return {"preview": encoded[:6000], "truncated": True}
+    return value if isinstance(value, dict) else {"value": value}
+
+
 def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
@@ -231,6 +243,7 @@ class AgentRuntime:
                 granted=set(),
                 session=session,
                 run_cards=[],
+                context_snapshot_id=snapshot.id,
             )
         except Exception as exc:
             await self._fail(db, run.id, exc)
@@ -242,6 +255,7 @@ class AgentRuntime:
         start_step = int(checkpoint.get("step") or 0)
         pending_calls: list[dict] = list(checkpoint.get("pending_tool_calls") or [])
         run_cards: list[dict] = list(checkpoint.get("cards") or [])
+        context_snapshot_id = checkpoint.get("context_snapshot_id")
         granted: set[str] = set()
 
         if approval is not None:
@@ -292,7 +306,7 @@ class AgentRuntime:
                 self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
             session = await db.get(Session, run.session_id) if run.session_id else None
             if run.session_id is None and run.trigger in {"heartbeat", "manual_heartbeat", "task_event", "review_due"}:
-                messages = await self._refresh_stateless_context(db, run, messages)
+                messages, context_snapshot_id = await self._refresh_stateless_context(db, run, messages)
             messages = await self._apply_pending_steer(db, run, messages)
             await self._loop(
                 db,
@@ -303,11 +317,12 @@ class AgentRuntime:
                 granted=granted,
                 session=session,
                 run_cards=run_cards,
+                context_snapshot_id=context_snapshot_id,
             )
         except Exception as exc:
             await self._fail(db, run.id, exc)
 
-    async def _refresh_stateless_context(self, db, run: AgentRun, messages: list[dict]) -> list[dict]:
+    async def _refresh_stateless_context(self, db, run: AgentRun, messages: list[dict]) -> tuple[list[dict], int]:
         """Rebuild the context snapshot for stateless background runs resumed after restart.
 
         Checkpoints store the markdown assembled before the process stopped; the world may
@@ -348,7 +363,7 @@ class AgentRuntime:
                 break
         if not replaced:
             messages.insert(1, {"role": "user", "content": replacement})
-        return messages
+        return messages, snapshot.id
 
     async def _loop(
         self,
@@ -361,6 +376,7 @@ class AgentRuntime:
         granted: set[str],
         session: Session | None,
         run_cards: list[dict],
+        context_snapshot_id: int | None,
     ) -> None:
         from app.tools import ToolContext, execute_tool
 
@@ -457,6 +473,7 @@ class AgentRuntime:
                     "messages": messages,
                     "pending_tool_calls": calls,
                     "cards": run_cards,
+                    "context_snapshot_id": context_snapshot_id,
                 }
                 await db.commit()
 
@@ -465,7 +482,11 @@ class AgentRuntime:
                     run.id,
                     "tool.started",
                     f"调用工具 {call['name']}",
-                    {"tool_call_id": call["id"], "name": call["name"]},
+                    {
+                        "tool_call_id": call["id"],
+                        "name": call["name"],
+                        "arguments": _event_tool_arguments(call["arguments"]),
+                    },
                 )
                 result = failure_guard.before_call(call["name"])
                 if result is None:
@@ -487,6 +508,7 @@ class AgentRuntime:
                                     plan_id=run.plan_id,
                                     session_id=session.id if session else None,
                                     approval_granted=call["id"] in granted,
+                                    tool_call_id=call["id"],
                                 ),
                             ),
                             timeout=tool_timeout,
@@ -497,7 +519,12 @@ class AgentRuntime:
                     run.id,
                     "tool.completed",
                     f"工具 {call['name']} {'完成' if result['ok'] else '失败'}",
-                    {"tool_call_id": call["id"], "name": call["name"], "result": result},
+                    {
+                        "tool_call_id": call["id"],
+                        "name": call["name"],
+                        "arguments": _event_tool_arguments(call["arguments"]),
+                        "result": result,
+                    },
                 )
                 messages.append(
                     {
@@ -558,6 +585,7 @@ class AgentRuntime:
                     "messages": messages,
                     "pending_tool_calls": calls,
                     "cards": run_cards,
+                    "context_snapshot_id": context_snapshot_id,
                 }
                 await db.commit()
                 if not calls:

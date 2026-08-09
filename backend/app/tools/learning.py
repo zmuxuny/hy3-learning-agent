@@ -118,7 +118,11 @@ async def plan_patch(ctx: ToolContext, args: PlanPatchArgs) -> dict:
     changes = args.model_dump(exclude={"plan_id", "expected_version", "reason"}, exclude_unset=True)
     protected = {"goal", "status"}.intersection(changes)
     if protected and ctx.trigger != "user_message":
-        return {"approval_required": True, "reason": f"Background runs cannot change {', '.join(sorted(protected))}"}
+        return {
+            "approval_required": True,
+            "blocking": True,
+            "reason": f"Background runs cannot change {', '.join(sorted(protected))}",
+        }
     before = {key: json_safe(getattr(plan, key)) for key in changes}
     if "status" in changes:
         before["archived_from_status"] = plan.archived_from_status
@@ -420,7 +424,7 @@ async def _award_completion(ctx: ToolContext, task: Task) -> dict:
 
 
 LEARNING_TOOLS = [
-    ToolDefinition("plan_patch", "Modify plan metadata or timing. Background goal/status changes require approval; successful changes are reversible.", PlanPatchArgs, plan_patch, idempotent=True),
+    ToolDefinition("plan_patch", "Modify plan metadata or timing. Background goal/status changes require approval; successful changes are reversible.", PlanPatchArgs, plan_patch, idempotent=True, blocking=True),
     ToolDefinition("stage_create", "Append a reversible stage to the focused learning plan.", StageCreateArgs, stage_create, idempotent=True),
     ToolDefinition("task_create", "Add a reversible task to a stage in the focused learning plan.", TaskCreateArgs, task_create, idempotent=True),
     ToolDefinition("submission_create", "Submit text, code, file references, or links as durable evidence for a task.", SubmissionCreateArgs, submission_create, idempotent=True),

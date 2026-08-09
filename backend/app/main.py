@@ -98,6 +98,22 @@ async def reconcile_interrupted_runs() -> list[str]:
         return resumable
 
 
+async def resume_interrupted_run(run_id: str) -> None:
+    """Dispatch a recovered checkpoint to the runtime that created it."""
+    async with AsyncSessionLocal() as db:
+        run = await db.get(AgentRun, run_id)
+        if run is None:
+            return
+        checkpoint_kind = (run.checkpoint or {}).get("kind")
+        trigger = run.trigger
+    if trigger == "subagent" and checkpoint_kind == "subagent":
+        from app.tools.subagents import resume_subagent_run
+
+        await resume_subagent_run(run_id)
+        return
+    await AgentRuntime().run(run_id, resume=True)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await create_schema()
@@ -107,7 +123,7 @@ async def lifespan(_: FastAPI):
     proactive_scheduler.start()
     try:
         for run_id in resumable_runs:
-            start_tracked_task(run_id, AgentRuntime().run(run_id, resume=True))
+            start_tracked_task(run_id, resume_interrupted_run(run_id))
         yield
     finally:
         await proactive_scheduler.stop()

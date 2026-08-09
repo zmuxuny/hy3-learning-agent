@@ -198,6 +198,89 @@ async def test_subagent_cancel_stops_child(monkeypatch):
         assert completed and completed[-1].payload["status"] == "cancelled"
 
 
+@pytest.mark.asyncio
+async def test_subagent_failure_reaches_terminal_state_and_notifies_parent(monkeypatch):
+    class BrokenCompletions:
+        async def create(self, **_kwargs):
+            raise RuntimeError("provider unavailable")
+
+    class BrokenClient:
+        def __init__(self, **_kwargs):
+            self.chat = SimpleNamespace(completions=BrokenCompletions())
+
+    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", BrokenClient)
+    async with AsyncSessionLocal() as db:
+        parent = AgentRun(owner_id="local", trigger="user_message", objective="验证失败收口")
+        db.add(parent)
+        await db.commit()
+        ctx = ToolContext(db=db, owner_id="local", run_id=parent.id, trigger="user_message")
+
+        spawned = await execute_tool(
+            "subagent_spawn",
+            json.dumps({"role": "失败调查", "objective": "模拟供应商异常"}),
+            ctx,
+        )
+        joined = await execute_tool(
+            "subagent_join",
+            json.dumps({"run_id": spawned["data"]["run_id"], "timeout_seconds": 15}),
+            ctx,
+        )
+
+        assert joined["data"]["status"] == "failed"
+        assert "RuntimeError" in joined["data"]["output"]
+        child = await db.get(AgentRun, spawned["data"]["run_id"])
+        assert child.checkpoint is None
+        parent_events = list((await db.execute(
+            select(RunEvent).where(RunEvent.run_id == parent.id)
+        )).scalars())
+        completed = [event for event in parent_events if event.event_type == "subagent.completed"]
+        assert completed[-1].payload["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_checkpointed_subagent_resumes_with_its_own_runtime(monkeypatch):
+    class FakeClient:
+        def __init__(self, **_kwargs):
+            self.chat = SimpleNamespace(completions=FakeCompletions([
+                final_message("恢复后的调查结论。"),
+            ]))
+
+    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", FakeClient)
+    async with AsyncSessionLocal() as db:
+        parent = AgentRun(owner_id="local", trigger="user_message", objective="恢复父任务")
+        db.add(parent)
+        await db.flush()
+        child = AgentRun(
+            owner_id="local",
+            parent_run_id=parent.id,
+            trigger="subagent",
+            objective="[恢复调查] 继续读取资料",
+            status="queued",
+            checkpoint={
+                "kind": "subagent",
+                "role": "恢复调查",
+                "objective": "继续读取资料",
+                "context": "已持久化上下文",
+                "allowlist": ["plan_list"],
+                "max_steps": 3,
+                "step": 0,
+                "messages": [],
+                "pending_tool_calls": [],
+            },
+        )
+        db.add(child)
+        await db.commit()
+        child_id = child.id
+
+    await subagent_tools.resume_subagent_run(child_id)
+
+    async with AsyncSessionLocal() as db:
+        recovered = await db.get(AgentRun, child_id)
+        assert recovered.status == "completed"
+        assert recovered.output == "恢复后的调查结论。"
+        assert recovered.checkpoint is None
+
+
 def test_subagent_tools_expose_input_and_output_contracts():
     contracts = tool_contracts()
     names = {item["name"] for item in contracts}

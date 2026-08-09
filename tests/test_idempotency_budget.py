@@ -73,6 +73,11 @@ class ToolCallCompletions:
 async def test_idempotent_write_returns_original_result_and_marks_contract():
     contract = next(item for item in tool_contracts() if item["name"] == "file_write")
     assert contract["idempotent"] is True
+    assert contract["blocking"] is False
+
+    guarded_contract = next(item for item in tool_contracts() if item["name"] == "plan_patch")
+    assert guarded_contract["idempotent"] is True
+    assert guarded_contract["blocking"] is True
 
     async with AsyncSessionLocal() as db:
         run = AgentRun(owner_id="local", trigger="user_message", objective="写文件")
@@ -102,6 +107,58 @@ async def test_idempotent_write_returns_original_result_and_marks_contract():
         invocations = list((await db.execute(select(ToolInvocation))).scalars())
         assert len(invocations) == 1
         assert invocations[0].status == "committed"
+
+
+@pytest.mark.asyncio
+async def test_idempotency_replays_only_the_same_provider_tool_call():
+    async with AsyncSessionLocal() as db:
+        run = AgentRun(owner_id="local", trigger="user_message", objective="写两份相同内容")
+        db.add(run)
+        await db.commit()
+        raw = json.dumps({"path": "call-id.txt", "content": "hello", "overwrite": True})
+
+        first = await execute_tool(
+            "file_write",
+            raw,
+            ToolContext(
+                db=db,
+                owner_id="local",
+                run_id=run.id,
+                trigger="user_message",
+                tool_call_id="call-one",
+            ),
+        )
+        replay = await execute_tool(
+            "file_write",
+            raw,
+            ToolContext(
+                db=db,
+                owner_id="local",
+                run_id=run.id,
+                trigger="user_message",
+                tool_call_id="call-one",
+            ),
+        )
+        second_call = await execute_tool(
+            "file_write",
+            raw,
+            ToolContext(
+                db=db,
+                owner_id="local",
+                run_id=run.id,
+                trigger="user_message",
+                tool_call_id="call-two",
+            ),
+        )
+
+        assert first["ok"] is True
+        assert replay["replayed"] is True
+        assert second_call["ok"] is True
+        assert "replayed" not in second_call
+        invocations = list((await db.execute(
+            select(ToolInvocation).where(ToolInvocation.run_id == run.id)
+        )).scalars())
+        assert len(invocations) == 2
 
 
 @pytest.mark.asyncio
@@ -135,6 +192,42 @@ async def test_blocking_approval_invocation_commits_only_after_grant():
         assert replayed["replayed"] is True
         assert replayed["data"]["plan_id"] == granted["data"]["plan_id"]
         assert len(list((await db.execute(select(Plan))).scalars())) == 1
+
+
+@pytest.mark.asyncio
+async def test_background_goal_change_is_a_real_blocking_approval():
+    async with AsyncSessionLocal() as db:
+        setup_run = AgentRun(owner_id="local", trigger="user_message", objective="准备计划")
+        db.add(setup_run)
+        await db.commit()
+        created = await execute_tool(
+            "plan_create",
+            json.dumps(plan_payload("审批计划"), ensure_ascii=False),
+            ToolContext(db=db, owner_id="local", run_id=setup_run.id, trigger="user_message"),
+        )
+        plan_id = created["data"]["plan_id"]
+        background = AgentRun(owner_id="local", plan_id=plan_id, trigger="heartbeat", objective="调整长期目标")
+        db.add(background)
+        await db.commit()
+
+        pending = await execute_tool(
+            "plan_patch",
+            json.dumps({"plan_id": plan_id, "goal": "新的长期目标", "reason": "后台发现目标需要调整"}, ensure_ascii=False),
+            ToolContext(
+                db=db,
+                owner_id="local",
+                run_id=background.id,
+                trigger="heartbeat",
+                plan_id=plan_id,
+                tool_call_id="goal-change",
+            ),
+        )
+
+        assert pending["ok"] is True
+        assert pending["data"]["approval_required"] is True
+        assert pending["data"]["blocking"] is True
+        plan = await db.get(Plan, plan_id)
+        assert plan.goal == "验证幂等写入"
 
 
 @pytest.mark.asyncio

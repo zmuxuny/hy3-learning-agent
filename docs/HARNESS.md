@@ -27,7 +27,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 - `backend/app/runtime/prompt.py`：身份、循环、计划焦点、工具纪律、证据标准、主动触达和安全边界。
 - `backend/app/runtime/agent.py`：多轮 Function Calling、独立工具事务、结果回填、模型超时重试、取消、SSE 事件和 Session 压缩。
 - `backend/app/runtime/tasks.py`：按 `run_id` 跟踪当前进程内的主 Run、心跳和子 Run，使停止操作取消真实协程而不只写数据库标记。
-- `backend/app/tools/registry.py`：向 Hy3 注入 41 个真实工具输入 Schema，并用 41 个 Pydantic 输出 Schema 校验成功结果；完整双向契约可由 `/api/v1/settings/tools` 检查。
+- `backend/app/tools/registry.py`：向 Hy3 注入 41 个真实工具输入 Schema，并用 41 个 Pydantic 输出 Schema 校验成功结果；契约同时声明 `idempotent` 与可能阻塞审批的 `blocking`，可由 `/api/v1/settings/tools` 检查。
 - `backend/app/runtime/scheduler.py`：先用确定性规则发现到期复习、24 小时内任务和长期停滞，再为有价值的候选启动 Hy3。
 
 ## 分层上下文与记忆
@@ -60,4 +60,4 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 
 当前版本已经形成完整的个人学习 Harness：计划、资源、执行、证据、检查、记忆和主动提醒均有真实执行能力；SMTP/IMAP 代码、连续 Session 路由和诊断接口已完成，真实供应商收发仍依赖本机邮箱凭据。它不是通用操作系统 Agent，也不宣称拥有容器级代码隔离、任意宿主目录权限或多节点分布式调度能力。
 
-后续硬化项不阻塞当前学习闭环：阻塞型 Run 审批的暂停—批准—恢复检查点、进程崩溃续跑、写工具幂等键、费用预算和通用只读子 Agent 均已实现；剩余硬化项为外部日历双向同步、容器级不可信代码沙箱、移动推送、AI 个性化徽章图像，以及子 Agent 的写权限审批扩展。
+后续硬化项不阻塞当前学习闭环：阻塞型审批、进程崩溃续跑、call-id 写工具幂等、费用预算和带独立检查点的通用只读子 Agent 均已实现；剩余硬化项为外部日历双向同步、容器级不可信代码沙箱、移动推送、AI 个性化徽章图像，以及子 Agent 的写权限审批扩展。

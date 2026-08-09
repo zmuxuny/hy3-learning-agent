@@ -1,6 +1,5 @@
 <script setup>
 import {
-  AcademicCapIcon,
   ArchiveBoxArrowDownIcon,
   ArrowUturnLeftIcon,
   BellIcon,
@@ -8,11 +7,11 @@ import {
   ChatBubbleLeftRightIcon,
   ChevronDownIcon,
   CircleStackIcon,
-  ClockIcon,
   CogIcon,
   MapIcon,
   PencilSquareIcon,
   PencilIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -22,8 +21,14 @@ const editingSessionId = ref(null);
 const sessionTitle = ref('');
 const sessionTitleInput = ref(null);
 const showArchivedSessions = ref(false);
+const searchOpen = ref(false);
+const searchQuery = ref('');
+const searchInput = ref(null);
 const displayedSessions = computed(() => (
-  showArchivedSessions.value ? store.archivedSessions : store.sessions
+  (showArchivedSessions.value ? store.archivedSessions : store.sessions).filter((session) => (
+    !searchQuery.value.trim()
+    || `${session.title} ${sessionMeta(session)}`.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
+  ))
 ));
 const unreadBySession = computed(() => {
   const counts = {};
@@ -36,9 +41,8 @@ const unreadBySession = computed(() => {
 });
 const navigation = [
   { id: 'plans', label: '学习计划', icon: MapIcon },
-  { id: 'inbox', label: '收件箱', icon: BellIcon },
-  { id: 'memory', label: 'AI 记忆', icon: CircleStackIcon },
-  { id: 'settings', label: '设置', icon: CogIcon },
+  { id: 'inbox', label: '已安排', icon: BellIcon },
+  { id: 'memory', label: '记忆', icon: CircleStackIcon },
 ];
 
 const heartbeatLabel = computed(() => {
@@ -81,15 +85,28 @@ function cancelRename() {
 function setSessionTitleInput(element) {
   sessionTitleInput.value = element;
 }
+
+async function toggleSearch() {
+  searchOpen.value = !searchOpen.value;
+  if (!searchOpen.value) searchQuery.value = '';
+  await nextTick();
+  searchInput.value?.focus();
+}
 </script>
 
 <template>
   <aside class="sidebar">
-    <button class="brand" @click="store.openView('home')">
-      <span class="brand-mark"><AcademicCapIcon /></span>
-      <strong>Learning Agent</strong>
-      <ChevronDownIcon />
-    </button>
+    <div class="sidebar-heading">
+      <button class="brand" @click="store.openView('home')">
+        <strong>工作</strong><ChevronDownIcon />
+      </button>
+      <button :class="['sidebar-utility', { active: searchOpen }]" title="搜索对话" @click="toggleSearch"><MagnifyingGlassIcon /></button>
+      <button class="sidebar-utility" title="打开已安排" @click="store.openView('inbox')"><BellIcon /></button>
+    </div>
+    <label v-if="searchOpen" class="sidebar-search">
+      <MagnifyingGlassIcon />
+      <input ref="searchInput" v-model="searchQuery" placeholder="搜索对话" @keydown.esc="toggleSearch" />
+    </label>
 
     <button class="new-run" @click="store.startNewConversation">
       <PencilSquareIcon /> 新对话
@@ -197,11 +214,11 @@ function setSessionTitleInput(element) {
         <span><strong>学习 Agent 在线</strong><small>{{ heartbeatLabel }} · 点击立即检查</small></span>
         <i></i>
       </button>
-      <div class="profile-card" v-if="store.profile">
+      <button class="profile-card" v-if="store.profile" @click="store.openView('settings')">
         <div class="avatar">{{ store.profile.level }}</div>
         <span><strong>本地学习者</strong><small>Lv.{{ store.profile.level }} · {{ store.profile.xp }} XP</small></span>
-        <ClockIcon />
-      </div>
+        <CogIcon />
+      </button>
     </div>
   </aside>
 </template>

@@ -19,6 +19,10 @@ class ToolContext:
     plan_id: int | None = None
     session_id: str | None = None
     approval_granted: bool = False
+    # Stable provider-assigned id for one concrete tool call.  A model may
+    # intentionally invoke the same write tool with identical arguments twice
+    # in one Run; only a replay of the same call id should be deduplicated.
+    tool_call_id: str | None = None
 
 
 ToolHandler = Callable[[ToolContext, BaseModel], Awaitable[dict[str, Any]]]
@@ -32,6 +36,9 @@ class ToolDefinition:
     handler: ToolHandler
     output_model: type[BaseModel] | None = None
     idempotent: bool = False
+    # True means the tool can produce a blocking approval request.  Runtime
+    # guards still decide conditionally whether a concrete invocation blocks.
+    blocking: bool = False
 
     def openai_schema(self) -> dict:
         output_fields = []
@@ -56,6 +63,7 @@ class ToolDefinition:
             "name": self.name,
             "description": self.description,
             "idempotent": self.idempotent,
+            "blocking": self.blocking,
             "input_schema": self.args_model.model_json_schema(),
             "output_schema": self.output_model.model_json_schema(),
         }

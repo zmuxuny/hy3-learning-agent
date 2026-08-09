@@ -447,8 +447,8 @@ TOOLS = [
     ToolDefinition("profile_get", "Read the learner's global profile and notification preferences.", EmptyArgs, profile_get),
     ToolDefinition("plan_list", "List all learning plans and their current progress.", EmptyArgs, plan_list),
     ToolDefinition("plan_get", "Inspect one complete plan with stages and tasks.", PlanIdArgs, plan_get),
-    ToolDefinition("plan_create", "Create a complete learning plan requested by the user.", PlanCreate, plan_create, idempotent=True),
-    ToolDefinition("task_patch", "Update a task status, due time, duration, or review time.", TaskPatchArgs, task_patch, idempotent=True),
+    ToolDefinition("plan_create", "Create a complete learning plan requested by the user.", PlanCreate, plan_create, idempotent=True, blocking=True),
+    ToolDefinition("task_patch", "Update a task status, due time, duration, or review time.", TaskPatchArgs, task_patch, idempotent=True, blocking=True),
     ToolDefinition("review_schedule", "Schedule a future review or proactive quiz.", ReviewScheduleArgs, review_schedule, idempotent=True),
     ToolDefinition("quiz_create", "Create an evidence-based quiz for an active plan.", QuizCreateArgs, quiz_create, idempotent=True),
     ToolDefinition("quiz_get", "Read a quiz prompt and grading rubric before evaluating an answer.", QuizIdArgs, quiz_get),
@@ -462,12 +462,21 @@ attach_output_contracts(TOOLS)
 TOOL_MAP = {tool.name: tool for tool in TOOLS}
 
 
-def _idempotency_key(run_id: str, tool_name: str, raw_arguments: str) -> str:
+def _idempotency_key(
+    run_id: str,
+    tool_name: str,
+    raw_arguments: str,
+    tool_call_id: str | None = None,
+) -> str:
     try:
         normalized = json.dumps(json.loads(raw_arguments or "{}"), sort_keys=True, ensure_ascii=False)
     except Exception:
         normalized = raw_arguments or ""
-    digest = hashlib.sha256(f"{run_id}|{tool_name}|{normalized}".encode("utf-8")).hexdigest()
+    # Direct callers without a provider call id retain argument-based
+    # deduplication. Runtime calls include call_id so two intentional identical
+    # writes are not collapsed into one operation.
+    identity = tool_call_id or normalized
+    digest = hashlib.sha256(f"{run_id}|{tool_name}|{identity}|{normalized}".encode("utf-8")).hexdigest()
     return f"{run_id[:8]}:{tool_name}:{digest[:48]}"
 
 
@@ -477,7 +486,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
         return {"ok": False, "error": f"Unknown tool: {name}"}
     invocation = None
     if tool.idempotent:
-        key = _idempotency_key(ctx.run_id, name, raw_arguments)
+        key = _idempotency_key(ctx.run_id, name, raw_arguments, ctx.tool_call_id)
         existing = (await ctx.db.execute(
             select(ToolInvocation).where(ToolInvocation.idempotency_key == key)
         )).scalar_one_or_none()

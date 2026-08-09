@@ -8,6 +8,7 @@ import MemoryView from './components/MemoryView.vue';
 import PlansView from './components/PlansView.vue';
 import SettingsView from './components/SettingsView.vue';
 import Sidebar from './components/Sidebar.vue';
+import WorkspaceHeader from './components/WorkspaceHeader.vue';
 import { useWorkspaceStore } from './stores/workspace';
 
 const store = useWorkspaceStore();
@@ -24,6 +25,7 @@ onBeforeUnmount(() => store.stopProactiveSync());
   <div class="app-shell">
     <Sidebar />
     <main class="workspace">
+      <WorkspaceHeader v-if="!store.loading && store.activeView === 'home'" />
       <div v-if="store.loading" class="page-loader"><span></span><p>正在恢复学习上下文…</p></div>
       <template v-else>
         <HomeView v-if="store.activeView === 'home'" />

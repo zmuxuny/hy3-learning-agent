@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0 (2026-08-10)
+
+### Codex 式工作台协议与可恢复 Harness
+
+- 对照本机当前 Codex 桌面端的实际渲染资源重构会话主轴：48rem Thread、24px composer overhang、16px 消息节奏、轻量 Workspace Header 与整栏滚动侧栏；移除重复欢迎面板、头像式机器人消息和 composer 上方重复状态卡。
+- Agent Run 改为 `已处理/处理中` disclosure 与低对比 Run rail；整轮记录和每个工具操作都可展开，结构化输入/结果、失败、预算、审批和子 Agent 报告留在原消息位置，历史 Run 切换后按需恢复事件。
+- 计划与计划提案改为 Writing Block 式 Artifact：文档工具栏、完整标题与阶段预览、渐隐裁切、圆形展开按钮、复制/打开/采用操作；提问卡提交保留为紧凑交互回执。
+- 输入区统一为一个大 composer，保留文件提交、全局/计划焦点、上下文占用、运行中转向/排队/打断与停止；新增可用的侧栏搜索和会话操作菜单。
+- 工具事件新增有界参数快照；工具契约公开输入/输出 Schema、`idempotent` 和 `blocking`。写工具幂等键加入 provider `tool_call_id`，同参数的不同意图不再被错误去重。
+- 主 Run 检查点补齐 ContextSnapshot 版本；通用子 Agent 增加逐轮消息/待调用工具检查点、异常终态、父 Run 失败投影和专用重启恢复器，避免子 Run 永久卡在 `queued/running` 或被主 Runtime 错误恢复。
+- 后台修改计划目标/归档状态现在产生真实阻塞审批；批准、拒绝或回答后从同一 Run 检查点继续。
+- 删除不再使用的旧 Agent/进度/子 Agent 面板组件和约 9KB 遗留 CSS，避免并行设计体系继续累积。
+- 验收：91 项 pytest 通过；前端生产构建与 `npm audit --omit=dev` 通过；真实 Hy3 完成 `plan_list → profile_get` 两轮工具冒烟；375/768/1280/1440/2560 浏览器回归无溢出、裁切或过小正文。
+
 ## 0.8.1 (2026-08-09)
 
 ### 会话运行硬化与视觉复查

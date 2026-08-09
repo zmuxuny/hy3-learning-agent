@@ -6,6 +6,8 @@
 
 ## 41 个已注册工具
 
+`GET /api/v1/settings/tools` 对每个工具返回正式 `input_schema`、`output_schema`、`idempotent` 与 `blocking`。`blocking=true` 表示该工具在特定 Guard 条件下可能暂停 Run；是否阻塞仍由本次触发来源、操作字段和审批状态决定。
+
 ### 计划共创与学习位置
 
 | 工具 | 作用 |
@@ -104,4 +106,4 @@ run.started → context.built → assistant.status
 - 规划子 Run 与通用子 Agent 共用受限执行器；`spawn/status/join/cancel` 已开放，但只能看到显式只读白名单和最小上下文，不写主 Session 消息或业务状态。
 - 核心任务只有在 `submission_check` 通过或提供有效证据后才能完成。
 - 删除、全局长期记忆和后台改变最终目标需要用户确认；阻塞型审批会暂停 Run 等待批准/拒绝，候选式确认只生成候选不中断运行。
-- `Operation` 保存正向和逆向 Patch。计划、任务、策展资源、测验、日历、提交验收和文件写入可从运行抽屉撤销。
+- `Operation` 保存正向和逆向 Patch。计划、任务、策展资源、测验、日历、提交验收和文件写入可从操作记录撤销。

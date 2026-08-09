@@ -47,28 +47,6 @@ const archivedContext = computed(() => (
 ));
 const childContext = computed(() => Boolean(store.currentRun?.parent_run_id));
 const composerDisabled = computed(() => archivedContext.value || childContext.value);
-const progressStatus = computed(() => {
-  const status = store.currentRun?.status;
-  if (['queued', 'running'].includes(status)) return 'running';
-  if (status === 'waiting_approval') return 'waiting';
-  return 'idle';
-});
-const progressTitle = computed(() => {
-  if (store.currentRun) return store.currentRun.objective.slice(0, 60);
-  return store.activeSession?.title || store.focusedPlan?.title || '新对话';
-});
-const progressDetail = computed(() => {
-  if (store.currentRun) {
-    if (progressStatus.value === 'waiting') return '等待你的确认';
-    if (progressStatus.value === 'running') return 'Agent 正在工作';
-    return '本轮已完成';
-  }
-  const paused = store.schedulerStatus?.paused;
-  const next = store.schedulerStatus?.next_cycle_at;
-  if (paused) return '后台主动检查已暂停';
-  if (next) return `下次主动检查 ${new Date(next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  return '后台检查待启动';
-});
 
 async function submit() {
   if (archivedContext.value) return;
@@ -136,10 +114,6 @@ async function saveQueueEdit(message) {
 
 async function sendQueueNow(message) {
   await store.sendQueuedMessage(message.id);
-}
-
-async function togglePause() {
-  await store.setProactivePaused(!store.schedulerStatus?.paused);
 }
 
 watch(() => store.activeSessionId, () => {
@@ -219,18 +193,25 @@ async function switchSession(event) {
     </div>
 
     <div class="composer-shell">
-      <button class="composer-plus" :disabled="running || uploading || composerDisabled" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
       <input ref="fileInput" class="visually-hidden" type="file" @change="uploadFile" />
       <textarea
         v-model="prompt"
         rows="1"
-        :placeholder="childContext ? '子 Agent 线程为只读，请返回主对话继续交流' : archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : running ? `Agent 正在运行 · Enter=${defaultActionLabel} · Tab=排队` : '给 Learning Agent 发消息'"
+        :placeholder="childContext ? '子 Agent 线程为只读，请返回主对话继续交流' : archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : running ? `继续补充要求 · Enter=${defaultActionLabel} · Tab=排队` : '使用 Learning Agent'"
         :disabled="composerDisabled"
         @keydown.enter.exact.prevent="submit"
         @keydown.tab.exact="tabAction"
       ></textarea>
-      <span class="composer-mode"><SparklesIcon /> Hy3 · 深度</span>
-      <div class="composer-actions">
+      <div class="composer-utility-bar">
+        <button class="composer-plus" :disabled="running || uploading || composerDisabled" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
+        <button :class="['composer-scope', { focused: store.focusedPlan }]" @click="store.focusedPlan ? store.selectPlan(store.focusedPlan.id) : null">
+          <MapIcon v-if="store.focusedPlan" /><SparklesIcon v-else />
+          <span>{{ store.focusedPlan ? store.focusedPlan.title : '全局访问' }}</span>
+        </button>
+        <small v-if="contextUsage" class="context-usage" :title="`上下文约 ${contextUsage.tokens.toLocaleString()} / ${contextUsage.window.toLocaleString()} tokens`">{{ contextLabel }}</small>
+        <span class="composer-mode">Hy3</span>
+        <span class="composer-effort">深度</span>
+        <div class="composer-actions">
         <button
           v-if="running"
           class="send-button running"
@@ -250,19 +231,8 @@ async function switchSession(event) {
           title="选择发送方式"
           @click="queueMenuOpen = !queueMenuOpen"
         ><ChevronUpIcon /></button>
+        </div>
       </div>
-    </div>
-    <div class="composer-progress">
-      <span :class="['progress-dot', progressStatus]"></span>
-      <div class="composer-progress-copy">
-        <strong>{{ progressTitle }}</strong>
-        <small>{{ progressDetail }}</small>
-      </div>
-      <button
-        v-if="store.schedulerStatus"
-        class="progress-pause"
-        @click="togglePause"
-      >{{ store.schedulerStatus.paused ? '恢复后台检查' : '暂停后台检查' }}</button>
     </div>
     <div v-if="queueMenuOpen" class="queue-menu">
       <button @click="applyFollowUp(prompt.trim(), 'steer')">转向当前运行（不停止）</button>
@@ -270,18 +240,7 @@ async function switchSession(event) {
       <button class="danger" @click="interruptSend">打断当前运行并立即发送</button>
       <button class="quiet" @click="queueMenuOpen = false">取消</button>
     </div>
-    <div :class="['composer-context', { focused: store.focusedPlan }]">
-      <span v-if="store.focusedPlan">
-        <MapIcon /><strong>{{ store.focusedPlan.status === 'archived' ? '已归档计划' : '计划焦点' }}</strong>{{ store.focusedPlan.title }}
-      </span>
-      <span v-else>
-        <SparklesIcon /><strong>全局对话</strong>Agent 可以协调所有计划
-      </span>
-      <small v-if="contextUsage" class="context-usage" :title="`上下文约 ${contextUsage.tokens.toLocaleString()} / ${contextUsage.window.toLocaleString()} tokens`">上下文 {{ contextLabel }}</small>
-      <button v-if="store.focusedPlan && store.activeView === 'home'" @click="store.startNewConversation">
-        开始全局对话
-      </button>
-      <label class="mobile-session-switch">
+    <label class="mobile-session-switch composer-mobile-switch">
         <span class="visually-hidden">切换对话</span>
         <select :value="store.activeSessionId || ''" @change="switchSession">
           <option value="">＋ 新对话</option>
@@ -289,7 +248,6 @@ async function switchSession(event) {
             {{ session.title }}
           </option>
         </select>
-      </label>
-    </div>
+    </label>
   </div>
 </template>

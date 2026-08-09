@@ -230,7 +230,7 @@ Plan Workspace
 
 ## 10. 子 Agent 边界
 
-当前注册 `planning_delegate`，可一次把最多三个规划调查分给独立 `AgentRun(trigger=subagent, parent_run_id=...)`。子 Run 只接收父 Run 的只读上下文快照和单一任务；工具白名单限于画像/记忆/文件/日历读取及 `web_search/web_open`，并强制拒绝保存搜索结果和全部业务写工具。子 Run 不写主 Session 消息，返回简短报告后由主 Agent join、解决冲突并生成提案。父事件流记录 `subagent.started/completed`，侧边栏与最近 Run 查询只投影根 Run，不把子 Run 冒充新对话。
+当前注册 `planning_delegate`，可一次把最多三个规划调查分给独立 `AgentRun(trigger=subagent, parent_run_id=...)`；通用 `subagent_spawn/status/join/cancel` 使用同一只读执行器。子 Run 只接收父 Run 的只读上下文快照和单一任务；工具白名单限于画像/记忆/文件/日历读取及 `web_search/web_open`，并强制拒绝保存搜索结果和全部业务写工具。通用子 Run 在安全边界保存模型消息、轮次和待执行工具；异常进入 `failed`，重启按 `checkpoint.kind=subagent` 路由到专用恢复器。子 Run 不写主 Session 消息，返回报告后由主 Agent解决冲突和提交写操作。父事件流记录 `subagent.started/completed`，侧边栏与最近 Run 查询只投影根 Run，不把子 Run 冒充新对话。
 
 这是针对计划共创的受限委员会，不等于通用 Agent 编排。后续通用能力仍必须：
 

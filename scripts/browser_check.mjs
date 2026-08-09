@@ -55,7 +55,7 @@ async function inspect(label) {
       workspaceBars: document.querySelectorAll('.workspace-bar').length,
       timelineStages: document.querySelectorAll('.timeline-stage').length,
       messages: document.querySelectorAll('.message-bubble').length,
-      runTurns: document.querySelectorAll('.run-turn, .conversation-agent').length,
+      runTurns: document.querySelectorAll('.thread-run').length,
       sessions: document.querySelectorAll('.session-row').length,
       sessionActions: document.querySelectorAll('.session-actions').length,
       planCards: document.querySelectorAll('.plan-list-card').length,
@@ -69,8 +69,9 @@ async function inspect(label) {
       archivedNotificationCards: document.querySelector('.inbox-tabs button.active')?.textContent.includes('已归档')
         ? document.querySelectorAll('.inbox-card').length
         : 0,
-      runActivity: document.querySelectorAll('.run-activity').length,
-      runActivityExpanded: document.querySelectorAll('.run-activity.expanded').length,
+      runActivity: document.querySelectorAll('.run-disclosure').length,
+      runActivityExpanded: document.querySelectorAll('.run-disclosure.expanded').length,
+      expandedActions: document.querySelectorAll('.run-action-item.open').length,
       achievementStrip: document.querySelectorAll('.achievement-strip').length,
       achievementBadges: document.querySelectorAll('.achievement-badge').length,
       composerStop: document.querySelectorAll('.send-button.running').length,
@@ -83,7 +84,9 @@ async function inspect(label) {
       sidebarScrollOwner: getComputedStyle(document.querySelector('.sidebar')).overflowY,
       recentScrollOwner: getComputedStyle(document.querySelector('.recent-group') || document.body).overflowY,
       pinnedPlanArchiveActions: document.querySelectorAll('.side-plan-archive').length,
-      planInlineCards: document.querySelectorAll('.plan-inline-card').length,
+      planInlineCards: document.querySelectorAll('.plan-artifact').length,
+      artifactCards: document.querySelectorAll('.artifact-preview').length,
+      agentChips: document.querySelectorAll('.agent-chip').length,
       planningPanels: document.querySelectorAll('.planning-panel').length,
       planningQuestions: document.querySelectorAll('.planning-question').length,
       proposalStages: document.querySelectorAll('.proposal-stages article').length,
@@ -125,13 +128,22 @@ await evaluate(`(() => { const row = document.querySelector('.session-row'); if 
 await wait(1200);
 report.push(await inspect('conversation-wide'));
 const expandedRunActivity = await evaluate(`(() => {
-  const button = document.querySelector('.run-activity-summary');
+  const button = document.querySelector('.run-disclosure-toggle');
   if (button) button.click();
   return Boolean(button);
 })()`);
 if (expandedRunActivity) {
   await wait(250);
   report.push(await inspect('conversation-activity-expanded'));
+  const expandedAction = await evaluate(`(() => {
+    const button = document.querySelector('.run-disclosure.expanded .run-action-line.expandable');
+    if (button) button.click();
+    return Boolean(button);
+  })()`);
+  if (expandedAction) {
+    await wait(200);
+    report.push(await inspect('conversation-action-expanded'));
+  }
 }
 
 for (const [width, height] of [[1440, 1000], [768, 1024], [375, 812]]) {
@@ -182,6 +194,22 @@ if (openedProposalFixture) {
   report.push(await inspect('planning-proposal-mobile'));
 }
 
+await viewport(1440, 1000);
+const openedArtifactFixture = await evaluate(`(() => {
+  const row = [...document.querySelectorAll('.session-row')].find((node) => node.textContent.includes('学游泳'));
+  if (row) row.click();
+  return Boolean(row);
+})()`);
+if (openedArtifactFixture) {
+  await wait(900);
+  const artifacts = await evaluate(`document.querySelectorAll('.artifact-preview').length`);
+  if (artifacts) {
+    await evaluate(`document.querySelector('.artifact-preview')?.scrollIntoView({ block: 'center' })`);
+    await wait(300);
+    report.push(await inspect('conversation-artifact-1440'));
+  }
+}
+
 await viewport(2560, 1440);
 await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('学习计划')); if (item) item.click(); return Boolean(item); })()`);
 await wait(700);
@@ -206,12 +234,12 @@ await wait(700);
 report.push(await inspect('plan-resources-1440'));
 
 await viewport(1440, 1000);
-await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('AI 记忆')); if (item) item.click(); return Boolean(item); })()`);
+await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.trim() === '记忆'); if (item) item.click(); return Boolean(item); })()`);
 await wait(450);
 report.push(await inspect('memory-1440'));
 
 await viewport(1440, 1000);
-await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('收件箱')); if (item) item.click(); return Boolean(item); })()`);
+await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('已安排')); if (item) item.click(); return Boolean(item); })()`);
 await wait(500);
 report.push(await inspect('inbox-1440'));
 
@@ -249,7 +277,7 @@ await viewport(375, 812);
 report.push(await inspect('inbox-mobile'));
 
 await viewport(1440, 1000);
-await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('设置')); if (item) item.click(); return Boolean(item); })()`);
+await evaluate(`(() => { const item = document.querySelector('.profile-card'); if (item) item.click(); return Boolean(item); })()`);
 await wait(500);
 report.push(await inspect('settings-1440'));
 

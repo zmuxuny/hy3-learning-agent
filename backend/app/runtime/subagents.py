@@ -54,6 +54,8 @@ async def run_restricted_child(
     allowlist: set[str],
     max_steps: int,
     cancel_check: Callable[[], Awaitable[bool]] | None = None,
+    checkpoint: dict | None = None,
+    checkpoint_callback: Callable[[dict], Awaitable[None]] | None = None,
 ) -> str:
     """Run one bounded read-only child Agent and return its concise report.
 
@@ -65,73 +67,101 @@ async def run_restricted_child(
     from app.tools.registry import TOOL_MAP
 
     schemas = [TOOL_MAP[name].openai_schema() for name in sorted(allowlist)]
-    messages: list[dict] = [
-        {
-            "role": "system",
-            "content": (
-                "You are a bounded sub-agent inside a personal learning harness. Work only on the assigned question. "
-                "You may use the supplied read-only tools, including web search/open when current external evidence "
-                "matters. Never request search-result saving and never create or modify application state. Return a "
-                "concise evidence-oriented report with sources, assumptions, recommendations, risks, and questions the "
-                "lead Agent should resolve. Do not expose chain-of-thought."
-            ),
-        },
-        {
-            "role": "user",
-            "content": f"Assignment: {objective}\n\nShared context:\n{context}",
-        },
-    ]
+    checkpoint = checkpoint or {}
+    messages: list[dict] = list(checkpoint.get("messages") or [])
+    if not messages:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a bounded sub-agent inside a personal learning harness. Work only on the assigned question. "
+                    "You may use the supplied read-only tools, including web search/open when current external evidence "
+                    "matters. Never request search-result saving and never create or modify application state. Return a "
+                    "concise evidence-oriented report with sources, assumptions, recommendations, risks, and questions the "
+                    "lead Agent should resolve. Do not expose chain-of-thought."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Assignment: {objective}\n\nShared context:\n{context}",
+            },
+        ]
+    step = int(checkpoint.get("step") or 0)
+    pending_calls: list[dict] = list(checkpoint.get("pending_tool_calls") or [])
+
+    async def save_checkpoint() -> None:
+        if checkpoint_callback is not None:
+            await checkpoint_callback({
+                "step": step,
+                "messages": messages,
+                "pending_tool_calls": pending_calls,
+            })
+
     final_text = ""
-    for _ in range(max(1, max_steps)):
+    while step < max(1, max_steps):
         if cancel_check is not None and await cancel_check():
             final_text = "子 Agent 已按要求停止。"
             break
-        response = await asyncio.wait_for(
-            client.chat.completions.create(
-                model=settings.MODEL_NAME,
-                messages=messages,
-                tools=schemas,
-                tool_choice="auto",
-                temperature=settings.MODEL_TEMPERATURE,
-                extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
-            ),
-            timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-        )
-        message = response.choices[0].message
-        tool_calls = getattr(message, "tool_calls", None)
-        assistant_payload: dict = {"role": "assistant", "content": message.content or ""}
-        reasoning_content = getattr(message, "reasoning_content", None)
-        if reasoning_content:
-            assistant_payload["reasoning_content"] = reasoning_content
-        if tool_calls:
-            assistant_payload["tool_calls"] = [call.model_dump() for call in tool_calls]
-        messages.append(assistant_payload)
-        if not tool_calls:
-            final_text = (message.content or "").strip()
-            break
-        for call in tool_calls:
-            await child_event(child.id, "tool.started", f"调用只读工具 {call.function.name}", {
-                "tool_call_id": call.id,
-                "name": call.function.name,
+        if not pending_calls:
+            await save_checkpoint()
+            response = await asyncio.wait_for(
+                client.chat.completions.create(
+                    model=settings.MODEL_NAME,
+                    messages=messages,
+                    tools=schemas,
+                    tool_choice="auto",
+                    temperature=settings.MODEL_TEMPERATURE,
+                    extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
+                ),
+                timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+            )
+            message = response.choices[0].message
+            tool_calls = getattr(message, "tool_calls", None)
+            assistant_payload: dict = {"role": "assistant", "content": message.content or ""}
+            reasoning_content = getattr(message, "reasoning_content", None)
+            if reasoning_content:
+                assistant_payload["reasoning_content"] = reasoning_content
+            if tool_calls:
+                assistant_payload["tool_calls"] = [call.model_dump() for call in tool_calls]
+                pending_calls = [
+                    {
+                        "id": call.id,
+                        "name": call.function.name,
+                        "arguments": call.function.arguments,
+                    }
+                    for call in tool_calls
+                ]
+            messages.append(assistant_payload)
+            if not tool_calls:
+                final_text = (message.content or "").strip()
+                break
+            await save_checkpoint()
+
+        while pending_calls:
+            call = pending_calls.pop(0)
+            try:
+                raw_args = json.loads(call["arguments"] or "{}")
+            except json.JSONDecodeError:
+                raw_args = {}
+            await child_event(child.id, "tool.started", f"调用只读工具 {call['name']}", {
+                "tool_call_id": call["id"],
+                "name": call["name"],
+                "arguments": raw_args,
             })
-            if call.function.name not in allowlist:
+            if call["name"] not in allowlist:
                 result = {
                     "ok": False,
                     "error": "Tool is outside this sub-agent's read-only allowlist",
                     "retryable": False,
                 }
             else:
-                try:
-                    raw_args = json.loads(call.function.arguments or "{}")
-                except json.JSONDecodeError:
-                    raw_args = {}
-                if call.function.name == "web_search" and raw_args.get("save_results"):
+                if call["name"] == "web_search" and raw_args.get("save_results"):
                     result = {"ok": False, "error": "Sub-agents cannot save search results", "retryable": False}
                 else:
                     async with AsyncSessionLocal() as tool_db:
                         result = await execute_tool(
-                            call.function.name,
-                            call.function.arguments,
+                            call["name"],
+                            call["arguments"],
                             ToolContext(
                                 db=tool_db,
                                 owner_id=child.owner_id,
@@ -139,20 +169,25 @@ async def run_restricted_child(
                                 trigger="subagent",
                                 plan_id=child.plan_id,
                                 session_id=child.session_id,
+                                tool_call_id=call["id"],
                             ),
                         )
-            await child_event(child.id, "tool.completed", f"只读工具 {call.function.name} {'完成' if result.get('ok') else '失败'}", {
-                "tool_call_id": call.id,
-                "name": call.function.name,
+            await child_event(child.id, "tool.completed", f"只读工具 {call['name']} {'完成' if result.get('ok') else '失败'}", {
+                "tool_call_id": call["id"],
+                "name": call["name"],
+                "arguments": raw_args,
                 "result": result,
             })
             content = json.dumps(result, ensure_ascii=False, default=str)
-            messages.append({"role": "tool", "tool_call_id": call.id, "content": content[:12000]})
+            messages.append({"role": "tool", "tool_call_id": call["id"], "content": content[:12000]})
+            await save_checkpoint()
             if cancel_check is not None and await cancel_check():
                 final_text = "子 Agent 已按要求停止。"
                 break
         if final_text == "子 Agent 已按要求停止。":
             break
+        step += 1
+        await save_checkpoint()
     return final_text or "子 Agent 已完成受限调查，但没有返回可用的总结。"
 
 

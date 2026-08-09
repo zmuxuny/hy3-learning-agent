@@ -1,24 +1,14 @@
 <script setup>
-import { BoltIcon, CircleStackIcon, SparklesIcon, TrophyIcon } from '@heroicons/vue/24/outline';
+import { SparklesIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentComposer from './AgentComposer.vue';
-import AgentMessage from './AgentMessage.vue';
 import AgentRunTurn from './AgentRunTurn.vue';
-import PlanCard from './PlanCard.vue';
-import PlanningProposalPanel from './PlanningProposalPanel.vue';
-import PlanningQuestionsPanel from './PlanningQuestionsPanel.vue';
-import SubagentPanel from './SubagentPanel.vue';
 import UserMessage from './UserMessage.vue';
 
 const store = useWorkspaceStore();
 const scrollArea = ref(null);
 const pinnedToBottom = ref(true);
-const days = computed(() => store.dashboard.activity.map((day, index) => ({
-  index,
-  date: day.date,
-  value: Math.min(day.count, 4),
-})));
 const currentRunUser = computed(() => store.conversationMessages.find(
   (message) => message.run_id === store.currentRun?.id && message.role === 'user',
 ));
@@ -30,10 +20,6 @@ const suggestions = [
   '检查我现在的计划，告诉我今天最该做什么',
   '根据最近表现主动抽查我',
 ];
-const confirmedMemories = computed(() => store.memories.filter((memory) => memory.status === 'confirmed'));
-const latestMemories = computed(() => [...confirmedMemories.value]
-  .sort((left, right) => new Date(right.updated_at) - new Date(left.updated_at))
-  .slice(0, 2));
 
 function onScroll() {
   if (!scrollArea.value) return;
@@ -72,39 +58,6 @@ watch(() => store.runEvents.length, () => scrollToLatest());
           </button>
         </div>
 
-        <div class="quiet-overview">
-          <div class="overview-copy">
-            <span><BoltIcon /> 学习 Agent 已就绪</span>
-            <p>后台心跳会自行判断何时介入；没有必要时，它会保持安静。</p>
-          </div>
-          <div class="overview-stats">
-            <button @click="store.openView('plans')"><strong>{{ store.activePlans.length }}</strong><span>进行中计划</span></button>
-            <button @click="store.openView('inbox')"><strong>{{ store.unreadCount }}</strong><span>待处理消息</span></button>
-            <div class="mini-heatmap" title="最近 12 周真实学习活动">
-              <i v-for="day in days" :key="day.index" :class="`heat-${day.value}`"></i>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="store.dashboard.achievements.length" class="achievement-strip">
-          <div class="achievement-heading"><TrophyIcon /><span>成就墙</span><small>{{ store.dashboard.achievements.length }} 枚徽章</small></div>
-          <div class="achievement-list">
-            <div v-for="item in store.dashboard.achievements" :key="item.key" class="achievement-badge" :title="item.description">
-              <span class="badge-icon"><TrophyIcon /></span>
-              <span><strong>{{ item.title }}</strong><small>{{ item.description }}</small></span>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="latestMemories.length" class="memory-overview">
-          <div class="memory-overview-heading"><CircleStackIcon /><span>记忆概览</span><small>{{ confirmedMemories.length }} 条确认记忆</small></div>
-          <div class="memory-overview-list">
-            <div v-for="memory in latestMemories" :key="memory.id" class="memory-overview-item">
-              <small>{{ memory.layer }}/{{ memory.scope }}</small>
-              <p>{{ memory.content }}</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       <div v-else class="thread">
@@ -120,21 +73,14 @@ watch(() => store.runEvents.length, () => scrollToLatest());
             :cards="currentRunAssistant?.message_metadata?.cards || []"
           />
 
-          <div
+          <AgentRunTurn
             v-if="message.role === 'assistant' && message.run_id !== store.currentRun?.id"
-            class="agent-turn conversation-agent"
-          >
-            <div class="agent-avatar"><SparklesIcon /></div>
-            <div class="agent-content">
-              <div class="agent-name">Learning Agent <span>Hy3</span></div>
-              <div class="assistant-answer"><AgentMessage :content="message.content" /></div>
-              <template v-for="card in message.message_metadata?.cards || []" :key="`${card.kind}-${card.created_at}`">
-                <PlanningQuestionsPanel v-if="card.kind === 'planning_questions'" :intake="card.intake" readonly />
-                <PlanningProposalPanel v-else-if="card.kind === 'plan_proposal'" :proposal="card.proposal" readonly />
-              </template>
-              <PlanCard v-if="store.planForRun(message.run_id)" :plan="store.planForRun(message.run_id)" />
-            </div>
-          </div>
+            :answer="message.content"
+            :run="store.runForId(message.run_id)"
+            :events="store.eventsForRun(message.run_id)"
+            :cards="message.message_metadata?.cards || []"
+            historical
+          />
         </template>
 
         <template v-if="store.currentRun && !currentRunUser">
@@ -147,7 +93,6 @@ watch(() => store.runEvents.length, () => scrollToLatest());
       </div>
     </div>
 
-    <SubagentPanel />
     <AgentComposer />
   </section>
 </template>

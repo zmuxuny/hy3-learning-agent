@@ -1,11 +1,12 @@
 <script setup>
 import {
   ArrowRightIcon,
+  ArrowsPointingOutIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   ClipboardDocumentCheckIcon,
+  ClipboardIcon,
   UserGroupIcon,
-  XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -17,6 +18,7 @@ const props = defineProps({
 const store = useWorkspaceStore();
 const submitting = ref(false);
 const expanded = ref(true);
+const copied = ref(false);
 const proposal = computed(() => props.proposal || store.planningState.proposal);
 const pendingProposal = computed(() => proposal.value?.status === 'pending');
 const stages = computed(() => proposal.value?.plan_payload?.stages || []);
@@ -41,20 +43,38 @@ async function rejectProposal() {
   await store.decidePlanProposal(proposal.value.id, false);
   submitting.value = false;
 }
+
+async function copyProposal() {
+  const text = [
+    `# ${proposal.value.title}`,
+    '',
+    proposal.value.rationale || '',
+    '',
+    ...stages.value.flatMap((stage, index) => [
+      `## ${index + 1}. ${stage.title}`,
+      stage.description || stage.objectives?.join(' · ') || '',
+    ]),
+  ].join('\n');
+  await navigator.clipboard?.writeText(text);
+  copied.value = true;
+  window.setTimeout(() => { copied.value = false; }, 1400);
+}
 </script>
 
 <template>
-  <section v-if="proposal && (props.readonly || proposal.status !== 'accepted')" :class="['planning-panel', 'proposal-panel', proposal.status, { readonly: props.readonly, collapsed: !expanded }]">
-    <header @click="props.readonly && (expanded = !expanded)">
-      <span class="planning-icon"><ClipboardDocumentCheckIcon /></span>
-      <div><small>计划提案 · {{ proposal.status === 'pending' ? '等待确认' : proposal.status === 'accepted' ? '已采用' : '已退回' }}</small><h3>{{ proposal.title }}</h3></div>
-      <span v-if="proposal.status === 'accepted'" class="readiness accepted">已采用</span>
-      <span v-else-if="pendingProposal" class="readiness">尚未创建正式计划</span>
-      <XMarkIcon v-else class="proposal-state-icon" />
-      <ChevronDownIcon v-if="props.readonly" class="panel-chevron" />
+  <section v-if="proposal && (props.readonly || proposal.status !== 'accepted')" :class="['artifact-preview', 'proposal-artifact', proposal.status, { readonly: props.readonly, expanded }]">
+    <header class="artifact-toolbar">
+      <span class="artifact-kind"><ClipboardDocumentCheckIcon /> 计划提案</span>
+      <span class="artifact-status">{{ proposal.status === 'pending' ? '等待确认' : proposal.status === 'accepted' ? '已采用' : '已退回' }}</span>
+      <div class="artifact-actions">
+        <button :title="copied ? '已复制' : '复制提案'" @click="copyProposal"><CheckCircleIcon v-if="copied" /><ClipboardIcon v-else /></button>
+        <button title="展开或收起" @click="expanded = !expanded"><ArrowsPointingOutIcon /></button>
+      </div>
     </header>
-    <template v-if="expanded">
-      <p class="planning-rationale">{{ proposal.rationale }}</p>
+    <div class="artifact-viewport">
+      <div class="artifact-document">
+        <h2>{{ proposal.title }}</h2>
+        <p class="artifact-lead">{{ proposal.rationale }}</p>
       <div class="proposal-metrics">
         <span><strong>{{ stages.length }}</strong> 阶段</span><span><strong>{{ taskCount }}</strong> 任务</span><span><strong>{{ totalMinutes }}</strong> 预计分钟</span>
       </div>
@@ -65,9 +85,10 @@ async function rejectProposal() {
         </article>
       </div>
       <div v-if="proposal.specialist_reports?.length" class="proposal-specialists"><UserGroupIcon /><span>{{ proposal.specialist_reports.length }} 个规划子 Agent 的结论已被主 Agent 汇总</span></div>
-      <footer v-if="!props.readonly && pendingProposal"><button class="danger-quiet" :disabled="submitting" @click="rejectProposal">放弃提案</button><span></span><button @click="reviseProposal">继续讨论</button><button class="primary" :disabled="submitting" @click="acceptProposal">采用并创建计划 <ArrowRightIcon /></button></footer>
-      <footer v-else-if="props.readonly" class="readonly-footer"><span>历史快照 · 提案已作为这条消息的一部分归档</span></footer>
-    </template>
-    <footer v-else class="collapsed-hint"><span>点击展开这份计划提案</span></footer>
+      </div>
+    </div>
+    <button class="artifact-expand" :title="expanded ? '收起预览' : '展开预览'" @click="expanded = !expanded"><ChevronDownIcon /></button>
+    <footer v-if="!props.readonly && pendingProposal" class="artifact-footer proposal-actions"><button class="danger-quiet" :disabled="submitting" @click="rejectProposal">放弃提案</button><span></span><button @click="reviseProposal">继续讨论</button><button class="artifact-primary-action" :disabled="submitting" @click="acceptProposal">采用并创建计划 <ArrowRightIcon /></button></footer>
+    <footer v-else class="artifact-footer artifact-history-note"><span>{{ proposal.status === 'accepted' ? '这份提案已采用' : '历史提案快照' }}</span></footer>
   </section>
 </template>

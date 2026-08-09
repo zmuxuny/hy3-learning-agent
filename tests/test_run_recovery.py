@@ -93,6 +93,7 @@ async def test_blocking_approval_pauses_run_and_approve_resumes(monkeypatch):
         paused = await db.get(AgentRun, run_id)
         assert paused.status == "waiting_approval"
         assert paused.pending_approval["tool_call"]["name"] == "plan_create"
+        assert isinstance(paused.checkpoint["context_snapshot_id"], int)
         plans = list((await db.execute(select(Plan))).scalars())
         assert plans == []
         events = list((await db.execute(select(RunEvent).where(RunEvent.run_id == run_id))).scalars())

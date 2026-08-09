@@ -57,46 +57,117 @@ def _own_child(ctx: ToolContext, child: AgentRun | None) -> bool:
 
 
 async def _run_child_async(
-    child: AgentRun,
+    child_id: str,
     role: str,
     objective: str,
     context: str,
     allowlist: set[str],
     max_steps: int,
+    checkpoint: dict | None = None,
 ) -> None:
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
-    report = await run_restricted_child(
-        client=client,
-        child=child,
-        objective=f"{role}: {objective}",
-        context=context,
-        allowlist=allowlist,
-        max_steps=max_steps,
-        cancel_check=lambda: child_cancel_requested(child.id),
-    )
-    async with AsyncSessionLocal() as db:
-        stored = await db.get(AgentRun, child.id)
-        if stored is None:
-            return
-        if stored.cancel_requested or stored.status == "cancelled":
-            if stored.status == "cancelled":
+    async def persist_checkpoint(runtime_checkpoint: dict) -> None:
+        async with AsyncSessionLocal() as checkpoint_db:
+            stored_child = await checkpoint_db.get(AgentRun, child_id)
+            if stored_child is None or stored_child.status not in {"queued", "running"}:
                 return
-            stored.status = "cancelled"
+            stored_child.checkpoint = {
+                "kind": "subagent",
+                "role": role,
+                "objective": objective,
+                "context": context,
+                "allowlist": sorted(allowlist),
+                "max_steps": max_steps,
+                **runtime_checkpoint,
+            }
+            await checkpoint_db.commit()
+
+    try:
+        async with AsyncSessionLocal() as db:
+            child = await db.get(AgentRun, child_id)
+            if child is None or child.status == "cancelled" or child.cancel_requested:
+                return
+            child.status = "running"
+            child.started_at = child.started_at or datetime.now(timezone.utc)
+            await db.commit()
+
+        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
+        report = await run_restricted_child(
+            client=client,
+            child=child,
+            objective=f"{role}: {objective}",
+            context=context,
+            allowlist=allowlist,
+            max_steps=max_steps,
+            cancel_check=lambda: child_cancel_requested(child_id),
+            checkpoint=checkpoint,
+            checkpoint_callback=persist_checkpoint,
+        )
+        async with AsyncSessionLocal() as db:
+            stored = await db.get(AgentRun, child_id)
+            if stored is None:
+                return
+            if stored.cancel_requested or stored.status == "cancelled":
+                if stored.status == "cancelled":
+                    return
+                stored.status = "cancelled"
+                stored.checkpoint = None
+                stored.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+                await emit_event(db, child_id, "run.cancelled", "子 Agent 已按要求停止", {"role": role})
+                return
+            stored.status = "completed"
+            stored.output = report
+            stored.checkpoint = None
             stored.completed_at = datetime.now(timezone.utc)
             await db.commit()
-            await emit_event(db, child.id, "run.cancelled", "子 Agent 已按要求停止", {"role": role})
+            await emit_event(db, child_id, "run.completed", report, {"role": role})
+            await emit_event(db, stored.parent_run_id, "subagent.completed", f"{role} 已返回结论", {
+                "child_run_id": child_id,
+                "role": role,
+                "status": "completed",
+                "report": report,
+            })
+    except asyncio.CancelledError:
+        # Explicit cancellation already commits its terminal state and events.
+        raise
+    except Exception as exc:
+        safe_error = f"子 Agent 运行失败：{type(exc).__name__}"
+        async with AsyncSessionLocal() as db:
+            stored = await db.get(AgentRun, child_id)
+            if stored is None or stored.status == "cancelled":
+                return
+            stored.status = "failed"
+            stored.output = safe_error
+            stored.checkpoint = None
+            stored.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            await emit_event(db, child_id, "run.failed", safe_error, {"role": role, "recoverable": False})
+            await emit_event(db, stored.parent_run_id, "subagent.completed", f"{role} 调查失败", {
+                "child_run_id": child_id,
+                "role": role,
+                "status": "failed",
+                "report": safe_error,
+            })
+
+
+async def resume_subagent_run(child_id: str) -> None:
+    """Resume a generic child Run from its own durable checkpoint."""
+    async with AsyncSessionLocal() as db:
+        child = await db.get(AgentRun, child_id)
+        if child is None or child.trigger != "subagent" or not child.checkpoint:
             return
-        stored.status = "completed"
-        stored.output = report
-        stored.completed_at = datetime.now(timezone.utc)
-        await db.commit()
-        await emit_event(db, child.id, "run.completed", report, {"role": role})
-        await emit_event(db, child.parent_run_id, "subagent.completed", f"{role} 已返回结论", {
-            "child_run_id": child.id,
-            "role": role,
-            "status": "completed",
-            "report": report,
-        })
+        checkpoint = dict(child.checkpoint)
+    if checkpoint.get("kind") != "subagent":
+        return
+    await _run_child_async(
+        child_id,
+        str(checkpoint.get("role") or "调查"),
+        str(checkpoint.get("objective") or child.objective),
+        str(checkpoint.get("context") or ""),
+        set(checkpoint.get("allowlist") or READ_ONLY_TOOL_NAMES),
+        int(checkpoint.get("max_steps") or 6),
+        checkpoint,
+    )
 
 
 async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
@@ -119,6 +190,17 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
         objective=f"[{args.role}] {args.objective}",
         status="queued",
         model=settings.MODEL_NAME,
+        checkpoint={
+            "kind": "subagent",
+            "role": args.role,
+            "objective": args.objective,
+            "context": snapshot.markdown,
+            "allowlist": sorted(allowlist),
+            "max_steps": args.max_steps,
+            "step": 0,
+            "messages": [],
+            "pending_tool_calls": [],
+        },
     )
     ctx.db.add(child)
     await ctx.db.commit()
@@ -135,7 +217,7 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
     })
     task = start_tracked_task(
         child.id,
-        _run_child_async(child, args.role, args.objective, snapshot.markdown, allowlist, args.max_steps)
+        _run_child_async(child.id, args.role, args.objective, snapshot.markdown, allowlist, args.max_steps)
     )
     _active_child_tasks.add(task)
     task.add_done_callback(_active_child_tasks.discard)

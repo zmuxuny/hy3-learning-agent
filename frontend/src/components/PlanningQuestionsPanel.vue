@@ -77,7 +77,7 @@ async function answerQuestions() {
         </article>
       </div>
       <footer v-if="!props.readonly"><span>不需要一次填完所有背景；Agent 会自己判断何时信息已经充分。</span><button class="primary" :disabled="submitting" @click="answerQuestions">提交回答 <ArrowRightIcon /></button></footer>
-      <footer v-else class="readonly-footer"><span>历史快照 · 该轮提问对应这条消息，后续回答作为独立消息排在下方</span></footer>
+      <footer v-else class="readonly-footer"><span>历史快照 · 这张卡片保留当时的问题与选项，提交结果会显示为紧凑的交互回执</span></footer>
     </template>
     <footer v-else class="collapsed-hint"><span>点击展开这一轮提问</span></footer>
   </section>

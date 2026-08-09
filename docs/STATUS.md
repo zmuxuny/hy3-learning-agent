@@ -1,10 +1,12 @@
 # 项目状态
 
-更新时间：2026-08-09（Asia/Shanghai）
+更新时间：2026-08-10（Asia/Shanghai）
 
 ## 当前阶段
 
 个人学习场景已经形成完整的端到端 Harness：计划从对话式需求澄清、受限子 Run 分工和可审阅提案开始，用户采用后才成为正式计划；随后 Hy3 可以跟踪/教学、搜索核验资源、修改计划、读取文件、检查提交、运行代码、安排复习与日历，并由后台候选扫描决定是否发送站内提醒或邮件。
+
+1.0.0 工作台以连续 Session 和消息内 Run 为中心：普通回答、可展开操作、审批、子 Agent、计划提问和文档 Artifact 都留在产生它们的消息位置，不再由 composer 上方的独立状态面板割裂会话。该协议已用本机当前 Codex 桌面端资源与用户实机截图交叉核对。
 
 分支约定：`main` 固定为归档快照（`6e29e55`，0.6.0 之前的产品版本），`develop` 是持续开发线；所有新功能与修复先进入 `develop`。
 
@@ -14,18 +16,18 @@
 - 确认记忆在 `memory_maintain` 时持久化 64 位本地向量（`memories.embedding` / `embedding_provider`），旧库通过增量迁移自动补列。
 - Run 状态机已支持真实 `waiting_approval` 暂停：带 `blocking: true` 的工具审批会持久化待批调用并停止本轮，`POST /agent/runs/{id}/approval` 批准后从检查点恢复执行、拒绝后把拒绝结果回填给模型继续调整；`memory_propose` 等候选式确认不中断 Run。
 - 每个工具轮次前持久化 `checkpoint`（消息、步骤、剩余工具调用）；应用重启时，有检查点的 `queued/running` Run 恢复为 `queued` 并自动续跑，无检查点的仍安全标 `failed(process_interrupted)`。前端在 Run 内联区显示批准/拒绝卡片。
-- 写工具幂等已落地：`ToolInvocation` 以 `run_id + 工具名 + 参数哈希` 生成 `idempotency_key`，同一 Run 内重复调用返回原结果并带 `replayed` 标记；阻塞审批期间记录为 `pending_approval`，批准执行后转为 `committed`。工具契约接口暴露 `idempotent` 标记。
+- 写工具幂等已落地：Runtime 使用 `run_id + 工具名 + provider tool_call_id + 参数哈希` 生成 `idempotency_key`；只有同一个工具调用的重放才返回原结果，不会吞掉同参数的第二次真实意图。阻塞审批期间记录为 `pending_approval`，批准执行后转为 `committed`。工具契约接口暴露 `idempotent` 与 `blocking` 标记。
 - Run 预算已接入：`budget_usage` 记录模型调用次数、Token、工具调用、网络请求、耗时与估算费用；`AGENT_MAX_MODEL_CALLS / AGENT_MAX_TOOL_CALLS / AGENT_MAX_ELAPSED_SECONDS / AGENT_MAX_ESTIMATED_COST_USD` 超限时发 `run.budget_exceeded` 事件并安全停止，前端运行轨迹显示预算用量。
 - Service Worker 已注册：通知通过 `showNotification` 展示（标签页关闭但浏览器运行时仍可显示），点击通知路由回收件箱；配置 `VAPID_*` 后可选 Web Push 推送，未配置时回退页面内通知。失效订阅（404/410）自动清理。电脑关机或浏览器完全退出无法唤醒，文档如实标注。
 - 设置页已上线：侧栏新增“设置”，覆盖模型（地址/名称/API Key 状态/温度）、邮件（SMTP/IMAP 字段、连接测试、删除凭据）与通知策略（免打扰、每日上限、冷却时间）。保存直接写 `.env`（0600 权限、原子替换），API 永不回传密码；模型与邮箱参数重启后生效，通知策略即时生效。
 - Web 搜索增加 Bing HTML 备选源：主源失败、超时或返回空结果时自动降级，`web_search` 结果带 `fallback_used` 标记；`WEB_SEARCH_FALLBACK_PROVIDER` 可设为 `none` 关闭降级。
 - 邮件渠道纳入每日上限与冷却统计（此前只统计站内消息）；邮件发送失败的 `error` 详情完整回填给模型。真实 Hy3 冒烟通过：`plan_list` 工具调用成功，Run 正常完成。
 - 连续天数真实计算：以 `ActivityDay` 为准，任务完成/测验通过事件落库后刷新 `streak_days`（今天未学习时保留到昨天为止的连续记录）。
-- 规则成就引擎上线：首次建计划、首次完成任务、首次测验通过、3/7 天连续、100/500 XP 共 7 条规则，幂等解锁并写入 `Achievement`；首页欢迎态展示成就墙与徽章。
+- 规则成就引擎已保留：首次建计划、首次完成任务、首次测验通过、3/7 天连续、100/500 XP 共 7 条规则，幂等解锁并写入 `Achievement`；1.0 欢迎页为保持工作台克制不再堆叠成就墙，后续在独立学习复盘视图中重新设计展示。
 
 - System Prompt 与 41 个真实 Function Calling 输入 Schema 进入同一个 Hy3 多轮 Runtime；41 个输出 Schema 由契约接口公开并在普通成功结果回填前校验。
 - `PlanningIntake` 持久保存已确认事实、结构化问题和 AI 的充分性理由；`PlanProposal` 在用户采用前不创建正式计划，重复采用保持幂等。
-- `planning_delegate` 与通用子 Agent 共用只读执行器；`subagent_spawn / status / join / cancel` 已开放，v1 强制只读白名单、独立轮次上限和结构化报告，父 Agent 仍是唯一写入口。
+- `planning_delegate` 与通用子 Agent 共用只读执行器；`subagent_spawn / status / join / cancel` 已开放，v1 强制只读白名单、独立轮次上限和结构化报告，父 Agent 仍是唯一写入口。通用子 Run 逐轮保存消息、待执行调用和最小上下文，异常会进入 `failed` 并通知父 Run，进程重启交给子 Agent 专用恢复器。
 - `study_state_get` 为计划跟踪/教学提供统一版本化快照，新计划会选择首个 pending 任务而不是返回“当前无任务”。
 - 用户消息支持复制和非破坏式编辑；旧版本进入 `ChatMessageRevision`，旧下游退出当前上下文，原 Run/快照/Operation 保留，同一 Session 重新运行。
 - 计划焦点由后端 Guard 强制；计划内 Run 不能操作其他计划私有数据。
@@ -44,16 +46,17 @@
 - Web 安全校验兼容 WSL 代理的 IPv4/IPv6 Fake-IP DNS，同时继续拒绝 localhost、私网和非公网 IP 字面量；真实搜索返回 3 条结果并成功打开 Python 官方页面。
 - 同一工具在单个 Run 内连续失败两次会熔断并从后续模型轮次移除，避免 Web 或外部依赖故障触发无效重试风暴；运行摘要中的失败工具不再显示成“已完成”。
 - 工具改用独立数据库事务，参数/工具失败不再因主 Runtime ORM 对象失效而升级成 `MissingGreenlet`；模型超时有一次可观察重试，工具回填有体积上限。
-- 前端对话页取消 Header；最新 Run 以 Codex 式单行工作记录折叠/展开，完整轨迹仍可审计；Markdown 改用禁用原始 HTML 的 CommonMark 解析器，覆盖标题、列表、引用、链接、表格与代码块。
+- 前端对话页使用单层轻量 Workspace Header；Run 以 Codex 式 `已处理/处理中` 记录折叠/展开，每个工具输入/结果还可单独展开；Markdown 使用禁用原始 HTML 的 CommonMark 解析器，覆盖标题、列表、引用、链接、表格与代码块。
 - 侧边栏由整栏负责滚动，对话不再嵌套独立滚动区；置顶计划提供直接归档入口。计划焦点只保留在输入框下方，移除远离正文的重复卡片。
 - 提问卡提交走结构化 Session 端点并立即退出待答状态，不再把卡片答案复制成普通消息气泡。
 - 站内主动消息无需邮箱；页面每 15 秒同步，并在新消息到达时显示应用内提示。SMTP/IMAP 仅用于离站发送与邮件回复。
 - 站内消息支持单条归档、批量归档全部已读、独立归档列表与恢复；归档不删除消息，并退出 Agent 的近期通知上下文。
 - 计划详情只有一个标题（计划名称），摘要和操作降为正文层级，任务保持纵向时间线。
 - 浏览器回归覆盖 375、768、1280、1440 和 2560×1440；没有文档横向溢出、重复 Header 或横向裁切按钮。
-- `pytest -q`：87 passed。
-- 前端生产构建通过：JS 301.08 kB（gzip 111.02 kB），CSS 76.47 kB（gzip 14.67 kB）；生产依赖审计 0 vulnerabilities。
-- 当前发布基线为 0.8.1；`CHANGELOG.md`、CI（pytest + 前端构建 + 生产依赖审计）、`scripts/reset-data.sh`（备份并清空）与 `scripts/seed-fixture.sh`（恢复浏览器回归夹具）均已就绪。
+- `pytest -q`：91 passed。
+- 前端生产构建通过：JS 304.39 kB（gzip 111.77 kB），CSS 82.32 kB（gzip 16.12 kB）；生产依赖审计 0 vulnerabilities。
+- 当前发布基线为 1.0.0；`CHANGELOG.md`、CI（pytest + 前端构建 + 生产依赖审计）、`scripts/reset-data.sh`（备份并清空）与 `scripts/seed-fixture.sh`（恢复浏览器回归夹具）均已就绪。
+- 真实 Hy3 1.0 冒烟：一个全局 Session 连续完成 `plan_list → profile_get`，2 次模型调用、2 次工具调用，Run 正常结束；事件中持久化了有界 `arguments/result`，测试 Session 随后归档。
 - 0.6.0 稳定性与体验验收通过：邮件冷却统计、成就/连续天数、首页成就墙；真实 Hy3 冒烟与多视口浏览器回归通过。真实验证中 DuckDuckGo 主源连接失败、Bing 备选源成功返回 3 条结果（python.org 等），自动降级设计按预期生效。
 - 0.7.0 对话体验验收通过：计划澄清问答提交后可展开、运行记录展示记忆引用与子 Agent 活动、运行中可停止/排队/打断、代码块与回答复制、上下文占用显示、记忆页搜索与首页记忆概览；多视口浏览器回归无溢出。
 - 数据滞后提醒已定位并加固：根因是重置前仍有后端进程持有已移走的旧 SQLite 文件（进程继续读旧 inode）。`/settings` 现返回实际数据库路径与数据量，设置页展示数据状态；`demo-data.sh reset` 同时清理根目录/`backend/` 遗留数据库文件。
@@ -64,7 +67,7 @@
 - 提问卡/提案卡按消息归属渲染（0.7.6）：运行把卡片快照写入产生它的 assistant 消息 metadata；提交回答后旧提问卡留在原 AI 消息内并可展开，回答摘要成为独立用户消息，后续用户消息始终排在卡片下方，不再出现“旧卡片漂到新回复下面”。仍未回答的提问卡保持可交互，被后续运行取代后自动转只读快照；运行中经 SSE 实时同步，卡片在运行结束前即可出现在当前 AI 消息内。
 - Codex 1:1 对话体验（0.8.0）：Hy3 调用改流式，SSE 实时推送 `assistant.delta`/`assistant.reasoning`，前端逐 token 渲染 + 光标 + 思考指示，运行中发送键变停止键。
 - 队列 v2 与转向：排队消息持久化（可编辑/排序/删除/立即发送），显示在 composer 上方并自动逐条发送；运行中 Enter=默认交互（设置可配转向/排队）、Tab=排队；`steer` 注入当前 Run 上下文且不停止 Agent。
-- 子 Agent 面板、进度行与状态感知：活跃子 Agent 在 composer 上方可展开（停止单个/全部/打开线程）；进度行显示当前目标、运行状态、下次主动检查与暂停/恢复；侧栏会话带运行中/等待确认/待处理状态点；审批卡支持回答并继续。
+- 0.8.0 曾使用 composer 上方子 Agent/进度面板；1.0 已将这些状态归并到所属 Run 的可展开记录中，侧栏继续保留运行中/等待确认/待处理状态点，审批卡支持回答并继续。
 - 实时链路稳定化：SQLite 切 WAL + busy_timeout；SSE 用进程内队列订阅（修复 `wait_for` 超时杀死订阅、运行中事件流断开导致前端卡“运行中”），事件流对瞬时锁容错并按 sequence 去重。
 - 0.8.1 代码与视觉复查完成：停止操作取消真实执行协程；并发事件按 Run 串行分配 sequence；SSE 可自动重连；转向消息不再重复渲染回答；排队消息校验 Session/计划焦点；恢复 Run 保留内联卡片；375/768/1280/1440/2560 下字号、对齐、裁切和溢出均已复查。
 

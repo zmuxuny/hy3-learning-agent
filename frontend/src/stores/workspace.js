@@ -84,6 +84,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const streamingReasoning = ref('');
   const streamingRunId = ref(null);
   const runEvents = ref([]);
+  const runEventCache = ref({});
+  const runEventLoading = ref({});
   const loading = ref(false);
   const error = ref('');
   const drainingQueue = ref(false);
@@ -125,6 +127,43 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return [...plans.value, ...archivedPlans.value].find(
       (plan) => Number(plan.id) === Number(run.created_plan_id),
     ) || { id: Number(run.created_plan_id), title: `计划 ${run.created_plan_id}` };
+  }
+
+  function runForId(runId) {
+    if (!runId) return null;
+    if (currentRun.value?.id === runId) return currentRun.value;
+    return runs.value.find((item) => item.id === runId) || null;
+  }
+
+  function eventsForRun(runId) {
+    if (!runId) return [];
+    if (currentRun.value?.id === runId) return runEvents.value;
+    return runEventCache.value[runId] || [];
+  }
+
+  async function loadRunEvents(runId, force = false) {
+    if (!runId) return [];
+    if (!force && runEventCache.value[runId]) return runEventCache.value[runId];
+    if (runEventLoading.value[runId]) return runEventLoading.value[runId];
+    const request = api.get(`/agent/runs/${runId}/events`)
+      .then((response) => response.data.map((event) => ({
+        sequence: event.sequence,
+        type: event.event_type,
+        summary: event.summary,
+        payload: event.payload,
+        created_at: event.created_at,
+      })))
+      .then((events) => {
+        runEventCache.value = { ...runEventCache.value, [runId]: events };
+        return events;
+      })
+      .finally(() => {
+        const next = { ...runEventLoading.value };
+        delete next[runId];
+        runEventLoading.value = next;
+      });
+    runEventLoading.value = { ...runEventLoading.value, [runId]: request };
+    return request;
   }
 
   async function loadWorkspace() {
@@ -657,6 +696,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         const payload = JSON.parse(event.data);
         if (payload.sequence != null && !runEvents.value.some((item) => item.sequence === payload.sequence)) {
           runEvents.value.push(payload);
+          runEventCache.value = { ...runEventCache.value, [runId]: [...runEvents.value] };
         }
         if (eventName === 'tool.completed') {
           const toolName = payload.payload?.name;
@@ -945,10 +985,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     streamingReasoning,
     streamingRunId,
     runEvents,
+    runEventCache,
+    runEventLoading,
     loading,
     error,
     activeSubagents,
     planForRun,
+    runForId,
+    eventsForRun,
+    loadRunEvents,
     unreadCount,
     activePlans,
     pendingMemories,
