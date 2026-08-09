@@ -154,6 +154,14 @@ class MemoryRead(APIModel):
     source_id: str | None
     confidence: float
     status: str
+    restorable: bool
+    archived_from_status: str | None
+    archived_reason: str
+    supersedes_id: int | None
+    superseded_by_id: int | None
+    last_accessed_at: datetime | None
+    access_count: int
+    last_reinforced_at: datetime | None
     expires_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -168,6 +176,7 @@ class MemoryProposalCreate(BaseModel):
     source_id: str | None = None
     confidence: float = Field(default=1.0, ge=0, le=1)
     expires_at: datetime | None = None
+    supersedes_id: int | None = Field(default=None, ge=1)
 
 
 class NotificationRead(APIModel):
@@ -221,6 +230,17 @@ class ContextSnapshotRead(APIModel):
     markdown: str
     source_manifest: list[dict[str, Any]]
     estimated_tokens: int
+    created_at: datetime
+
+
+class SessionSummaryRead(APIModel):
+    id: int
+    session_id: str
+    version: int
+    content: str
+    covered_through_message_id: int | None
+    source_message_ids: list[int]
+    method: str
     created_at: datetime
 
 

@@ -14,6 +14,7 @@ from app.models import (
     AgentRun,
     ChatMessage,
     ChatMessageRevision,
+    ContextSnapshot,
     Memory,
     Notification,
     Operation,
@@ -25,6 +26,7 @@ from app.models import (
     RunSteerMessage,
     Session,
     SessionPlanLink,
+    SessionSummary,
     UserProfile,
 )
 from app.runtime import AgentRuntime
@@ -36,6 +38,7 @@ from app.schemas import (
     AgentRunCreate,
     AgentRunRead,
     ChatMessageRead,
+    ContextSnapshotRead,
     QueuedMessageCreate,
     QueuedMessageRead,
     QueuedMessageUpdate,
@@ -50,6 +53,7 @@ from app.schemas import (
     RunSteerCreate,
     SessionHandoffCreate,
     SessionRead,
+    SessionSummaryRead,
     SessionUpdate,
 )
 from app.services.sessions import build_handoff_summary, link_session_plan
@@ -363,6 +367,19 @@ async def read_session_messages(session_id: str, db: AsyncSession = Depends(get_
     return _visible_messages(list(result.scalars()))
 
 
+@router.get("/sessions/{session_id}/summaries", response_model=list[SessionSummaryRead])
+async def read_session_summaries(session_id: str, db: AsyncSession = Depends(get_db)):
+    session = await db.get(Session, session_id)
+    if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Session not found")
+    result = await db.execute(
+        select(SessionSummary)
+        .where(SessionSummary.session_id == session_id)
+        .order_by(SessionSummary.version.desc())
+    )
+    return list(result.scalars())
+
+
 @router.get("/sessions/{session_id}/planning", response_model=PlanningStateRead)
 async def read_planning_state(session_id: str, db: AsyncSession = Depends(get_db)):
     session = await db.get(Session, session_id)
@@ -566,7 +583,10 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
             )
         )).scalars())
         for memory in derived_memories:
+            memory.archived_from_status = memory.status
             memory.status = "archived"
+            memory.archived_reason = "来源消息已被用户修订"
+            memory.updated_at = datetime.now(timezone.utc)
     previous_run_id = message.run_id
     run = AgentRun(
         owner_id=settings.DEFAULT_OWNER_ID,
@@ -623,6 +643,25 @@ async def read_run_events(run_id: str, after: int = 0, db: AsyncSession = Depend
         .order_by(RunEvent.sequence)
     )
     return list(result.scalars())
+
+
+@router.get("/runs/{run_id}/context", response_model=ContextSnapshotRead)
+async def read_run_context(run_id: str, db: AsyncSession = Depends(get_db)):
+    run = await db.get(AgentRun, run_id)
+    if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Run not found")
+    snapshot = (await db.execute(
+        select(ContextSnapshot)
+        .where(
+            ContextSnapshot.owner_id == settings.DEFAULT_OWNER_ID,
+            ContextSnapshot.run_id == run_id,
+        )
+        .order_by(ContextSnapshot.created_at.desc(), ContextSnapshot.id.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="This run has no context snapshot")
+    return snapshot
 
 
 @router.get("/runs/{run_id}/events/stream")

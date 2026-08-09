@@ -15,6 +15,7 @@ from app.api.agent import (
     handoff_session,
     list_sessions,
     read_planning_state,
+    read_session_summaries,
     read_session_messages,
     rename_session,
     submit_planning_answers,
@@ -39,6 +40,7 @@ from app.models import (
     RunEvent,
     Session,
     SessionPlanLink,
+    SessionSummary,
     TaskSubmission,
 )
 from app.runtime.agent import AgentRuntime, ToolFailureGuard
@@ -530,6 +532,16 @@ async def test_layered_memory_retrieval_lifecycle_and_session_compression():
         messages = list(result.scalars())
         assert len(messages) == 28
         assert sum(bool(item.message_metadata.get("included_in_summary")) for item in messages) == 12
+        summaries = list((await db.execute(
+            select(SessionSummary).where(SessionSummary.session_id == session.id)
+        )).scalars())
+        assert len(summaries) == 1
+        assert summaries[0].version == 1
+        assert summaries[0].method == "fallback"
+        assert summaries[0].covered_through_message_id is not None
+        assert len(summaries[0].source_message_ids) == 12
+        api_summaries = await read_session_summaries(session.id, db)
+        assert [item.version for item in api_summaries] == [1]
 
 
 @pytest.mark.asyncio
@@ -1142,6 +1154,8 @@ async def test_message_edit_preserves_revision_and_excludes_superseded_tail(monk
         assert stale.message_metadata["superseded_by_edit"]
         await db.refresh(derived_memory)
         assert derived_memory.status == "archived"
+        assert derived_memory.archived_from_status == "confirmed"
+        assert derived_memory.archived_reason == "来源消息已被用户修订"
         snapshot = await ContextAssembler(db).build(
             "local", session_id=session.id, run_id=rerun.id, objective=rerun.objective,
         )

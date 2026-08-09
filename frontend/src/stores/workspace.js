@@ -809,15 +809,72 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return response.data;
   }
 
-  async function confirmMemory(memoryId) {
-    await api.post(`/memories/${memoryId}/confirm`);
-    const response = await api.get('/memories');
-    memories.value = response.data;
+  async function fetchRunContext(runId) {
+    const response = await api.get(`/agent/runs/${runId}/context`);
+    return response.data;
   }
 
-  async function deleteMemory(memoryId) {
-    await api.delete(`/memories/${memoryId}`);
-    memories.value = memories.value.filter((memory) => memory.id !== memoryId);
+  async function confirmMemory(memoryId) {
+    error.value = '';
+    try {
+      await api.post(`/memories/${memoryId}/confirm`);
+      const response = await api.get('/memories');
+      memories.value = response.data;
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
+  }
+
+  async function proposeMemoryCorrection(memoryId, content) {
+    const original = memories.value.find((memory) => memory.id === memoryId);
+    if (!original || !content.trim()) return false;
+    error.value = '';
+    try {
+      const response = await api.post('/memories/proposals', {
+        scope: original.scope,
+        scope_id: original.scope_id,
+        layer: original.layer,
+        content: content.trim(),
+        source_type: 'user',
+        confidence: 1,
+        supersedes_id: original.id,
+      });
+      const index = memories.value.findIndex((memory) => memory.id === response.data.id);
+      if (index >= 0) memories.value[index] = response.data;
+      else memories.value.unshift(response.data);
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
+  }
+
+  async function archiveMemory(memoryId) {
+    error.value = '';
+    try {
+      const response = await api.delete(`/memories/${memoryId}`);
+      const index = memories.value.findIndex((memory) => memory.id === memoryId);
+      if (index >= 0) memories.value[index] = response.data;
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
+  }
+
+  async function restoreMemory(memoryId) {
+    error.value = '';
+    try {
+      const response = await api.post(`/memories/${memoryId}/restore`);
+      const index = memories.value.findIndex((memory) => memory.id === memoryId);
+      if (index >= 0) memories.value[index] = response.data;
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
   }
 
   async function markNotificationRead(notificationId) {
@@ -1070,8 +1127,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     cancelCurrentRun,
     decideRunApproval,
     fetchChildRunEvents,
+    fetchRunContext,
     confirmMemory,
-    deleteMemory,
+    proposeMemoryCorrection,
+    archiveMemory,
+    restoreMemory,
     markNotificationRead,
     openNotification,
     setNotificationArchived,

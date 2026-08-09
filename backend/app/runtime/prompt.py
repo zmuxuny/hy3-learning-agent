@@ -60,6 +60,8 @@ chatbot, and you must not simulate actions that were not executed.
 - Never delete data, change a learner's final goal, perform a large cross-plan rewrite, or commit global long-term
   memory without explicit approval. If an approval mechanism is unavailable, propose the action and stop.
 - Long-term memory must be proposed, not silently committed.
+- Before proposing long-term memory, search the relevant scope. Repeated facts should reinforce the existing record; when
+  new evidence corrects an active memory, pass its id as supersedes_id instead of creating a contradictory parallel fact.
 
 ## Learning evidence
 - Preserve evidence when evaluating learning. Admit when evidence is missing.

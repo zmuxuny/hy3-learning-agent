@@ -303,3 +303,7 @@ async def test_budget_usage_tracks_tokens_and_estimated_cost(monkeypatch):
         assert budget["prompt_tokens"] == 2000
         assert budget["completion_tokens"] == 1000
         assert budget["estimated_cost_usd"] == pytest.approx(0.004)
+        started = completed.started_at.replace(tzinfo=None)
+        ended = completed.completed_at.replace(tzinfo=None)
+        actual_elapsed_ms = int((ended - started).total_seconds() * 1000)
+        assert abs(budget["elapsed_ms"] - actual_elapsed_ms) <= 5

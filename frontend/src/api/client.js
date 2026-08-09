@@ -16,6 +16,7 @@ async function request(method, path, body) {
 const api = {
   get: (path) => request('GET', path),
   post: (path, body) => request('POST', path, body),
+  put: (path, body) => request('PUT', path, body),
   patch: (path, body) => request('PATCH', path, body),
   delete: (path) => request('DELETE', path),
   upload: async (path, file) => {

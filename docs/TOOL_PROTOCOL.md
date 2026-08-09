@@ -52,8 +52,8 @@
 | 工具 | 作用 |
 | --- | --- |
 | `memory_search` | 按 BM25 + 本地 SimHash 混合相关性、作用域、层、置信度和时间检索确认记忆，并返回 `score_breakdown` 分数分解 |
-| `memory_propose` | 创建等待用户确认的长期记忆候选 |
-| `memory_maintain` | 过期短期记忆、归档旧情节并刷新计划摘要 |
+| `memory_propose` | 创建等待用户确认的长期记忆候选；相同内容强化原记录，`supersedes_id` 用于提出可追溯纠正 |
+| `memory_maintain` | 过期短期记忆、带原因归档旧情节、持久化本地向量并刷新计划摘要 |
 
 ### 网页、文件、代码和日历
 
@@ -97,7 +97,7 @@ run.started → context.built → assistant.status
 
 带 `blocking: true` 的审批会在 `approval.required` 事件后把 Run 停在 `waiting_approval` 并持久化待批工具与参数；`POST /agent/runs/{id}/approval` 批准后从检查点恢复并执行原工具，拒绝后把拒绝结果作为 tool message 回填给模型继续调整。候选式确认（如 `memory_propose`）不阻塞 Run。
 
-写工具带有 `idempotent` 契约标记：同一 Run 内相同工具与参数生成稳定的 `idempotency_key`，重复调用直接返回首次提交结果并带 `replayed: true`，不会重复创建计划、任务、文件、通知或评分；审批中的调用记录为 `pending_approval`，只有批准执行后才转为 `committed`。每次模型调用和工具调用都计入 `budget_usage`，超限时产生 `run.budget_exceeded` 可观察事件后安全停止。
+写工具带有 `idempotent` 契约标记：`run_id + 工具名 + provider call_id + 参数哈希` 生成 `idempotency_key`；同一个 provider 调用重放会返回首次提交结果并带 `replayed: true`，但不会错误吞掉模型后续有意发起的同参数新调用。审批中的调用记录为 `pending_approval`，只有批准执行后才转为 `committed`。每次模型调用和工具调用都计入 `budget_usage`，超限时产生 `run.budget_exceeded` 可观察事件后安全停止。
 
 私有思维链不写入事件；TokenHub 要求的 `reasoning_content` 只在同一 Run 的模型轮次间回填。
 

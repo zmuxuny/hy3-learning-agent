@@ -264,6 +264,27 @@ class ChatMessage(Base):
     session: Mapped[Session] = relationship(back_populates="messages")
 
 
+class SessionSummary(Base):
+    """Immutable provenance for every durable session compression."""
+
+    __tablename__ = "session_summaries"
+    __table_args__ = (
+        UniqueConstraint("session_id", "version", name="uq_session_summary_version"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), index=True
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    covered_through_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_message_ids: Mapped[list] = mapped_column(JSON, default=list)
+    method: Mapped[str] = mapped_column(String(32), default="model")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ChatMessageRevision(Base):
     """Immutable audit copy created whenever a visible user message is revised."""
 
@@ -402,11 +423,36 @@ class Memory(Base):
     source_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
     status: Mapped[str] = mapped_column(String(32), default="proposed", index=True)
+    archived_from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    archived_reason: Mapped[str] = mapped_column(Text, default="")
+    supersedes_id: Mapped[int | None] = mapped_column(
+        ForeignKey("memories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    superseded_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("memories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    last_accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    access_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_reinforced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     embedding: Mapped[list | None] = mapped_column(JSON, nullable=True)
     embedding_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # Access counters are updated during retrieval and must not refresh semantic
+    # freshness. Lifecycle code updates this timestamp explicitly when the fact changes.
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    @property
+    def restorable(self) -> bool:
+        if self.status == "expired":
+            return True
+        if self.status != "archived":
+            return False
+        return self.archived_reason not in {
+            "来源消息已被用户修订",
+            "关联计划已不存在",
+            "同一旧认识已有其他纠正被确认",
+        }
 
 
 class ContextSnapshot(Base):
@@ -415,7 +461,9 @@ class ContextSnapshot(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
-    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True)
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     markdown: Mapped[str] = mapped_column(Text)
     source_manifest: Mapped[list] = mapped_column(JSON, default=list)
     estimated_tokens: Mapped[int] = mapped_column(Integer, default=0)

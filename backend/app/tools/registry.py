@@ -6,7 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
-from app.models import AgentRun, LearningEvent, Memory, Operation, Plan, Quiz, ReviewSchedule, Stage, Task, ToolInvocation, UserProfile
+from app.models import AgentRun, LearningEvent, Operation, Plan, Quiz, ReviewSchedule, Stage, Task, ToolInvocation, UserProfile
 from app.notifications import NotificationService
 from app.schemas import PlanCreate, TaskUpdate
 from app.services import plans as plan_service
@@ -74,6 +74,11 @@ class MemoryProposalArgs(BaseModel):
     layer: Literal["short_term", "long_term", "episodic", "semantic"] = "semantic"
     content: str
     confidence: float = Field(default=0.8, ge=0, le=1)
+    supersedes_id: int | None = Field(
+        default=None,
+        ge=1,
+        description="Existing active memory corrected by this proposal. Keep the same scope.",
+    )
 
 
 class NotificationArgs(BaseModel):
@@ -400,6 +405,8 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
 
 
 async def memory_propose(ctx: ToolContext, args: MemoryProposalArgs) -> dict:
+    from app.context.memory import MemoryManager
+
     if args.scope == "plan":
         target_plan = int(args.scope_id) if args.scope_id else ctx.plan_id
         if target_plan is None:
@@ -413,17 +420,23 @@ async def memory_propose(ctx: ToolContext, args: MemoryProposalArgs) -> dict:
         if args.scope_id not in {None, ctx.session_id}:
             return {"error": "A run cannot write another session's private memory"}
         args.scope_id = ctx.session_id
-    memory = Memory(
-        owner_id=ctx.owner_id,
-        source_type="agent_run",
-        source_id=ctx.run_id,
-        status="proposed",
-        **args.model_dump(),
-    )
-    ctx.db.add(memory)
+    try:
+        memory, deduplicated = await MemoryManager(ctx.db).propose(
+            ctx.owner_id,
+            source_type="agent_run",
+            source_id=ctx.run_id,
+            **args.model_dump(),
+        )
+    except ValueError as exc:
+        return {"error": str(exc)}
     await ctx.db.commit()
     await ctx.db.refresh(memory)
-    return {"memory_id": memory.id, "status": "proposed", "approval_required": True}
+    return {
+        "memory_id": memory.id,
+        "status": memory.status,
+        "deduplicated": deduplicated,
+        "approval_required": memory.status == "proposed",
+    }
 
 
 async def notification_send(ctx: ToolContext, args: NotificationArgs) -> dict:
@@ -453,7 +466,7 @@ TOOLS = [
     ToolDefinition("quiz_create", "Create an evidence-based quiz for an active plan.", QuizCreateArgs, quiz_create, idempotent=True),
     ToolDefinition("quiz_get", "Read a quiz prompt and grading rubric before evaluating an answer.", QuizIdArgs, quiz_get),
     ToolDefinition("quiz_grade", "Store an evidence-based quiz grade and schedule the next review.", QuizGradeArgs, quiz_grade, idempotent=True),
-    ToolDefinition("memory_propose", "Propose a long-term memory for user confirmation.", MemoryProposalArgs, memory_propose),
+    ToolDefinition("memory_propose", "Propose a long-term memory for user confirmation.", MemoryProposalArgs, memory_propose, idempotent=True),
     ToolDefinition("notification_send", "Send an in-app notification and optionally queue email/browser delivery.", NotificationArgs, notification_send, idempotent=True),
 ] + PLANNING_TOOLS + SUBAGENT_TOOLS + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS
 

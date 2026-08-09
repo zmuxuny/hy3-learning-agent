@@ -201,6 +201,9 @@ class AgentRuntime:
                 for item in snapshot.source_manifest
                 if item.get("type") == "memory"
             ]
+            memory_matches = [
+                item for item in snapshot.source_manifest if item.get("type") == "memory"
+            ]
             await emit_event(
                 db,
                 run.id,
@@ -210,6 +213,7 @@ class AgentRuntime:
                     "snapshot_id": snapshot.id,
                     "estimated_tokens": snapshot.estimated_tokens,
                     "memory_ids": memory_ids,
+                    "memory_matches": memory_matches,
                 },
             )
 
@@ -342,6 +346,9 @@ class AgentRuntime:
             for item in snapshot.source_manifest
             if item.get("type") == "memory"
         ]
+        memory_matches = [
+            item for item in snapshot.source_manifest if item.get("type") == "memory"
+        ]
         await emit_event(
             db,
             run.id,
@@ -351,6 +358,7 @@ class AgentRuntime:
                 "snapshot_id": snapshot.id,
                 "estimated_tokens": snapshot.estimated_tokens,
                 "memory_ids": memory_ids,
+                "memory_matches": memory_matches,
                 "refreshed_on_resume": True,
             },
         )
@@ -616,6 +624,9 @@ class AgentRuntime:
                 await MemoryManager(db).compress_session(session, self.client)
             run.status = "completed"
             run.completed_at = datetime.now(timezone.utc)
+            final_budget = self._budget(run)
+            self._refresh_elapsed(run, final_budget, ended_at=run.completed_at)
+            run.budget_usage = final_budget
             await db.commit()
             await emit_event(db, run.id, "run.completed", final_text or "Agent run completed")
         except Exception as exc:
@@ -807,9 +818,7 @@ class AgentRuntime:
 
     @staticmethod
     def _budget_reason(run: AgentRun, budget: dict) -> str | None:
-        started = run.started_at or run.created_at
-        if started:
-            budget["elapsed_ms"] = int((datetime.now(timezone.utc) - _aware(started)).total_seconds() * 1000)
+        AgentRuntime._refresh_elapsed(run, budget)
         if settings.AGENT_MAX_ELAPSED_SECONDS and budget["elapsed_ms"] >= settings.AGENT_MAX_ELAPSED_SECONDS * 1000:
             return "elapsed_limit"
         if budget["model_calls"] >= settings.AGENT_MAX_MODEL_CALLS:
@@ -822,6 +831,20 @@ class AgentRuntime:
         ):
             return "cost_limit"
         return None
+
+    @staticmethod
+    def _refresh_elapsed(
+        run: AgentRun,
+        budget: dict,
+        *,
+        ended_at: datetime | None = None,
+    ) -> None:
+        started = run.started_at or run.created_at
+        if started:
+            budget["elapsed_ms"] = max(
+                0,
+                int(((ended_at or datetime.now(timezone.utc)) - _aware(started)).total_seconds() * 1000),
+            )
 
     async def _ensure_session(self, db, run: AgentRun) -> Session | None:
         if run.session_id:

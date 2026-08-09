@@ -25,6 +25,9 @@ const childLoading = ref(new Set());
 const childErrors = ref({});
 const childEventExpanded = ref(new Set());
 const eventExpanded = ref(new Set());
+const contextDetails = ref({});
+const contextLoading = ref(new Set());
+const contextErrors = ref({});
 
 const TOOL_LABELS = {
   profile_get: '读取学习画像',
@@ -287,12 +290,62 @@ function eventExpandable(event) {
   );
 }
 
-function toggleEvent(event) {
+async function toggleEvent(event) {
   if (!eventExpandable(event)) return;
   const key = eventKey(event);
   const next = new Set(eventExpanded.value);
   next.has(key) ? next.delete(key) : next.add(key);
   eventExpanded.value = next;
+  if (
+    event.type === 'context.built'
+    && next.has(key)
+    && props.run?.id
+    && !contextDetails.value[props.run.id]
+    && !contextLoading.value.has(props.run.id)
+  ) {
+    const loading = new Set(contextLoading.value);
+    loading.add(props.run.id);
+    contextLoading.value = loading;
+    contextErrors.value = { ...contextErrors.value, [props.run.id]: '' };
+    try {
+      const snapshot = await store.fetchRunContext(props.run.id);
+      contextDetails.value = { ...contextDetails.value, [props.run.id]: snapshot };
+    } catch (error) {
+      contextErrors.value = {
+        ...contextErrors.value,
+        [props.run.id]: error.response?.data?.detail || error.message || '上下文快照读取失败',
+      };
+    } finally {
+      const finished = new Set(contextLoading.value);
+      finished.delete(props.run.id);
+      contextLoading.value = finished;
+    }
+  }
+}
+
+function contextSnapshot() {
+  return contextDetails.value[props.run?.id] || null;
+}
+
+function contextSources(snapshot) {
+  const groups = new Map();
+  for (const item of snapshot?.source_manifest || []) {
+    groups.set(item.type, (groups.get(item.type) || 0) + 1);
+  }
+  return [...groups.entries()].map(([type, count]) => ({ type, count }));
+}
+
+function contextSourceLabel(type) {
+  return ({
+    profile: '学习画像', memory: '长期记忆', plan: '当前计划', plan_index: '计划摘要',
+    learning_event: '学习记录', review: '复习', quiz: '考核', notification: '提醒',
+    notification_reply_target: '回复目标', resource: '学习资源', submission: '提交证据',
+    calendar_event: '日程', message: '近期消息',
+  })[type] || type;
+}
+
+function memoryMatches(snapshot) {
+  return (snapshot?.source_manifest || []).filter((item) => item.type === 'memory');
 }
 
 function detailSections(event) {
@@ -418,7 +471,31 @@ function eventIcon(event) {
             <ChevronRightIcon v-if="eventExpandable(event)" class="action-chevron" />
           </button>
           <div v-if="eventExpanded.has(eventKey(event))" class="run-action-detail">
-            <section v-for="section in detailSections(event)" :key="section.label">
+            <section v-if="event.type === 'context.built'" class="context-inspector">
+              <p v-if="contextLoading.has(run.id)" class="context-inspector-state">正在读取不可变上下文快照…</p>
+              <p v-else-if="contextErrors[run.id]" class="context-inspector-state error">{{ contextErrors[run.id] }}</p>
+              <template v-else-if="contextSnapshot()">
+                <header>
+                  <div><small>快照 #{{ contextSnapshot().id }}</small><strong>{{ contextSnapshot().estimated_tokens.toLocaleString() }} tokens</strong></div>
+                  <span>仅展示本次运行实际读取的内容</span>
+                </header>
+                <div class="context-source-chips">
+                  <span v-for="source in contextSources(contextSnapshot())" :key="source.type">{{ contextSourceLabel(source.type) }} {{ source.count }}</span>
+                </div>
+                <div v-if="memoryMatches(contextSnapshot()).length" class="context-memory-matches">
+                  <small>命中的记忆</small>
+                  <div v-for="memory in memoryMatches(contextSnapshot())" :key="memory.id">
+                    <span>#{{ memory.id }} · {{ contextSourceLabel(memory.scope) || memory.scope }} / {{ memory.layer }}</span>
+                    <strong>{{ Math.round(memory.score_breakdown?.total || 0) }}</strong>
+                  </div>
+                </div>
+                <details>
+                  <summary>查看送入模型的 Markdown</summary>
+                  <pre>{{ contextSnapshot().markdown }}</pre>
+                </details>
+              </template>
+            </section>
+            <section v-for="section in event.type === 'context.built' ? [] : detailSections(event)" :key="section.label">
               <small>{{ section.label }}</small>
               <pre>{{ prettyJson(section.value) }}</pre>
             </section>

@@ -35,7 +35,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 | 层 | 内容 | 生命周期 |
 | --- | --- | --- |
 | Working | 当前 Run 的目标、工具观察和临时决策 | Run 完成后只保留事件，不提升为事实 |
-| Conversation | 全量原始消息、Session 摘要、最近消息窗口、Session 私有记忆 | 超过阈值后压缩旧消息；原文不删除；切换 Session 后不再检索 |
+| Conversation | 全量原始消息、版本化 Session 摘要、最近消息窗口、Session 私有记忆 | 超过阈值后压缩旧消息；每次摘要记录覆盖范围与来源消息；原文不删除；切换 Session 后不再检索 |
 | Planning | Intake 已确认事实/问题/充分性、提案与规划子 Run 报告 | 绑定 Session；提案显式采用后才成为正式 Plan |
 | Session–Plan relation | 创建、讨论、聚焦关系和跨作用域交接摘要 | 永久保留来源；归档不删除；只在显式转场时建立计划 Session |
 | Event ledger | 计划、任务、提交、评分、提醒和邮件回复事件 | 不可变事实流 |
@@ -43,7 +43,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 | Plan semantic | 计划目标、进度、当前任务和阻塞摘要 | 每次维护刷新；严格按 `plan_id` 隔离 |
 | Global semantic | 稳定偏好、长期约束和跨计划画像 | Agent 只可提出候选，用户确认后生效 |
 
-检索综合 BM25 关键词、本地 SimHash 向量（中文双字 + 英文词）、作用域、记忆层、置信度和更新时间，用 RRF 融合并返回可解释分数分解；无向量或无检索词时回退关键词权重排序。上下文有明确 Token 预算，超预算时保留高优先级头部与近期对话尾部。SQLite 保存结构化事实，`data/context/*.md` 保存可读快照。
+检索综合 BM25 关键词、本地 SimHash 向量（中文双字 + 英文词）、作用域、记忆层、置信度和更新时间，用 RRF 融合并返回可解释分数分解；无向量或无检索词时回退关键词权重排序。命中会记录最近使用时间与次数。重复认识只强化原记录，纠正通过替代链保留历史，归档可恢复。上下文有明确 Token 预算，超预算时保留高优先级头部与近期对话尾部。SQLite 保存结构化事实与不可变 Run 快照，`data/context/*.md` 保存最新可读投影；消息内上下文检查器可核对本次实际来源与 Markdown。
 
 ## 工具边界
 

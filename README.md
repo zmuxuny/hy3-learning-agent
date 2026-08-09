@@ -59,8 +59,9 @@ flowchart LR
 - 持久化计划共创：需求充分性判断、结构化提问卡、受限规划子 Agent、可审阅提案与显式采用
 - 用户消息复制与非破坏式编辑；旧版本、旧 Run 和工具操作保留，当前 Session 从修订处重新运行
 - Hy3 多轮 Function Calling，以及 TokenHub 交错式思考字段回填
-- 全局与计划级记忆、来源/置信度、确认/删除、Markdown 快照
-- 长会话压缩、BM25 + 本地 SimHash 混合相关性检索（可解释分数分解）、短期过期/情节归档和计划摘要维护
+- 全局/计划/Session 分层记忆、来源/置信度、候选确认、纠正替代链、可恢复归档和 Markdown 快照
+- 长会话压缩与不可变摘要版本、BM25 + 本地 SimHash 混合检索（可解释分数分解）、使用痕迹、短期过期/情节归档和计划摘要维护
+- Run 内联上下文检查器：实际来源构成、命中记忆分数、Token 估算和送入模型的 Markdown
 - 单实例全局心跳和手动检查，共用同一个 Agent Runtime；候选命中后切入计划级上下文。主动提醒作为 Agent 消息进入连续 Session，收件箱/系统通知点击后定位原消息并在同一上下文回复
 - 收件箱显示上次判断、下次检查与当前状态，并支持消息归档、恢复和批量归档已读；归档不删除对话中的提醒
 - 默认站内收件箱、Service Worker 浏览器通知、可选 VAPID Web Push、可选 SMTP 发送与 IMAP 回复
@@ -136,7 +137,7 @@ npm --prefix frontend audit --omit=dev
 
 ## 项目文档
 
-- 分支约定：`main` 保留归档版本，`develop` 为开发主线；发布标签从 `develop` 创建。
+- 分支约定：`develop` 集成并完成发布验收，稳定版本合并到 `main` 后从 `main` 创建标签与 GitHub Release。
 
 - [产品定义](docs/PRODUCT.md)
 - [架构与上下文](docs/ARCHITECTURE.md)

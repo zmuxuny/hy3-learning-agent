@@ -54,7 +54,7 @@ class ContextAssembler:
 
         memory_manager = MemoryManager(self.db)
         await memory_manager.maintain(owner_id)
-        relevant_memories = await memory_manager.retrieve(
+        relevant_memories, memory_scores = await memory_manager.retrieve_with_scores(
             owner_id,
             plan_id=plan_id,
             session_id=session_id,
@@ -63,9 +63,15 @@ class ContextAssembler:
         )
         if relevant_memories:
             sections.append("## Confirmed memory")
-            for memory in relevant_memories:
+            for memory, score in zip(relevant_memories, memory_scores, strict=True):
                 sections.append(f"- [{memory.layer}/{memory.scope}] {memory.content} (memory:{memory.id})")
-                manifest.append({"type": "memory", "id": memory.id})
+                manifest.append({
+                    "type": "memory",
+                    "id": memory.id,
+                    "scope": memory.scope,
+                    "layer": memory.layer,
+                    "score_breakdown": score,
+                })
 
         related_plan_links: list[SessionPlanLink] = []
         if session_id:

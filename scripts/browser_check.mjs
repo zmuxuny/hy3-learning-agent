@@ -98,6 +98,7 @@ async function inspect(label) {
       proposalStages: document.querySelectorAll('.proposal-stages article').length,
       settingsSections: document.querySelectorAll('.settings-section').length,
       settingsOverflow: [...document.querySelectorAll('.settings-section')].some((node) => node.scrollWidth > node.clientWidth + 1),
+      errorBanners: [...document.querySelectorAll('.error-banner')].map((node) => node.textContent.trim()).filter(Boolean),
       messageActions: document.querySelectorAll('.message-actions').length,
       tinyVisibleText: [...document.querySelectorAll('body *')].filter((node) => {
         if (node.closest('.visually-hidden')) return false;
@@ -322,6 +323,30 @@ report.push(await inspect('settings-1440'));
 
 await viewport(375, 812);
 report.push(await inspect('settings-mobile'));
+
+const visualFailures = report.filter((item) => (
+  item.overflow
+  || item.clipped.length
+  || item.tinyVisibleText.length
+  || item.settingsOverflow
+  || item.errorBanners.length
+));
+const requiredStates = [
+  ['plan-list-wide', (item) => item.planFilters >= 2],
+  ['memory-1440', (item) => item.memoryToolbar === 1],
+  ['inbox-1440', (item) => item.inboxTabs >= 2],
+  ['settings-1440', (item) => item.settingsSections >= 3],
+];
+const missingStates = requiredStates.filter(([label, predicate]) => {
+  const item = report.find((entry) => entry.label === label);
+  return !item || !predicate(item);
+}).map(([label]) => label);
+if (visualFailures.length || missingStates.length) {
+  throw new Error(JSON.stringify({
+    visual_failures: visualFailures.map((item) => item.label),
+    missing_states: missingStates,
+  }));
+}
 
 console.log(JSON.stringify(report, null, 2));
 socket.close();

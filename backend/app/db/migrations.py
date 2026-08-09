@@ -25,6 +25,13 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
     "memories": {
         "embedding": "JSON",
         "embedding_provider": "VARCHAR(64)",
+        "archived_from_status": "VARCHAR(32)",
+        "archived_reason": "TEXT NOT NULL DEFAULT ''",
+        "supersedes_id": "INTEGER",
+        "superseded_by_id": "INTEGER",
+        "last_accessed_at": "DATETIME",
+        "access_count": "INTEGER NOT NULL DEFAULT 0",
+        "last_reinforced_at": "DATETIME",
     },
     "agent_runs": {
         "checkpoint": "JSON",
@@ -63,6 +70,37 @@ async def migrate_sqlite_schema(connection: AsyncConnection) -> None:
     ))
     await connection.execute(text(
         "CREATE INDEX IF NOT EXISTS ix_notifications_archived_at ON notifications (archived_at)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_memories_supersedes_id ON memories (supersedes_id)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_memories_superseded_by_id ON memories (superseded_by_id)"
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS session_summaries (
+            id INTEGER PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            session_id VARCHAR(64) NOT NULL,
+            version INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            covered_through_message_id INTEGER,
+            source_message_ids JSON NOT NULL DEFAULT '[]',
+            method VARCHAR(32) NOT NULL DEFAULT 'model',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_session_summary_version UNIQUE (session_id, version)
+        )
+        """
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_session_summaries_owner_id ON session_summaries (owner_id)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_session_summaries_session_id ON session_summaries (session_id)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_context_snapshots_run_id ON context_snapshots (run_id)"
     ))
     await connection.execute(text(
         """

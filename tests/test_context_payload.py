@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import select
 
+from app.api.agent import read_run_context
 from app.api.settings import read_settings
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, Memory, RunEvent
@@ -43,6 +44,13 @@ async def test_context_built_event_carries_memory_ids():
         context_event = next(event for event in events if event.event_type == "context.built")
         assert context_event.payload["estimated_tokens"] > 0
         assert memory_id in context_event.payload["memory_ids"]
+        match = next(item for item in context_event.payload["memory_matches"] if item["id"] == memory_id)
+        assert match["scope"] == "global"
+        assert match["score_breakdown"]["memory_id"] == memory_id
+        assert match["score_breakdown"]["total"] > 0
+        snapshot = await read_run_context(run_id, db)
+        assert snapshot.id == context_event.payload["snapshot_id"]
+        assert f"memory:{memory_id}" in snapshot.markdown
 
 
 @pytest.mark.asyncio

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 from sqlalchemy import select
 
@@ -7,6 +9,7 @@ from app.models import Memory
 from app.retrieval.bm25 import BM25
 from app.retrieval.simhash import simhash
 from app.retrieval.text import tokenize_terms
+from app.schemas import MemoryRead
 
 
 def _memory(owner_id: str, content: str, *, scope: str = "global", scope_id: str | None = None, layer: str = "semantic", confidence: float = 0.9):
@@ -44,6 +47,122 @@ async def test_hybrid_retrieval_ranks_semantic_overlap_with_breakdown():
             assert key in first
         assert first["memory_id"] == memories[0].id
         assert first["hybrid"] > 0
+        assert memories[0].access_count == 1
+        assert memories[0].last_accessed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_memory_proposals_deduplicate_reinforce_and_preserve_correction_lineage():
+    async with AsyncSessionLocal() as db:
+        manager = MemoryManager(db)
+        original, reused = await manager.propose(
+            "local",
+            scope="global",
+            scope_id=None,
+            layer="semantic",
+            content="用户喜欢通过项目实战学习 Python",
+            source_type="user",
+            confidence=0.8,
+        )
+        assert reused is False
+        await manager.confirm("local", original.id)
+        duplicate, reused = await manager.propose(
+            "local",
+            scope="global",
+            scope_id=None,
+            layer="semantic",
+            content="  用户喜欢通过项目实战学习 Python  ",
+            source_type="agent_run",
+            source_id="run-repeat",
+            confidence=0.95,
+        )
+        assert reused is True
+        assert duplicate.id == original.id
+        assert duplicate.confidence == 0.95
+        assert duplicate.last_reinforced_at is not None
+
+        correction, reused = await manager.propose(
+            "local",
+            scope="global",
+            scope_id=None,
+            layer="semantic",
+            content="用户希望先读原理，再通过项目验证 Python 知识",
+            source_type="user",
+            confidence=1,
+            supersedes_id=original.id,
+        )
+        assert reused is False
+        competing, reused = await manager.propose(
+            "local",
+            scope="global",
+            scope_id=None,
+            layer="semantic",
+            content="用户只希望阅读 Python 理论，不做项目",
+            source_type="agent_run",
+            source_id="stale-correction",
+            confidence=0.7,
+            supersedes_id=original.id,
+        )
+        assert reused is False
+        await manager.confirm("local", correction.id)
+        with pytest.raises(ValueError, match="Only proposed memory"):
+            await manager.confirm("local", competing.id)
+        await db.commit()
+
+        await db.refresh(original)
+        await db.refresh(correction)
+        assert original.status == "superseded"
+        assert original.superseded_by_id == correction.id
+        assert correction.status == "confirmed"
+        assert correction.supersedes_id == original.id
+        assert competing.status == "archived"
+        assert "其他纠正" in competing.archived_reason
+
+
+@pytest.mark.asyncio
+async def test_memory_archive_is_recoverable_without_deleting_history():
+    async with AsyncSessionLocal() as db:
+        memory = _memory("local", "每周日进行一次学习复盘")
+        expired_memory = _memory("local", "本周临时复习提醒", layer="short_term")
+        expired_memory.expires_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        db.add_all([memory, expired_memory])
+        await db.commit()
+        manager = MemoryManager(db)
+
+        archived = await manager.archive("local", memory.id)
+        assert archived.status == "archived"
+        assert archived.restorable is True
+        assert MemoryRead.model_validate(archived).restorable is True
+        assert archived.archived_from_status == "confirmed"
+        restored = await manager.restore("local", memory.id)
+        assert restored.status == "confirmed"
+        assert restored.archived_reason == ""
+        await manager.maintain("local")
+        assert expired_memory.status == "expired"
+        assert expired_memory.restorable is True
+        restored_expired = await manager.restore("local", expired_memory.id)
+        assert restored_expired.status == "confirmed"
+        assert restored_expired.expires_at is None
+
+
+@pytest.mark.asyncio
+async def test_retrieval_access_tracking_does_not_refresh_fact_freshness():
+    async with AsyncSessionLocal() as db:
+        semantic_updated_at = datetime(2025, 1, 2, tzinfo=timezone.utc)
+        memory = _memory("local", "用户倾向先理解原理再动手实践")
+        memory.updated_at = semantic_updated_at
+        db.add(memory)
+        await db.commit()
+
+        await MemoryManager(db).retrieve_with_scores(
+            "local", plan_id=None, query="学习原理和实践偏好", limit=3,
+        )
+        await db.commit()
+        await db.refresh(memory)
+
+        assert memory.updated_at.replace(tzinfo=timezone.utc) == semantic_updated_at
+        assert memory.access_count == 1
+        assert memory.last_accessed_at is not None
 
 
 @pytest.mark.asyncio
