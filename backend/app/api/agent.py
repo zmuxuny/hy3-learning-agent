@@ -15,6 +15,7 @@ from app.models import (
     ChatMessage,
     ChatMessageRevision,
     Memory,
+    Notification,
     Operation,
     Plan,
     PlanProposal,
@@ -113,6 +114,26 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
     )
     db.add(run)
     await db.flush()
+    message_metadata = {}
+    if data.reply_to_notification_id is not None:
+        if data.trigger != "user_message" or session_id is None:
+            raise HTTPException(status_code=422, detail="Notification replies require a user Session")
+        notification = await db.get(Notification, data.reply_to_notification_id)
+        if (
+            not notification
+            or notification.owner_id != settings.DEFAULT_OWNER_ID
+            or notification.session_id != session_id
+        ):
+            raise HTTPException(status_code=409, detail="Reply target does not belong to this Session")
+        message_metadata["reply_to_notification_id"] = notification.id
+    if session_id and data.trigger == "user_message":
+        db.add(ChatMessage(
+            session_id=session_id,
+            run_id=run.id,
+            role="user",
+            content=data.objective,
+            message_metadata=message_metadata,
+        ))
     if session_id and data.plan_id is not None:
         await link_session_plan(
             db,

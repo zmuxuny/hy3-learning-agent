@@ -69,9 +69,9 @@
 
 | 工具 | 作用 |
 | --- | --- |
-| `notification_send` | 默认写站内收件箱，可选浏览器或 SMTP 邮件 |
+| `notification_send` | 先把主动提醒写入计划对应的连续 Session，再投影到站内收件箱；可选浏览器或 SMTP 邮件，返回 `session_id` 供追溯 |
 
-SMTP 邮件主题携带回复令牌。启用 IMAP 后，未读回复会被路由为 `email_reply` Run，再由同一个 Agent 观察和处理。
+SMTP 邮件主题携带回复令牌。启用 IMAP 后，未读回复会被路由为 `email_reply` Run，并作为用户消息接在原提醒后由同一个 Agent 观察和处理。站内收件箱也通过同一 Session 深链回复，不建立第二套通知上下文。
 
 ## 统一结果与运行事件
 

@@ -1,6 +1,7 @@
 <script setup>
 import {
   ArrowUpIcon,
+  BellIcon,
   ChevronUpIcon,
   ChevronDownIcon,
   MapIcon,
@@ -194,6 +195,11 @@ async function switchSession(event) {
 
     <div class="composer-shell">
       <input ref="fileInput" class="visually-hidden" type="file" @change="uploadFile" />
+      <div v-if="store.replyTargetNotification" class="composer-reply-target">
+        <BellIcon />
+        <span><small>回复提醒</small><strong>{{ store.replyTargetNotification.title }}</strong></span>
+        <button title="取消回复提醒" @click="store.replyTargetNotification = null"><XMarkIcon /></button>
+      </div>
       <textarea
         v-model="prompt"
         rows="1"

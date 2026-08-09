@@ -1,5 +1,5 @@
 <script setup>
-import { CheckIcon, ChevronDownIcon, ClipboardIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { BellIcon, CheckIcon, ChevronDownIcon, ClipboardIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 
@@ -16,6 +16,12 @@ const planningAnswers = computed(() => (
     : null
 ));
 const canEdit = computed(() => !['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
+const repliedNotification = computed(() => {
+  const notificationId = props.message.message_metadata?.reply_to_notification_id;
+  if (!notificationId) return null;
+  return [...store.notifications, ...store.archivedNotifications].find((item) => item.id === notificationId)
+    || { id: notificationId, title: `提醒 ${notificationId}` };
+});
 
 async function beginEdit() {
   if (!canEdit.value) return;
@@ -44,6 +50,9 @@ async function copyMessage() {
 
 <template>
   <div :class="['user-message-wrap', { editing }]">
+    <small v-if="repliedNotification && !editing" class="user-reply-context">
+      <BellIcon />回复提醒 · {{ repliedNotification.title }}
+    </small>
     <section v-if="planningAnswers && !editing" class="planning-answers-card">
       <button class="planning-answers-summary" @click="answersExpanded = !answersExpanded">
         <CheckIcon />

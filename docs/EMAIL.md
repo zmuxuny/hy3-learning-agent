@@ -59,7 +59,7 @@ IMAP_FOLDER=INBOX
 - “测试回复邮箱”：登录 IMAP，以只读方式打开 `IMAP_FOLDER`。
 - 也可以使用 `POST /api/v1/settings/email/test`，请求体为 `{"channel":"smtp","send_message":true}` 或 `{"channel":"imap"}`。
 
-完成连接测试后，让 Agent 使用 `notification_send` 的 `email` 渠道发送提醒。邮件主题和正文包含回复令牌；直接回复后，后台轮询会把正文作为用户消息追加到发送提醒的原 Session，再由同一个 Agent Runtime 处理。
+完成连接测试后，让 Agent 使用 `notification_send` 的 `email` 渠道发送提醒。提醒会先作为 Agent 消息进入计划对应的连续 Session，同时发送邮件；主题和正文包含回复令牌。直接回复后，后台轮询会把正文作为用户消息追加在这条提醒之后，再由同一个 Agent Runtime 处理。也可以从站内收件箱点击“在对话中回复”，两种入口共享上下文。
 
 ## 4. 当前机器状态
 

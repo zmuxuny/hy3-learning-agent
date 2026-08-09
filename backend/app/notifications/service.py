@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import Notification, Plan, UserProfile
+from app.notifications.conversation import materialize_notification_message, resolve_notification_session
 from app.notifications.diagnostics import smtp_connection
 from app.notifications.push import push_service
 
@@ -30,19 +31,33 @@ class NotificationService:
     ) -> dict:
         allowed, reason = await self._guard(owner_id, trigger, plan_id)
         if not allowed:
-            return {"blocked": True, "reason": reason, "notifications": []}
+            return {"blocked": True, "reason": reason, "session_id": None, "notifications": []}
         if plan_id is not None:
             plan = await self.db.get(Plan, plan_id)
             if not plan or plan.owner_id != owner_id or plan.status == "archived":
-                return {"blocked": True, "reason": "plan no longer active", "notifications": []}
+                return {
+                    "blocked": True,
+                    "reason": "plan no longer active",
+                    "session_id": None,
+                    "notifications": [],
+                }
+
+        session = await resolve_notification_session(
+            self.db,
+            owner_id=owner_id,
+            session_id=session_id,
+            plan_id=plan_id,
+            source_run_id=run_id,
+        )
 
         created: list[dict] = []
+        created_models: list[Notification] = []
         requested = list(dict.fromkeys(["in_app", *channels]))
         for channel in requested:
             notification = Notification(
                 owner_id=owner_id,
                 run_id=run_id,
-                session_id=session_id,
+                session_id=session.id,
                 plan_id=plan_id,
                 channel=channel,
                 title=title,
@@ -51,6 +66,7 @@ class NotificationService:
             )
             self.db.add(notification)
             await self.db.flush()
+            created_models.append(notification)
 
             if channel == "in_app":
                 notification.status = "sent"
@@ -63,7 +79,10 @@ class NotificationService:
                     owner_id,
                     title,
                     body,
-                    {"notification_id": notification.id, "url": "/?view=inbox"},
+                    {
+                        "notification_id": notification.id,
+                        "url": f"/?notification={created_models[0].id}",
+                    },
                 )
             elif channel == "email":
                 if not self._email_configured():
@@ -81,8 +100,16 @@ class NotificationService:
             else:
                 notification.status = "skipped"
             created.append({"id": notification.id, "channel": channel, "status": notification.status})
+        if created_models and trigger != "user_message":
+            primary = next((item for item in created_models if item.channel == "in_app"), created_models[0])
+            await materialize_notification_message(
+                self.db,
+                session=session,
+                notification=primary,
+                notification_ids=[item.id for item in created_models],
+            )
         await self.db.commit()
-        return {"blocked": False, "notifications": created}
+        return {"blocked": False, "session_id": session.id, "notifications": created}
 
     async def _guard(self, owner_id: str, trigger: str, plan_id: int | None) -> tuple[bool, str]:
         if trigger in {"user_message", "manual_heartbeat"}:

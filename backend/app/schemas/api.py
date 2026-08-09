@@ -194,6 +194,13 @@ class NotificationArchiveResult(BaseModel):
     archived_at: datetime
 
 
+class NotificationOpenResult(BaseModel):
+    notification: NotificationRead
+    session_id: str
+    plan_id: int | None
+    message_id: int
+
+
 class PushSubscriptionCreate(BaseModel):
     endpoint: str = Field(min_length=1, max_length=2000)
     keys: dict[str, str] = Field(default_factory=dict)
@@ -221,6 +228,7 @@ class AgentRunCreate(BaseModel):
     objective: str = Field(min_length=1)
     session_id: str | None = None
     plan_id: int | None = None
+    reply_to_notification_id: int | None = Field(default=None, ge=1)
     trigger: Literal["user_message", "heartbeat", "task_event", "review_due", "email_reply"] = "user_message"
 
 

@@ -101,4 +101,4 @@ async def test_notification_service_uses_push_for_browser_channel(monkeypatch):
         browser = [row for row in rows if row.channel == "browser"]
         assert browser and browser[0].status == "sent"
         assert pushed and pushed[0][0] == "站内提醒"
-        assert pushed[0][2]["url"] == "/?view=inbox"
+        assert pushed[0][2]["url"] == "/?notification=1"

@@ -16,7 +16,9 @@ onMounted(async () => {
   await store.loadWorkspace();
   store.startProactiveSync();
   const params = new URLSearchParams(window.location.search);
-  if (params.get('view') === 'inbox') store.openView('inbox');
+  const notificationId = Number(params.get('notification'));
+  if (Number.isInteger(notificationId) && notificationId > 0) await store.openNotification(notificationId);
+  else if (params.get('view') === 'inbox') store.openView('inbox');
 });
 onBeforeUnmount(() => store.stopProactiveSync());
 </script>
@@ -39,7 +41,7 @@ onBeforeUnmount(() => store.stopProactiveSync());
     <AgentTrace v-if="store.traceOpen" />
     <aside v-if="store.proactiveNotice" class="proactive-toast" aria-live="polite">
       <BellIcon />
-      <button class="proactive-toast-copy" @click="store.openView('inbox'); store.dismissProactiveNotice()">
+      <button class="proactive-toast-copy" @click="store.openNotification(store.proactiveNotice)">
         <small>学习进度提醒</small>
         <strong>{{ store.proactiveNotice.title }}</strong>
         <span>{{ store.proactiveNotice.body }}</span>

@@ -11,8 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import AgentRun, ChatMessage, LearningEvent, Notification, Session
-from app.services.sessions import link_session_plan
+from app.models import AgentRun, ChatMessage, LearningEvent, Notification
+from app.notifications.conversation import open_notification_in_conversation
 
 
 class EmailReplyPoller:
@@ -30,27 +30,7 @@ class EmailReplyPoller:
             )).scalars().one_or_none()
             if not notification:
                 continue
-            session = await db.get(Session, notification.session_id) if notification.session_id else None
-            if session and session.archived_at is not None:
-                session = None
-            if session is None:
-                reply_subject = reply["subject"].strip()
-                session = Session(
-                    owner_id=owner_id,
-                    plan_id=notification.plan_id,
-                    title=(f"邮件回复 · {reply_subject}" if reply_subject else "邮件回复")[:80],
-                    handoff_summary=f"由通知 {notification.id} 的邮件回复建立。",
-                )
-                db.add(session)
-                await db.flush()
-                if notification.plan_id is not None:
-                    await link_session_plan(
-                        db,
-                        owner_id=owner_id,
-                        session_id=session.id,
-                        plan_id=notification.plan_id,
-                        relation_type="focused",
-                    )
+            session, _, _ = await open_notification_in_conversation(db, notification)
             run = AgentRun(
                 owner_id=owner_id,
                 plan_id=notification.plan_id,

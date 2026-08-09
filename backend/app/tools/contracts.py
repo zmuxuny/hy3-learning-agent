@@ -26,7 +26,7 @@ TOOL_OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "quiz_get": output("QuizGetOutput", quiz_id=int, plan_id=int, prompt=str, rubric=dict, status=str),
     "quiz_grade": output("QuizGradeOutput", quiz_id=int, score=float, status=str, operation_id=str, undo_available=bool),
     "memory_propose": output("MemoryProposalOutput", memory_id=int, status=str, approval_required=bool),
-    "notification_send": output("NotificationSendOutput", blocked=bool, notifications=list),
+    "notification_send": output("NotificationSendOutput", blocked=bool, session_id=str | None, notifications=list),
     "planning_intake_get": output("PlanningIntakeGetOutput", exists=bool, session_id=str, goal=str, confirmed_facts=list, open_questions=list, readiness=str, readiness_confidence=float, rationale=str),
     "planning_intake_update": output("PlanningIntakeUpdateOutput", exists=bool, session_id=str, goal=str, confirmed_facts=list, open_questions=list, readiness=str, readiness_confidence=float, rationale=str),
     "planning_delegate": output("PlanningDelegateOutput", reports=list),

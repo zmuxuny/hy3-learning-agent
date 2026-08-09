@@ -66,6 +66,9 @@ async function inspect(label) {
       proactiveStatus: document.querySelectorAll('.proactive-status').length,
       inboxTabs: document.querySelectorAll('.inbox-tabs button').length,
       inboxArchiveActions: document.querySelectorAll('.inbox-actions button').length,
+      notificationReplyLinks: document.querySelectorAll('.notification-reply-link').length,
+      proactiveMessages: document.querySelectorAll('.thread-run.proactive').length,
+      composerReplyTargets: document.querySelectorAll('.composer-reply-target').length,
       archivedNotificationCards: document.querySelector('.inbox-tabs button.active')?.textContent.includes('已归档')
         ? document.querySelectorAll('.inbox-card').length
         : 0,
@@ -259,6 +262,25 @@ await viewport(1440, 1000);
 await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('收件箱')); if (item) item.click(); return Boolean(item); })()`);
 await wait(500);
 report.push(await inspect('inbox-1440'));
+
+const openedNotificationConversation = await evaluate(`(() => {
+  const button = document.querySelector('.notification-reply-link');
+  if (button) button.click();
+  return Boolean(button);
+})()`);
+if (openedNotificationConversation) {
+  await wait(900);
+  report.push(await inspect('notification-conversation-1440'));
+  await viewport(375, 812);
+  report.push(await inspect('notification-conversation-mobile'));
+  await viewport(1440, 1000);
+  await evaluate(`(() => {
+    const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('收件箱'));
+    if (item) item.click();
+    return Boolean(item);
+  })()`);
+  await wait(500);
+}
 
 const archivedNotificationTitle = await evaluate(`(() => {
   const button = document.querySelector('.inbox-actions button[title="归档消息"]');

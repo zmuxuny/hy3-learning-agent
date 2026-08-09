@@ -36,11 +36,12 @@ function urlBase64ToUint8Array(base64String) {
   return output;
 }
 
-async function showBrowserNotification(title, body) {
+async function showBrowserNotification(title, body, notificationId = null) {
+  const url = notificationId ? `/?notification=${notificationId}` : '/?view=inbox';
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification(title, { body, data: { url: '/?view=inbox' } });
+      await registration.showNotification(title, { body, data: { url } });
       return;
     } catch {
       // Fall through to the page-level Notification API.
@@ -72,6 +73,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const emailTestResult = ref(null);
   const schedulerStatus = ref(null);
   const proactiveNotice = ref(null);
+  const highlightedMessageId = ref(null);
+  const replyTargetNotification = ref(null);
   const currentRun = ref(null);
   const focusPlanId = ref(null);
   const traceOpen = ref(false);
@@ -387,6 +390,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         objective,
         plan_id: resolvedPlanId,
         session_id: activeSessionId.value,
+        reply_to_notification_id: replyTargetNotification.value?.id || null,
         trigger: 'user_message',
       });
       currentRun.value = response.data;
@@ -399,7 +403,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
           run_id: response.data.id,
           role: 'user',
           content: objective,
-          message_metadata: {},
+          message_metadata: replyTargetNotification.value
+            ? { reply_to_notification_id: replyTargetNotification.value.id }
+            : {},
           created_at: new Date().toISOString(),
           pending: true,
         });
@@ -407,6 +413,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       activeView.value = 'home';
       runs.value.unshift(response.data);
       await loadSessions();
+      replyTargetNotification.value = null;
       subscribeToRun(response.data.id);
       return true;
     } catch (requestError) {
@@ -462,6 +469,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function selectSession(session) {
     closeEventSource();
+    replyTargetNotification.value = null;
     activeSessionId.value = session.id;
     focusPlanId.value = session.plan_id ?? null;
     activeView.value = 'home';
@@ -666,7 +674,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       schedulerStatus.value = proactiveResponse.data;
       if (fresh.length) {
         proactiveNotice.value = fresh[0];
-        showBrowserNotification(fresh[0].title, fresh[0].body);
+        showBrowserNotification(fresh[0].title, fresh[0].body, fresh[0].id);
       }
     } catch {
       // Background visibility must never interrupt the active conversation.
@@ -820,6 +828,29 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  async function openNotification(notificationOrId) {
+    const notificationId = typeof notificationOrId === 'object' ? notificationOrId.id : notificationOrId;
+    error.value = '';
+    try {
+      const response = await api.post(`/notifications/${notificationId}/open`);
+      await Promise.all([loadSessions(), refreshNotifications()]);
+      const session = sessions.value.find((item) => item.id === response.data.session_id);
+      if (!session) throw new Error('提醒所属对话暂时不可用');
+      proactiveNotice.value = null;
+      await selectSession(session);
+      replyTargetNotification.value = response.data.notification;
+      highlightedMessageId.value = response.data.message_id;
+      const url = new URL(window.location.href);
+      url.searchParams.delete('notification');
+      url.searchParams.delete('view');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
+  }
+
   async function refreshNotifications() {
     const [activeResponse, archivedResponse] = await Promise.all([
       api.get('/notifications'),
@@ -872,7 +903,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     archivedNotifications.value = archivedNotificationsRes.data;
     notifications.value
       .filter((item) => item.channel === 'browser' && item.status === 'sent' && !knownNotificationIds.has(item.id))
-      .forEach((item) => showBrowserNotification(item.title, item.body));
+      .forEach((item) => showBrowserNotification(item.title, item.body, item.id));
     operations.value = operationsRes.data;
     runs.value = runsRes.data;
     sessions.value = sessionsRes.data;
@@ -909,6 +940,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     streamingText.value = '';
     streamingReasoning.value = '';
     runEvents.value = [];
+    replyTargetNotification.value = null;
     closeEventSource();
   }
 
@@ -973,6 +1005,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     emailTestResult,
     schedulerStatus,
     proactiveNotice,
+    highlightedMessageId,
+    replyTargetNotification,
     currentRun,
     focusPlanId,
     traceOpen,
@@ -1039,6 +1073,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     confirmMemory,
     deleteMemory,
     markNotificationRead,
+    openNotification,
     setNotificationArchived,
     archiveReadNotifications,
     undoOperation,

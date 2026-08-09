@@ -120,9 +120,11 @@ Hy3 支持长上下文，但系统仍需选择、分层和压缩。长上下文�
 
 每次模型轮次、工具开始/完成、最终结论和失败都归入同一个 `run_id`。`silent` 同样必须形成完成事件，证明 Agent 做过判断，而不是只有通知结果。
 
-调度器只有一个全局循环。每 `AGENT_HEARTBEAT_SECONDS` 做一次确定性候选扫描，而不是为每个任务创建常驻心跳：先检查到期复习、24 小时内任务，再检查最久未产生学习证据的活动计划。`AGENT_PROGRESS_CHECKIN_HOURS` 默认 24 小时；近期已经发过站内消息时不会重复产生进度询问候选。`GET /settings/proactive` 暴露下一轮时间、最近判断和最近心跳 Run，前端每 15 秒同步状态与站内通知。
+调度器只有一个全局循环。每 `AGENT_HEARTBEAT_SECONDS` 做一次轻量确定性候选扫描，而不是为每个任务创建常驻心跳：先检查到期复习、24 小时内任务，再逐个检查活动计划的最新学习证据。扫描阶段不加载聊天全文；命中候选后才用明确的 `plan_id` 启动计划级 Run，由 ContextAssembler 注入该计划结构、证据、计划记忆和必要事件。`AGENT_PROGRESS_CHECKIN_HOURS` 默认 24 小时；同计划近期已经发过站内消息时不会重复产生进度询问候选。`GET /settings/proactive` 暴露下一轮时间、最近判断和最近心跳 Run，前端每 15 秒同步状态与站内通知。
 
-`Notification.archived_at` 提供可恢复的收件箱生命周期。`GET /notifications` 默认只返回活动消息，`?archived=true` 返回归档列表；单条归档/恢复和批量归档已读均保留通知事实。ContextAssembler 排除已归档通知，避免用户整理后的旧提醒继续占用近期上下文。
+主动提醒的权威回复位置是 Session，不是收件箱。`notification_send` 优先使用来源 Session；无会话后台 Run 会复用同计划最近的活动 Session，没有时建立一个稳定的“学习跟进”Session。提醒以 `ChatMessage(role=assistant, ui_kind=proactive_notification)` 投影到该对话，同时以 `Notification` 投影到各发送渠道。收件箱、页面 Toast、Service Worker 和邮件令牌都指向同一 Session；`POST /notifications/{id}/open` 会为旧通知幂等补链并返回精确 `message_id`。输入区持有显式回复目标，发送后用户消息保存 `reply_to_notification_id`；ContextAssembler 将目标提醒单独注入且从普通 Conversation 投影中去重，因此即使同一 Session 有多条提醒也不靠相邻顺序猜测。计划焦点继续提供完整状态与分层记忆。
+
+`Notification.archived_at` 只提供可恢复的收件箱生命周期。`GET /notifications` 默认返回活动消息，`?archived=true` 返回归档列表；单条归档/恢复和批量归档已读均保留通知事实与对话消息。ContextAssembler 排除已归档通知，也排除已经投影到当前 Session 的通知；后者由 Conversation 区只注入一次，避免同一提醒重复占用上下文。
 
 ## 5.1 Harness 运行事件
 

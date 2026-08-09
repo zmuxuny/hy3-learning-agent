@@ -40,6 +40,14 @@ watch(() => store.currentRun?.id, () => {
 });
 watch(() => store.conversationMessages.length, () => scrollToLatest());
 watch(() => store.runEvents.length, () => scrollToLatest());
+watch(() => store.highlightedMessageId, async (messageId) => {
+  if (!messageId) return;
+  await nextTick();
+  document.getElementById(`message-${messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  window.setTimeout(() => {
+    if (store.highlightedMessageId === messageId) store.highlightedMessageId = null;
+  }, 2400);
+});
 </script>
 
 <template>
@@ -71,6 +79,9 @@ watch(() => store.runEvents.length, () => scrollToLatest());
             :answer="currentRunAssistant?.content || ''"
             :user-message="currentRunUser"
             :cards="currentRunAssistant?.message_metadata?.cards || []"
+            :message-id="currentRunAssistant?.id"
+            :message-metadata="currentRunAssistant?.message_metadata || {}"
+            :highlighted="currentRunAssistant?.id === store.highlightedMessageId"
           />
 
           <AgentRunTurn
@@ -79,15 +90,24 @@ watch(() => store.runEvents.length, () => scrollToLatest());
             :run="store.runForId(message.run_id)"
             :events="store.eventsForRun(message.run_id)"
             :cards="message.message_metadata?.cards || []"
+            :message-id="message.id"
+            :message-metadata="message.message_metadata || {}"
+            :highlighted="message.id === store.highlightedMessageId"
             historical
           />
         </template>
 
         <template v-if="store.currentRun && !currentRunUser">
-          <div class="user-turn run-objective-turn">
+          <div v-if="currentRunAssistant?.message_metadata?.ui_kind !== 'proactive_notification'" class="user-turn run-objective-turn">
             <div class="message-bubble">{{ store.currentRun.objective }}</div>
           </div>
-          <AgentRunTurn :answer="currentRunAssistant?.content || ''" :user-message="currentRunUser" />
+          <AgentRunTurn
+            :answer="currentRunAssistant?.content || ''"
+            :user-message="currentRunUser"
+            :message-id="currentRunAssistant?.id"
+            :message-metadata="currentRunAssistant?.message_metadata || {}"
+            :highlighted="currentRunAssistant?.id === store.highlightedMessageId"
+          />
         </template>
 
       </div>

@@ -173,13 +173,13 @@ class ProactiveScheduler:
                     "objective": f"任务 {due_task.id} 将在 24 小时内截止或已经逾期。检查当前证据、近期提醒和学习活动；只有确实有帮助时才介入，并用简体中文汇报。",
                 }
 
-            plan = (await db.execute(
+            plans = list((await db.execute(
                 select(Plan).where(
                     Plan.owner_id == settings.DEFAULT_OWNER_ID,
                     Plan.status == "active",
-                ).order_by(Plan.updated_at).limit(1)
-            )).scalars().one_or_none()
-            if plan:
+                ).order_by(Plan.updated_at)
+            )).scalars())
+            for plan in plans:
                 last_event = (await db.execute(
                     select(LearningEvent).where(
                         LearningEvent.owner_id == settings.DEFAULT_OWNER_ID,

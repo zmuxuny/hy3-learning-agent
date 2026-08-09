@@ -8,9 +8,11 @@ from app.core.config import settings
 from app.db.database import get_db
 from app.models import Notification
 from app.notifications.push import push_service
+from app.notifications.conversation import open_notification_in_conversation
 from app.schemas import (
     NotificationArchiveResult,
     NotificationArchiveUpdate,
+    NotificationOpenResult,
     NotificationRead,
     PushSubscriptionCreate,
     PushSubscriptionRead,
@@ -74,6 +76,22 @@ async def mark_notification_read(notification_id: int, db: AsyncSession = Depend
     await db.commit()
     await db.refresh(notification)
     return notification
+
+
+@router.post("/{notification_id}/open", response_model=NotificationOpenResult)
+async def open_notification(notification_id: int, db: AsyncSession = Depends(get_db)):
+    notification = await db.get(Notification, notification_id)
+    if not notification or notification.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    session, message, primary = await open_notification_in_conversation(db, notification)
+    await db.commit()
+    await db.refresh(notification)
+    return {
+        "notification": notification,
+        "session_id": session.id,
+        "plan_id": primary.plan_id,
+        "message_id": message.id,
+    }
 
 
 @router.patch("/{notification_id}/archive", response_model=NotificationRead)

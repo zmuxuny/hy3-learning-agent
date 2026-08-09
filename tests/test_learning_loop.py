@@ -200,6 +200,31 @@ async def test_scheduler_can_request_progress_without_task_deadlines(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_scheduler_scans_past_recent_plan_to_find_another_stale_plan(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "AGENT_PROGRESS_CHECKIN_HOURS", 1)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    async with AsyncSessionLocal() as db:
+        recent = await plan_service.create_plan(db, "local", plan_payload("刚学习过的计划"))
+        stale = await plan_service.create_plan(db, "local", plan_payload("真正停滞的计划"))
+        recent.updated_at = now - timedelta(hours=3)
+        stale.updated_at = now - timedelta(hours=2)
+        events = list((await db.execute(select(LearningEvent).order_by(LearningEvent.id))).scalars())
+        recent_event = next(event for event in events if event.plan_id == recent.id)
+        stale_event = next(event for event in events if event.plan_id == stale.id)
+        recent_event.created_at = now
+        stale_event.created_at = now - timedelta(hours=4)
+        stale.created_at = now - timedelta(hours=4)
+        await db.commit()
+        stale_id = stale.id
+
+    candidate = await proactive_scheduler._next_candidate()
+    assert candidate["plan_id"] == stale_id
+    assert candidate["reason"] == "progress_checkin_due"
+
+
+@pytest.mark.asyncio
 async def test_core_evidence_progress_and_undo():
     async with AsyncSessionLocal() as db:
         plan = await plan_service.create_plan(db, "local", plan_payload())

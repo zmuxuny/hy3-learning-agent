@@ -1,5 +1,5 @@
 <script setup>
-import { ArchiveBoxArrowDownIcon, ArrowUturnLeftIcon, BellIcon, BoltIcon, CheckCircleIcon, CheckIcon, ClockIcon, EnvelopeIcon, ServerStackIcon, XCircleIcon } from '@heroicons/vue/24/outline';
+import { ArchiveBoxArrowDownIcon, ArrowUturnLeftIcon, BellIcon, BoltIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClockIcon, EnvelopeIcon, ServerStackIcon, XCircleIcon } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import RunTraceButton from './RunTraceButton.vue';
@@ -107,7 +107,16 @@ function testEmail(channel, sendMessage = false) {
     <div class="inbox-list">
       <article v-for="item in displayedNotifications" :key="item.id" :class="['panel', 'inbox-card', { unread: !item.read_at }]">
         <div class="inbox-icon"><component :is="item.channel === 'email' ? EnvelopeIcon : BellIcon" /></div>
-        <div><header><strong>{{ item.title }}</strong><span>{{ item.channel }} · {{ item.status }}</span></header><p>{{ item.body }}</p><small>{{ new Date(item.created_at).toLocaleString() }}</small></div>
+        <div class="inbox-card-copy">
+          <header><strong>{{ item.title }}</strong><span>{{ item.channel }} · {{ item.status }}</span></header>
+          <p>{{ item.body }}</p>
+          <footer>
+            <small>{{ new Date(item.created_at).toLocaleString() }}</small>
+            <button class="notification-reply-link" @click="store.openNotification(item)">
+              <ChatBubbleLeftRightIcon />在对话中回复
+            </button>
+          </footer>
+        </div>
         <div class="inbox-actions">
           <button v-if="!item.read_at" title="标记已读" @click="store.markNotificationRead(item.id)"><CheckIcon /></button>
           <button :title="showArchived ? '恢复消息' : '归档消息'" @click="store.setNotificationArchived(item.id, !showArchived)">

@@ -1,5 +1,5 @@
 <script setup>
-import { ClipboardIcon } from '@heroicons/vue/24/outline';
+import { BellIcon, ClipboardIcon } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentMessage from './AgentMessage.vue';
@@ -15,6 +15,9 @@ const props = defineProps({
   run: { type: Object, default: null },
   events: { type: Array, default: () => [] },
   historical: { type: Boolean, default: false },
+  messageId: { type: [Number, String], default: null },
+  messageMetadata: { type: Object, default: () => ({}) },
+  highlighted: { type: Boolean, default: false },
 });
 
 const store = useWorkspaceStore();
@@ -75,6 +78,7 @@ const snapshotCards = computed(() => props.cards.map((card) => {
   return { ...card, current: false };
 }));
 const createdPlan = computed(() => store.planForRun(resolvedRun.value?.id));
+const proactive = computed(() => props.messageMetadata?.ui_kind === 'proactive_notification');
 
 watch(answerText, (text) => {
   cancelAnimationFrame(answerFrame);
@@ -100,7 +104,10 @@ async function copyAnswer() {
 </script>
 
 <template>
-  <article :class="['thread-run', { live: running, historical: props.historical }]">
+  <article
+    :id="props.messageId ? `message-${props.messageId}` : undefined"
+    :class="['thread-run', { live: running, historical: props.historical, proactive, highlighted: props.highlighted }]"
+  >
     <span class="thread-run-rail" aria-hidden="true"></span>
     <div class="thread-run-content">
       <RunDisclosure
@@ -110,6 +117,14 @@ async function copyAnswer() {
         :loading="loadingEvents"
         @expand="ensureEvents"
       />
+
+      <header v-if="proactive" class="proactive-message-heading">
+        <BellIcon />
+        <div>
+          <small>Agent 主动提醒</small>
+          <strong>{{ props.messageMetadata.notification_title || '学习进度跟进' }}</strong>
+        </div>
+      </header>
 
       <template v-for="card in snapshotCards" :key="`${card.kind}-${card.created_at}`">
         <PlanningQuestionsPanel

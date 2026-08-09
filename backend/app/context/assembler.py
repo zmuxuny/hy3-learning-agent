@@ -173,6 +173,13 @@ class ContextAssembler:
             review_query = review_query.where(ReviewSchedule.plan_id == plan_id)
             quiz_query = quiz_query.where(Quiz.plan_id == plan_id)
             notification_query = notification_query.where(Notification.plan_id == plan_id)
+        if session_id:
+            # Notifications projected into this Session are already present in the
+            # conversation below. Keep them out of the generic list to avoid giving
+            # the model the same reminder twice.
+            notification_query = notification_query.where(
+                or_(Notification.session_id.is_(None), Notification.session_id != session_id)
+            )
         reviews = list((await self.db.execute(review_query.order_by(ReviewSchedule.due_at).limit(20))).scalars())
         quizzes = list((await self.db.execute(quiz_query.order_by(Quiz.created_at.desc()).limit(10))).scalars())
         notifications = list(
@@ -257,8 +264,32 @@ class ContextAssembler:
                 sections.extend(["## Conversation", f"Session summary: {session.summary or '(empty)'}"])
                 if session.handoff_summary:
                     sections.append(f"Handoff from parent session:\n{session.handoff_summary}")
+                reply_target_id = next((
+                    message.message_metadata.get("reply_to_notification_id")
+                    for message in reversed(messages)
+                    if message.run_id == run_id and message.role == "user"
+                    and message.message_metadata.get("reply_to_notification_id")
+                ), None)
+                reply_target = await self.db.get(Notification, reply_target_id) if reply_target_id else None
+                if reply_target and reply_target.owner_id == owner_id and reply_target.session_id == session_id:
+                    sections.append(
+                        f"Reply target notification:{reply_target.id} — {reply_target.title}: {reply_target.body}"
+                    )
+                    manifest.append({"type": "notification_reply_target", "id": reply_target.id})
                 for message in messages:
-                    sections.append(f"- {message.role}: {message.content}")
+                    metadata = message.message_metadata or {}
+                    if metadata.get("ui_kind") == "proactive_notification":
+                        notification_ids = metadata.get("notification_ids") or [metadata.get("notification_id")]
+                        if reply_target_id and reply_target_id in notification_ids:
+                            continue
+                        title = metadata.get("notification_title") or "主动提醒"
+                        sections.append(f"- assistant [proactive reminder: {title}]: {message.content}")
+                    elif metadata.get("reply_to_notification_id"):
+                        sections.append(
+                            f"- user [replying to notification:{metadata['reply_to_notification_id']}]: {message.content}"
+                        )
+                    else:
+                        sections.append(f"- {message.role}: {message.content}")
                     manifest.append({"type": "message", "id": message.id})
 
         markdown = "\n".join(sections).strip() + "\n"
