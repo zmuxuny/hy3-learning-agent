@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.api.agent import (
     _start_runtime,
+    cancel_run,
     decide_run_approval,
     delete_queued_message,
     enqueue_message,
@@ -19,6 +20,7 @@ from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, ChatMessage, QueuedMessage, RunEvent, RunSteerMessage, Session
 from app.runtime.agent import AgentRuntime
 from app.runtime.events import subscribe_stream, unsubscribe_stream
+from app.runtime.tasks import start_tracked_task
 from app.schemas import (
     QueuedMessageCreate,
     QueuedMessageUpdate,
@@ -137,7 +139,7 @@ async def test_steer_injects_message_into_running_run(monkeypatch):
         await db.commit()
         run_id = run.id
 
-    async def noop_start(_run_id, **_kwargs):
+    def noop_start(_run_id, **_kwargs):
         return None
 
     monkeypatch.setattr("app.api.agent._start_runtime", noop_start)
@@ -240,7 +242,7 @@ async def test_approval_answer_is_fed_back_to_model(monkeypatch):
         await db.commit()
         run_id = run.id
 
-    async def noop_start(_run_id, **_kwargs):
+    def noop_start(_run_id, **_kwargs):
         return None
 
     monkeypatch.setattr("app.api.agent._start_runtime", noop_start)
@@ -270,3 +272,52 @@ async def test_approval_answer_is_fed_back_to_model(monkeypatch):
     payload = json.loads(tool_result["content"])
     assert payload["approval"] == "answered"
     assert payload["answer"] == "先别建计划，我想先看大纲"
+
+
+@pytest.mark.asyncio
+async def test_cancel_run_is_immediate_and_cancels_in_process_task():
+    async with AsyncSessionLocal() as db:
+        run = AgentRun(owner_id="local", trigger="user_message", objective="长时间运行", status="running")
+        db.add(run)
+        await db.commit()
+        run_id = run.id
+
+    started = asyncio.Event()
+
+    async def long_running():
+        started.set()
+        await asyncio.Event().wait()
+
+    task = start_tracked_task(run_id, long_running())
+    await started.wait()
+
+    async with AsyncSessionLocal() as db:
+        cancelled = await cancel_run(run_id, db)
+        assert cancelled.status == "cancelled"
+        assert cancelled.cancel_requested is True
+
+    await asyncio.sleep(0)
+    assert task.cancelled()
+    async with AsyncSessionLocal() as db:
+        events = list((await db.execute(
+            select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.sequence)
+        )).scalars())
+        assert events[-1].event_type == "run.cancelled"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_run_events_receive_unique_ordered_sequences():
+    from app.runtime.events import emit_event
+
+    async with AsyncSessionLocal() as db:
+        run = AgentRun(owner_id="local", trigger="user_message", objective="事件并发")
+        db.add(run)
+        await db.commit()
+        run_id = run.id
+
+    async def write(summary):
+        async with AsyncSessionLocal() as db:
+            return await emit_event(db, run_id, "test.concurrent", summary)
+
+    first, second = await asyncio.gather(write("first"), write("second"))
+    assert sorted([first.sequence, second.sequence]) == [1, 2]

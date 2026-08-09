@@ -45,6 +45,8 @@ const contextLabel = computed(() => (
 const archivedContext = computed(() => (
   Boolean(store.activeSession?.archived_at) || store.focusedPlan?.status === 'archived'
 ));
+const childContext = computed(() => Boolean(store.currentRun?.parent_run_id));
+const composerDisabled = computed(() => archivedContext.value || childContext.value);
 const progressStatus = computed(() => {
   const status = store.currentRun?.status;
   if (['queued', 'running'].includes(status)) return 'running';
@@ -91,8 +93,9 @@ async function applyFollowUp(value, mode) {
   if (queued) prompt.value = '';
 }
 
-async function tabAction() {
-  if (!running.value || archivedContext.value) return;
+async function tabAction(event) {
+  if (!running.value || composerDisabled.value || !prompt.value.trim()) return;
+  event.preventDefault();
   const value = prompt.value.trim();
   if (!value) return;
   const queued = await store.enqueueMessage(value);
@@ -205,22 +208,26 @@ async function switchSession(event) {
           ><ChevronDownIcon /></button>
           <button v-if="editingQueueId !== message.id" title="编辑" @click="beginQueueEdit(message)"><PencilSquareIcon /></button>
           <button v-else title="保存" @click="saveQueueEdit(message)"><XMarkIcon /></button>
-          <button title="立即发送" @click="sendQueueNow(message)"><ArrowUpIcon /></button>
+          <button
+            v-if="!running"
+            title="立即发送"
+            @click="sendQueueNow(message)"
+          ><ArrowUpIcon /></button>
           <button class="queue-delete" title="删除" @click="store.deleteQueuedMessage(message.id)"><TrashIcon /></button>
         </div>
       </div>
     </div>
 
     <div class="composer-shell">
-      <button class="composer-plus" :disabled="running || uploading || archivedContext" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
+      <button class="composer-plus" :disabled="running || uploading || composerDisabled" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
       <input ref="fileInput" class="visually-hidden" type="file" @change="uploadFile" />
       <textarea
         v-model="prompt"
         rows="1"
-        :placeholder="archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : running ? `Agent 正在运行 · Enter=${defaultActionLabel} · Tab=排队` : '给 Learning Agent 发消息'"
-        :disabled="archivedContext"
+        :placeholder="childContext ? '子 Agent 线程为只读，请返回主对话继续交流' : archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : running ? `Agent 正在运行 · Enter=${defaultActionLabel} · Tab=排队` : '给 Learning Agent 发消息'"
+        :disabled="composerDisabled"
         @keydown.enter.exact.prevent="submit"
-        @keydown.tab.exact.prevent="tabAction"
+        @keydown.tab.exact="tabAction"
       ></textarea>
       <span class="composer-mode"><SparklesIcon /> Hy3 · 深度</span>
       <div class="composer-actions">
@@ -233,7 +240,7 @@ async function switchSession(event) {
         <button
           v-else
           class="send-button"
-          :disabled="archivedContext || !prompt.trim()"
+          :disabled="composerDisabled || !prompt.trim()"
           title="发送（Shift+Enter 换行）"
           @click="submit"
         ><ArrowUpIcon /></button>

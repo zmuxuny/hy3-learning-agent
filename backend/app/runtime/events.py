@@ -6,6 +6,7 @@ from app.models import RunEvent
 
 
 _subscribers: dict[str, set[asyncio.Queue]] = {}
+_event_locks: dict[str, asyncio.Lock] = {}
 
 
 def publish_stream_event(run_id: str, payload: dict) -> None:
@@ -42,17 +43,25 @@ async def emit_event(
     summary: str = "",
     payload: dict | None = None,
 ) -> RunEvent:
-    result = await db.execute(select(func.coalesce(func.max(RunEvent.sequence), 0)).where(RunEvent.run_id == run_id))
-    event = RunEvent(
-        run_id=run_id,
-        sequence=int(result.scalar_one()) + 1,
-        event_type=event_type,
-        summary=summary,
-        payload=payload or {},
-    )
-    db.add(event)
-    await db.commit()
-    await db.refresh(event)
+    # Runtime, steering and cancellation can all emit against the same Run at
+    # once.  The sequence is scoped to a Run, so serialize its max+1 write in
+    # this single-process personal server instead of letting a harmless race
+    # fail the whole Run with a unique-constraint error.
+    lock = _event_locks.setdefault(run_id, asyncio.Lock())
+    async with lock:
+        result = await db.execute(
+            select(func.coalesce(func.max(RunEvent.sequence), 0)).where(RunEvent.run_id == run_id)
+        )
+        event = RunEvent(
+            run_id=run_id,
+            sequence=int(result.scalar_one()) + 1,
+            event_type=event_type,
+            summary=summary,
+            payload=payload or {},
+        )
+        db.add(event)
+        await db.commit()
+        await db.refresh(event)
     publish_stream_event(run_id, {
         "sequence": event.sequence,
         "type": event.event_type,

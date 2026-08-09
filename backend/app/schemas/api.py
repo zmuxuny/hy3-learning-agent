@@ -235,7 +235,6 @@ class AgentRunRead(APIModel):
     status: str
     model: str
     cancel_requested: bool
-    checkpoint: dict[str, Any] | None
     pending_approval: dict[str, Any] | None
     budget_usage: dict[str, Any] | None
     output: str

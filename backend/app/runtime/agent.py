@@ -222,7 +222,16 @@ class AgentRuntime:
                 },
             ]
             messages = await self._apply_pending_steer(db, run, messages)
-            await self._loop(db, run, messages, start_step=0, pending_calls=[], granted=set(), session=session)
+            await self._loop(
+                db,
+                run,
+                messages,
+                start_step=0,
+                pending_calls=[],
+                granted=set(),
+                session=session,
+                run_cards=[],
+            )
         except Exception as exc:
             await self._fail(db, run.id, exc)
 
@@ -232,6 +241,7 @@ class AgentRuntime:
         messages: list[dict] = list(checkpoint.get("messages") or [])
         start_step = int(checkpoint.get("step") or 0)
         pending_calls: list[dict] = list(checkpoint.get("pending_tool_calls") or [])
+        run_cards: list[dict] = list(checkpoint.get("cards") or [])
         granted: set[str] = set()
 
         if approval is not None:
@@ -284,7 +294,16 @@ class AgentRuntime:
             if run.session_id is None and run.trigger in {"heartbeat", "manual_heartbeat", "task_event", "review_due"}:
                 messages = await self._refresh_stateless_context(db, run, messages)
             messages = await self._apply_pending_steer(db, run, messages)
-            await self._loop(db, run, messages, start_step=start_step, pending_calls=pending_calls, granted=granted, session=session)
+            await self._loop(
+                db,
+                run,
+                messages,
+                start_step=start_step,
+                pending_calls=pending_calls,
+                granted=granted,
+                session=session,
+                run_cards=run_cards,
+            )
         except Exception as exc:
             await self._fail(db, run.id, exc)
 
@@ -341,6 +360,7 @@ class AgentRuntime:
         pending_calls: list[dict],
         granted: set[str],
         session: Session | None,
+        run_cards: list[dict],
     ) -> None:
         from app.tools import ToolContext, execute_tool
 
@@ -348,7 +368,6 @@ class AgentRuntime:
         failure_guard = ToolFailureGuard(settings.AGENT_TOOL_FAILURE_LIMIT)
         step = start_step
         calls = list(pending_calls)
-        run_cards: list[dict] = []
         try:
             while step < settings.AGENT_MAX_STEPS:
                 await db.refresh(run)
@@ -433,7 +452,12 @@ class AgentRuntime:
                 if call["name"] in {"web_search", "web_open"}:
                     budget["network_requests"] += 1
                 run.budget_usage = budget
-                run.checkpoint = {"step": step, "messages": messages, "pending_tool_calls": calls}
+                run.checkpoint = {
+                    "step": step,
+                    "messages": messages,
+                    "pending_tool_calls": calls,
+                    "cards": run_cards,
+                }
                 await db.commit()
 
                 await emit_event(
@@ -529,7 +553,12 @@ class AgentRuntime:
                 if call["name"] == "notification_send" and result.get("ok") and not data.get("blocked"):
                     await emit_event(db, run.id, "notification.sent", "学习提醒已进入通知渠道", data)
 
-                run.checkpoint = {"step": step, "messages": messages, "pending_tool_calls": calls}
+                run.checkpoint = {
+                    "step": step,
+                    "messages": messages,
+                    "pending_tool_calls": calls,
+                    "cards": run_cards,
+                }
                 await db.commit()
                 if not calls:
                     step += 1

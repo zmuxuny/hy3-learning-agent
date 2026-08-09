@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun
 from app.runtime.events import emit_event
+from app.runtime.tasks import cancel_tracked_task
 
 
 READ_ONLY_TOOL_NAMES: set[str] = {
@@ -178,6 +179,7 @@ async def cancel_child(child: AgentRun, reason: str = "父 Agent 取消") -> boo
         stored.status = "cancelled"
         stored.completed_at = datetime.now(timezone.utc)
         await db.commit()
+        cancel_tracked_task(child.id)
         await emit_event(db, child.id, "run.cancelled", reason, {"parent_run_id": child.parent_run_id})
         return True
 

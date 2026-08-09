@@ -114,7 +114,7 @@ watch(() => store.runEvents.length, () => scrollToLatest());
           </div>
 
           <AgentRunTurn
-            v-if="message.role === 'user' && message.run_id === store.currentRun?.id"
+            v-if="message.role === 'user' && message.id === currentRunUser?.id"
             :answer="currentRunAssistant?.content || ''"
             :user-message="currentRunUser"
             :cards="currentRunAssistant?.message_metadata?.cards || []"

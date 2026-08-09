@@ -73,7 +73,7 @@ async function inspect(label) {
       runActivityExpanded: document.querySelectorAll('.run-activity.expanded').length,
       achievementStrip: document.querySelectorAll('.achievement-strip').length,
       achievementBadges: document.querySelectorAll('.achievement-badge').length,
-      composerStop: document.querySelectorAll('.composer-stop').length,
+      composerStop: document.querySelectorAll('.send-button.running').length,
       contextUsage: document.querySelectorAll('.context-usage').length,
       planningAnswersCards: document.querySelectorAll('.planning-answers-card').length,
       subagentRows: document.querySelectorAll('.subagent-row').length,
@@ -87,7 +87,21 @@ async function inspect(label) {
       planningPanels: document.querySelectorAll('.planning-panel').length,
       planningQuestions: document.querySelectorAll('.planning-question').length,
       proposalStages: document.querySelectorAll('.proposal-stages article').length,
+      settingsSections: document.querySelectorAll('.settings-section').length,
+      settingsOverflow: [...document.querySelectorAll('.settings-section')].some((node) => node.scrollWidth > node.clientWidth + 1),
       messageActions: document.querySelectorAll('.message-actions').length,
+      tinyVisibleText: [...document.querySelectorAll('body *')].filter((node) => {
+        if (node.closest('.visually-hidden')) return false;
+        const ownText = [...node.childNodes].some((child) => child.nodeType === Node.TEXT_NODE && child.textContent.trim());
+        const style = getComputedStyle(node);
+        const rect = node.getBoundingClientRect();
+        const fontSize = Number.parseFloat(style.fontSize);
+        return ownText && style.display !== 'none' && style.visibility !== 'hidden'
+          && rect.width > 0 && rect.height > 0 && fontSize > 0 && fontSize < 11;
+      }).map((node) => ({
+        text: node.textContent.trim().replace(/\s+/g, ' ').slice(0, 40),
+        size: getComputedStyle(node).fontSize,
+      })).slice(0, 12),
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       clipped,
     };
@@ -233,6 +247,14 @@ if (archivedNotificationTitle) {
 
 await viewport(375, 812);
 report.push(await inspect('inbox-mobile'));
+
+await viewport(1440, 1000);
+await evaluate(`(() => { const item = [...document.querySelectorAll('.nav-item')].find((node) => node.textContent.includes('设置')); if (item) item.click(); return Boolean(item); })()`);
+await wait(500);
+report.push(await inspect('settings-1440'));
+
+await viewport(375, 812);
+report.push(await inspect('settings-mobile'));
 
 console.log(JSON.stringify(report, null, 2));
 socket.close();

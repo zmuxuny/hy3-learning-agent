@@ -20,6 +20,8 @@ const RUN_EVENTS = [
   'notification.sent',
   'subagent.started',
   'subagent.completed',
+  'subagent.cancelled',
+  'run.budget_exceeded',
   'run.completed',
   'run.failed',
   'run.cancelled',
@@ -117,24 +119,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       })
       .filter((agent) => agent.status === 'running');
   });
-  const createdPlanFromCurrentRun = computed(() => {
-    if (planningState.value.proposal?.status === 'accepted' && planningState.value.proposal?.plan_id) {
-      const proposal = planningState.value.proposal;
-      return plans.value.find((item) => Number(item.id) === Number(proposal.plan_id))
-        || { id: Number(proposal.plan_id), title: proposal.title };
-    }
-    if (currentRun.value?.plan_id != null) return null;
-    const event = [...runEvents.value].reverse().find((item) => (
-      item.type === 'tool.completed'
-      && item.payload?.name === 'plan_create'
-      && item.payload?.result?.ok
-    ));
-    const data = event?.payload?.result?.data;
-    if (!data?.plan_id) return null;
-    const plan = plans.value.find((item) => Number(item.id) === Number(data.plan_id));
-    return plan || { id: Number(data.plan_id), title: data.title || `计划 ${data.plan_id}` };
-  });
-
   function planForRun(runId) {
     const run = runs.value.find((item) => item.id === runId);
     if (!run?.created_plan_id) return null;
@@ -246,7 +230,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (index < 0 || target < 0 || target >= queuedMessages.value.length) return;
     const targetMessage = queuedMessages.value[target];
     await updateQueuedMessage(messageId, { position: targetMessage.position });
-    await updateQueuedMessage(targetMessage.id, { position: queuedMessages.value[index].position });
   }
 
   async function sendQueuedMessage(messageId) {
@@ -433,6 +416,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (['queued', 'running'].includes(run.status)) subscribeToRun(run.id, false);
   }
 
+  async function inspectChildRun(runId) {
+    const response = await api.get(`/agent/runs/${runId}`);
+    await inspectRun(response.data);
+  }
+
   async function selectSession(session) {
     closeEventSource();
     activeSessionId.value = session.id;
@@ -539,14 +527,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const response = await api.post(`/agent/plan-proposals/${proposalId}/decision`, { accepted });
       planningState.value = { ...planningState.value, proposal: response.data };
-      const [plansResponse, archivedResponse, operationsResponse] = await Promise.all([
+      const [plansResponse, archivedResponse, operationsResponse, runsResponse] = await Promise.all([
         api.get('/plans'),
         api.get('/plans?archived=true'),
         api.get('/operations'),
+        api.get('/agent/runs'),
       ]);
       plans.value = plansResponse.data;
       archivedPlans.value = archivedResponse.data;
       operations.value = operationsResponse.data;
+      runs.value = runsResponse.data;
+      if (currentRun.value) {
+        currentRun.value = runs.value.find((item) => item.id === currentRun.value.id) || currentRun.value;
+      }
       await loadSessions();
       return true;
     } catch (requestError) {
@@ -656,6 +649,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   function subscribeToRun(runId, clear = true) {
+    closeEventSource();
     if (clear) runEvents.value = [];
     eventSource = new EventSource(`/api/v1/agent/runs/${runId}/events/stream`);
     RUN_EVENTS.forEach((eventName) => {
@@ -736,7 +730,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         }
       });
     });
-    eventSource.onerror = () => closeEventSource();
+    // Native EventSource reconnects after transient failures. The endpoint
+    // replays persisted events and the sequence guard above removes duplicates.
+    eventSource.onerror = () => {};
   }
 
   async function cancelCurrentRun() {
@@ -843,6 +839,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     archivedSessions.value = archivedSessionsRes.data;
     emailConfiguration.value = emailRes.data;
     queuedMessages.value = queueRes.data || [];
+    if (currentRun.value) {
+      const refreshedRun = runs.value.find((item) => item.id === currentRun.value.id);
+      if (refreshedRun) {
+        currentRun.value = refreshedRun;
+        if (!activeSessionId.value && refreshedRun.session_id) {
+          activeSessionId.value = refreshedRun.session_id;
+        }
+      }
+    }
     await refreshCurrentPlan();
     await loadConversation(activeSessionId.value);
     await refreshProactiveState();
@@ -949,7 +954,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     pendingMemories,
     focusedPlan,
     activeSession,
-    createdPlanFromCurrentRun,
     loadWorkspace,
     selectPlan,
     openPlanList,
@@ -957,6 +961,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     startRun,
     triggerHeartbeat,
     inspectRun,
+    inspectChildRun,
     selectSession,
     renameSession,
     setSessionArchived,

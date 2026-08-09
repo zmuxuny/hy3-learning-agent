@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +15,7 @@ from app.models import AgentRun, Owner, Plan, UserProfile  # noqa: F401 - import
 from app.runtime.agent import AgentRuntime
 from app.runtime.events import emit_event
 from app.runtime.scheduler import proactive_scheduler
+from app.runtime.tasks import start_tracked_task
 
 
 async def ensure_local_owner() -> None:
@@ -107,7 +107,7 @@ async def lifespan(_: FastAPI):
     proactive_scheduler.start()
     try:
         for run_id in resumable_runs:
-            asyncio.create_task(AgentRuntime().run(run_id, resume=True))
+            start_tracked_task(run_id, AgentRuntime().run(run_id, resume=True))
         yield
     finally:
         await proactive_scheduler.stop()

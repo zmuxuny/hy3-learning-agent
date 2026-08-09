@@ -5,12 +5,12 @@ import { useWorkspaceStore } from '../stores/workspace';
 
 const store = useWorkspaceStore();
 const props = defineProps({
-  plan: { type: Object, default: null },
+  plan: { type: Object, required: true },
 });
 const plan = computed(() => {
-  const created = props.plan || store.createdPlanFromCurrentRun;
-  if (!created) return null;
-  return [...store.plans, ...store.archivedPlans].find((item) => Number(item.id) === Number(created.id)) || created;
+  return [...store.plans, ...store.archivedPlans].find(
+    (item) => Number(item.id) === Number(props.plan.id),
+  ) || props.plan;
 });
 const taskCount = computed(() => (
   plan.value?.stages?.reduce((count, stage) => count + (stage.tasks?.length || 0), 0) ?? 0

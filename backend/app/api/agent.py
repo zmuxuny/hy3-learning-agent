@@ -30,6 +30,7 @@ from app.runtime import AgentRuntime
 from app.runtime.events import emit_event, subscribe_stream, unsubscribe_stream
 from app.runtime.session_titles import initial_session_title
 from app.runtime.scheduler import proactive_scheduler
+from app.runtime.tasks import cancel_tracked_task, start_tracked_task
 from app.schemas import (
     AgentRunCreate,
     AgentRunRead,
@@ -56,7 +57,6 @@ from app.services import plans as plan_service
 
 router = APIRouter()
 runtime = AgentRuntime()
-active_tasks: set[asyncio.Task] = set()
 
 
 def _visible_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
@@ -64,9 +64,7 @@ def _visible_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
 
 
 def _start_runtime(run_id: str, **kwargs) -> None:
-    task = asyncio.create_task(runtime.run(run_id, **kwargs))
-    active_tasks.add(task)
-    task.add_done_callback(active_tasks.discard)
+    start_tracked_task(run_id, runtime.run(run_id, **kwargs))
 
 
 @router.post("/runs", response_model=AgentRunRead, status_code=202)
@@ -595,6 +593,9 @@ async def read_run(run_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/runs/{run_id}/events", response_model=list[RunEventRead])
 async def read_run_events(run_id: str, after: int = 0, db: AsyncSession = Depends(get_db)):
+    run = await db.get(AgentRun, run_id)
+    if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Run not found")
     result = await db.execute(
         select(RunEvent)
         .where(RunEvent.run_id == run_id, RunEvent.sequence > after)
@@ -675,8 +676,24 @@ async def cancel_run(run_id: str, db: AsyncSession = Depends(get_db)):
     run = await db.get(AgentRun, run_id)
     if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Run not found")
+    if run.status in {"completed", "failed", "cancelled"}:
+        return run
     run.cancel_requested = True
+    run.status = "cancelled"
+    run.checkpoint = None
+    run.pending_approval = None
+    run.completed_at = datetime.now(timezone.utc)
     await db.commit()
+    cancel_tracked_task(run.id)
+    await emit_event(db, run.id, "run.cancelled", "Agent run cancelled by user")
+    if run.parent_run_id:
+        await emit_event(
+            db,
+            run.parent_run_id,
+            "subagent.completed",
+            "子 Agent 已停止",
+            {"child_run_id": run.id, "status": "cancelled", "report": ""},
+        )
     await db.refresh(run)
     return run
 
@@ -756,6 +773,20 @@ async def list_queue(
 
 @router.post("/queue", response_model=QueuedMessageRead, status_code=201)
 async def enqueue_message(data: QueuedMessageCreate, db: AsyncSession = Depends(get_db)):
+    if data.session_id:
+        session = await db.get(Session, data.session_id)
+        if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
+            raise HTTPException(status_code=404, detail="Session not found")
+        if session.archived_at is not None:
+            raise HTTPException(status_code=409, detail="Restore the Session before queueing a message")
+        if session.plan_id != data.plan_id:
+            raise HTTPException(status_code=409, detail="Session focus does not match queued message plan")
+    if data.plan_id is not None:
+        plan = await db.get(Plan, data.plan_id)
+        if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        if plan.status == "archived":
+            raise HTTPException(status_code=409, detail="Restore the plan before queueing a message")
     scope_filter = QueuedMessage.session_id == data.session_id if data.session_id else QueuedMessage.session_id.is_(None)
     max_position = await db.scalar(
         select(func.coalesce(func.max(QueuedMessage.position), -1)).where(
@@ -825,6 +856,13 @@ async def send_queued_message(message_id: str, db: AsyncSession = Depends(get_db
     if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Queued message not found")
     if message.session_id:
+        session = await db.get(Session, message.session_id)
+        if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
+            raise HTTPException(status_code=409, detail="Queued Session no longer exists")
+        if session.archived_at is not None:
+            raise HTTPException(status_code=409, detail="Restore the Session before sending this message")
+        if session.plan_id != message.plan_id:
+            raise HTTPException(status_code=409, detail="Queued message no longer matches the Session focus")
         active_run = (await db.execute(
             select(AgentRun.id).where(
                 AgentRun.session_id == message.session_id,
@@ -834,6 +872,10 @@ async def send_queued_message(message_id: str, db: AsyncSession = Depends(get_db
         )).scalar_one_or_none()
         if active_run:
             raise HTTPException(status_code=409, detail="当前运行结束后会自动发送这条排队消息")
+    if message.plan_id is not None:
+        plan = await db.get(Plan, message.plan_id)
+        if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID or plan.status == "archived":
+            raise HTTPException(status_code=409, detail="Queued plan is unavailable or archived")
     run = AgentRun(
         owner_id=settings.DEFAULT_OWNER_ID,
         session_id=message.session_id,

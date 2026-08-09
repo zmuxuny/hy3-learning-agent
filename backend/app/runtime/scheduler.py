@@ -10,6 +10,7 @@ from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, LearningEvent, Notification, Plan, ReviewSchedule, Stage, Task, UserProfile
 from app.notifications.email import EmailReplyPoller
 from app.runtime.agent import AgentRuntime
+from app.runtime.tasks import start_tracked_task
 
 
 class ProactiveScheduler:
@@ -66,7 +67,7 @@ class ProactiveScheduler:
             await db.commit()
             await db.refresh(run)
             run_id = run.id
-        task = asyncio.create_task(AgentRuntime().run(run_id))
+        task = start_tracked_task(run_id, AgentRuntime().run(run_id))
         self._run_tasks.add(task)
         task.add_done_callback(self._run_tasks.discard)
         return run
@@ -211,7 +212,7 @@ class ProactiveScheduler:
         async with AsyncSessionLocal() as db:
             run_ids = await EmailReplyPoller().poll(db, settings.DEFAULT_OWNER_ID)
         for run_id in run_ids:
-            task = asyncio.create_task(AgentRuntime().run(run_id))
+            task = start_tracked_task(run_id, AgentRuntime().run(run_id))
             self._run_tasks.add(task)
             task.add_done_callback(self._run_tasks.discard)
 

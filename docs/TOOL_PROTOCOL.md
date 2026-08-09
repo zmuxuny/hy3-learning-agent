@@ -101,7 +101,7 @@ run.started → context.built → assistant.status
 
 - `plan_id` 是后端作用域，不依赖 Prompt 自觉。
 - Session 内的计划创建只能写提案；提案采用 API 幂等地物化正式计划，未采用时数据库中不存在对应 Plan。
-- 规划子 Run 不获得工具注册表，不写主 Session 消息，只返回报告；通用 spawn/join/cancel 仍未开放。
+- 规划子 Run 与通用子 Agent 共用受限执行器；`spawn/status/join/cancel` 已开放，但只能看到显式只读白名单和最小上下文，不写主 Session 消息或业务状态。
 - 核心任务只有在 `submission_check` 通过或提供有效证据后才能完成。
 - 删除、全局长期记忆和后台改变最终目标需要用户确认；阻塞型审批会暂停 Run 等待批准/拒绝，候选式确认只生成候选不中断运行。
 - `Operation` 保存正向和逆向 Patch。计划、任务、策展资源、测验、日历、提交验收和文件写入可从运行抽屉撤销。

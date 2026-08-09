@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun
 from app.runtime.events import emit_event
+from app.runtime.tasks import start_tracked_task
 from app.runtime.subagents import (
     READ_ONLY_TOOL_NAMES,
     cancel_child,
@@ -132,7 +133,8 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
         "objective": args.objective,
         "allowlist": sorted(allowlist),
     })
-    task = asyncio.create_task(
+    task = start_tracked_task(
+        child.id,
         _run_child_async(child, args.role, args.objective, snapshot.markdown, allowlist, args.max_steps)
     )
     _active_child_tasks.add(task)

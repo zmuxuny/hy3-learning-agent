@@ -24,14 +24,8 @@ async function stopOne(agent) {
   await api.post(`/agent/runs/${agent.child_run_id}/cancel`);
 }
 
-function openThread(agent) {
-  store.inspectRun({
-    id: agent.child_run_id,
-    plan_id: store.currentRun?.plan_id ?? null,
-    session_id: store.currentRun?.session_id ?? null,
-    status: 'running',
-    objective: agent.objective,
-  });
+async function openThread(agent) {
+  await store.inspectChildRun(agent.child_run_id);
 }
 </script>
 

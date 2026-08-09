@@ -26,7 +26,7 @@
 - `review_due`：到达计划的复习时间。
 - `email_reply`：IMAP 轮询从带回复令牌的邮件生成。
 
-每次运行都有唯一 `run_id`，前端通过 SSE 订阅运行事件。
+每次运行都有唯一 `run_id`，前端通过 SSE 订阅运行事件。进程内任务注册表也以 `run_id` 跟踪主 Run、心跳与子 Run，使取消接口可以终止真实协程；数据库中的 `cancel_requested/status` 仍是跨重启的权威状态。
 
 ## 2. 分层上下文
 
@@ -136,13 +136,18 @@ tool.completed
 subagent.started
 subagent.completed
 approval.required
+approval.resolved
 operation.committed
 notification.sent
+run.budget_exceeded
 run.completed
 run.failed
+run.cancelled
 ```
 
-用户可以停止 Run。写操作完成后，界面显示影响范围和撤销入口。
+`assistant.delta` / `assistant.reasoning` 只作为当前进程内的瞬时流事件，不写入事件表；断线重连后，下一次累计 delta 或持久化的 `assistant.message` 会恢复可见答案。持久化事件按 Run 串行分配 sequence，转向、取消与 Runtime 并发写入不会争用同一序号。
+
+用户可以即时停止 Run。写操作完成后，界面显示影响范围和撤销入口。
 
 ## 6. Intervention Guard
 
@@ -157,7 +162,7 @@ run.failed
 
 工具运行还维护每个 Run 独立的失败熔断器：同一工具连续失败两次后，本轮不再把该工具暴露给 Hy3，避免网络或依赖故障耗尽全部工具轮次；其他能力仍可继续使用，下一次 Run 会重新尝试。
 
-Web 工具对初始 URL 和每一次重定向都执行 SSRF 校验。localhost、IP 字面量、`.local`、RFC 私网和链路本地地址始终拒绝；在显式开启本地代理兼容时，只允许公网域名经 Clash/Mihomo 一类代理解析到 `198.18.0.0/15` 或 `2001::/32` 的 Fake-IP，直接请求这些地址仍被拒绝。搜索提供商通过统一接口选择，当前默认实现为 DuckDuckGo HTML。
+Web 工具对初始 URL 和每一次重定向都执行 SSRF 校验。localhost、IP 字面量、`.local`、RFC 私网和链路本地地址始终拒绝；在显式开启本地代理兼容时，只允许公网域名经 Clash/Mihomo 一类代理解析到 `198.18.0.0/15` 或 `2001::/32` 的 Fake-IP，直接请求这些地址仍被拒绝。搜索提供商通过统一接口选择，默认主源为 DuckDuckGo HTML、备选源为 Bing HTML，可通过环境变量关闭备选。
 
 学习资源采用两阶段协议：`web_search / web_open` 负责发现与正文核验，`resource_save` 才把 Agent 明确选择的课程、教程、实验、学习路径或参考资料写入计划。保存项包含平台、类型、难度、语言、核验摘要和适配理由，并生成可撤销 `Operation`；原始搜索结果不等同于课程资源。
 

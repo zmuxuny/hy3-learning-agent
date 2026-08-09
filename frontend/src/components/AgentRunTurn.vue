@@ -302,7 +302,7 @@ async function copyAnswer() {
         <small v-if="finalEvent?.type === 'run.failed'">错误编号：{{ finalEvent.payload?.code || 'run_failed' }}</small>
       </div>
 
-      <PlanCard v-if="store.currentRun?.created_plan_id" :plan="store.planForRun(store.currentRun.id)" />
+      <PlanCard v-if="store.planForRun(store.currentRun?.id)" :plan="store.planForRun(store.currentRun.id)" />
     </div>
   </div>
 </template>

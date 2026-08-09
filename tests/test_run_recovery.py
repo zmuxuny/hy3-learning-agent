@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.api.agent import decide_run_approval
 from app.db.database import AsyncSessionLocal
 from app.main import reconcile_interrupted_runs
-from app.models import AgentRun, Plan, RunEvent
+from app.models import AgentRun, ChatMessage, Plan, RunEvent, Session
 from app.runtime.agent import AgentRuntime
 from app.schemas import RunApprovalRequest
 from app.services import plans as plan_service
@@ -225,6 +225,57 @@ async def test_approval_endpoint_rejects_runs_without_pending_request():
         with pytest.raises(HTTPException) as error:
             await decide_run_approval(run_id, RunApprovalRequest(approved=True), db)
         assert error.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_resume_preserves_inline_card_snapshots_in_final_message():
+    async with AsyncSessionLocal() as db:
+        session = Session(owner_id="local", title="卡片恢复")
+        db.add(session)
+        await db.flush()
+        card = {
+            "kind": "planning_questions",
+            "source_run_id": "pending",
+            "created_at": "2026-08-09T00:00:00+00:00",
+            "intake": {"open_questions": [{"id": "goal", "prompt": "目标是什么？"}]},
+        }
+        run = AgentRun(
+            owner_id="local",
+            session_id=session.id,
+            trigger="user_message",
+            objective="继续规划",
+            status="queued",
+            checkpoint={
+                "step": 1,
+                "messages": [
+                    {"role": "system", "content": "system"},
+                    {"role": "user", "content": "continue"},
+                ],
+                "pending_tool_calls": [],
+                "cards": [card],
+            },
+        )
+        db.add(run)
+        await db.commit()
+        run_id = run.id
+
+    class FinalCompletions:
+        async def create(self, **_kwargs):
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                content="已恢复并保留提问卡。",
+                reasoning_content=None,
+                tool_calls=None,
+            ))])
+
+    runtime = AgentRuntime()
+    runtime.client = SimpleNamespace(chat=SimpleNamespace(completions=FinalCompletions()))
+    await runtime.run(run_id, resume=True)
+
+    async with AsyncSessionLocal() as db:
+        message = (await db.execute(
+            select(ChatMessage).where(ChatMessage.run_id == run_id, ChatMessage.role == "assistant")
+        )).scalars().one()
+        assert message.message_metadata["cards"][0]["kind"] == "planning_questions"
 
 
 async def _events(db, run_id):
