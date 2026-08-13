@@ -58,6 +58,12 @@ TOOL_OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "calendar_list": output("CalendarListOutput", events=list),
     "calendar_create": output("CalendarCreateOutput", event_id=int, starts_at=str, operation_id=str, undo_available=bool),
     "calendar_patch": output("CalendarPatchOutput", event_id=int, status=str, operation_id=str, undo_available=bool),
+    "competency_create": output("CompetencyCreateOutput", competency_id=int, key=str, created=bool, operation_id=str),
+    "competency_link": output("CompetencyLinkOutput", kind=str, link_id=int, competency_id=int, created=bool, operation_id=str),
+    "competency_edge": output("CompetencyEdgeOutput", edge_id=int, source_id=int, target_id=int, relation=str, created=bool, operation_id=str),
+    "competency_graph_get": output("CompetencyGraphGetOutput", plan_id=int | None, competencies=list, edges=list, plan_links=list, task_links=list, resource_links=list),
+    "competency_get": output("CompetencyGetOutput", id=int, key=str, title=str, description=str, type=str, scope=str, plan_id=int | None, status=str, version=int),
+    "evidence_list": output("EvidenceListOutput", observations=list),
 }
 
 

@@ -7,8 +7,16 @@
 - 新增追加式 `EvidenceObservation` 事实表：记录来源、计划/任务/Run/Session、评分、提示/迁移等级、Rubric 快照、因果链和幂等键。
 - 提交、提交验收、测验评分和带证据的任务完成会幂等双写；重复重试不会覆盖或复制原始观察。
 - `study_state_get` 与计划 Context 使用确定性证据摘要，返回稳定 digest、任务级证据阶段和明确的保守性说明。
+- 新增 `Artifact` 不可变来源表，提交、测验回答和任务证据都保留 `artifact_id`、内容哈希和可审计来源引用；审计会校验引用存在、URI 和哈希。
 - 新增 `scripts/rebuild-evidence.py`，可从 SQLite 重建投影、审计账本、保守回填明确的 v1 证据并原子写入派生 JSON，不修改事实层。
-- 追加 4 个 V2 账本测试场景；全量 pytest 当前为 121 项。
+- 新增 41 个网络无关的固定基线场景，支持重复运行并比较 digest；全量 pytest 当前为 126 项。
+
+## Unreleased · 2.0 M14 foundation
+
+### 显式技能图基础
+
+- 新增 `Competency`、技能关系、计划/任务/资源映射表；技能 key 不会根据标题相似度静默合并。
+- 新增 `competency_create/link/edge/get/graph` 与 `evidence_list` 工具，关系写入受计划作用域、审批、幂等和 prerequisite/part_of 环检测约束。
 
 ## 1.1.1 (2026-08-13)
 

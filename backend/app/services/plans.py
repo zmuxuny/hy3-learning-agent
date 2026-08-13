@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
@@ -193,7 +194,22 @@ async def update_task(
     db.add(learning_event)
     await db.flush()
     if evidence:
-        from app.services.evidence import append_observation
+        from app.services.evidence import append_observation, artifact_ref, create_artifact
+
+        completion_artifact, _ = await create_artifact(
+            db,
+            owner_id=owner_id,
+            artifact_type="task_evidence",
+            source_uri=f"task:{task.id}:event:{learning_event.id}",
+            idempotency_key=f"task:{task.id}:event:{learning_event.id}:artifact",
+            title=f"任务证据：{task.title}",
+            content=json.dumps(evidence, ensure_ascii=False, sort_keys=True, default=str),
+            metadata={"task_id": task.id, "event_id": learning_event.id},
+            plan_id=task.stage.plan_id,
+            task_id=task.id,
+            run_id=run_id,
+            session_id=session_id,
+        )
 
         await append_observation(
             db,
@@ -207,14 +223,7 @@ async def update_task(
             plan_id=task.stage.plan_id,
             task_id=task.id,
             payload={"evidence": evidence},
-            artifact_refs=[
-                {
-                    "kind": item.get("kind", "evidence"),
-                    "ref": item.get("path") or item.get("url") or item.get("value", ""),
-                }
-                for item in evidence
-                if isinstance(item, dict)
-            ],
+            artifact_refs=[artifact_ref(completion_artifact, kind="task_evidence")],
             occurred_at=task.completed_at or datetime.now(timezone.utc),
             correlation_id=run_id,
             causation_id=f"learning_event:{learning_event.id}",

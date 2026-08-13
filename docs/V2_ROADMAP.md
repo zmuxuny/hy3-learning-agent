@@ -388,9 +388,11 @@ M13 学习账本
 - `LearningEvent` 增加 v2 公共信封字段；新增 `EvidenceObservation` 追加式事实表，包含来源、作用域、Rubric/评价者、评分、提示/迁移等级、因果链和幂等键。
 - 提交创建、提交验收、测验评分和带证据的任务完成已经双写；同一幂等键重试会复用原观察，原观察没有编辑或物理删除路径。
 - `study_state_get` 与当前计划 Context 使用同一 `evidence-summary-v1` 确定性投影，输出每个任务的保守证据阶段和稳定 digest，不渲染成掌握度概率。
+- 新增独立不可变 `Artifact` 来源表；提交、测验回答和任务证据先登记 Artifact，再把 `artifact_id/content_hash` 写入观察。
 - `scripts/rebuild-evidence.py` 支持只读重建、完整性审计、v1 明确证据的可重复保守回填和派生 JSON 快照的原子写入。
+- 新增 41 个网络无关固定场景，覆盖跨计划隔离、冲突证据、提示/迁移、自述、替代/失效、Artifact、因果链和重建 digest。
 
-尚未满足 M13 完成门槛的项目：独立 Artifact 引用模型和至少 40 个固定学习场景；`scripts/reset-data.sh` 已在移动本地状态前接入账本审计。完成剩余项目后才进入 M14 的技能图落库。
+尚未满足 M13 正式标签的项目：v1 回填的可审计失效/回滚策略；`scripts/reset-data.sh` 已在移动本地状态前接入账本审计。M14 的第一版显式技能节点、计划/任务/资源映射、关系环检测和只读工具已在 `develop` 落地，但计划提案技能草案、版本化图编辑和正式状态投影仍未完成。
 
 ### M14：技能图与计划映射
 
@@ -403,6 +405,14 @@ M13 学习账本
 - 先提供后端/API 和最小只读视图，不提前精雕完整技能 UI。
 
 验收：一个计划可解释每项任务训练或证明什么；跨计划相似技能不会静默合并；图修改可审计、可撤销。
+
+#### M14 当前实现状态（2026-08-13）
+
+- 已新增 `Competency`、`CompetencyEdge`、`PlanCompetencyLink`、`TaskCompetencyLink` 和 `ResourceCompetencyLink` 增量表。
+- 已提供 `competency_create`、`competency_link`、`competency_edge`、`competency_graph_get`、`competency_get` 和 `evidence_list`，全部具有正式输出 Schema；后台创建/映射需要审批，计划技能范围不可跨计划写入。
+- `prerequisite` 与 `part_of` 关系在写入前执行确定性环检测；同 key 不会根据标题相似度静默合并，重复调用按工具幂等键复用。
+
+尚未实现：计划提案中的技能草案物化、图版本 diff/撤销界面、Competency 与 LearnerCompetencyState 的 reducer 连接。后续 M15 才允许技能节点承载学习状态。
 
 ### M15：学习者状态与复习引擎
 

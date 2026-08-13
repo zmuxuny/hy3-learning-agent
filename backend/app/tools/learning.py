@@ -22,7 +22,7 @@ from app.models import (
     UserProfile,
 )
 from app.schemas import TaskCreate, TaskUpdate
-from app.services.evidence import append_observation, build_plan_evidence_state
+from app.services.evidence import append_observation, artifact_ref, build_plan_evidence_state, create_artifact
 from app.services import plans as plan_service
 from app.tools.base import ToolContext, ToolDefinition, json_safe
 
@@ -261,6 +261,20 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
     )
     ctx.db.add(submission)
     await ctx.db.flush()
+    submission_artifact, _ = await create_artifact(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        artifact_type="submission",
+        source_uri=f"submission:{submission.id}",
+        idempotency_key=f"submission:{submission.id}:artifact",
+        title=f"提交：{task.title}",
+        content=submission.content,
+        metadata={"submission_type": submission.submission_type, "artifacts": submission.artifacts},
+        plan_id=submission.plan_id,
+        task_id=submission.task_id,
+        run_id=ctx.run_id,
+        session_id=ctx.session_id,
+    )
     learning_event = LearningEvent(
         owner_id=ctx.owner_id, plan_id=task.stage.plan_id, task_id=task.id, run_id=ctx.run_id,
         event_type="submission.created", summary=f"Submitted evidence for: {task.title}",
@@ -286,14 +300,7 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
             "artifact_count": len(submission.artifacts),
             "has_text": bool(submission.content.strip()),
         },
-        artifact_refs=[
-            {
-                "kind": item.get("kind", "artifact"),
-                "ref": item.get("path") or item.get("url") or item.get("name", ""),
-            }
-            for item in submission.artifacts
-            if isinstance(item, dict)
-        ],
+        artifact_refs=[artifact_ref(submission_artifact, kind="submission")],
         occurred_at=submission.created_at,
         correlation_id=ctx.run_id,
         causation_id=f"learning_event:{learning_event.id}",
@@ -348,6 +355,20 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
     submission.feedback = args.feedback
     submission.status = "accepted" if passed else "revision_required"
     submission.checked_at = datetime.now(timezone.utc)
+    submission_artifact, _ = await create_artifact(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        artifact_type="submission",
+        source_uri=f"submission:{submission.id}",
+        idempotency_key=f"submission:{submission.id}:artifact",
+        title=f"提交：任务 {submission.task_id}",
+        content=submission.content,
+        metadata={"submission_type": submission.submission_type, "artifacts": submission.artifacts},
+        plan_id=submission.plan_id,
+        task_id=submission.task_id,
+        run_id=submission.run_id or ctx.run_id,
+        session_id=ctx.session_id,
+    )
     evidence = [{"submission_id": submission.id, "score": args.score, "checks": args.checks}]
     award_inverse = None
     if passed and task.status != "completed":
@@ -388,14 +409,7 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
         rubric_snapshot={"pass_threshold": args.pass_threshold, "checks": args.checks},
         evaluator={"type": "agent", "run_id": ctx.run_id},
         payload={"feedback": args.feedback},
-        artifact_refs=[
-            {
-                "kind": item.get("kind", "artifact"),
-                "ref": item.get("path") or item.get("url") or item.get("name", ""),
-            }
-            for item in submission.artifacts
-            if isinstance(item, dict)
-        ],
+        artifact_refs=[artifact_ref(submission_artifact, kind="submission")],
         occurred_at=submission.checked_at,
         correlation_id=ctx.run_id,
         causation_id=f"learning_event:{learning_event.id}",

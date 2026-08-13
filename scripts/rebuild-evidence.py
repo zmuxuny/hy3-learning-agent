@@ -26,7 +26,7 @@ from sqlalchemy import select  # noqa: E402
 
 from app.core.config import settings  # noqa: E402
 from app.db.database import AsyncSessionLocal, create_schema  # noqa: E402
-from app.models import EvidenceObservation  # noqa: E402
+from app.models import Artifact, EvidenceObservation  # noqa: E402
 from app.services.evidence import (  # noqa: E402
     audit_observations,
     backfill_legacy_observations,
@@ -55,12 +55,16 @@ async def run(args: argparse.Namespace) -> int:
         if args.plan_id is not None:
             query = query.where(EvidenceObservation.plan_id == args.plan_id)
         observations = list((await db.execute(query.order_by(EvidenceObservation.id))).scalars())
+        artifact_query = select(Artifact).where(Artifact.owner_id == settings.DEFAULT_OWNER_ID)
+        if args.plan_id is not None:
+            artifact_query = artifact_query.where(Artifact.plan_id == args.plan_id)
+        artifacts = list((await db.execute(artifact_query.order_by(Artifact.id))).scalars())
         result: dict = {
             "owner_id": settings.DEFAULT_OWNER_ID,
             "plan_id": args.plan_id,
             "backfill": backfill,
             "projection": build_evidence_state(observations) if args.plan_id is not None else None,
-            "audit": audit_observations(observations) if args.audit else None,
+            "audit": audit_observations(observations, artifacts) if args.audit else None,
         }
         if args.plan_id is None:
             plan_ids = {

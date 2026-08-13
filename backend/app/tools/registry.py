@@ -13,6 +13,7 @@ from app.services import plans as plan_service
 from app.services.sessions import link_session_plan
 from app.tools.base import EmptyArgs, ToolContext, ToolDefinition, json_safe, parse_arguments
 from app.tools.calendar import CALENDAR_TOOLS
+from app.tools.competencies import COMPETENCY_TOOLS
 from app.tools.contracts import attach_output_contracts
 from app.tools.learning import LEARNING_TOOLS
 from app.tools.memory import MEMORY_TOOLS
@@ -504,7 +505,22 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
 
         await evaluate_achievements(ctx.db, ctx.owner_id)
     await ctx.db.flush()
-    from app.services.evidence import append_observation
+    from app.services.evidence import append_observation, artifact_ref, create_artifact
+
+    quiz_artifact, _ = await create_artifact(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        artifact_type="quiz_answer",
+        source_uri=f"quiz:{quiz.id}:answer",
+        idempotency_key=f"quiz:{quiz.id}:answer:artifact",
+        title=f"测验回答：{quiz.id}",
+        content=args.answer,
+        metadata={"quiz_id": quiz.id, "evidence": args.evidence},
+        plan_id=quiz.plan_id,
+        task_id=quiz.task_id,
+        run_id=ctx.run_id,
+        session_id=ctx.session_id,
+    )
 
     await append_observation(
         ctx.db,
@@ -522,14 +538,7 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         rubric_snapshot=quiz.rubric,
         evaluator={"type": "agent", "run_id": ctx.run_id},
         payload={"answer_length": len(args.answer), "evidence": args.evidence},
-        artifact_refs=[
-            {
-                "kind": item.get("kind", "evidence"),
-                "ref": item.get("path") or item.get("url") or item.get("value", ""),
-            }
-            for item in args.evidence
-            if isinstance(item, dict)
-        ],
+        artifact_refs=[artifact_ref(quiz_artifact, kind="quiz_answer")],
         occurred_at=quiz.graded_at,
         correlation_id=ctx.run_id,
         causation_id=f"learning_event:{learning_event.id}",
@@ -624,7 +633,7 @@ TOOLS = [
     ToolDefinition("quiz_grade", "Store an evidence-based quiz grade and schedule the next review.", QuizGradeArgs, quiz_grade, idempotent=True),
     ToolDefinition("memory_propose", "Propose a long-term memory for user confirmation.", MemoryProposalArgs, memory_propose, idempotent=True),
     ToolDefinition("notification_send", "Send an in-app notification and optionally queue email/browser delivery.", NotificationArgs, notification_send, idempotent=True),
-] + PLANNING_TOOLS + SUBAGENT_TOOLS + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS
+] + PLANNING_TOOLS + SUBAGENT_TOOLS + LEARNING_TOOLS + MEMORY_TOOLS + WEB_TOOLS + WORKSPACE_TOOLS + CALENDAR_TOOLS + COMPETENCY_TOOLS
 
 attach_output_contracts(TOOLS)
 

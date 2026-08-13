@@ -441,6 +441,7 @@ class EvidenceObservation(Base):
     session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
+    competency_id: Mapped[int | None] = mapped_column(ForeignKey("competencies.id", ondelete="SET NULL"), nullable=True, index=True)
     competency_key: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
     outcome: Mapped[str] = mapped_column(String(40), index=True)
     normalized_score: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -462,6 +463,110 @@ class EvidenceObservation(Base):
     )
     invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     invalidation_reason: Mapped[str] = mapped_column(Text, default="")
+
+
+class Artifact(Base):
+    """Immutable source reference used to support an evidence observation."""
+
+    __tablename__ = "artifacts"
+    __table_args__ = (
+        UniqueConstraint("owner_id", "idempotency_key", name="uq_artifact_owner_idempotency"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    artifact_type: Mapped[str] = mapped_column(String(32), index=True)
+    source_uri: Mapped[str] = mapped_column(String(500))
+    title: Mapped[str] = mapped_column(String(300), default="")
+    content_hash: Mapped[str] = mapped_column(String(128), default="")
+    size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    artifact_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(180), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class Competency(Base):
+    """An explicitly named skill/concept node; keys never merge silently."""
+
+    __tablename__ = "competencies"
+    __table_args__ = (UniqueConstraint("owner_id", "key", name="uq_competency_owner_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    key: Mapped[str] = mapped_column(String(160), index=True)
+    title: Mapped[str] = mapped_column(String(240))
+    description: Mapped[str] = mapped_column(Text, default="")
+    competency_type: Mapped[str] = mapped_column(String(32), default="concept")
+    scope: Mapped[str] = mapped_column(String(16), default="global", index=True)
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(24), default="active", index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class CompetencyEdge(Base):
+    __tablename__ = "competency_edges"
+    __table_args__ = (
+        UniqueConstraint("owner_id", "source_id", "target_id", "relation", name="uq_competency_edge"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    target_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    relation: Mapped[str] = mapped_column(String(24), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PlanCompetencyLink(Base):
+    __tablename__ = "plan_competency_links"
+    __table_args__ = (
+        UniqueConstraint("owner_id", "plan_id", "competency_id", name="uq_plan_competency_link"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), index=True)
+    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    target_stage: Mapped[str] = mapped_column(String(24), default="practicing")
+    relation: Mapped[str] = mapped_column(String(24), default="targets")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TaskCompetencyLink(Base):
+    __tablename__ = "task_competency_links"
+    __table_args__ = (
+        UniqueConstraint("owner_id", "task_id", "competency_id", "relation", name="uq_task_competency_link"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), index=True)
+    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    relation: Mapped[str] = mapped_column(String(24), default="teaches")
+    target_stage: Mapped[str] = mapped_column(String(24), default="practicing")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ResourceCompetencyLink(Base):
+    __tablename__ = "resource_competency_links"
+    __table_args__ = (
+        UniqueConstraint("owner_id", "resource_id", "competency_id", name="uq_resource_competency_link"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    resource_id: Mapped[int] = mapped_column(ForeignKey("learning_resources.id", ondelete="CASCADE"), index=True)
+    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    depth: Mapped[str] = mapped_column(String(24), default="overview")
+    relation: Mapped[str] = mapped_column(String(24), default="covers")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Memory(Base):

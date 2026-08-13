@@ -4,7 +4,7 @@
 
 工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。每个工具同时注册 Pydantic 输入模型和输出模型；输入用于 Function Calling，成功输出在回填模型前再次校验。完整契约通过 `GET /api/v1/settings/tools` 暴露。高层流程由 Hy3 规划；用户消息、后台候选、复习到期和邮件回复共享同一 `AgentRuntime`。
 
-## 42 个已注册工具
+## 48 个已注册工具
 
 `GET /api/v1/settings/tools` 对每个工具返回正式 `input_schema`、`output_schema`、`idempotent` 与 `blocking`。`blocking=true` 表示该工具在特定 Guard 条件下可能暂停 Run；是否阻塞仍由本次触发来源、操作字段和审批状态决定。
 
@@ -64,6 +64,16 @@
 | `file_list` / `file_read` / `file_write` | 操作个人 Agent 工作区内的学习文件 |
 | `code_execute` | 有超时和输出上限地运行 Python/Bash；不是安全容器 |
 | `calendar_list` / `calendar_create` / `calendar_patch` | 读取、创建和调整个人学习日历 |
+
+### V2 技能图与证据
+
+| 工具 | 作用 |
+| --- | --- |
+| `competency_create` | 创建明确命名的技能/概念节点；不会根据标题相似度自动合并 |
+| `competency_link` | 将技能映射到计划、任务或已策展资源，区分 targets / teaches / assesses / covers |
+| `competency_edge` | 建立技能关系；`prerequisite` 与 `part_of` 会做环检测 |
+| `competency_graph_get` / `competency_get` | 读取计划范围或单个技能图节点与映射 |
+| `evidence_list` | 按计划、任务或技能读取不可变证据观察，并保留 Artifact 来源引用 |
 
 ### 通信
 

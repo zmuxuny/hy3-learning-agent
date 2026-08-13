@@ -4,10 +4,10 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.database import AsyncSessionLocal
-from app.models import AgentRun, EvidenceObservation, LearningEvent, TaskSubmission
+from app.models import AgentRun, Artifact, EvidenceObservation, LearningEvent, TaskSubmission
 from app.schemas import PlanCreate, StageCreate, TaskCreate
 from app.services import plans as plan_service
-from app.services.evidence import append_observation, backfill_legacy_observations, build_evidence_state
+from app.services.evidence import append_observation, audit_observations, backfill_legacy_observations, build_evidence_state
 from app.tools import ToolContext, execute_tool
 
 
@@ -109,6 +109,15 @@ async def test_learning_loop_dual_writes_evidence_and_study_state():
             )
         )
         assert observation_count == 3  # submission, verdict, evidence-backed completion
+        artifacts = list((await db.execute(
+            select(Artifact).where(Artifact.plan_id == plan.id)
+        )).scalars())
+        assert {item.artifact_type for item in artifacts} == {"submission", "task_evidence"}
+        observations = list((await db.execute(
+            select(EvidenceObservation).where(EvidenceObservation.plan_id == plan.id)
+        )).scalars())
+        artifact_ids = {item.id for item in artifacts}
+        assert all(ref["artifact_id"] in artifact_ids for item in observations for ref in item.artifact_refs)
 
         state = await execute_tool("study_state_get", json.dumps({"plan_id": plan.id}), ctx)
         assert state["ok"] is True
@@ -212,3 +221,32 @@ async def test_v1_backfill_is_conservative_and_repeatable():
         )).scalars())
         assert {record.source_type for record in records} == {"submission", "task_completion"}
         assert all(record.payload.get("backfilled") is True for record in records)
+
+
+@pytest.mark.asyncio
+async def test_artifact_audit_validates_source_existence_and_hash():
+    async with AsyncSessionLocal() as db:
+        artifact = Artifact(
+            owner_id="local",
+            artifact_type="submission",
+            source_uri="submission:fixture",
+            content_hash="abc",
+            idempotency_key="fixture:artifact",
+        )
+        db.add(artifact)
+        await db.flush()
+        observation, _ = await append_observation(
+            db,
+            owner_id="local",
+            source_type="submission",
+            source_id="fixture",
+            outcome="submitted",
+            idempotency_key="fixture:observation",
+            artifact_refs=[{"artifact_id": artifact.id, "uri": artifact.source_uri, "content_hash": "wrong"}],
+        )
+        await db.commit()
+        report = audit_observations([observation], [artifact])
+        assert report["ok"] is False
+        assert any("hash mismatch" in error for error in report["errors"])
+        missing = audit_observations([observation], [])
+        assert any("missing artifact" in error for error in missing["errors"])

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.database import get_db
 from app.core.config import PROJECT_ROOT
-from app.models import ActivityDay, CalendarEvent, LearningEvent, LearningResource, Operation, Plan, PlanProposal, Quiz, ReviewSchedule, Session, Stage, Task, TaskSubmission, UserProfile
+from app.models import ActivityDay, CalendarEvent, Competency, CompetencyEdge, LearningEvent, LearningResource, Operation, Plan, PlanCompetencyLink, PlanProposal, Quiz, ResourceCompetencyLink, ReviewSchedule, Session, Stage, Task, TaskCompetencyLink, TaskSubmission, UserProfile
 from app.schemas import OperationRead
 from app.services.plans import recompute_plan_state
 
@@ -232,6 +232,35 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             review = await db.get(ReviewSchedule, int(inverse["delete_review"]))
             if review:
                 await db.delete(review)
+    elif operation.entity_type == "competency" and "delete" in inverse:
+        competency = await db.get(Competency, int(inverse["delete"]))
+        if competency:
+            audit_plan_id = competency.plan_id
+            await db.delete(competency)
+    elif operation.entity_type == "competency_edge" and "delete" in inverse:
+        edge = await db.get(CompetencyEdge, int(inverse["delete"]))
+        if edge:
+            await db.delete(edge)
+    elif operation.entity_type == "plan_competency_link" and "delete" in inverse:
+        link = await db.get(PlanCompetencyLink, int(inverse["delete"]))
+        if link:
+            audit_plan_id = link.plan_id
+            await db.delete(link)
+    elif operation.entity_type == "task_competency_link" and "delete" in inverse:
+        link = await db.get(TaskCompetencyLink, int(inverse["delete"]))
+        if link:
+            task = await db.get(Task, link.task_id)
+            if task:
+                stage = await db.get(Stage, task.stage_id)
+                audit_plan_id = stage.plan_id if stage else None
+                audit_task_id = task.id
+            await db.delete(link)
+    elif operation.entity_type == "resource_competency_link" and "delete" in inverse:
+        link = await db.get(ResourceCompetencyLink, int(inverse["delete"]))
+        if link:
+            resource = await db.get(LearningResource, link.resource_id)
+            audit_plan_id = resource.plan_id if resource else None
+            await db.delete(link)
     else:
         raise HTTPException(status_code=409, detail="No supported inverse operation")
 

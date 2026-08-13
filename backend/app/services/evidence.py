@@ -12,12 +12,12 @@ import hashlib
 import json
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Iterable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import EvidenceObservation, LearningEvent, Quiz, TaskSubmission
+from app.models import Artifact, EvidenceObservation, LearningEvent, Quiz, TaskSubmission
 
 
 EVIDENCE_SCHEMA_VERSION = 1
@@ -35,6 +35,65 @@ def _stable_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
 
 
+async def create_artifact(
+    db: AsyncSession,
+    *,
+    owner_id: str,
+    artifact_type: str,
+    source_uri: str,
+    idempotency_key: str,
+    title: str = "",
+    content: str | bytes | None = None,
+    metadata: dict[str, Any] | None = None,
+    size_bytes: int | None = None,
+    plan_id: int | None = None,
+    task_id: int | None = None,
+    run_id: str | None = None,
+    session_id: str | None = None,
+) -> tuple[Artifact, bool]:
+    """Register an immutable source artifact and return a stable reference."""
+
+    existing = await db.scalar(
+        select(Artifact).where(
+            Artifact.owner_id == owner_id,
+            Artifact.idempotency_key == idempotency_key,
+        )
+    )
+    if existing is not None:
+        return existing, False
+    raw = content.encode("utf-8") if isinstance(content, str) else content
+    # File/link-only submissions still need a stable source fingerprint.  In
+    # that case hash the canonical metadata (and finally the URI) instead of
+    # leaving an unverifiable empty hash in the evidence ledger.
+    hash_input = raw if raw is not None else _stable_json(metadata or {"source_uri": source_uri}).encode("utf-8")
+    artifact = Artifact(
+        owner_id=owner_id,
+        artifact_type=artifact_type,
+        source_uri=source_uri,
+        title=title,
+        content_hash=hashlib.sha256(hash_input).hexdigest(),
+        size_bytes=size_bytes if size_bytes is not None else len(hash_input),
+        artifact_metadata=metadata or {},
+        plan_id=plan_id,
+        task_id=task_id,
+        run_id=run_id,
+        session_id=session_id,
+        idempotency_key=idempotency_key,
+    )
+    db.add(artifact)
+    await db.flush()
+    return artifact, True
+
+
+def artifact_ref(artifact: Artifact, *, kind: str | None = None) -> dict[str, Any]:
+    return {
+        "artifact_id": artifact.id,
+        "kind": kind or artifact.artifact_type,
+        "uri": artifact.source_uri,
+        "content_hash": artifact.content_hash,
+    }
+
+
 async def append_observation(
     db: AsyncSession,
     *,
@@ -47,6 +106,7 @@ async def append_observation(
     session_id: str | None = None,
     plan_id: int | None = None,
     task_id: int | None = None,
+    competency_id: int | None = None,
     competency_key: str | None = None,
     normalized_score: float | None = None,
     is_correct: bool | None = None,
@@ -78,6 +138,7 @@ async def append_observation(
         return existing, False
 
     score = None if normalized_score is None else max(0.0, min(1.0, float(normalized_score)))
+    normalized_artifact_refs = artifact_refs or []
     observation = EvidenceObservation(
         owner_id=owner_id,
         source_type=source_type,
@@ -86,6 +147,7 @@ async def append_observation(
         session_id=session_id,
         plan_id=plan_id,
         task_id=task_id,
+        competency_id=competency_id,
         competency_key=competency_key,
         outcome=outcome,
         normalized_score=score,
@@ -94,7 +156,7 @@ async def append_observation(
         transfer_level=transfer_level,
         rubric_snapshot=rubric_snapshot or {},
         evaluator=evaluator or {},
-        artifact_refs=artifact_refs or [],
+        artifact_refs=normalized_artifact_refs,
         payload=payload or {},
         occurred_at=occurred_at or _utc_now(),
         recorded_at=_utc_now(),
@@ -282,6 +344,19 @@ async def backfill_legacy_observations(
         submission_query = submission_query.where(TaskSubmission.plan_id == plan_id)
     submissions = list((await db.execute(submission_query.order_by(TaskSubmission.id))).scalars())
     for submission in submissions:
+        submission_artifact, _ = await create_artifact(
+            db,
+            owner_id=owner_id,
+            artifact_type="submission",
+            source_uri=f"submission:{submission.id}",
+            idempotency_key=f"submission:{submission.id}:artifact",
+            title=f"历史提交：{submission.task_id}",
+            content=submission.content,
+            metadata={"submission_type": submission.submission_type, "artifacts": submission.artifacts},
+            plan_id=submission.plan_id,
+            task_id=submission.task_id,
+            run_id=submission.run_id,
+        )
         _, was_created = await append_observation(
             db,
             owner_id=owner_id,
@@ -298,11 +373,7 @@ async def backfill_legacy_observations(
                 "has_text": bool((submission.content or "").strip()),
                 "backfilled": True,
             },
-            artifact_refs=[
-                {"kind": item.get("kind", "artifact"), "ref": item.get("path") or item.get("url") or item.get("name", "")}
-                for item in (submission.artifacts or [])
-                if isinstance(item, dict)
-            ],
+            artifact_refs=[artifact_ref(submission_artifact, kind="submission")],
             occurred_at=submission.created_at or _utc_now(),
             correlation_id=submission.run_id,
         )
@@ -323,11 +394,7 @@ async def backfill_legacy_observations(
             normalized_score=(submission.score / 100) if submission.score is not None else None,
             is_correct=submission.status == "accepted",
             payload={"feedback": submission.feedback or "", "backfilled": True},
-            artifact_refs=[
-                {"kind": item.get("kind", "artifact"), "ref": item.get("path") or item.get("url") or item.get("name", "")}
-                for item in (submission.artifacts or [])
-                if isinstance(item, dict)
-            ],
+            artifact_refs=[artifact_ref(submission_artifact, kind="submission")],
             occurred_at=submission.checked_at or submission.created_at or _utc_now(),
             correlation_id=submission.run_id,
         )
@@ -339,6 +406,19 @@ async def backfill_legacy_observations(
         quiz_query = quiz_query.where(Quiz.plan_id == plan_id)
     quizzes = list((await db.execute(quiz_query.order_by(Quiz.id))).scalars())
     for quiz in quizzes:
+        quiz_artifact, _ = await create_artifact(
+            db,
+            owner_id=owner_id,
+            artifact_type="quiz_answer",
+            source_uri=f"quiz:{quiz.id}:answer",
+            idempotency_key=f"quiz:{quiz.id}:answer:artifact",
+            title=f"历史测验回答：{quiz.id}",
+            content=quiz.answer,
+            metadata={"quiz_id": quiz.id, "evidence": quiz.evidence},
+            plan_id=quiz.plan_id,
+            task_id=quiz.task_id,
+            run_id=quiz.run_id,
+        )
         _, was_created = await append_observation(
             db,
             owner_id=owner_id,
@@ -354,6 +434,7 @@ async def backfill_legacy_observations(
             rubric_snapshot=quiz.rubric or {},
             evaluator={"type": "legacy_record", "backfilled": True},
             payload={"evidence": quiz.evidence or []},
+            artifact_refs=[artifact_ref(quiz_artifact, kind="quiz_answer")],
             occurred_at=quiz.graded_at or quiz.created_at or _utc_now(),
             correlation_id=quiz.run_id,
         )
@@ -373,6 +454,19 @@ async def backfill_legacy_observations(
         if not evidence or event.task_id is None:
             continue
         after = payload.get("after") or {}
+        completion_artifact, _ = await create_artifact(
+            db,
+            owner_id=owner_id,
+            artifact_type="task_evidence",
+            source_uri=f"task:{event.task_id}:event:{event.id}",
+            idempotency_key=f"task:{event.task_id}:event:{event.id}:artifact",
+            title=f"历史任务证据：{event.task_id}",
+            content=_stable_json(evidence),
+            metadata={"task_id": event.task_id, "event_id": event.id},
+            plan_id=event.plan_id,
+            task_id=event.task_id,
+            run_id=event.run_id,
+        )
         _, was_created = await append_observation(
             db,
             owner_id=owner_id,
@@ -384,6 +478,7 @@ async def backfill_legacy_observations(
             plan_id=event.plan_id,
             task_id=event.task_id,
             payload={"evidence": evidence, "backfilled": True},
+            artifact_refs=[artifact_ref(completion_artifact, kind="task_evidence")],
             occurred_at=event.occurred_at or event.created_at or _utc_now(),
             correlation_id=event.run_id,
             causation_id=f"learning_event:{event.id}",
@@ -395,12 +490,16 @@ async def backfill_legacy_observations(
     return {"created": created, "skipped": skipped}
 
 
-def audit_observations(observations: list[EvidenceObservation]) -> dict[str, Any]:
+def audit_observations(
+    observations: list[EvidenceObservation],
+    artifacts: Iterable[Artifact] | None = None,
+) -> dict[str, Any]:
     """Run cheap, provider-independent integrity checks for the evidence ledger."""
 
     errors: list[str] = []
     seen_keys: set[str] = set()
     observation_ids = {item.id for item in observations}
+    artifact_by_id = {item.id: item for item in artifacts} if artifacts is not None else None
     for item in observations:
         if not item.idempotency_key:
             errors.append(f"observation:{item.id} missing idempotency_key")
@@ -410,6 +509,22 @@ def audit_observations(observations: list[EvidenceObservation]) -> dict[str, Any
             seen_keys.add(item.idempotency_key)
         if not item.source_type or not item.source_id:
             errors.append(f"observation:{item.id} missing source identity")
+        if item.source_type in {"submission", "quiz", "task_completion", "code_run", "file"} and not item.artifact_refs:
+            errors.append(f"observation:{item.id} missing artifact reference")
+        for ref in item.artifact_refs or []:
+            if not isinstance(ref, dict) or not ref.get("artifact_id"):
+                errors.append(f"observation:{item.id} has malformed artifact reference")
+                continue
+            if artifact_by_id is not None:
+                artifact_id = ref["artifact_id"]
+                artifact = artifact_by_id.get(artifact_id)
+                if artifact is None:
+                    errors.append(f"observation:{item.id} references missing artifact:{artifact_id}")
+                else:
+                    if ref.get("content_hash") and ref["content_hash"] != artifact.content_hash:
+                        errors.append(f"observation:{item.id} artifact hash mismatch:{artifact_id}")
+                    if ref.get("uri") and ref["uri"] != artifact.source_uri:
+                        errors.append(f"observation:{item.id} artifact uri mismatch:{artifact_id}")
         if item.normalized_score is not None and not 0 <= item.normalized_score <= 1:
             errors.append(f"observation:{item.id} score outside [0,1]")
         if item.invalidated_at is not None and not item.invalidation_reason.strip():

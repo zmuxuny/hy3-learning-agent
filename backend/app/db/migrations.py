@@ -223,6 +223,140 @@ async def migrate_sqlite_schema(connection: AsyncConnection) -> None:
         "UPDATE evidence_observations SET recorded_at = occurred_at WHERE recorded_at IS NULL"
     ))
     await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS artifacts (
+            id INTEGER PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            artifact_type VARCHAR(32) NOT NULL,
+            source_uri VARCHAR(500) NOT NULL,
+            title VARCHAR(300) NOT NULL DEFAULT '',
+            content_hash VARCHAR(128) NOT NULL DEFAULT '',
+            size_bytes INTEGER,
+            metadata JSON NOT NULL DEFAULT '{}',
+            plan_id INTEGER,
+            task_id INTEGER,
+            run_id VARCHAR(64),
+            session_id VARCHAR(64),
+            idempotency_key VARCHAR(180) NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_artifact_owner_idempotency UNIQUE (owner_id, idempotency_key),
+            FOREIGN KEY(owner_id) REFERENCES owners(id),
+            FOREIGN KEY(plan_id) REFERENCES plans(id) ON DELETE SET NULL,
+            FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL,
+            FOREIGN KEY(run_id) REFERENCES agent_runs(id) ON DELETE SET NULL,
+            FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE SET NULL
+        )
+        """
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS competencies (
+            id INTEGER PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            key VARCHAR(160) NOT NULL,
+            title VARCHAR(240) NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            competency_type VARCHAR(32) NOT NULL DEFAULT 'concept',
+            scope VARCHAR(16) NOT NULL DEFAULT 'global',
+            plan_id INTEGER,
+            status VARCHAR(24) NOT NULL DEFAULT 'active',
+            version INTEGER NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_competency_owner_key UNIQUE (owner_id, key),
+            FOREIGN KEY(owner_id) REFERENCES owners(id),
+            FOREIGN KEY(plan_id) REFERENCES plans(id) ON DELETE CASCADE
+        )
+        """
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS competency_edges (
+            id INTEGER PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            source_id INTEGER NOT NULL,
+            target_id INTEGER NOT NULL,
+            relation VARCHAR(24) NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_competency_edge UNIQUE (owner_id, source_id, target_id, relation),
+            FOREIGN KEY(owner_id) REFERENCES owners(id),
+            FOREIGN KEY(source_id) REFERENCES competencies(id) ON DELETE CASCADE,
+            FOREIGN KEY(target_id) REFERENCES competencies(id) ON DELETE CASCADE
+        )
+        """
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS plan_competency_links (
+            id INTEGER PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            plan_id INTEGER NOT NULL,
+            competency_id INTEGER NOT NULL,
+            target_stage VARCHAR(24) NOT NULL DEFAULT 'practicing',
+            relation VARCHAR(24) NOT NULL DEFAULT 'targets',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_plan_competency_link UNIQUE (owner_id, plan_id, competency_id),
+            FOREIGN KEY(owner_id) REFERENCES owners(id),
+            FOREIGN KEY(plan_id) REFERENCES plans(id) ON DELETE CASCADE,
+            FOREIGN KEY(competency_id) REFERENCES competencies(id) ON DELETE CASCADE
+        )
+        """
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS task_competency_links (
+            id INTEGER PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            task_id INTEGER NOT NULL,
+            competency_id INTEGER NOT NULL,
+            relation VARCHAR(24) NOT NULL DEFAULT 'teaches',
+            target_stage VARCHAR(24) NOT NULL DEFAULT 'practicing',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_task_competency_link UNIQUE (owner_id, task_id, competency_id, relation),
+            FOREIGN KEY(owner_id) REFERENCES owners(id),
+            FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+            FOREIGN KEY(competency_id) REFERENCES competencies(id) ON DELETE CASCADE
+        )
+        """
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS resource_competency_links (
+            id INTEGER PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            resource_id INTEGER NOT NULL,
+            competency_id INTEGER NOT NULL,
+            depth VARCHAR(24) NOT NULL DEFAULT 'overview',
+            relation VARCHAR(24) NOT NULL DEFAULT 'covers',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_resource_competency_link UNIQUE (owner_id, resource_id, competency_id),
+            FOREIGN KEY(owner_id) REFERENCES owners(id),
+            FOREIGN KEY(resource_id) REFERENCES learning_resources(id) ON DELETE CASCADE,
+            FOREIGN KEY(competency_id) REFERENCES competencies(id) ON DELETE CASCADE
+        )
+        """
+    ))
+    evidence_columns = {
+        row[1]
+        for row in (await connection.execute(text('PRAGMA table_info("evidence_observations")'))).all()
+    }
+    if "competency_id" not in evidence_columns:
+        await connection.execute(text(
+            'ALTER TABLE "evidence_observations" ADD COLUMN "competency_id" INTEGER'
+        ))
+    for statement in (
+        "CREATE INDEX IF NOT EXISTS ix_artifacts_owner_plan ON artifacts (owner_id, plan_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_competencies_owner_scope ON competencies (owner_id, scope, plan_id)",
+        "CREATE INDEX IF NOT EXISTS ix_competency_edges_source ON competency_edges (source_id)",
+        "CREATE INDEX IF NOT EXISTS ix_competency_edges_target ON competency_edges (target_id)",
+        "CREATE INDEX IF NOT EXISTS ix_plan_competency_links_plan ON plan_competency_links (plan_id)",
+        "CREATE INDEX IF NOT EXISTS ix_task_competency_links_task ON task_competency_links (task_id)",
+        "CREATE INDEX IF NOT EXISTS ix_resource_competency_links_resource ON resource_competency_links (resource_id)",
+        "CREATE INDEX IF NOT EXISTS ix_evidence_observations_competency ON evidence_observations (competency_id)",
+    ):
+        await connection.execute(text(statement))
+    await connection.execute(text(
         "CREATE INDEX IF NOT EXISTS ix_evidence_observations_owner_plan ON evidence_observations (owner_id, plan_id, recorded_at)"
     ))
     await connection.execute(text(
