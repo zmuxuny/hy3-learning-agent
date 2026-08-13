@@ -22,6 +22,7 @@ from app.models import (
     UserProfile,
 )
 from app.schemas import TaskCreate, TaskUpdate
+from app.services.evidence import append_observation, build_plan_evidence_state
 from app.services import plans as plan_service
 from app.tools.base import ToolContext, ToolDefinition, json_safe
 
@@ -260,11 +261,43 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
     )
     ctx.db.add(submission)
     await ctx.db.flush()
-    ctx.db.add(LearningEvent(
+    learning_event = LearningEvent(
         owner_id=ctx.owner_id, plan_id=task.stage.plan_id, task_id=task.id, run_id=ctx.run_id,
         event_type="submission.created", summary=f"Submitted evidence for: {task.title}",
         payload={"submission_id": submission.id, "type": submission.submission_type, "artifacts": submission.artifacts},
-    ))
+        correlation_id=ctx.run_id,
+        occurred_at=submission.created_at,
+    )
+    ctx.db.add(learning_event)
+    await ctx.db.flush()
+    await append_observation(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        source_type="submission",
+        source_id=str(submission.id),
+        outcome="submitted",
+        idempotency_key=f"submission:{submission.id}:created",
+        run_id=ctx.run_id,
+        session_id=ctx.session_id,
+        plan_id=submission.plan_id,
+        task_id=submission.task_id,
+        payload={
+            "submission_type": submission.submission_type,
+            "artifact_count": len(submission.artifacts),
+            "has_text": bool(submission.content.strip()),
+        },
+        artifact_refs=[
+            {
+                "kind": item.get("kind", "artifact"),
+                "ref": item.get("path") or item.get("url") or item.get("name", ""),
+            }
+            for item in submission.artifacts
+            if isinstance(item, dict)
+        ],
+        occurred_at=submission.created_at,
+        correlation_id=ctx.run_id,
+        causation_id=f"learning_event:{learning_event.id}",
+    )
     await ctx.db.commit()
     return {"submission_id": submission.id, "status": submission.status, "task_id": task.id}
 
@@ -318,15 +351,55 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
     evidence = [{"submission_id": submission.id, "score": args.score, "checks": args.checks}]
     award_inverse = None
     if passed and task.status != "completed":
-        await plan_service.update_task(ctx.db, ctx.owner_id, task.id, TaskUpdate(status="completed", evidence=evidence), ctx.run_id, commit=False)
+        await plan_service.update_task(
+            ctx.db,
+            ctx.owner_id,
+            task.id,
+            TaskUpdate(status="completed", evidence=evidence),
+            ctx.run_id,
+            commit=False,
+            session_id=ctx.session_id,
+        )
         award_inverse = await _award_completion(ctx, task)
     elif task.status == "pending":
         task.status = "active"
-    ctx.db.add(LearningEvent(
+    learning_event = LearningEvent(
         owner_id=ctx.owner_id, plan_id=submission.plan_id, task_id=submission.task_id, run_id=ctx.run_id,
         event_type="submission.checked", summary=f"Submission {submission.id} {'accepted' if passed else 'needs revision'}",
         payload={"score": args.score, "feedback": args.feedback, "checks": args.checks},
-    ))
+        correlation_id=ctx.run_id,
+        occurred_at=submission.checked_at,
+    )
+    ctx.db.add(learning_event)
+    await ctx.db.flush()
+    await append_observation(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        source_type="submission",
+        source_id=f"{submission.id}:check",
+        outcome="accepted" if passed else "needs_revision",
+        idempotency_key=f"submission:{submission.id}:checked",
+        run_id=ctx.run_id,
+        session_id=ctx.session_id,
+        plan_id=submission.plan_id,
+        task_id=submission.task_id,
+        normalized_score=args.score / 100,
+        is_correct=passed,
+        rubric_snapshot={"pass_threshold": args.pass_threshold, "checks": args.checks},
+        evaluator={"type": "agent", "run_id": ctx.run_id},
+        payload={"feedback": args.feedback},
+        artifact_refs=[
+            {
+                "kind": item.get("kind", "artifact"),
+                "ref": item.get("path") or item.get("url") or item.get("name", ""),
+            }
+            for item in submission.artifacts
+            if isinstance(item, dict)
+        ],
+        occurred_at=submission.checked_at,
+        correlation_id=ctx.run_id,
+        causation_id=f"learning_event:{learning_event.id}",
+    )
     operation = Operation(
         owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="submission.check",
         entity_type="submission", entity_id=str(submission.id),
@@ -416,6 +489,7 @@ async def study_state_get(ctx: ToolContext, args: StudyStateArgs) -> dict:
             TaskSubmission.plan_id == plan.id,
         ).order_by(TaskSubmission.created_at.desc()).limit(8)
     )).scalars())
+    evidence_state = await build_plan_evidence_state(ctx.db, ctx.owner_id, plan.id)
     completed = [task for _, task in ordered if task.status == "completed"]
     core_incomplete = [task for _, task in ordered if task.is_core and task.status != "completed"]
     return {
@@ -441,6 +515,7 @@ async def study_state_get(ctx: ToolContext, args: StudyStateArgs) -> dict:
         "blocked_tasks": [{"id": task.id, "title": task.title} for _, task in blocked],
         "scheduled_reviews": [{"id": review.id, "task_id": review.task_id, "due_at": review.due_at.isoformat()} for review in reviews],
         "recent_submissions": [{"id": item.id, "task_id": item.task_id, "status": item.status, "score": item.score} for item in submissions],
+        "evidence_state": evidence_state,
         "weekly_minutes": plan.weekly_minutes,
         "completed_estimated_minutes": sum(task.estimated_minutes for task in completed),
         "generated_at": now.isoformat(),

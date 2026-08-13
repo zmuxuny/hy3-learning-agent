@@ -10,6 +10,14 @@ if curl --silent --fail --max-time 1 http://127.0.0.1:8000/api/v1/health >/dev/n
   exit 2
 fi
 
+if [[ -x .venv/bin/python && -f data/learning_companion.db ]]; then
+  echo "Checking the V2 evidence ledger before moving local state..."
+  if ! .venv/bin/python scripts/rebuild-evidence.py --audit >/dev/null; then
+    echo "Evidence ledger audit failed; refusing to move local state." >&2
+    exit 2
+  fi
+fi
+
 backup_dir="data/backups/pre-clean-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$backup_dir"
 moved=0

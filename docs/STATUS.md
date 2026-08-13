@@ -3,7 +3,15 @@
 更新时间：2026-08-13（Asia/Shanghai）
 当前版本：1.1.1
 
-下一版本：2.0.0 已完成路线图设计，尚未开始实现。2.0 将引入学习证据账本、技能图、可重建学习者状态、自适应学习动作、Context Pack 2.0 和耐久主动队列；详细范围与验收门槛见 [`V2_ROADMAP.md`](V2_ROADMAP.md)。路线图中的目标能力不能视为当前 1.1.1 已有功能。
+下一版本：2.0.0-alpha.1（M13 进行中）。本轮已经落地第一条“证据账本 → 可重建状态摘要 → 对话/心跳共用”纵向切片；技能图、正式学习者状态 reducer、自适应动作和耐久主动队列仍未实现，不能视为当前 1.1.1 的完整能力。详细范围与验收门槛见 [`V2_ROADMAP.md`](V2_ROADMAP.md)。
+
+## V2 当前实现（develop）
+
+- `EvidenceObservation` 是追加式事实层，带来源、计划/任务/Run/Session、评分、提示/迁移等级、Rubric 快照、因果链和幂等键；没有编辑或物理删除路径。
+- `submission_create`、`submission_check`、`quiz_grade` 和带证据的 `task_patch` 会双写账本；同一幂等键重试只返回原观察。
+- `study_state_get` 与计划 Context 使用同一个确定性 `evidence-summary-v1` 投影，按任务输出证据阶段、成功/失败次数、最佳归一化得分、最近证据和 digest。
+- `scripts/rebuild-evidence.py` 可以只读重建投影、执行账本完整性检查，并原子写入派生 JSON 快照；不会改写账本。
+- M13 尚未完成的工作：Artifact 独立引用模型和至少 40 个固定评测场景；`--backfill-v1` 已支持只导入明确的提交/验收/测验/带证据任务事件，`reset-data.sh` 在移动本地状态前会先执行账本审计。完成剩余门槛后才进入 M14 技能图。
 
 ## 当前结论
 
@@ -24,6 +32,7 @@ Learning Agent 已形成可本地长期运行的个人学习 Harness，而不是
 ## Context 与 Memory 1.1
 
 - Context 按 Global Profile、计划/Session 作用域记忆、紧凑计划索引或当前计划、相关事件、待复习/考核、资源/提交/日历和近期对话分层组装；全局对话不注入无关计划全文，计划对话不能读取其他计划私有内容。
+- V2 第一批新增不可变 `EvidenceObservation` 账本：提交、提交验收、带证据的任务完成和测验评分会幂等双写；`study_state_get` 与计划 Context 读取同一份证据状态摘要，并返回稳定 digest 与明确的保守性说明。
 - 长 Session 超过阈值后压缩旧消息，但原文不删除。每次压缩写入不可变 `SessionSummary` 版本，记录覆盖消息、来源消息 ID 和生成方式，当前摘要只是最新投影。
 - 长期记忆先以 proposal 存在；确认后才进入检索。重复内容会强化原记录而不是复制；用户纠正会建立 `supersedes_id / superseded_by_id` 替代链，旧认识保留为历史。
 - 记忆归档是可恢复软归档，不再通过 API 物理删除。短期/情节记忆超过 90 天、显式过期或关联计划消失时会写明生命周期原因。
@@ -33,7 +42,7 @@ Learning Agent 已形成可本地长期运行的个人学习 Harness，而不是
 
 ## 发布验收
 
-- `pytest -q`：117 passed。
+- `pytest -q`：121 passed（包含 V2 证据账本幂等、隔离、替代链、状态投影和 v1 回填测试）。
 - `npm run build`：通过。
 - `npm audit --omit=dev`：0 vulnerabilities。
 - 真实浏览器：23 个页面/交互状态，覆盖 375、768、1280、1440、2560 宽度；无横向溢出、按钮裁切或小于 11px 的可见正文；移动端四项底部导航可返回连续对话。

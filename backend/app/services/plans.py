@@ -121,6 +121,7 @@ async def update_task(
     run_id: str | None = None,
     *,
     commit: bool = True,
+    session_id: str | None = None,
 ) -> Task:
     result = await db.execute(
         select(Task)
@@ -175,21 +176,49 @@ async def update_task(
         task.completed_at = None
     await recompute_plan_state(task.stage.plan)
     task.stage.plan.version += 1
-    db.add(
-        LearningEvent(
+    learning_event = LearningEvent(
+        owner_id=owner_id,
+        plan_id=task.stage.plan_id,
+        task_id=task.id,
+        run_id=run_id,
+        event_type="task.updated",
+        summary=f"Updated task: {task.title}",
+        correlation_id=run_id,
+        payload={
+            "before": {k: str(v) if isinstance(v, datetime) else v for k, v in before.items()},
+            "after": {k: str(v) if isinstance(v, datetime) else v for k, v in changes.items()},
+            "evidence": evidence or [],
+        },
+    )
+    db.add(learning_event)
+    await db.flush()
+    if evidence:
+        from app.services.evidence import append_observation
+
+        await append_observation(
+            db,
             owner_id=owner_id,
+            source_type="task_completion",
+            source_id=f"task:{task.id}:event:{learning_event.id}",
+            outcome="verified" if changes.get("status") == "completed" else "observed",
+            idempotency_key=f"task:{task.id}:event:{learning_event.id}:evidence",
+            run_id=run_id,
+            session_id=session_id,
             plan_id=task.stage.plan_id,
             task_id=task.id,
-            run_id=run_id,
-            event_type="task.updated",
-            summary=f"Updated task: {task.title}",
-            payload={
-                "before": {k: str(v) if isinstance(v, datetime) else v for k, v in before.items()},
-                "after": {k: str(v) if isinstance(v, datetime) else v for k, v in changes.items()},
-                "evidence": evidence or [],
-            },
+            payload={"evidence": evidence},
+            artifact_refs=[
+                {
+                    "kind": item.get("kind", "evidence"),
+                    "ref": item.get("path") or item.get("url") or item.get("value", ""),
+                }
+                for item in evidence
+                if isinstance(item, dict)
+            ],
+            occurred_at=task.completed_at or datetime.now(timezone.utc),
+            correlation_id=run_id,
+            causation_id=f"learning_event:{learning_event.id}",
         )
-    )
     if commit:
         await db.commit()
         await db.refresh(task)

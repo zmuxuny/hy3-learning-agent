@@ -49,6 +49,15 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
         "user_content": "TEXT",
         "message_metadata": "JSON NOT NULL DEFAULT '{}'",
     },
+    "learning_events": {
+        "schema_version": "INTEGER NOT NULL DEFAULT 1",
+        "occurred_at": "DATETIME",
+        "correlation_id": "VARCHAR(120)",
+        "causation_id": "VARCHAR(120)",
+        "idempotency_key": "VARCHAR(180)",
+        "invalidated_at": "DATETIME",
+        "invalidation_reason": "TEXT NOT NULL DEFAULT ''",
+    },
 }
 
 
@@ -141,6 +150,95 @@ async def migrate_sqlite_schema(connection: AsyncConnection) -> None:
     ))
     await connection.execute(text(
         "CREATE INDEX IF NOT EXISTS ix_run_steer_messages_run_id ON run_steer_messages (run_id)"
+    ))
+    await connection.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS evidence_observations (
+            id INTEGER PRIMARY KEY,
+            owner_id VARCHAR(64) NOT NULL,
+            source_type VARCHAR(32) NOT NULL,
+            source_id VARCHAR(120) NOT NULL,
+            run_id VARCHAR(64),
+            session_id VARCHAR(64),
+            plan_id INTEGER,
+            task_id INTEGER,
+            competency_key VARCHAR(160),
+            outcome VARCHAR(40) NOT NULL,
+            normalized_score FLOAT,
+            is_correct BOOLEAN,
+            assistance_level VARCHAR(24) NOT NULL DEFAULT 'unknown',
+            transfer_level VARCHAR(24) NOT NULL DEFAULT 'unknown',
+            rubric_snapshot JSON NOT NULL DEFAULT '{}',
+            evaluator JSON NOT NULL DEFAULT '{}',
+            artifact_refs JSON NOT NULL DEFAULT '[]',
+            payload JSON NOT NULL DEFAULT '{}',
+            occurred_at DATETIME NOT NULL,
+            recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            schema_version INTEGER NOT NULL DEFAULT 1,
+            correlation_id VARCHAR(120),
+            causation_id VARCHAR(120),
+            idempotency_key VARCHAR(180) NOT NULL UNIQUE,
+            supersedes_id INTEGER,
+            invalidated_at DATETIME,
+            invalidation_reason TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY(owner_id) REFERENCES owners(id),
+            FOREIGN KEY(run_id) REFERENCES agent_runs(id) ON DELETE SET NULL,
+            FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE SET NULL,
+            FOREIGN KEY(plan_id) REFERENCES plans(id) ON DELETE SET NULL,
+            FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL,
+            FOREIGN KEY(supersedes_id) REFERENCES evidence_observations(id) ON DELETE SET NULL
+        )
+        """
+    ))
+    evidence_columns = {
+        row[1]
+        for row in (await connection.execute(text('PRAGMA table_info("evidence_observations")'))).all()
+    }
+    evidence_additive_columns = {
+        "artifact_refs": "JSON NOT NULL DEFAULT '[]'",
+        "competency_key": "VARCHAR(160)",
+        "normalized_score": "FLOAT",
+        "is_correct": "BOOLEAN",
+        "assistance_level": "VARCHAR(24) NOT NULL DEFAULT 'unknown'",
+        "transfer_level": "VARCHAR(24) NOT NULL DEFAULT 'unknown'",
+        "rubric_snapshot": "JSON NOT NULL DEFAULT '{}'",
+        "evaluator": "JSON NOT NULL DEFAULT '{}'",
+        "payload": "JSON NOT NULL DEFAULT '{}'",
+        "occurred_at": "DATETIME",
+        "recorded_at": "DATETIME",
+        "schema_version": "INTEGER NOT NULL DEFAULT 1",
+        "correlation_id": "VARCHAR(120)",
+        "causation_id": "VARCHAR(120)",
+        "idempotency_key": "VARCHAR(180)",
+        "supersedes_id": "INTEGER",
+        "invalidated_at": "DATETIME",
+        "invalidation_reason": "TEXT NOT NULL DEFAULT ''",
+    }
+    for column, definition in evidence_additive_columns.items():
+        if column not in evidence_columns:
+            await connection.execute(text(
+                f'ALTER TABLE "evidence_observations" ADD COLUMN "{column}" {definition}'
+            ))
+    await connection.execute(text(
+        "UPDATE evidence_observations SET recorded_at = occurred_at WHERE recorded_at IS NULL"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_evidence_observations_owner_plan ON evidence_observations (owner_id, plan_id, recorded_at)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_evidence_observations_task ON evidence_observations (owner_id, task_id, occurred_at)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_evidence_observations_source ON evidence_observations (owner_id, source_type, source_id)"
+    ))
+    await connection.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_learning_events_occurred_at ON learning_events (occurred_at)"
+    ))
+    await connection.execute(text(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_learning_events_idempotency_key ON learning_events (idempotency_key) WHERE idempotency_key IS NOT NULL"
+    ))
+    await connection.execute(text(
+        "UPDATE learning_events SET occurred_at = created_at WHERE occurred_at IS NULL"
     ))
     # Older builds did not enable SQLite foreign-key enforcement. Repair the
     # known SET NULL edge before new writes rely on the declared relationship.

@@ -21,6 +21,7 @@ from app.models import (
     UserProfile,
 )
 from app.context.memory import MemoryManager, search_terms
+from app.services.evidence import build_plan_evidence_state
 
 
 class ContextAssembler:
@@ -141,6 +142,29 @@ class ContextAssembler:
                             f"- task:{task.id} [{task.status}] {task.title}; due={task.due_at}; review={task.review_due_at}; core={task.is_core}"
                         )
                 manifest.append({"type": "plan", "id": plan.id, "version": plan.version})
+                evidence_state = await build_plan_evidence_state(self.db, owner_id, plan.id)
+                if evidence_state["observation_count"]:
+                    sections.append("## Evidence state (v2)")
+                    sections.append(
+                        f"- evidence observations: {evidence_state['observation_count']}; "
+                        f"digest: {evidence_state['digest']}"
+                    )
+                    sections.append(
+                        "- This is a conservative evidence projection, not a mastery probability. "
+                        "A self-report or checkbox alone cannot mark a skill demonstrated."
+                    )
+                    for item in evidence_state["by_task"][:24]:
+                        sections.append(
+                            f"- task:{item['task_id']} [{item['evidence_stage']}] "
+                            f"observations={item['observation_count']}; latest={item['latest_outcome']}; "
+                            f"best_score={item['best_score']}; last={item['last_observed_at']}"
+                        )
+                        manifest.append({
+                            "type": "evidence_state",
+                            "plan_id": plan.id,
+                            "task_id": item["task_id"],
+                            "digest": evidence_state["digest"],
+                        })
 
         event_query = select(LearningEvent).where(LearningEvent.owner_id == owner_id)
         if plan_id is not None:

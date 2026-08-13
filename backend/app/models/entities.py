@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
@@ -410,7 +410,58 @@ class LearningEvent(Base):
     event_type: Mapped[str] = mapped_column(String(64), index=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    schema_version: Mapped[int] = mapped_column(Integer, default=1)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    correlation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    causation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True, default=uuid_string)
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class EvidenceObservation(Base):
+    """An append-only, structured observation about a learning attempt.
+
+    ``LearningEvent`` remains the operational event stream.  This table is the
+    v2 fact layer used to rebuild learner state.  There is deliberately no
+    update/delete service for observations; a correction is represented by a
+    later observation that supersedes or invalidates the earlier one.
+    """
+
+    __tablename__ = "evidence_observations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    source_type: Mapped[str] = mapped_column(String(32), index=True)
+    source_id: Mapped[str] = mapped_column(String(120), index=True)
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
+    competency_key: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    outcome: Mapped[str] = mapped_column(String(40), index=True)
+    normalized_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    assistance_level: Mapped[str] = mapped_column(String(24), default="unknown")
+    transfer_level: Mapped[str] = mapped_column(String(24), default="unknown")
+    rubric_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    evaluator: Mapped[dict] = mapped_column(JSON, default=dict)
+    artifact_refs: Mapped[list] = mapped_column(JSON, default=list)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    schema_version: Mapped[int] = mapped_column(Integer, default=1)
+    correlation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    causation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    supersedes_id: Mapped[int | None] = mapped_column(
+        ForeignKey("evidence_observations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(Text, default="")
 
 
 class Memory(Base):

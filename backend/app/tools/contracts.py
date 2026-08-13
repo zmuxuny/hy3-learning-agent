@@ -45,7 +45,7 @@ TOOL_OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "submission_check": output("SubmissionCheckOutput", submission_id=int, task_id=int, status=str, task_status=str, score=float, operation_id=str, undo_available=bool),
     "resource_list": output("ResourceListOutput", resources=list),
     "learning_event_list": output("LearningEventListOutput", events=list),
-    "study_state_get": output("StudyStateGetOutput", plan_id=int, plan_version=int, progress=float, current_stage=str | None, current_task=dict | None, recommended_next=dict | None, counts=dict, overdue_tasks=list, blocked_tasks=list, scheduled_reviews=list, recent_submissions=list, weekly_minutes=int, completed_estimated_minutes=int, generated_at=str),
+    "study_state_get": output("StudyStateGetOutput", plan_id=int, plan_version=int, progress=float, current_stage=str | None, current_task=dict | None, recommended_next=dict | None, counts=dict, overdue_tasks=list, blocked_tasks=list, scheduled_reviews=list, recent_submissions=list, evidence_state=dict, weekly_minutes=int, completed_estimated_minutes=int, generated_at=str),
     "memory_search": output("MemorySearchOutput", memories=list, score_breakdown=list),
     "memory_maintain": output("MemoryMaintainOutput", expired=int, archived=int, plans_refreshed=int),
     "web_search": output("WebSearchOutput", provider=str, query=str, results=list, saved_resource_ids=list, fallback_used=bool),

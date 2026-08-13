@@ -38,7 +38,8 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 | Conversation | 全量原始消息、版本化 Session 摘要、最近消息窗口、Session 私有记忆 | 超过阈值后压缩旧消息；每次摘要记录覆盖范围与来源消息；原文不删除；切换 Session 后不再检索 |
 | Planning | Intake 已确认事实/问题/充分性、提案与规划子 Run 报告 | 绑定 Session；提案显式采用后才成为正式 Plan |
 | Session–Plan relation | 创建、讨论、聚焦关系和跨作用域交接摘要 | 永久保留来源；归档不删除；只在显式转场时建立计划 Session |
-| Event ledger | 计划、任务、提交、评分、提醒和邮件回复事件 | 不可变事实流 |
+| Event ledger | 计划、任务、提交、评分、提醒和邮件回复事件 | 不可变运行事实流 |
+| Evidence ledger (V2 M13) | `EvidenceObservation`：提交/验收/测验/带证据完成的结构化观察、Rubric、来源和因果链 | 追加式；幂等重试复用原观察，修订通过替代/失效关系表达 |
 | Episodic | 某次学习表现、阻塞或干预结果 | 相关性检索；90 天后可归档 |
 | Plan semantic | 计划目标、进度、当前任务和阻塞摘要 | 每次维护刷新；严格按 `plan_id` 隔离 |
 | Global semantic | 稳定偏好、长期约束和跨计划画像 | Agent 只可提出候选，用户确认后生效 |

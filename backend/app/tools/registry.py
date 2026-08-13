@@ -260,7 +260,15 @@ async def task_patch(ctx: ToolContext, args: TaskPatchArgs) -> dict:
         before["completed_at"] = task.completed_at
     if "evidence" in changes:
         before["task_metadata"] = dict(task.task_metadata)
-    updated = await plan_service.update_task(ctx.db, ctx.owner_id, task.id, args.changes, ctx.run_id, commit=False)
+    updated = await plan_service.update_task(
+        ctx.db,
+        ctx.owner_id,
+        task.id,
+        args.changes,
+        ctx.run_id,
+        commit=False,
+        session_id=ctx.session_id,
+    )
     operation = Operation(
         owner_id=ctx.owner_id,
         run_id=ctx.run_id,
@@ -471,6 +479,8 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         event_type="quiz.graded",
         summary=f"Quiz {quiz.id} scored {args.score:.0f}",
         payload={"score": args.score, "status": quiz.status, "evidence": args.evidence},
+        correlation_id=ctx.run_id,
+        occurred_at=quiz.graded_at,
     )
     ctx.db.add(learning_event)
     review = None
@@ -494,6 +504,36 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
 
         await evaluate_achievements(ctx.db, ctx.owner_id)
     await ctx.db.flush()
+    from app.services.evidence import append_observation
+
+    await append_observation(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        source_type="quiz",
+        source_id=f"{quiz.id}:grade",
+        outcome="passed" if quiz.status == "passed" else "needs_revision",
+        idempotency_key=f"quiz:{quiz.id}:graded",
+        run_id=ctx.run_id,
+        session_id=ctx.session_id,
+        plan_id=quiz.plan_id,
+        task_id=quiz.task_id,
+        normalized_score=args.score / 100,
+        is_correct=quiz.status == "passed",
+        rubric_snapshot=quiz.rubric,
+        evaluator={"type": "agent", "run_id": ctx.run_id},
+        payload={"answer_length": len(args.answer), "evidence": args.evidence},
+        artifact_refs=[
+            {
+                "kind": item.get("kind", "evidence"),
+                "ref": item.get("path") or item.get("url") or item.get("value", ""),
+            }
+            for item in args.evidence
+            if isinstance(item, dict)
+        ],
+        occurred_at=quiz.graded_at,
+        correlation_id=ctx.run_id,
+        causation_id=f"learning_event:{learning_event.id}",
+    )
     operation = Operation(
         owner_id=ctx.owner_id,
         run_id=ctx.run_id,

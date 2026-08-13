@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased · 2.0 M13
+
+### 学习证据账本第一条纵向切片
+
+- 新增追加式 `EvidenceObservation` 事实表：记录来源、计划/任务/Run/Session、评分、提示/迁移等级、Rubric 快照、因果链和幂等键。
+- 提交、提交验收、测验评分和带证据的任务完成会幂等双写；重复重试不会覆盖或复制原始观察。
+- `study_state_get` 与计划 Context 使用确定性证据摘要，返回稳定 digest、任务级证据阶段和明确的保守性说明。
+- 新增 `scripts/rebuild-evidence.py`，可从 SQLite 重建投影、审计账本、保守回填明确的 v1 证据并原子写入派生 JSON，不修改事实层。
+- 追加 4 个 V2 账本测试场景；全量 pytest 当前为 121 项。
+
 ## 1.1.1 (2026-08-13)
 
 ### v2 前产品状态审计
