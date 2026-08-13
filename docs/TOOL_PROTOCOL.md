@@ -4,7 +4,7 @@
 
 工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。每个工具同时注册 Pydantic 输入模型和输出模型；输入用于 Function Calling，成功输出在回填模型前再次校验。完整契约通过 `GET /api/v1/settings/tools` 暴露。高层流程由 Hy3 规划；用户消息、后台候选、复习到期和邮件回复共享同一 `AgentRuntime`。
 
-## 41 个已注册工具
+## 42 个已注册工具
 
 `GET /api/v1/settings/tools` 对每个工具返回正式 `input_schema`、`output_schema`、`idempotent` 与 `blocking`。`blocking=true` 表示该工具在特定 Guard 条件下可能暂停 Run；是否阻塞仍由本次触发来源、操作字段和审批状态决定。
 
@@ -33,7 +33,7 @@
 | --- | --- |
 | `profile_get` | 读取个人画像、免打扰和游戏化状态 |
 | `plan_list` / `plan_get` | 读取全部计划或焦点计划完整结构 |
-| `plan_create` / `plan_patch` | `plan_create` 仅保留为无 Session 的底层兼容能力；对话必须走 Intake → Proposal → 用户采用；`plan_patch` 可撤销地修改正式计划 |
+| `plan_create` / `plan_patch` | `plan_create` 仅保留为无 Session 的底层能力且同样执行正式计划完整性校验；对话必须走 Intake → Proposal → 用户采用；`plan_patch` 可撤销地修改正式计划 |
 | `stage_create` / `task_create` / `task_patch` | 增加阶段/任务，更新任务状态、证据、时间和复习 |
 | `learning_event_list` | 检索不可变学习事件 |
 | `resource_list` | 按课程、教程、实验、难度和推荐理由读取计划资源 |
@@ -45,7 +45,7 @@
 | `submission_create` / `submission_get` / `submission_list` | 保存并读取文字、文件、代码或链接证据 |
 | `submission_check` | 保存检查项、分数和反馈；通过后完成任务并更新 XP |
 | `quiz_create` / `quiz_get` / `quiz_grade` | 创建测验、读取 Rubric、证据化评分 |
-| `review_schedule` | 安排下一次复习或主动抽查 |
+| `review_schedule` / `review_resolve` | 安排下一次复习或主动抽查；完成、延后或取消既有复习，并保留可撤销操作记录 |
 
 ### 上下文与记忆
 

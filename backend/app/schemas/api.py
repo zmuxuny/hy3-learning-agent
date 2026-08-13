@@ -249,7 +249,9 @@ class AgentRunCreate(BaseModel):
     session_id: str | None = None
     plan_id: int | None = None
     reply_to_notification_id: int | None = Field(default=None, ge=1)
-    trigger: Literal["user_message", "heartbeat", "task_event", "review_due", "email_reply"] = "user_message"
+    # Public conversation turns are always user initiated. Background and
+    # email triggers are created only by their trusted scheduler/poller paths.
+    trigger: Literal["user_message"] = "user_message"
 
 
 class AgentRunRead(APIModel):
@@ -311,7 +313,10 @@ class QueuedMessageRead(APIModel):
     id: str
     session_id: str | None
     plan_id: int | None
+    trigger: str
     objective: str
+    user_content: str | None
+    message_metadata: dict[str, Any]
     position: int
     created_at: datetime
     updated_at: datetime

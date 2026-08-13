@@ -35,6 +35,8 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=409, detail="Operation is not undoable")
 
     inverse = operation.inverse_patch
+    audit_plan_id: int | None = None
+    audit_task_id: int | None = None
     if operation.entity_type == "task" and "changes" in inverse:
         task = await db.get(Task, int(operation.entity_id))
         if not task:
@@ -50,6 +52,8 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             await db.refresh(stage, ["tasks"])
         await recompute_plan_state(task.stage.plan)
         task.stage.plan.version += 1
+        audit_plan_id = task.stage.plan.id
+        audit_task_id = task.id
     elif operation.entity_type == "plan" and "changes" in inverse:
         plan = await db.get(Plan, int(operation.entity_id))
         if not plan:
@@ -59,10 +63,14 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
                 value = datetime.fromisoformat(value) if isinstance(value, str) else value
             setattr(plan, field, value)
         plan.version += 1
+        audit_plan_id = plan.id
     elif operation.entity_type == "plan" and "delete" in inverse:
         plan = await db.get(Plan, int(inverse["delete"]))
         if plan:
             await db.delete(plan)
+            # The compensating audit event describes the deleted entity in its
+            # payload. Its FK must stay null after the plan itself is removed.
+            audit_plan_id = None
         proposal_id = operation.forward_patch.get("proposal_id")
         if proposal_id:
             proposal = await db.get(PlanProposal, proposal_id)
@@ -78,10 +86,12 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             if field.endswith("_at") and isinstance(value, str):
                 value = datetime.fromisoformat(value)
             setattr(session, field, value)
+        audit_plan_id = session.plan_id
         session.updated_at = datetime.now(timezone.utc)
     elif operation.entity_type == "learning_resource" and "delete" in inverse:
         resource = await db.get(LearningResource, int(inverse["delete"]))
         if resource:
+            audit_plan_id = resource.plan_id
             await db.delete(resource)
     elif operation.entity_type == "learning_resource" and "changes" in inverse:
         resource = await db.get(LearningResource, int(operation.entity_id))
@@ -91,21 +101,57 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             if field.endswith("_at") and isinstance(value, str):
                 value = datetime.fromisoformat(value)
             setattr(resource, field, value)
+        audit_plan_id = resource.plan_id
     elif operation.entity_type == "review_schedule" and "delete" in inverse:
         schedule = await db.get(ReviewSchedule, int(inverse["delete"]))
         if schedule:
+            audit_plan_id = schedule.plan_id
+            audit_task_id = schedule.task_id
             await db.delete(schedule)
+    elif operation.entity_type == "review_schedule" and "changes" in inverse:
+        schedule = await db.get(ReviewSchedule, int(operation.entity_id))
+        if not schedule:
+            raise HTTPException(status_code=409, detail="Review schedule no longer exists")
+        for field, value in inverse["changes"].items():
+            if field.endswith("_at") and isinstance(value, str):
+                value = datetime.fromisoformat(value)
+            setattr(schedule, field, value)
+        audit_plan_id = schedule.plan_id
+        audit_task_id = schedule.task_id
     elif operation.entity_type == "stage" and "delete" in inverse:
         stage = await db.get(Stage, int(inverse["delete"]))
         if stage:
+            audit_plan_id = stage.plan_id
             await db.delete(stage)
+            await db.flush()
+            plan = await db.get(Plan, audit_plan_id)
+            if plan:
+                await db.refresh(plan, ["stages"])
+                for remaining_stage in plan.stages:
+                    await db.refresh(remaining_stage, ["tasks"])
+                await recompute_plan_state(plan)
+                plan.version += 1
     elif operation.entity_type == "task" and "delete" in inverse:
         task = await db.get(Task, int(inverse["delete"]))
         if task:
+            stage = await db.get(Stage, task.stage_id)
+            audit_plan_id = stage.plan_id if stage else None
+            # The deleted task remains identifiable in the event payload. The
+            # FK must be null because this compensating event outlives it.
+            audit_task_id = None
             await db.delete(task)
+            await db.flush()
+            plan = await db.get(Plan, audit_plan_id) if audit_plan_id else None
+            if plan:
+                await db.refresh(plan, ["stages"])
+                for remaining_stage in plan.stages:
+                    await db.refresh(remaining_stage, ["tasks"])
+                await recompute_plan_state(plan)
+                plan.version += 1
     elif operation.entity_type == "calendar_event" and "delete" in inverse:
         event = await db.get(CalendarEvent, int(inverse["delete"]))
         if event:
+            audit_plan_id = event.plan_id
             await db.delete(event)
     elif operation.entity_type == "calendar_event" and "changes" in inverse:
         event = await db.get(CalendarEvent, int(operation.entity_id))
@@ -115,6 +161,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             if field.endswith("_at") and isinstance(value, str):
                 value = datetime.fromisoformat(value)
             setattr(event, field, value)
+        audit_plan_id = event.plan_id
     elif operation.entity_type == "submission" and "submission" in inverse:
         submission = await db.get(TaskSubmission, int(operation.entity_id))
         task = await db.get(Task, submission.task_id) if submission else None
@@ -135,6 +182,8 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             await db.refresh(stage, ["tasks"])
         await recompute_plan_state(task.stage.plan)
         task.stage.plan.version += 1
+        audit_plan_id = task.stage.plan.id
+        audit_task_id = task.id
         award = inverse.get("award")
         if award:
             profile = await db.get(UserProfile, settings.DEFAULT_OWNER_ID)
@@ -161,6 +210,8 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
     elif operation.entity_type == "quiz" and "delete" in inverse:
         quiz = await db.get(Quiz, int(inverse["delete"]))
         if quiz:
+            audit_plan_id = quiz.plan_id
+            audit_task_id = quiz.task_id
             await db.delete(quiz)
     elif operation.entity_type == "quiz" and "changes" in inverse:
         quiz = await db.get(Quiz, int(operation.entity_id))
@@ -170,15 +221,13 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             if field.endswith("_at") and isinstance(value, str):
                 value = datetime.fromisoformat(value)
             setattr(quiz, field, value)
+        audit_plan_id = quiz.plan_id
+        audit_task_id = quiz.task_id
         if inverse.get("profile"):
             profile = await db.get(UserProfile, settings.DEFAULT_OWNER_ID)
             if profile:
                 profile.xp = inverse["profile"]["xp"]
                 profile.level = inverse["profile"]["level"]
-        if inverse.get("delete_learning_event"):
-            event = await db.get(LearningEvent, int(inverse["delete_learning_event"]))
-            if event:
-                await db.delete(event)
         if inverse.get("delete_review"):
             review = await db.get(ReviewSchedule, int(inverse["delete_review"]))
             if review:
@@ -188,6 +237,20 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
 
     operation.status = "undone"
     operation.undone_at = datetime.now(timezone.utc)
+    db.add(LearningEvent(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        plan_id=audit_plan_id,
+        task_id=audit_task_id,
+        run_id=operation.run_id,
+        event_type="operation.undone",
+        summary=f"Undid {operation.tool_name} on {operation.entity_type}:{operation.entity_id}",
+        payload={
+            "operation_id": operation.id,
+            "tool_name": operation.tool_name,
+            "entity_type": operation.entity_type,
+            "entity_id": operation.entity_id,
+        },
+    ))
     await db.commit()
     await db.refresh(operation)
     return operation

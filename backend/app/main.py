@@ -11,7 +11,7 @@ from sqlalchemy import select, text
 from app.api.api import api_router
 from app.core.config import PROJECT_ROOT, settings
 from app.db.database import AsyncSessionLocal, create_schema
-from app.models import AgentRun, Owner, Plan, UserProfile  # noqa: F401 - imports register every mapped entity
+from app.models import AgentRun, Owner, Plan, Session, UserProfile  # noqa: F401 - imports register every mapped entity
 from app.runtime.agent import AgentRuntime
 from app.runtime.events import emit_event
 from app.runtime.scheduler import proactive_scheduler
@@ -65,17 +65,32 @@ async def reconcile_interrupted_runs() -> list[str]:
             return []
         now = datetime.now(timezone.utc)
         resumable: list[str] = []
+        failed_sessions: set[tuple[str, str]] = set()
         for run in interrupted:
             if run.checkpoint:
-                plan_exists = True
+                scope_is_valid = True
                 if run.plan_id is not None:
-                    plan_exists = (await db.execute(
-                        select(Plan.id).where(
+                    plan_status = (await db.execute(
+                        select(Plan.status).where(
                             Plan.id == run.plan_id,
                             Plan.owner_id == run.owner_id,
                         )
-                    )).scalar_one_or_none() is not None
-                if plan_exists:
+                    )).scalar_one_or_none()
+                    scope_is_valid = bool(plan_status and plan_status != "archived")
+                if scope_is_valid and run.session_id is not None:
+                    session = await db.get(Session, run.session_id)
+                    scope_is_valid = bool(
+                        session
+                        and session.owner_id == run.owner_id
+                        and session.archived_at is None
+                        and session.plan_id == run.plan_id
+                    )
+                if scope_is_valid and run.parent_run_id is not None:
+                    parent = await db.get(AgentRun, run.parent_run_id)
+                    scope_is_valid = bool(
+                        parent and parent.status in {"queued", "running", "waiting_approval"}
+                    )
+                if scope_is_valid:
                     run.status = "queued"
                     run.checkpoint = dict(run.checkpoint)
                     resumable.append(run.id)
@@ -85,6 +100,12 @@ async def reconcile_interrupted_runs() -> list[str]:
             else:
                 run.status = "failed"
                 run.completed_at = now
+            if (
+                run.status == "failed"
+                and run.parent_run_id is None
+                and run.session_id is not None
+            ):
+                failed_sessions.add((run.owner_id, run.session_id))
         await db.commit()
         for run in interrupted:
             if run.id not in resumable:
@@ -95,6 +116,17 @@ async def reconcile_interrupted_runs() -> list[str]:
                     "上一次应用进程结束，本 Run 已安全收口；既有消息、工具结果和操作记录均保留。",
                     {"code": "process_interrupted", "recoverable": False},
                 )
+        if failed_sessions:
+            from app.services.queue import dispatch_next_queued_message
+
+            for owner_id, session_id in failed_sessions:
+                next_run = await dispatch_next_queued_message(
+                    db,
+                    owner_id=owner_id,
+                    session_id=session_id,
+                )
+                if next_run is not None:
+                    start_tracked_task(next_run.id, AgentRuntime().run(next_run.id))
         return resumable
 
 

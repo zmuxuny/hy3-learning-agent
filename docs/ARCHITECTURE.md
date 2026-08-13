@@ -91,9 +91,10 @@ Session 与 Plan 都支持可恢复归档。归档只改变生命周期和默认
 ```text
 data/context/global.md
 data/context/plans/{plan_id}.md
+data/context/runs/{run_id}.md
 ```
 
-这些文件是最新可读投影；数据库中的 `ContextSnapshot` 才是每个 Run 的不可变历史，保存完整 Markdown、来源清单和 Token 估算。`GET /agent/runs/{run_id}/context` 与消息内上下文检查器用于复现本次模型输入。用户可在记忆查看器中确认、纠正、归档和恢复，并查看来源与检索使用痕迹。
+`global.md` 和 `plans/{plan_id}.md` 是最新可读投影，只保存稳定画像、计划与记忆，不混入某个 Session 的 Conversation；`runs/{run_id}.md` 是该轮精确模型输入的可读副本。数据库中的 `ContextSnapshot` 才是每个 Run 的不可变事实历史，保存完整 Markdown、来源清单和 Token 估算。`GET /agent/runs/{run_id}/context` 与消息内上下文检查器用于复现本次模型输入。用户可在记忆查看器中确认、纠正、归档和恢复，并查看来源与检索使用痕迹。
 
 ## 4. 上下文组装顺序
 
@@ -119,11 +120,15 @@ Hy3 支持长上下文，但系统仍需选择、分层和压缩。长上下文�
 
 每次模型轮次、工具开始/完成、最终结论和失败都归入同一个 `run_id`。`silent` 同样必须形成完成事件，证明 Agent 做过判断，而不是只有通知结果。
 
-调度器只有一个全局循环。每 `AGENT_HEARTBEAT_SECONDS` 做一次轻量确定性候选扫描，而不是为每个任务创建常驻心跳：先检查到期复习、24 小时内任务，再逐个检查活动计划的最新学习证据。扫描阶段不加载聊天全文；命中候选后才用明确的 `plan_id` 启动计划级 Run，由 ContextAssembler 注入该计划结构、证据、计划记忆和必要事件。`AGENT_PROGRESS_CHECKIN_HOURS` 默认 24 小时；同计划近期已经发过站内消息时不会重复产生进度询问候选。`GET /settings/proactive` 暴露下一轮时间、最近判断和最近心跳 Run，前端每 15 秒同步状态与站内通知。
+调度器只有一个全局循环。每 `AGENT_HEARTBEAT_SECONDS` 做一次轻量确定性候选扫描，而不是为每个任务创建常驻心跳：先检查到期复习、24 小时内任务，再逐个检查活动计划的最新学习证据。扫描阶段不加载聊天全文；命中候选后才用明确的 `plan_id` 启动计划级 Run，由 ContextAssembler 注入该计划结构、证据、计划记忆和必要事件。`AGENT_PROGRESS_CHECKIN_HOURS` 默认 24 小时；`AGENT_CANDIDATE_COOLDOWN_MINUTES` 默认 180 分钟，避免计划被每轮重复交给模型。只有提交、考核、证据或任务完成等学习行为会刷新“最近活动”，计划元数据维护不再伪装成学习进展。`GET /settings/proactive` 暴露下一轮时间、最近判断和最近心跳 Run，前端每 15 秒同步状态与站内通知。
 
 主动提醒的权威回复位置是 Session，不是收件箱。`notification_send` 优先使用来源 Session；无会话后台 Run 会复用同计划最近的活动 Session，没有时建立一个稳定的“学习跟进”Session。提醒以 `ChatMessage(role=assistant, ui_kind=proactive_notification)` 投影到该对话，同时以 `Notification` 投影到各发送渠道。收件箱、页面 Toast、Service Worker 和邮件令牌都指向同一 Session；`POST /notifications/{id}/open` 会为旧通知幂等补链并返回精确 `message_id`。输入区持有显式回复目标，发送后用户消息保存 `reply_to_notification_id`；ContextAssembler 将目标提醒单独注入且从普通 Conversation 投影中去重，因此即使同一 Session 有多条提醒也不靠相邻顺序猜测。计划焦点继续提供完整状态与分层记忆。
 
-`Notification.archived_at` 只提供可恢复的收件箱生命周期。`GET /notifications` 默认返回活动消息，`?archived=true` 返回归档列表；单条归档/恢复和批量归档已读均保留通知事实与对话消息。ContextAssembler 排除已归档通知，也排除已经投影到当前 Session 的通知；后者由 Conversation 区只注入一次，避免同一提醒重复占用上下文。
+`Notification.archived_at` 只提供可恢复的收件箱生命周期。一个逻辑提醒可以拥有站内、邮件和 Push 多条投递记录，但收件箱只展示站内权威行，每日上限也按逻辑提醒计数；打开、已读、归档和恢复会同步同组投递。`GET /notifications` 默认返回活动消息，`?archived=true` 返回归档列表；单条归档/恢复和批量归档已读均保留通知事实与对话消息。ContextAssembler 排除已归档通知，也排除已经投影到当前 Session 的通知；后者由 Conversation 区只注入一次，避免同一提醒重复占用上下文。
+
+同一 Session 同时只允许一个根 Run。用户在运行期间发送的跟进、后台提醒回复和邮件回复都先进入耐久 `QueuedMessage`；队列保存触发来源、原始用户正文与消息元数据。当前 Run 完成或失败后由后端在同一事务边界创建下一条 `ChatMessage` 和根 Run，再由前端跟随显示；浏览器关闭不会让队列失去消费者。用户主动停止 Run 时队列仍保留并等待手动发送，系统不会在明确停止后擅自启动下一项。等待阻塞审批时普通回复进入队列，审批回答只通过专用 approval 接口恢复检查点，避免两种语义互相覆盖。
+
+IMAP 采用持久化后确认：邮件 UID 先写入消息或队列元数据并提交数据库，随后才标记为已读；进程在两步之间失败时，下轮以 UID 去重，不会重复创建用户消息。邮件回复仍恢复原提醒的 Session 和 `reply_to_notification_id`，不会生成独立邮件对话。
 
 ## 5.1 Harness 运行事件
 
@@ -240,6 +245,6 @@ Plan Workspace
 - 返回结果与证据给主 Agent，由主 Agent决定后续动作。
 - 产生独立 `run_id`，并在父 Run 的事件流中可见。
 
-通用 spawn/status/join/cancel、只读工具白名单、独立轮次/工具上限和崩溃检查点已经实现。SQLite 部署使用跨 Run 的事件单写者锁并对短暂 `locked/busy` 退避重试；工具观察和事件结果有界压缩，研究轮次耗尽后额外执行一次禁用工具的最终总结。规划子 Run 的成功报告或失败说明同时写入 `AgentRun.output` 并投影回父事件，主 Agent 可据此解决冲突或降级完成。
+通用 spawn/status/join/cancel、只读工具白名单、独立轮次/工具上限和崩溃检查点已经实现。SQLite 部署使用跨 Run 的事件单写者锁并对短暂 `locked/busy` 退避重试；工具观察和事件结果有界压缩，研究轮次耗尽后额外执行一次禁用工具的最终总结。`subagent_join` 的外层工具超时会在请求等待时长上增加收尾余量，不会先于子 Run 自身超时。规划子 Run 的成功报告或失败说明同时写入 `AgentRun.output` 并投影回父事件，主 Agent 可据此解决冲突或降级完成。
 
 应用启动时会扫描遗留的 `queued/running` Run：有 `checkpoint` 的恢复为 `queued` 并从断点续跑；没有检查点的标记为 `failed(process_interrupted)` 并追加可见事件，保留原消息、工具结果和操作记录，同时解除 Session 的假占用。心跳等无会话 Run 恢复时会按当前数据库重建上下文（不重放旧快照），指向已删除计划的待恢复 Run 直接安全收口。阻塞型审批在 `waiting_approval` 状态下持久化待批工具与参数，批准后从检查点恢复，拒绝后把拒绝结果回填给模型继续调整。

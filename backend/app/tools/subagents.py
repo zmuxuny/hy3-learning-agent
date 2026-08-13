@@ -11,10 +11,9 @@ from app.core.config import settings
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun
 from app.runtime.events import emit_event
-from app.runtime.tasks import start_tracked_task
+from app.runtime.tasks import cancel_tracked_task, start_tracked_task
 from app.runtime.subagents import (
     READ_ONLY_TOOL_NAMES,
-    cancel_child,
     child_cancel_requested,
     run_restricted_child,
     wait_for_child,
@@ -254,8 +253,17 @@ async def subagent_cancel(ctx: ToolContext, args: SubagentIdArgs) -> dict:
     child = await ctx.db.get(AgentRun, args.run_id)
     if not _own_child(ctx, child):
         return {"error": "Sub-agent run not found"}
-    cancelled = await cancel_child(child, "父 Agent 取消")
+    cancelled = child.status in {"queued", "running"}
     if cancelled:
+        child.cancel_requested = True
+        child.status = "cancelled"
+        child.checkpoint = None
+        child.completed_at = datetime.now(timezone.utc)
+        await ctx.db.commit()
+        cancel_tracked_task(child.id)
+        await emit_event(ctx.db, child.id, "run.cancelled", "父 Agent 取消", {
+            "parent_run_id": ctx.run_id,
+        })
         await emit_event(ctx.db, ctx.run_id, "subagent.completed", f"{child.objective.split(']', 1)[0].lstrip('[')} 已停止", {
             "child_run_id": child.id,
             "status": "cancelled",
@@ -270,6 +278,7 @@ SUBAGENT_TOOLS = [
         "Spawn one bounded read-only sub-agent for independent investigation; it can only use read-only tools and returns a structured report.",
         SubagentSpawnArgs,
         subagent_spawn,
+        idempotent=True,
     ),
     ToolDefinition(
         "subagent_status",
@@ -288,5 +297,6 @@ SUBAGENT_TOOLS = [
         "Cancel a child sub-agent owned by this run.",
         SubagentIdArgs,
         subagent_cancel,
+        idempotent=True,
     ),
 ]

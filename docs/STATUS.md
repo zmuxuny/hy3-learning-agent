@@ -1,7 +1,9 @@
 # 项目状态
 
-更新时间：2026-08-10（Asia/Shanghai）
-当前版本：1.1.0
+更新时间：2026-08-13（Asia/Shanghai）
+当前版本：1.1.1
+
+下一版本：2.0.0 已完成路线图设计，尚未开始实现。2.0 将引入学习证据账本、技能图、可重建学习者状态、自适应学习动作、Context Pack 2.0 和耐久主动队列；详细范围与验收门槛见 [`V2_ROADMAP.md`](V2_ROADMAP.md)。路线图中的目标能力不能视为当前 1.1.1 已有功能。
 
 ## 当前结论
 
@@ -17,6 +19,7 @@ Learning Agent 已形成可本地长期运行的个人学习 Harness，而不是
 - 主动性：单实例心跳先筛选到期复习、临近任务和长期无证据计划，再启动计划级 Hy3 Run 自主判断是否保持安静、提醒、抽查或调整。提醒首先成为连续 Session 的 Agent 消息，再投影到收件箱、浏览器和可选邮件；点击或邮件回复回到同一上下文。
 - Session 管理：对话自动语义命名，支持手动改名、归档、恢复和非破坏式消息编辑。全局 Session 创建计划后通过 `SessionPlanLink + handoff_summary` 显式过渡到新的计划 Session，不静默改绑。
 - Harness 可观察性：每条 Agent 消息内包含可折叠 Run；工具、审批、子 Agent、失败和预算可以逐项展开。阻塞审批支持暂停—批准/拒绝—检查点恢复，进程重启可恢复有检查点的主 Run 和子 Run。
+- 产品状态一致性：同一 Session 只有一个根 Run；运行中的跟进与邮件回复进入后端耐久队列，完成后仍在原 Session 续跑。活动/待审批 Run 阻止归档，归档 Session 不能采用遗留提案，计划正式完成受任务证据与终态约束。
 
 ## Context 与 Memory 1.1
 
@@ -26,14 +29,14 @@ Learning Agent 已形成可本地长期运行的个人学习 Harness，而不是
 - 记忆归档是可恢复软归档，不再通过 API 物理删除。短期/情节记忆超过 90 天、显式过期或关联计划消失时会写明生命周期原因。
 - 检索使用 BM25 + 本地 SimHash、RRF、作用域、层级、置信度与时间衰减；结果记录使用次数/最近时间并返回 `score_breakdown`。
 - 每个 Run 保存不可变 `ContextSnapshot`。在消息内展开“读取计划、近期进度与相关记忆”，可查看实际来源构成、命中记忆分数、估算 Token 和送入模型的 Markdown。
-- SQLite 是事实来源，`data/context/global.md` 与 `data/context/plans/{id}.md` 是最新可读投影；原始对话、事件、摘要版本和历史快照仍保留在数据库。
+- SQLite 是事实来源，`data/context/global.md` 与 `data/context/plans/{id}.md` 是不含 Session 对话的最新可读投影，`data/context/runs/{run_id}.md` 是该轮精确输入副本；原始对话、事件、摘要版本和历史快照仍保留在数据库。
 
 ## 发布验收
 
-- `pytest -q`：101 passed。
+- `pytest -q`：117 passed。
 - `npm run build`：通过。
 - `npm audit --omit=dev`：0 vulnerabilities。
-- 真实浏览器：22 个页面/交互状态，覆盖 375、768、1280、1440、2560 宽度；无横向溢出、按钮裁切或小于 11px 的可见正文。
+- 真实浏览器：23 个页面/交互状态，覆盖 375、768、1280、1440、2560 宽度；无横向溢出、按钮裁切或小于 11px 的可见正文；移动端四项底部导航可返回连续对话。
 - 真实设置链路：前端 HTTP 客户端已补齐 PUT，模型、邮箱、主动策略和通知策略保存路径可用；秘密只存在 Git 忽略的 `.env`，API 不回传凭据。
 - 真实 Hy3（临时数据库副本）：全局 Run 命中确认记忆并保存可解释快照，随后自主调用 `study_state_get → plan_get`，用 2 次模型调用形成当前学习位置与单一步骤建议；Run 正常进入 `completed`，未污染正式数据。
 - 真实 Web：DuckDuckGo Provider 返回 Real Python 的 asyncio 实战教程、Udemy 课程和 Python Academy 学习指南，证明搜索链路可返回具体教程/课程而非只有文档页。

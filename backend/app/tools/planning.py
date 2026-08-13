@@ -14,6 +14,7 @@ from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, PlanProposal, PlanningIntake, RunEvent, Session
 from app.runtime.events import emit_event
 from app.schemas import PlanCreate
+from app.services.plans import plan_completeness_issues
 from app.tools.base import EmptyArgs, ToolContext, ToolDefinition
 
 
@@ -267,6 +268,12 @@ async def plan_proposal_create(ctx: ToolContext, args: PlanProposalCreateArgs) -
         return {
             "error": "Requirements are not ready. Update planning_intake with the remaining questions first."
         }
+    completeness_issues = plan_completeness_issues(args.plan)
+    if completeness_issues:
+        return {
+            "error": "The formal plan is incomplete: " + "; ".join(completeness_issues),
+            "issues": completeness_issues,
+        }
     existing = (await ctx.db.execute(
         select(PlanProposal).where(
             PlanProposal.owner_id == ctx.owner_id,
@@ -338,6 +345,7 @@ PLANNING_TOOLS = [
         "Delegate up to three bounded planning investigations to real child Agent runs and join their reports.",
         PlanningDelegateArgs,
         planning_delegate,
+        idempotent=True,
     ),
     ToolDefinition(
         "plan_proposal_create",

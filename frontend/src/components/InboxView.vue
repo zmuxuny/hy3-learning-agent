@@ -51,10 +51,10 @@ function testEmail(channel, sendMessage = false) {
       <div class="proactive-status-icon"><BoltIcon /></div>
       <div class="proactive-status-copy">
         <header>
-          <div><strong>主动检查已{{ store.schedulerStatus?.enabled ? '开启' : '关闭' }}</strong><span>全局心跳 · 不是每个任务各跑一个定时器</span></div>
-          <em :class="{ active: store.schedulerStatus?.active }">{{ store.schedulerStatus?.active ? '检查中' : `${heartbeatMinutes} 分钟一轮` }}</em>
+          <div><strong>主动检查{{ !store.schedulerStatus?.enabled ? '已关闭' : store.schedulerStatus?.paused ? '已暂停' : '已开启' }}</strong><span>全局心跳 · 不是每个任务各跑一个定时器</span></div>
+          <em :class="{ active: store.schedulerStatus?.active }">{{ store.schedulerStatus?.active ? '检查中' : store.schedulerStatus?.paused ? '仅手动检查' : `${heartbeatMinutes} 分钟一轮` }}</em>
         </header>
-        <p>每轮先读取到期复习、临近截止任务和学习活动；有证据需要介入时才启动 Hy3。超过 {{ store.schedulerStatus?.progress_checkin_hours || 24 }} 小时没有学习证据时，它也可以主动询问进度。站内收件箱无需配置邮箱。</p>
+        <p>每轮先读取到期复习、临近截止任务和学习活动；有证据需要介入时才启动 Hy3。超过 {{ store.schedulerStatus?.progress_checkin_hours || 24 }} 小时没有学习证据时，它也可以主动询问进度。暂停后不会自动启动，但仍可手动检查。站内收件箱无需配置邮箱。</p>
         <div class="proactive-status-facts">
           <span><ClockIcon /><small>下次检查</small><strong>{{ formatTime(store.schedulerStatus?.next_cycle_at) }}</strong></span>
           <span><CheckCircleIcon /><small>最近判断</small><strong>{{ decisionLabel(store.schedulerStatus?.last_decision) }}</strong></span>

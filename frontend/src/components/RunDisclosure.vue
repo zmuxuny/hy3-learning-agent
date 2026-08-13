@@ -39,6 +39,7 @@ const TOOL_LABELS = {
   stage_create: '添加计划阶段',
   task_create: '添加学习任务',
   review_schedule: '安排复习',
+  review_resolve: '更新复习状态',
   quiz_create: '生成考核',
   quiz_get: '读取考核标准',
   quiz_grade: '评估学习结果',

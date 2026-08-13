@@ -3,7 +3,7 @@ from datetime import datetime, time, timezone
 from email.message import EmailMessage
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -34,7 +34,12 @@ class NotificationService:
             return {"blocked": True, "reason": reason, "session_id": None, "notifications": []}
         if plan_id is not None:
             plan = await self.db.get(Plan, plan_id)
-            if not plan or plan.owner_id != owner_id or plan.status == "archived":
+            if (
+                not plan
+                or plan.owner_id != owner_id
+                or plan.status == "archived"
+                or (trigger not in {"user_message", "email_reply"} and plan.status != "active")
+            ):
                 return {
                     "blocked": True,
                     "reason": "plan no longer active",
@@ -72,9 +77,7 @@ class NotificationService:
                 notification.status = "sent"
                 notification.sent_at = datetime.now(timezone.utc)
             elif channel == "browser":
-                notification.status = "sent"
-                notification.sent_at = datetime.now(timezone.utc)
-                await push_service.send(
+                delivered = await push_service.send(
                     self.db,
                     owner_id,
                     title,
@@ -84,6 +87,10 @@ class NotificationService:
                         "url": f"/?notification={created_models[0].id}",
                     },
                 )
+                # `sent` means the open page should display the notification;
+                # `pushed` means the Service Worker already delivered it.
+                notification.status = "pushed" if delivered else "sent"
+                notification.sent_at = datetime.now(timezone.utc)
             elif channel == "email":
                 if not self._email_configured():
                     notification.status = "skipped"
@@ -100,7 +107,7 @@ class NotificationService:
             else:
                 notification.status = "skipped"
             created.append({"id": notification.id, "channel": channel, "status": notification.status})
-        if created_models and trigger != "user_message":
+        if created_models and trigger not in {"user_message", "email_reply"}:
             primary = next((item for item in created_models if item.channel == "in_app"), created_models[0])
             await materialize_notification_message(
                 self.db,
@@ -112,7 +119,7 @@ class NotificationService:
         return {"blocked": False, "session_id": session.id, "notifications": created}
 
     async def _guard(self, owner_id: str, trigger: str, plan_id: int | None) -> tuple[bool, str]:
-        if trigger in {"user_message", "manual_heartbeat"}:
+        if trigger in {"user_message", "email_reply", "manual_heartbeat"}:
             return True, "user initiated"
 
         profile = await self.db.get(UserProfile, owner_id)
@@ -124,8 +131,14 @@ class NotificationService:
 
         local_midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
         utc_midnight = local_midnight.astimezone(timezone.utc)
+        # One intervention can have both in-app and email delivery rows. Count
+        # that intervention once rather than consuming the daily limit twice.
+        logical_delivery = func.coalesce(
+            Notification.run_id + "\x00" + Notification.title + "\x00" + Notification.body,
+            cast(Notification.id, String),
+        )
         result = await self.db.execute(
-            select(func.count(Notification.id)).where(
+            select(func.count(func.distinct(logical_delivery))).where(
                 Notification.owner_id == owner_id,
                 Notification.channel.in_(["in_app", "email"]),
                 Notification.sent_at >= utc_midnight,

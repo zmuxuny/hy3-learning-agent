@@ -47,6 +47,7 @@ const navigation = [
 const heartbeatLabel = computed(() => {
   const status = store.schedulerStatus;
   if (!status?.enabled) return '后台检查已关闭';
+  if (status.paused) return '后台主动检查已暂停';
   if (status.active) return '正在主动检查学习状态';
   if (!status.next_cycle_at) return `每 ${Math.round((status.interval_seconds || 300) / 60)} 分钟检查`;
   const next = new Date(status.next_cycle_at);
@@ -112,6 +113,13 @@ async function toggleSearch() {
     </button>
 
     <nav class="nav-list">
+      <button
+        :class="['nav-item', 'mobile-conversation-nav', { active: store.activeView === 'home' }]"
+        @click="store.openView('home')"
+      >
+        <ChatBubbleLeftRightIcon />
+        <span>对话</span>
+      </button>
       <button
         v-for="item in navigation"
         :key="item.id"

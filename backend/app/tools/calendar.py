@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -29,7 +30,7 @@ class CalendarPatchArgs(BaseModel):
     description: str | None = None
     starts_at: datetime | None = None
     ends_at: datetime | None = None
-    status: str | None = None
+    status: Literal["scheduled", "completed", "cancelled"] | None = None
 
 
 def _scope_error(ctx: ToolContext, plan_id: int | None) -> dict | None:
@@ -67,6 +68,8 @@ async def calendar_create(ctx: ToolContext, args: CalendarCreateArgs) -> dict:
         plan = await ctx.db.get(Plan, plan_id)
         if not plan or plan.owner_id != ctx.owner_id:
             return {"error": "Plan not found"}
+        if plan.status == "archived":
+            return {"error": "Restore the plan before changing its learning state"}
     if args.task_id is not None:
         task = (await ctx.db.execute(
             select(Task).join(Task.stage).join(Plan).where(
@@ -96,7 +99,17 @@ async def calendar_patch(ctx: ToolContext, args: CalendarPatchArgs) -> dict:
         return {"error": "Calendar event not found"}
     if error := _scope_error(ctx, event.plan_id):
         return error
+    if event.plan_id is not None:
+        plan = await ctx.db.get(Plan, event.plan_id)
+        if not plan or plan.owner_id != ctx.owner_id:
+            return {"error": "Plan not found"}
+        if plan.status == "archived":
+            return {"error": "Restore the plan before changing its learning state"}
     changes = args.model_dump(exclude={"event_id"}, exclude_unset=True)
+    effective_start = changes.get("starts_at", event.starts_at)
+    effective_end = changes.get("ends_at", event.ends_at)
+    if effective_end and effective_end <= effective_start:
+        return {"error": "ends_at must be later than starts_at"}
     before = {key: json_safe(getattr(event, key)) for key in changes}
     for key, value in changes.items():
         setattr(event, key, value)

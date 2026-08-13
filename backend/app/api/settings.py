@@ -84,6 +84,7 @@ async def read_settings(db: AsyncSession = Depends(get_db)):
         "notifications": int((await db.scalar(
             select(func.count(Notification.id)).where(
                 Notification.owner_id == settings.DEFAULT_OWNER_ID,
+                Notification.channel == "in_app",
                 Notification.archived_at.is_(None),
             )
         )) or 0),
@@ -279,5 +280,9 @@ async def update_notification_policy(
         "restart_required": data.cooldown_minutes is not None,
         "quiet_hours": profile.quiet_hours,
         "daily_notification_limit": profile.daily_notification_limit,
-        "cooldown_minutes": data.cooldown_minutes or settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES,
+        "cooldown_minutes": (
+            data.cooldown_minutes
+            if data.cooldown_minutes is not None
+            else settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES
+        ),
     }

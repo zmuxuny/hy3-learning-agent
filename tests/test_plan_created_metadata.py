@@ -4,8 +4,9 @@ import pytest
 from sqlalchemy import select
 
 from app.api.agent import decide_plan_proposal
+from app.api.operations import undo_operation
 from app.db.database import AsyncSessionLocal
-from app.models import AgentRun, PlanProposal, PlanningIntake, Session
+from app.models import AgentRun, LearningEvent, Operation, Plan, PlanProposal, PlanningIntake, Session
 from app.schemas import PlanCreate, PlanProposalDecision, StageCreate, TaskCreate
 from app.services import plans as plan_service
 from app.tools import ToolContext, execute_tool
@@ -83,5 +84,19 @@ async def test_proposal_accept_sets_created_plan_id_on_source_run():
 
         accepted = await decide_plan_proposal(proposal_id, PlanProposalDecision(accepted=True), db)
         assert accepted.plan_id is not None
+        created_plan_id = accepted.plan_id
         refreshed_source = await db.get(AgentRun, source.id)
-        assert refreshed_source.created_plan_id == accepted.plan_id
+        assert refreshed_source.created_plan_id == created_plan_id
+
+        operation = (await db.execute(select(Operation).where(
+            Operation.tool_name == "plan.proposal.accept",
+            Operation.entity_id == str(created_plan_id),
+        ))).scalars().one()
+        await undo_operation(operation.id, db)
+        assert await db.get(Plan, created_plan_id) is None
+        await db.refresh(proposal)
+        assert proposal.status == "pending"
+        audit = (await db.execute(select(LearningEvent).where(
+            LearningEvent.event_type == "operation.undone",
+        ))).scalars().one()
+        assert audit.plan_id is None

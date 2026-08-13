@@ -75,14 +75,21 @@ async def test_heartbeat_resume_rebuilds_fresh_context_instead_of_stale_snapshot
 
 
 @pytest.mark.asyncio
-async def test_reconcile_does_not_resume_run_for_deleted_plan():
+async def test_reconcile_does_not_resume_run_for_archived_plan():
     async with AsyncSessionLocal() as db:
+        plan = await plan_service.create_plan(
+            db,
+            "local",
+            PlanCreate(title="已归档计划", goal="不应恢复后台运行"),
+        )
+        plan.status = "archived"
+        await db.commit()
         run = AgentRun(
             owner_id="local",
             trigger="heartbeat",
-            objective="检查计划 999",
+            objective=f"检查计划 {plan.id}",
             model="hy3",
-            plan_id=999,
+            plan_id=plan.id,
             status="running",
             checkpoint={"step": 0, "messages": [], "pending_tool_calls": []},
         )

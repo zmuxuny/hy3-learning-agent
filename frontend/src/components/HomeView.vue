@@ -53,8 +53,6 @@ watch(() => store.highlightedMessageId, async (messageId) => {
 <template>
   <section class="conversation-page">
     <div ref="scrollArea" class="conversation-scroll" @scroll="onScroll">
-      <div v-if="store.error" class="error-banner">{{ store.error }}</div>
-
       <div v-if="!store.currentRun && !store.conversationMessages.length" class="welcome-state">
         <div class="welcome-mark"><SparklesIcon /></div>
         <h1>{{ store.activeSession?.handoff_summary ? `继续推进${store.focusedPlan ? `「${store.focusedPlan.title}」` : '计划'}` : '今天想学什么？' }}</h1>

@@ -148,8 +148,10 @@ async def open_notification_in_conversation(
     group = list((await db.execute(group_query.order_by(Notification.id))).scalars())
     if not group:
         group = [notification]
+    opened_at = datetime.now(timezone.utc)
     for sibling in group:
         sibling.session_id = session.id
+        sibling.read_at = sibling.read_at or opened_at
     primary = next((item for item in group if item.channel == "in_app"), notification)
     message = await materialize_notification_message(
         db,
@@ -157,5 +159,4 @@ async def open_notification_in_conversation(
         notification=primary,
         notification_ids=[item.id for item in group],
     )
-    notification.read_at = notification.read_at or datetime.now(timezone.utc)
     return session, message, primary

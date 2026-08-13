@@ -25,12 +25,13 @@ const editingQueueId = ref(null);
 const editingDraft = ref('');
 const queueEditInput = ref(null);
 const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
+const waitingApproval = computed(() => store.currentRun?.status === 'waiting_approval');
 const queuedMessages = computed(() => store.queuedMessages.filter(
   (item) => item.session_id === (store.activeSessionId || null),
 ));
 const followUpBehavior = computed(() => store.followUpBehavior);
 const defaultActionLabel = computed(() => (
-  followUpBehavior.value === 'steer' ? '转向当前运行' : '排队到下一轮'
+  !waitingApproval.value && followUpBehavior.value === 'steer' ? '转向当前运行' : '排队到下一轮'
 ));
 const contextUsage = computed(() => {
   const event = [...store.runEvents].reverse().find((item) => item.type === 'context.built');
@@ -54,7 +55,7 @@ async function submit() {
   const value = prompt.value.trim();
   if (!value) return;
   if (running.value) {
-    await applyFollowUp(value, followUpBehavior.value);
+    await applyFollowUp(value, waitingApproval.value ? 'queue' : followUpBehavior.value);
     return;
   }
   await sendNow(value);
@@ -99,7 +100,7 @@ function stopRun() {
 
 async function beginQueueEdit(message) {
   editingQueueId.value = message.id;
-  editingDraft.value = message.objective;
+  editingDraft.value = message.user_content || message.objective;
   await nextTick();
   queueEditInput.value?.focus();
   queueEditInput.value?.select();
@@ -107,7 +108,7 @@ async function beginQueueEdit(message) {
 
 async function saveQueueEdit(message) {
   const value = editingDraft.value.trim();
-  if (value && value !== message.objective) {
+  if (value && value !== (message.user_content || message.objective)) {
     await store.updateQueuedMessage(message.id, { objective: value });
   }
   editingQueueId.value = null;
@@ -151,7 +152,7 @@ async function switchSession(event) {
   <div class="composer-wrap">
     <div v-if="queuedMessages.length" class="queue-stack">
       <div class="queue-stack-head">
-        <span><strong>{{ queuedMessages.length }}</strong> 条消息排队中 · 当前运行结束后自动发送</span>
+        <span><strong>{{ queuedMessages.length }}</strong> 条消息排队中 · 完成或失败后自动发送，主动停止时保留</span>
         <small>Enter={{ defaultActionLabel }} · Tab=排队</small>
       </div>
       <div
@@ -169,7 +170,12 @@ async function switchSession(event) {
             @keydown.esc="editingQueueId = null"
           />
         </template>
-        <p v-else class="queue-objective">{{ message.objective }}</p>
+        <p v-else class="queue-objective">
+          <small v-if="message.trigger !== 'user_message'" class="queue-source">
+            {{ message.trigger === 'email_reply' ? '邮件回复' : '系统消息' }}
+          </small>
+          <span>{{ message.user_content || message.objective }}</span>
+        </p>
         <div class="queue-actions">
           <button
             title="上移"
@@ -181,7 +187,7 @@ async function switchSession(event) {
             :disabled="index === queuedMessages.length - 1"
             @click="store.moveQueuedMessage(message.id, 1)"
           ><ChevronDownIcon /></button>
-          <button v-if="editingQueueId !== message.id" title="编辑" @click="beginQueueEdit(message)"><PencilSquareIcon /></button>
+          <button v-if="message.trigger === 'user_message' && editingQueueId !== message.id" title="编辑" @click="beginQueueEdit(message)"><PencilSquareIcon /></button>
           <button v-else title="保存" @click="saveQueueEdit(message)"><XMarkIcon /></button>
           <button
             v-if="!running"
@@ -203,7 +209,7 @@ async function switchSession(event) {
       <textarea
         v-model="prompt"
         rows="1"
-        :placeholder="childContext ? '子 Agent 线程为只读，请返回主对话继续交流' : archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : running ? `继续补充要求 · Enter=${defaultActionLabel} · Tab=排队` : '说说你想学什么，或询问现在该做什么'"
+        :placeholder="childContext ? '子 Agent 线程为只读，请返回主对话继续交流' : archivedContext ? '归档内容为只读，恢复后可以继续对话' : uploading ? '正在上传文件…' : waitingApproval ? '请先处理上方确认；补充消息会排到下一轮' : running ? `继续补充要求 · Enter=${defaultActionLabel} · Tab=排队` : '说说你想学什么，或询问现在该做什么'"
         :disabled="composerDisabled"
         @keydown.enter.exact.prevent="submit"
         @keydown.tab.exact="tabAction"
@@ -250,7 +256,7 @@ async function switchSession(event) {
       </div>
     </div>
     <div v-if="queueMenuOpen" class="queue-menu">
-      <button @click="applyFollowUp(prompt.trim(), 'steer')">转向当前运行（不停止）</button>
+      <button v-if="!waitingApproval" @click="applyFollowUp(prompt.trim(), 'steer')">转向当前运行（不停止）</button>
       <button @click="applyFollowUp(prompt.trim(), 'queue')">排队到下一轮</button>
       <button class="danger" @click="interruptSend">打断当前运行并立即发送</button>
       <button class="quiet" @click="queueMenuOpen = false">取消</button>

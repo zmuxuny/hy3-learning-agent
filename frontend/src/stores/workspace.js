@@ -91,7 +91,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const runEventLoading = ref({});
   const loading = ref(false);
   const error = ref('');
-  const drainingQueue = ref(false);
   let eventSource = null;
   let proactiveTimer = null;
 
@@ -368,17 +367,33 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function startRun(objective, planId = undefined, options = {}) {
     if (!objective.trim()) return false;
     const resolvedPlanId = planId === undefined ? focusPlanId.value : planId;
+    let resumedPlanSession = false;
+    if (resolvedPlanId != null && !activeSessionId.value) {
+      const priorPlanSession = sessions.value.find((session) => Number(session.plan_id) === Number(resolvedPlanId));
+      if (priorPlanSession) {
+        await selectSession(priorPlanSession);
+        resumedPlanSession = true;
+      }
+    }
+    if (
+      resumedPlanSession
+      && currentRun.value
+      && ['queued', 'running', 'waiting_approval'].includes(currentRun.value.status)
+    ) {
+      await enqueueMessage(objective);
+      return 'queued';
+    }
     if (options.mode === 'queue' && currentRun.value && ['queued', 'running', 'waiting_approval'].includes(currentRun.value.status)) {
       await enqueueMessage(objective);
       return 'queued';
     }
-    if (options.mode === 'interrupt' && currentRun.value && ['queued', 'running'].includes(currentRun.value.status)) {
+    if (options.mode === 'interrupt' && currentRun.value && ['queued', 'running', 'waiting_approval'].includes(currentRun.value.status)) {
       await api.post(`/agent/runs/${currentRun.value.id}/cancel`);
       const deadline = Date.now() + 8000;
       while (Date.now() < deadline) {
         const polled = (await api.get(`/agent/runs/${currentRun.value.id}`)).data;
         currentRun.value = polled;
-        if (!['queued', 'running'].includes(polled.status)) break;
+        if (!['queued', 'running', 'waiting_approval'].includes(polled.status)) break;
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
     }
@@ -423,21 +438,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function triggerHeartbeat() {
-    closeEventSource();
-    runEvents.value = [];
     error.value = '';
     try {
       const response = await api.post('/agent/heartbeat');
-      currentRun.value = response.data;
-      focusPlanId.value = response.data.plan_id ?? null;
-      activeSessionId.value = response.data.session_id || null;
-      conversationMessages.value = [];
-      activeView.value = 'home';
       runs.value.unshift(response.data);
-      subscribeToRun(response.data.id);
+      schedulerStatus.value = {
+        ...(schedulerStatus.value || {}),
+        active: true,
+        latest_run_id: response.data.id,
+        latest_run_status: response.data.status,
+      };
       await refreshProactiveState();
+      return response.data;
     } catch (requestError) {
       error.value = requestError.response?.data?.detail || requestError.message;
+      return null;
     }
   }
 
@@ -505,9 +520,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function setSessionArchived(sessionId, archived) {
-    await api.patch(`/agent/sessions/${sessionId}`, { archived });
-    if (archived && activeSessionId.value === sessionId) startNewConversation();
-    await loadSessions();
+    error.value = '';
+    try {
+      await api.patch(`/agent/sessions/${sessionId}`, { archived });
+      if (archived && activeSessionId.value === sessionId) await startNewConversation();
+      await loadSessions();
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
+    }
   }
 
   async function editMessage(messageId, content) {
@@ -605,20 +627,27 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function setPlanArchived(planId, archived) {
-    await api.patch(`/plans/${planId}/archive`, { archived });
-    const [activeResponse, archivedResponse] = await Promise.all([
-      api.get('/plans'),
-      api.get('/plans?archived=true'),
-    ]);
-    plans.value = activeResponse.data;
-    archivedPlans.value = archivedResponse.data;
-    if (archived && currentPlan.value?.id === planId) {
-      currentPlan.value = null;
-      planResources.value = [];
-      if (focusPlanId.value === planId) resetConversationState();
-      planScreen.value = 'list';
-    } else if (!archived && currentPlan.value?.id === planId) {
-      await loadPlan(planId);
+    error.value = '';
+    try {
+      await api.patch(`/plans/${planId}/archive`, { archived });
+      const [activeResponse, archivedResponse] = await Promise.all([
+        api.get('/plans'),
+        api.get('/plans?archived=true'),
+      ]);
+      plans.value = activeResponse.data;
+      archivedPlans.value = archivedResponse.data;
+      if (archived && currentPlan.value?.id === planId) {
+        currentPlan.value = null;
+        planResources.value = [];
+        if (focusPlanId.value === planId) resetConversationState();
+        planScreen.value = 'list';
+      } else if (!archived && currentPlan.value?.id === planId) {
+        await loadPlan(planId);
+      }
+      return true;
+    } catch (requestError) {
+      error.value = requestError.response?.data?.detail || requestError.message;
+      return false;
     }
   }
 
@@ -763,18 +792,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
           currentRun.value = { ...currentRun.value, status: eventName.split('.')[1] };
           closeEventSource();
           await refreshAfterRun();
-          const sessionQueue = queuedMessages.value.filter((item) => (
-            item.session_id === (activeSessionId.value || null)
-          ));
-          if (!drainingQueue.value && sessionQueue.length) {
-            drainingQueue.value = true;
-            try {
-              const next = sessionQueue[0];
-              await sendQueuedMessage(next.id);
-            } finally {
-              drainingQueue.value = false;
-            }
-          }
         }
       });
     });
@@ -975,6 +992,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
           activeSessionId.value = refreshedRun.session_id;
         }
       }
+    }
+    const nextSessionRun = activeSessionId.value
+      ? runs.value.find((item) => (
+        item.session_id === activeSessionId.value
+        && ['queued', 'running', 'waiting_approval'].includes(item.status)
+      ))
+      : null;
+    if (nextSessionRun && nextSessionRun.id !== currentRun.value?.id) {
+      currentRun.value = nextSessionRun;
+      const events = await loadRunEvents(nextSessionRun.id, true);
+      runEvents.value = events;
+      if (['queued', 'running'].includes(nextSessionRun.status)) subscribeToRun(nextSessionRun.id, false);
     }
     await refreshCurrentPlan();
     await loadConversation(activeSessionId.value);

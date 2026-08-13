@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import select
 
 import app.tools.subagents as subagent_tools
+from app.runtime.agent import tool_timeout_seconds
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, Operation, Plan, RunEvent
 from app.services import plans as plan_service
@@ -342,3 +343,13 @@ def plan_payload(title="子 Agent 测试计划"):
         expected_outcome="可运行",
         stages=[StageCreate(title="阶段一", tasks=[TaskCreate(title="任务一")])],
     )
+
+
+def test_subagent_join_outer_timeout_exceeds_requested_wait(monkeypatch):
+    from app.runtime.agent import settings as runtime_settings
+
+    monkeypatch.setattr(runtime_settings, "AGENT_TOOL_TIMEOUT_SECONDS", 35)
+    assert tool_timeout_seconds({
+        "name": "subagent_join",
+        "arguments": json.dumps({"run_id": "child", "timeout_seconds": 60}),
+    }) == 65

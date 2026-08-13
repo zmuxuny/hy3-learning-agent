@@ -9,10 +9,12 @@ from sqlalchemy.orm import selectinload
 
 from app.models import (
     ActivityDay,
+    AgentRun,
     LearningEvent,
     LearningResource,
     Operation,
     Plan,
+    QueuedMessage,
     ReviewSchedule,
     Stage,
     Task,
@@ -100,6 +102,12 @@ def _focused(ctx: ToolContext, plan_id: int) -> dict | None:
     return None
 
 
+def _archived(plan: Plan) -> dict | None:
+    if plan.status == "archived":
+        return {"error": "Restore the plan before changing its learning state"}
+    return None
+
+
 async def _owned_task(ctx: ToolContext, task_id: int) -> Task | None:
     result = await ctx.db.execute(
         select(Task).join(Stage).join(Plan)
@@ -116,13 +124,49 @@ async def plan_patch(ctx: ToolContext, args: PlanPatchArgs) -> dict:
     if args.expected_version is not None and plan.version != args.expected_version:
         return {"error": f"Plan version conflict: expected {args.expected_version}, current {plan.version}"}
     changes = args.model_dump(exclude={"plan_id", "expected_version", "reason"}, exclude_unset=True)
+    if plan.status == "archived" and changes.get("status") not in {"active", "paused"}:
+        return {"error": "Restore the plan before changing its learning state"}
+    if changes.get("status") == "completed":
+        tasks = [task for stage in plan.stages for task in stage.tasks]
+        if (
+            not tasks
+            or not any(task.status == "completed" for task in tasks)
+            or any(task.is_core and task.status != "completed" for task in tasks)
+            or any(task.status not in {"completed", "skipped"} for task in tasks)
+        ):
+            return {
+                "error": (
+                    "A plan can be completed only after every core task is completed "
+                    "and every other task is completed or explicitly skipped"
+                )
+            }
     protected = {"goal", "status"}.intersection(changes)
-    if protected and ctx.trigger != "user_message":
+    if protected and ctx.trigger not in {"user_message", "email_reply"}:
         return {
             "approval_required": True,
             "blocking": True,
             "reason": f"Background runs cannot change {', '.join(sorted(protected))}",
         }
+    if changes.get("status") == "archived":
+        other_active_run = (await ctx.db.execute(
+            select(AgentRun.id).where(
+                AgentRun.owner_id == ctx.owner_id,
+                AgentRun.plan_id == plan.id,
+                AgentRun.id != ctx.run_id,
+                AgentRun.parent_run_id.is_(None),
+                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if other_active_run:
+            return {"error": "Stop or resolve the plan's other active run before archiving it"}
+        queued_message = (await ctx.db.execute(
+            select(QueuedMessage.id).where(
+                QueuedMessage.owner_id == ctx.owner_id,
+                QueuedMessage.plan_id == plan.id,
+            ).limit(1)
+        )).scalar_one_or_none()
+        if queued_message:
+            return {"error": "Send or delete queued messages before archiving this plan"}
     before = {key: json_safe(getattr(plan, key)) for key in changes}
     if "status" in changes:
         before["archived_from_status"] = plan.archived_from_status
@@ -155,6 +199,8 @@ async def stage_create(ctx: ToolContext, args: StageCreateArgs) -> dict:
     if error := _focused(ctx, args.plan_id):
         return error
     plan = await plan_service.get_plan(ctx.db, ctx.owner_id, args.plan_id)
+    if error := _archived(plan):
+        return error
     position = len(plan.stages) if args.position is None else args.position
     for existing_stage in plan.stages:
         if existing_stage.position >= position:
@@ -181,6 +227,8 @@ async def task_create(ctx: ToolContext, args: TaskCreateArgs) -> dict:
         return {"error": "Stage not found"}
     if error := _focused(ctx, plan.id):
         return error
+    if error := _archived(plan):
+        return error
     existing = list((await ctx.db.execute(select(Task).where(Task.stage_id == stage.id))).scalars())
     values = args.model_dump(exclude={"stage_id", "metadata"})
     task = Task(stage_id=stage.id, position=len(existing), task_metadata=args.metadata, **values)
@@ -201,6 +249,8 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
     if not task:
         return {"error": "Task not found"}
     if error := _focused(ctx, task.stage.plan_id):
+        return error
+    if error := _archived(task.stage.plan):
         return error
     if not args.content.strip() and not args.artifacts:
         return {"error": "A submission needs text or at least one artifact"}
@@ -247,9 +297,17 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
         return {"error": "Submission not found"}
     if error := _focused(ctx, submission.plan_id):
         return error
+    if submission.status != "submitted":
+        return {
+            "error": "This submission already has a verdict; create a new submission for a revised attempt",
+            "submission_id": submission.id,
+            "status": submission.status,
+        }
     task = await _owned_task(ctx, submission.task_id)
     if not task:
         return {"error": "Task not found"}
+    if error := _archived(task.stage.plan):
+        return error
     before_submission = {"status": submission.status, "score": submission.score, "feedback": submission.feedback, "checked_at": submission.checked_at}
     before_task = {"status": task.status, "completed_at": task.completed_at, "task_metadata": dict(task.task_metadata)}
     passed = args.score >= args.pass_threshold

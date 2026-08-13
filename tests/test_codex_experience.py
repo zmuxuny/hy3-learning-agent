@@ -203,6 +203,10 @@ async def test_queue_crud_and_send(monkeypatch):
         assert sent.objective == "改过的第二条"
         remaining = (await db.execute(select(QueuedMessage))).scalars().all()
         assert remaining == []
+        visible = list((await db.execute(
+            select(ChatMessage).where(ChatMessage.run_id == sent.id)
+        )).scalars())
+        assert [(item.role, item.content) for item in visible] == [("user", "改过的第二条")]
 
 
 class AnswerApprovalCompletions:

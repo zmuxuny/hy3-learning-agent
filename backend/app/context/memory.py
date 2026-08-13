@@ -163,6 +163,23 @@ class MemoryManager:
         normalized = _normalize_memory(content)
         if not normalized:
             raise ValueError("Memory content cannot be empty")
+        if scope == "global":
+            if scope_id is not None:
+                raise ValueError("Global memory cannot have scope_id")
+        elif scope == "plan":
+            if not scope_id or not scope_id.isdigit():
+                raise ValueError("Plan memory requires a valid plan scope_id")
+            plan = await self.db.get(Plan, int(scope_id))
+            if not plan or plan.owner_id != owner_id:
+                raise ValueError("Plan memory scope does not exist")
+        elif scope == "session":
+            if not scope_id:
+                raise ValueError("Session memory requires scope_id")
+            session = await self.db.get(Session, scope_id)
+            if not session or session.owner_id != owner_id:
+                raise ValueError("Session memory scope does not exist")
+        else:
+            raise ValueError("Unsupported memory scope")
         result = await self.db.execute(
             select(Memory).where(
                 Memory.owner_id == owner_id,
@@ -186,8 +203,8 @@ class MemoryManager:
                 raise ValueError("Superseded memory not found")
             if previous.status not in {"confirmed", "proposed"}:
                 raise ValueError("Only active memory can be corrected")
-            if previous.scope != scope or previous.scope_id != scope_id:
-                raise ValueError("A correction must keep the original memory scope")
+            if previous.scope != scope or previous.scope_id != scope_id or previous.layer != layer:
+                raise ValueError("A correction must keep the original memory scope and layer")
 
         memory = Memory(
             owner_id=owner_id,
@@ -362,7 +379,10 @@ class MemoryManager:
             if not message.message_metadata.get("superseded_by_edit")
         ]
         keep = settings.AGENT_RECENT_MESSAGE_LIMIT
-        if len(messages) <= settings.AGENT_SESSION_COMPRESSION_THRESHOLD:
+        # The snapshot includes only `keep` recent messages. Compress as soon
+        # as history exceeds that boundary so no middle turns disappear.
+        threshold = min(settings.AGENT_SESSION_COMPRESSION_THRESHOLD, keep)
+        if len(messages) <= threshold:
             return False
         older = messages[:-keep]
         uncompressed = [message for message in older if not message.message_metadata.get("included_in_summary")]

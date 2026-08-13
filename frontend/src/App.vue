@@ -1,5 +1,5 @@
 <script setup>
-import { BellIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { BellIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { onBeforeUnmount, onMounted } from 'vue';
 import AgentTrace from './components/AgentTrace.vue';
 import HomeView from './components/HomeView.vue';
@@ -39,7 +39,12 @@ onBeforeUnmount(() => store.stopProactiveSync());
     </main>
     <button v-if="store.traceOpen" class="trace-backdrop" aria-label="关闭运行详情" @click="store.traceOpen = false"></button>
     <AgentTrace v-if="store.traceOpen" />
-    <aside v-if="store.proactiveNotice" class="proactive-toast" aria-live="polite">
+    <aside v-if="store.error" class="app-error-toast" role="alert">
+      <ExclamationTriangleIcon />
+      <span>{{ store.error }}</span>
+      <button aria-label="关闭错误提示" @click="store.error = ''"><XMarkIcon /></button>
+    </aside>
+    <aside v-if="store.proactiveNotice" :class="['proactive-toast', { shifted: store.error }]" aria-live="polite">
       <BellIcon />
       <button class="proactive-toast-copy" @click="store.openNotification(store.proactiveNotice)">
         <small>学习进度提醒</small>

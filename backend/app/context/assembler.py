@@ -179,6 +179,18 @@ class ContextAssembler:
             review_query = review_query.where(ReviewSchedule.plan_id == plan_id)
             quiz_query = quiz_query.where(Quiz.plan_id == plan_id)
             notification_query = notification_query.where(Notification.plan_id == plan_id)
+        elif related_plan_ids:
+            review_query = review_query.where(ReviewSchedule.plan_id.in_(related_plan_ids))
+            quiz_query = quiz_query.where(Quiz.plan_id.in_(related_plan_ids))
+            notification_query = notification_query.where(
+                or_(Notification.plan_id.is_(None), Notification.plan_id.in_(related_plan_ids))
+            )
+        else:
+            # A global conversation gets a compact plan index. Task-level state
+            # is loaded only after the Agent intentionally focuses a plan.
+            review_query = review_query.where(ReviewSchedule.id.is_(None))
+            quiz_query = quiz_query.where(Quiz.id.is_(None))
+            notification_query = notification_query.where(Notification.plan_id.is_(None))
         if session_id:
             # Notifications projected into this Session are already present in the
             # conversation below. Keep them out of the generic list to avoid giving
@@ -232,6 +244,12 @@ class ContextAssembler:
         else:
             resources = []
             submissions = []
+            if related_plan_ids:
+                calendar_query = calendar_query.where(
+                    or_(CalendarEvent.plan_id.is_(None), CalendarEvent.plan_id.in_(related_plan_ids))
+                )
+            else:
+                calendar_query = calendar_query.where(CalendarEvent.plan_id.is_(None))
         calendar_events = list((await self.db.execute(calendar_query.order_by(CalendarEvent.starts_at).limit(20))).scalars())
         if resources:
             sections.append("## Saved learning resources")
@@ -318,12 +336,22 @@ class ContextAssembler:
         await self.db.flush()
 
         context_root = PROJECT_ROOT / "data" / "context"
-        if plan_id is None:
-            path = context_root / "global.md"
-        else:
-            path = context_root / "plans" / f"{plan_id}.md"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(markdown, encoding="utf-8")
+        if run_id:
+            run_path = context_root / "runs" / f"{run_id}.md"
+            run_path.parent.mkdir(parents=True, exist_ok=True)
+            run_path.write_text(markdown, encoding="utf-8")
+
+        # The global/plan files are canonical readable projections. Never let
+        # one Session's private transcript leak into that shared projection;
+        # the exact per-Run input remains available above and in SQLite.
+        canonical_markdown = markdown.split("\n## Conversation\n", 1)[0].rstrip() + "\n"
+        canonical_path = (
+            context_root / "global.md"
+            if plan_id is None
+            else context_root / "plans" / f"{plan_id}.md"
+        )
+        canonical_path.parent.mkdir(parents=True, exist_ok=True)
+        canonical_path.write_text(canonical_markdown, encoding="utf-8")
         return snapshot
     LearningResource,
     TaskSubmission,
