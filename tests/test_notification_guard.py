@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.db.database import AsyncSessionLocal
-from app.models import Notification, UserProfile
+from app.models import AgentRun, Notification, UserProfile
 from app.notifications.service import NotificationService
 
 
@@ -61,6 +61,15 @@ async def test_email_notifications_count_toward_cooldown(monkeypatch):
 @pytest.mark.asyncio
 async def test_email_failure_error_is_returned_to_model(monkeypatch):
     async with AsyncSessionLocal() as db:
+        run = AgentRun(
+            owner_id="local",
+            trigger="user_message",
+            objective="发送一封提醒邮件",
+            model="hy3",
+            status="running",
+        )
+        db.add(run)
+        await db.commit()
         service = NotificationService(db)
         monkeypatch.setattr(service, "_email_configured", lambda: True)
 
@@ -70,7 +79,7 @@ async def test_email_failure_error_is_returned_to_model(monkeypatch):
         monkeypatch.setattr(service, "_send_email", fail_send)
         result = await service.send(
             owner_id="local",
-            run_id="run-1",
+            run_id=run.id,
             session_id=None,
             trigger="user_message",
             title="提醒",

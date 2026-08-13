@@ -80,7 +80,6 @@ async function submitCorrection(memory) {
       </div>
     </header>
 
-    <div v-if="store.error" class="error-banner" role="alert">{{ store.error }}</div>
 
     <div class="memory-layout">
       <article class="panel memory-summary">

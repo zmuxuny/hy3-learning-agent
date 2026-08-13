@@ -24,7 +24,7 @@ const email = reactive({
   enable_email_reply_polling: false,
   imap_host: '', imap_port: 993, imap_username: '', imap_password: '', imap_folder: 'INBOX',
 });
-const policy = reactive({ quiet_start: '23:00', quiet_end: '08:00', daily_limit: 3, cooldown_minutes: 180 });
+const policy = reactive({ quiet_start: '23:00', quiet_end: '08:00', daily_limit: 3, cooldown_minutes: 180, paused: false });
 const followup = ref('steer');
 
 onMounted(() => {
@@ -38,14 +38,13 @@ onMounted(() => {
   if (emailConfig) {
     email.smtp_host = emailConfig.smtp_host || '';
     email.smtp_port = emailConfig.smtp_port || 587;
-    email.smtp_username = emailConfig.smtp_username || '';
-    email.smtp_from = emailConfig.smtp_from || '';
-    email.smtp_to = emailConfig.smtp_to || '';
+    // The API intentionally returns only masked identities. Keep editable
+    // identity/secret fields blank so saving another field cannot persist the
+    // mask as a real credential.
     email.smtp_use_tls = emailConfig.smtp_use_tls ?? true;
     email.smtp_use_ssl = emailConfig.smtp_use_ssl ?? false;
     email.imap_host = emailConfig.imap_host || '';
     email.imap_port = emailConfig.imap_port || 993;
-    email.imap_username = emailConfig.imap_username || '';
     email.imap_folder = emailConfig.imap_folder || 'INBOX';
     email.enable_email_reply_polling = emailConfig.reply_polling_enabled ?? false;
   }
@@ -55,7 +54,10 @@ onMounted(() => {
     policy.quiet_end = profile.quiet_hours?.end || '08:00';
     policy.daily_limit = profile.daily_notification_limit ?? 3;
   }
-  if (store.schedulerStatus) policy.cooldown_minutes = app?.notification_cooldown_minutes ?? 180;
+  if (store.schedulerStatus) {
+    policy.cooldown_minutes = app?.notification_cooldown_minutes ?? 180;
+    policy.paused = Boolean(store.schedulerStatus.paused);
+  }
   followup.value = store.followUpBehavior || 'steer';
 });
 
@@ -65,7 +67,7 @@ async function run(label, action) {
   feedbackError.value = false;
   try {
     await action();
-    feedback.value = '设置已保存；邮箱与模型参数在重启服务后生效，通知与交互偏好即时生效。';
+    feedback.value = '设置已保存；邮箱、模型和提醒冷却时间在重启服务后生效，其余交互与通知偏好即时生效。';
   } catch (requestError) {
     feedbackError.value = true;
     feedback.value = requestError.response?.data?.detail || requestError.message;
@@ -95,11 +97,22 @@ function saveFollowup() {
 
 function saveEmail() {
   return run('email', async () => {
-    await store.updateEmailSettings({
-      ...email,
+    const payload = {
+      smtp_host: email.smtp_host,
       smtp_port: Number(email.smtp_port),
+      smtp_use_tls: email.smtp_use_tls,
+      smtp_use_ssl: email.smtp_use_ssl,
+      enable_email_reply_polling: email.enable_email_reply_polling,
+      imap_host: email.imap_host,
       imap_port: Number(email.imap_port),
-    });
+      imap_folder: email.imap_folder,
+    };
+    for (const field of ['smtp_username', 'smtp_password', 'smtp_from', 'smtp_to', 'imap_username', 'imap_password']) {
+      if (String(email[field] || '').trim()) payload[field] = String(email[field]).trim();
+    }
+    await store.updateEmailSettings(payload);
+    email.smtp_password = '';
+    email.imap_password = '';
   });
 }
 
@@ -114,6 +127,7 @@ function savePolicy() {
       daily_notification_limit: Number(policy.daily_limit),
       cooldown_minutes: Number(policy.cooldown_minutes),
     });
+    await store.setProactivePaused(policy.paused);
     await store.loadWorkspace();
   });
 }
@@ -163,7 +177,7 @@ function savePolicy() {
           <span>运行中发送消息的默认行为</span>
           <select v-model="followup">
             <option value="steer">转向当前运行（消息立即进入当前轮，不停止）</option>
-            <option value="queue">排队到下一轮（当前运行结束后自动发送）</option>
+            <option value="queue">排队到下一轮（完成/失败后续跑，主动停止时保留）</option>
           </select>
           <small>运行中按 Enter 使用此默认行为，按 Tab 直接排队；也可以点击输入框旁的按钮临时选择。</small>
         </label>
@@ -186,17 +200,17 @@ function savePolicy() {
       <div class="settings-form settings-grid">
         <label class="settings-field"><span>SMTP 主机</span><input v-model="email.smtp_host" placeholder="smtp.qq.com" /></label>
         <label class="settings-field"><span>SMTP 端口</span><input v-model.number="email.smtp_port" type="number" /></label>
-        <label class="settings-field"><span>SMTP 账号（Agent 邮箱）</span><input v-model="email.smtp_username" /></label>
-        <label class="settings-field"><span>SMTP 授权码</span><input v-model="email.smtp_password" type="password" /></label>
-        <label class="settings-field"><span>发件人地址</span><input v-model="email.smtp_from" /></label>
-        <label class="settings-field"><span>收件人地址（你的邮箱）</span><input v-model="email.smtp_to" /></label>
+        <label class="settings-field"><span>SMTP 账号（Agent 邮箱）</span><input v-model="email.smtp_username" :placeholder="store.emailConfiguration?.smtp_username || '留空则不修改'" /></label>
+        <label class="settings-field"><span>SMTP 授权码</span><input v-model="email.smtp_password" type="password" placeholder="留空则不修改" /></label>
+        <label class="settings-field"><span>发件人地址</span><input v-model="email.smtp_from" :placeholder="store.emailConfiguration?.smtp_from || '留空则不修改'" /></label>
+        <label class="settings-field"><span>收件人地址（你的邮箱）</span><input v-model="email.smtp_to" :placeholder="store.emailConfiguration?.smtp_to || '留空则不修改'" /></label>
         <label class="settings-field settings-check"><input v-model="email.smtp_use_tls" type="checkbox" /> STARTTLS（587）</label>
         <label class="settings-field settings-check"><input v-model="email.smtp_use_ssl" type="checkbox" /> SSL（465）</label>
         <label class="settings-field settings-check"><input v-model="email.enable_email_reply_polling" type="checkbox" /> 启用邮件回复轮询</label>
         <label class="settings-field"><span>IMAP 主机</span><input v-model="email.imap_host" placeholder="imap.qq.com" /></label>
         <label class="settings-field"><span>IMAP 端口</span><input v-model.number="email.imap_port" type="number" /></label>
-        <label class="settings-field"><span>IMAP 账号</span><input v-model="email.imap_username" /></label>
-        <label class="settings-field"><span>IMAP 授权码</span><input v-model="email.imap_password" type="password" /></label>
+        <label class="settings-field"><span>IMAP 账号</span><input v-model="email.imap_username" :placeholder="store.emailConfiguration?.imap_username || '留空则不修改'" /></label>
+        <label class="settings-field"><span>IMAP 授权码</span><input v-model="email.imap_password" type="password" placeholder="留空则不修改" /></label>
         <label class="settings-field"><span>IMAP 文件夹</span><input v-model="email.imap_folder" /></label>
       </div>
       <div class="settings-actions">
@@ -216,6 +230,7 @@ function savePolicy() {
         <div><small>NOTIFICATIONS</small><h2>主动通知策略</h2></div>
       </header>
       <div class="settings-form settings-grid">
+        <label class="settings-field settings-check"><input v-model="policy.paused" type="checkbox" /> 暂停后台主动检查（仍可手动检查）</label>
         <label class="settings-field"><span>免打扰开始</span><input v-model="policy.quiet_start" type="time" /></label>
         <label class="settings-field"><span>免打扰结束</span><input v-model="policy.quiet_end" type="time" /></label>
         <label class="settings-field"><span>每日站内通知上限</span><input v-model.number="policy.daily_limit" type="number" min="0" max="20" /></label>

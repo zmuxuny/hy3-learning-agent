@@ -48,6 +48,13 @@ class ReviewScheduleArgs(BaseModel):
     review_type: str = "quiz"
 
 
+class ReviewResolveArgs(BaseModel):
+    review_id: int
+    action: Literal["complete", "snooze", "cancel"]
+    reason: str = Field(min_length=1, max_length=1000)
+    next_due_at: datetime | None = None
+
+
 class QuizCreateArgs(BaseModel):
     plan_id: int
     task_id: int | None = None
@@ -163,7 +170,7 @@ async def plan_get(ctx: ToolContext, args: PlanIdArgs) -> dict:
 
 
 async def plan_create(ctx: ToolContext, args: PlanCreate) -> dict:
-    if ctx.trigger not in {"user_message"} and not ctx.approval_granted:
+    if ctx.trigger not in {"user_message", "email_reply"} and not ctx.approval_granted:
         return {
             "approval_required": True,
             "blocking": True,
@@ -175,6 +182,12 @@ async def plan_create(ctx: ToolContext, args: PlanCreate) -> dict:
                 "Conversation planning must use planning_intake_update and plan_proposal_create. "
                 "The proposal is materialized only after explicit user acceptance."
             )
+        }
+    completeness_issues = plan_service.plan_completeness_issues(args)
+    if completeness_issues:
+        return {
+            "error": "The formal plan is incomplete: " + "; ".join(completeness_issues),
+            "issues": completeness_issues,
         }
     plan = await plan_service.create_plan(ctx.db, ctx.owner_id, args, ctx.run_id, commit=False)
     run = await ctx.db.get(AgentRun, ctx.run_id)
@@ -216,10 +229,12 @@ async def task_patch(ctx: ToolContext, args: TaskPatchArgs) -> dict:
             return {"error": "Plan-focused runs cannot modify another plan"}
     changes = args.changes.model_dump(exclude_unset=True)
     task_plan = await plan_service.get_plan(ctx.db, ctx.owner_id, task_plan_id)
+    if task_plan.status == "archived":
+        return {"error": "Restore the plan before changing its learning state"}
     if args.expected_plan_version is not None and task_plan.version != args.expected_plan_version:
         return {"error": f"Plan version conflict: expected {args.expected_plan_version}, current {task_plan.version}"}
     if (
-        ctx.trigger != "user_message"
+        ctx.trigger not in {"user_message", "email_reply"}
         and {"is_core", "evidence_required"}.intersection(changes)
         and not ctx.approval_granted
     ):
@@ -227,6 +242,17 @@ async def task_patch(ctx: ToolContext, args: TaskPatchArgs) -> dict:
             "approval_required": True,
             "blocking": True,
             "reason": "Background runs cannot change task evidence policy",
+        }
+    if (
+        ctx.trigger not in {"user_message", "email_reply"}
+        and changes.get("status") == "completed"
+        and not changes.get("evidence")
+        and not ctx.approval_granted
+    ):
+        return {
+            "approval_required": True,
+            "blocking": True,
+            "reason": "Background runs cannot claim that the learner completed a task without evidence",
         }
     mutable_changes = {key: value for key, value in changes.items() if key != "evidence"}
     before = {key: getattr(task, key) for key in mutable_changes}
@@ -255,12 +281,26 @@ async def review_schedule(ctx: ToolContext, args: ReviewScheduleArgs) -> dict:
     plan = await ctx.db.get(Plan, args.plan_id)
     if not plan or plan.owner_id != ctx.owner_id:
         return {"error": "Plan not found"}
+    if plan.status == "archived":
+        return {"error": "Restore the plan before changing its learning state"}
     if args.task_id is not None:
         task_plan_id = (await ctx.db.execute(
             select(Stage.plan_id).join(Task, Task.stage_id == Stage.id).where(Task.id == args.task_id)
         )).scalar_one_or_none()
         if task_plan_id != args.plan_id:
             return {"error": "Task does not belong to the selected plan"}
+    duplicate = (await ctx.db.execute(
+        select(ReviewSchedule.id).where(
+            ReviewSchedule.owner_id == ctx.owner_id,
+            ReviewSchedule.plan_id == args.plan_id,
+            ReviewSchedule.task_id == args.task_id,
+            ReviewSchedule.due_at == args.due_at,
+            ReviewSchedule.review_type == args.review_type,
+            ReviewSchedule.status == "scheduled",
+        ).limit(1)
+    )).scalar_one_or_none()
+    if duplicate:
+        return {"error": f"An identical review is already scheduled as review {duplicate}"}
     schedule = ReviewSchedule(owner_id=ctx.owner_id, **args.model_dump())
     ctx.db.add(schedule)
     await ctx.db.flush()
@@ -278,12 +318,74 @@ async def review_schedule(ctx: ToolContext, args: ReviewScheduleArgs) -> dict:
     return {"review_id": schedule.id, "due_at": schedule.due_at.isoformat(), "operation_id": operation.id}
 
 
+async def review_resolve(ctx: ToolContext, args: ReviewResolveArgs) -> dict:
+    review = await ctx.db.get(ReviewSchedule, args.review_id)
+    if not review or review.owner_id != ctx.owner_id:
+        return {"error": "Review schedule not found"}
+    if ctx.plan_id is not None and review.plan_id != ctx.plan_id:
+        return {"error": "Plan-focused runs cannot resolve another plan's review"}
+    plan = await ctx.db.get(Plan, review.plan_id)
+    if not plan or plan.owner_id != ctx.owner_id:
+        return {"error": "Plan not found"}
+    if plan.status == "archived":
+        return {"error": "Restore the plan before changing its learning state"}
+    if review.status != "scheduled":
+        return {
+            "error": "This review schedule is already resolved",
+            "review_id": review.id,
+            "status": review.status,
+        }
+    if args.action == "snooze" and args.next_due_at is None:
+        return {"error": "Snoozing a review requires next_due_at"}
+    if (
+        args.action in {"complete", "cancel"}
+        and ctx.trigger not in {"user_message", "email_reply"}
+        and not ctx.approval_granted
+    ):
+        return {
+            "approval_required": True,
+            "blocking": True,
+            "reason": "A background run cannot resolve a learner review without confirmation",
+        }
+
+    before = {"status": review.status, "due_at": review.due_at.isoformat()}
+    if args.action == "snooze":
+        review.due_at = args.next_due_at
+    else:
+        review.status = "completed" if args.action == "complete" else "cancelled"
+    operation = Operation(
+        owner_id=ctx.owner_id,
+        run_id=ctx.run_id,
+        tool_name="review.resolve",
+        entity_type="review_schedule",
+        entity_id=str(review.id),
+        forward_patch={
+            "action": args.action,
+            "status": review.status,
+            "due_at": review.due_at.isoformat(),
+            "reason": args.reason,
+        },
+        inverse_patch={"changes": before},
+    )
+    ctx.db.add(operation)
+    await ctx.db.commit()
+    return {
+        "review_id": review.id,
+        "status": review.status,
+        "due_at": review.due_at.isoformat(),
+        "operation_id": operation.id,
+        "undo_available": True,
+    }
+
+
 async def quiz_create(ctx: ToolContext, args: QuizCreateArgs) -> dict:
     if ctx.plan_id is not None and args.plan_id != ctx.plan_id:
         return {"error": "Plan-focused runs cannot create a quiz for another plan"}
     plan = await ctx.db.get(Plan, args.plan_id)
     if not plan or plan.owner_id != ctx.owner_id:
         return {"error": "Plan not found"}
+    if plan.status == "archived":
+        return {"error": "Restore the plan before changing its learning state"}
     if args.task_id is not None:
         task_plan_id = (await ctx.db.execute(
             select(Stage.plan_id).join(Task, Task.stage_id == Stage.id).where(Task.id == args.task_id)
@@ -317,6 +419,8 @@ async def quiz_get(ctx: ToolContext, args: QuizIdArgs) -> dict:
     quiz = await ctx.db.get(Quiz, args.quiz_id)
     if not quiz or quiz.owner_id != ctx.owner_id:
         return {"error": "Quiz not found"}
+    if ctx.plan_id is not None and quiz.plan_id != ctx.plan_id:
+        return {"error": "Plan-focused runs cannot inspect another plan's quiz"}
     return {
         "quiz_id": quiz.id,
         "plan_id": quiz.plan_id,
@@ -334,6 +438,17 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         return {"error": "Quiz not found"}
     if ctx.plan_id is not None and quiz.plan_id != ctx.plan_id:
         return {"error": "Plan-focused runs cannot grade another plan's quiz"}
+    plan = await ctx.db.get(Plan, quiz.plan_id)
+    if not plan or plan.owner_id != ctx.owner_id:
+        return {"error": "Plan not found"}
+    if plan.status == "archived":
+        return {"error": "Restore the plan before changing its learning state"}
+    if quiz.status != "open":
+        return {
+            "error": "This quiz attempt was already graded; create a new quiz for another attempt",
+            "quiz_id": quiz.id,
+            "status": quiz.status,
+        }
     before = {
         "answer": quiz.answer,
         "score": quiz.score,
@@ -463,6 +578,7 @@ TOOLS = [
     ToolDefinition("plan_create", "Create a complete learning plan requested by the user.", PlanCreate, plan_create, idempotent=True, blocking=True),
     ToolDefinition("task_patch", "Update a task status, due time, duration, or review time.", TaskPatchArgs, task_patch, idempotent=True, blocking=True),
     ToolDefinition("review_schedule", "Schedule a future review or proactive quiz.", ReviewScheduleArgs, review_schedule, idempotent=True),
+    ToolDefinition("review_resolve", "Complete, snooze, or cancel one existing review schedule.", ReviewResolveArgs, review_resolve, idempotent=True, blocking=True),
     ToolDefinition("quiz_create", "Create an evidence-based quiz for an active plan.", QuizCreateArgs, quiz_create, idempotent=True),
     ToolDefinition("quiz_get", "Read a quiz prompt and grading rubric before evaluating an answer.", QuizIdArgs, quiz_get),
     ToolDefinition("quiz_grade", "Store an evidence-based quiz grade and schedule the next review.", QuizGradeArgs, quiz_grade, idempotent=True),
@@ -505,6 +621,16 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
         )).scalar_one_or_none()
         if existing and existing.status == "committed":
             return {"ok": True, "data": dict(existing.result_payload or {}), "replayed": True}
+        if existing and existing.status == "running":
+            return {
+                "ok": False,
+                "error": (
+                    "The previous process stopped after this write started. "
+                    "Its outcome is uncertain, so the harness will not replay it automatically."
+                ),
+                "retryable": False,
+                "uncertain_outcome": True,
+            }
         if existing is None:
             invocation = ToolInvocation(
                 owner_id=ctx.owner_id,

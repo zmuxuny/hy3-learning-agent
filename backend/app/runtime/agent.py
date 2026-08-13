@@ -14,6 +14,7 @@ from app.models import AgentRun, ChatMessage, PlanProposal, RunSteerMessage, Ses
 from app.runtime.events import emit_event, publish_stream_event
 from app.runtime.prompt import SYSTEM_PROMPT
 from app.runtime.session_titles import generate_session_title, initial_session_title
+from app.runtime.tasks import start_tracked_task
 
 
 class AgentModelTimeout(RuntimeError):
@@ -81,6 +82,24 @@ class ToolFailureGuard:
                 "instruction": f"Do not call {tool_name} again in this run; use existing evidence or explain the blocker.",
             }
         return result
+
+
+def tool_timeout_seconds(call: dict) -> float:
+    """Align outer runtime deadlines with tools that intentionally wait."""
+    if call.get("name") == "planning_delegate":
+        return max(
+            settings.AGENT_TOOL_TIMEOUT_SECONDS,
+            settings.AGENT_MODEL_TIMEOUT_SECONDS * 5 + 30,
+        )
+    if call.get("name") == "subagent_join":
+        try:
+            payload = json.loads(call.get("arguments") or "{}")
+            requested = float(payload.get("timeout_seconds", 60))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            requested = 60
+        requested = min(max(requested, 1), 300)
+        return max(settings.AGENT_TOOL_TIMEOUT_SECONDS, requested + 5)
+    return settings.AGENT_TOOL_TIMEOUT_SECONDS
 
 
 def _compact_tool_message(result: dict) -> str:
@@ -499,11 +518,7 @@ class AgentRuntime:
                 result = failure_guard.before_call(call["name"])
                 if result is None:
                     async with AsyncSessionLocal() as tool_db:
-                        tool_timeout = (
-                            max(settings.AGENT_TOOL_TIMEOUT_SECONDS, settings.AGENT_MODEL_TIMEOUT_SECONDS + 20)
-                            if call["name"] == "planning_delegate"
-                            else settings.AGENT_TOOL_TIMEOUT_SECONDS
-                        )
+                        tool_timeout = tool_timeout_seconds(call)
                         result = await asyncio.wait_for(
                             execute_tool(
                                 call["name"],
@@ -627,7 +642,12 @@ class AgentRuntime:
             final_budget = self._budget(run)
             self._refresh_elapsed(run, final_budget, ended_at=run.completed_at)
             run.budget_usage = final_budget
+            from app.runtime.subagents import cancel_children_for_parent
+
+            await cancel_children_for_parent(run.id, "父 Run 已结束")
             await db.commit()
+            if session:
+                await self._start_next_queued_message(run.owner_id, session.id)
             await emit_event(db, run.id, "run.completed", final_text or "Agent run completed")
         except Exception as exc:
             await self._fail(db, run.id, exc)
@@ -765,11 +785,15 @@ class AgentRuntime:
 
     async def _fail(self, db, run_id: str, exc: Exception) -> None:
         """Mark a run as failed using a fresh session so a broken caller session cannot cascade."""
+        owner_id: str | None = None
+        session_id: str | None = None
         try:
             async with AsyncSessionLocal() as failure_db:
                 run = await failure_db.get(AgentRun, run_id)
                 if not run:
                     return
+                owner_id = run.owner_id
+                session_id = run.session_id
                 run.status = "failed"
                 run.completed_at = datetime.now(timezone.utc)
                 await failure_db.commit()
@@ -782,6 +806,11 @@ class AgentRuntime:
                 else:
                     summary = "运行遇到内部错误，状态已安全保留。请重试；技术详情已记录在运行轨迹中。"
                     error_code = "internal_error"
+                from app.runtime.subagents import cancel_children_for_parent
+
+                await cancel_children_for_parent(run_id, "父 Run 失败")
+                if owner_id and session_id:
+                    await self._start_next_queued_message(owner_id, session_id)
                 await emit_event(
                     failure_db,
                     run_id,
@@ -796,6 +825,20 @@ class AgentRuntime:
                 f"and failure record also failed ({type(record_error).__name__}: {record_error})",
                 flush=True,
             )
+
+    async def _start_next_queued_message(self, owner_id: str, session_id: str) -> AgentRun | None:
+        """Continue a Session queue only after the previous root Run is terminal."""
+        from app.services.queue import dispatch_next_queued_message
+
+        async with AsyncSessionLocal() as queue_db:
+            next_run = await dispatch_next_queued_message(
+                queue_db,
+                owner_id=owner_id,
+                session_id=session_id,
+            )
+        if next_run is not None:
+            start_tracked_task(next_run.id, AgentRuntime().run(next_run.id))
+        return next_run
 
     @staticmethod
     def _default_budget() -> dict:

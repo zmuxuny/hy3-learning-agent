@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.context.memory import MemoryManager
 from app.db.database import AsyncSessionLocal, get_db
 from app.models import (
     AgentRun,
@@ -58,6 +59,7 @@ from app.schemas import (
 )
 from app.services.sessions import build_handoff_summary, link_session_plan
 from app.services import plans as plan_service
+from app.services.queue import dispatch_queued_message
 
 
 router = APIRouter()
@@ -230,11 +232,20 @@ async def rename_session(session_id: str, data: SessionUpdate, db: AsyncSession 
         active_run = (await db.execute(
             select(AgentRun.id).where(
                 AgentRun.session_id == session.id,
-                AgentRun.status.in_(["queued", "running"]),
+                AgentRun.parent_run_id.is_(None),
+                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
             ).limit(1)
         )).scalar_one_or_none()
         if active_run:
             raise HTTPException(status_code=409, detail="Stop the active run before archiving this session")
+        queued_message = (await db.execute(
+            select(QueuedMessage.id).where(
+                QueuedMessage.owner_id == settings.DEFAULT_OWNER_ID,
+                QueuedMessage.session_id == session.id,
+            ).limit(1)
+        )).scalar_one_or_none()
+        if queued_message:
+            raise HTTPException(status_code=409, detail="Send or delete queued messages before archiving this session")
     if data.title is not None:
         session.title = data.title
     if data.archived is not None:
@@ -304,16 +315,20 @@ async def handoff_session(
             Session.archived_at.is_(None),
         ).order_by(Session.updated_at.desc()).limit(1)
     )).scalars().one_or_none()
+    latest_handoff = await build_handoff_summary(db, source)
     if child is None:
         child = Session(
             owner_id=settings.DEFAULT_OWNER_ID,
             plan_id=plan.id,
             parent_session_id=source.id,
             title=plan.title[:80],
-            handoff_summary=await build_handoff_summary(db, source),
+            handoff_summary=latest_handoff,
         )
         db.add(child)
         await db.flush()
+    elif child.handoff_summary != latest_handoff:
+        child.handoff_summary = latest_handoff
+        child.updated_at = datetime.now(timezone.utc)
     await link_session_plan(
         db,
         owner_id=settings.DEFAULT_OWNER_ID,
@@ -487,6 +502,11 @@ async def decide_plan_proposal(
         return proposal
     if proposal.status == "rejected":
         raise HTTPException(status_code=409, detail="This proposal was already rejected; ask the Agent for a revision")
+    proposal_session = await db.get(Session, proposal.session_id)
+    if not proposal_session or proposal_session.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=409, detail="The proposal Session is no longer available")
+    if proposal_session.archived_at is not None:
+        raise HTTPException(status_code=409, detail="Restore the proposal Session before deciding this proposal")
     if not data.accepted:
         proposal.status = "rejected"
         proposal.decided_at = datetime.now(timezone.utc)
@@ -498,6 +518,12 @@ async def decide_plan_proposal(
         plan_data = PlanCreate.model_validate(proposal.plan_payload)
     except Exception as exc:
         raise HTTPException(status_code=409, detail=f"Proposal payload is invalid: {exc}") from exc
+    completeness_issues = plan_service.plan_completeness_issues(plan_data)
+    if completeness_issues:
+        raise HTTPException(
+            status_code=409,
+            detail="The proposal is incomplete: " + "; ".join(completeness_issues),
+        )
     plan = await plan_service.create_plan(
         db,
         settings.DEFAULT_OWNER_ID,
@@ -526,12 +552,11 @@ async def decide_plan_proposal(
     proposal.plan_id = plan.id
     proposal.status = "accepted"
     proposal.decided_at = datetime.now(timezone.utc)
-    await db.commit()
     if proposal.source_run_id:
         source_run = await db.get(AgentRun, proposal.source_run_id)
         if source_run is not None:
             source_run.created_plan_id = plan.id
-            await db.commit()
+    await db.commit()
     await db.refresh(proposal)
     return proposal
 
@@ -606,6 +631,23 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
         "revises_run_id": previous_run_id,
     }
     session.summary = ""
+    await db.flush()
+    visible_after_edit = list((await db.execute(
+        select(ChatMessage).where(ChatMessage.session_id == session.id)
+    )).scalars())
+    visible_after_edit = [
+        item for item in visible_after_edit
+        if not (item.message_metadata or {}).get("superseded_by_edit")
+    ]
+    for visible in visible_after_edit:
+        if (visible.message_metadata or {}).get("included_in_summary"):
+            visible.message_metadata = {
+                key: value
+                for key, value in visible.message_metadata.items()
+                if key != "included_in_summary"
+            }
+    await db.flush()
+    await MemoryManager(db).compress_session(session)
     session.updated_at = datetime.now(timezone.utc)
     db.add(Operation(
         owner_id=settings.DEFAULT_OWNER_ID,
@@ -745,6 +787,10 @@ async def cancel_run(run_id: str, db: AsyncSession = Depends(get_db)):
     run.completed_at = datetime.now(timezone.utc)
     await db.commit()
     cancel_tracked_task(run.id)
+    if run.parent_run_id is None:
+        from app.runtime.subagents import cancel_children_for_parent
+
+        await cancel_children_for_parent(run.id, "父 Run 被用户取消")
     await emit_event(db, run.id, "run.cancelled", "Agent run cancelled by user")
     if run.parent_run_id:
         await emit_event(
@@ -769,6 +815,14 @@ async def decide_run_approval(
         raise HTTPException(status_code=404, detail="Run not found")
     if run.status != "waiting_approval" or not run.pending_approval:
         raise HTTPException(status_code=409, detail="This run has no pending approval request")
+    if run.session_id:
+        session = await db.get(Session, run.session_id)
+        if not session or session.archived_at is not None:
+            raise HTTPException(status_code=409, detail="Restore the Session before resolving this approval")
+    if run.plan_id is not None:
+        plan = await db.get(Plan, run.plan_id)
+        if not plan or plan.status == "archived":
+            raise HTTPException(status_code=409, detail="Restore the plan before resolving this approval")
     if data.note:
         pending = dict(run.pending_approval)
         pending["note"] = data.note
@@ -793,8 +847,13 @@ async def steer_run(run_id: str, data: RunSteerCreate, db: AsyncSession = Depend
     run = await db.get(AgentRun, run_id)
     if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Run not found")
-    if run.status not in {"queued", "running", "waiting_approval"}:
-        raise HTTPException(status_code=409, detail="Only an active run can be steered")
+    if run.status == "waiting_approval":
+        raise HTTPException(
+            status_code=409,
+            detail="Resolve the pending approval before steering this run",
+        )
+    if run.status not in {"queued", "running"}:
+        raise HTTPException(status_code=409, detail="Only a queued or running run can be steered")
     steer = RunSteerMessage(
         owner_id=settings.DEFAULT_OWNER_ID,
         run_id=run.id,
@@ -879,6 +938,11 @@ async def update_queued_message(
     if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Queued message not found")
     if data.objective is not None:
+        if message.trigger != "user_message":
+            raise HTTPException(
+                status_code=409,
+                detail="Email and system queue items preserve their original content and cannot be edited",
+            )
         message.objective = data.objective
     if data.position is not None and data.position != message.position:
         scope_filter = (
@@ -936,19 +1000,10 @@ async def send_queued_message(message_id: str, db: AsyncSession = Depends(get_db
         plan = await db.get(Plan, message.plan_id)
         if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID or plan.status == "archived":
             raise HTTPException(status_code=409, detail="Queued plan is unavailable or archived")
-    run = AgentRun(
-        owner_id=settings.DEFAULT_OWNER_ID,
-        session_id=message.session_id,
-        plan_id=message.plan_id,
-        trigger="user_message",
-        objective=message.objective,
-        model=settings.MODEL_NAME,
-    )
-    db.add(run)
-    await db.flush()
-    await db.delete(message)
-    await db.commit()
-    await db.refresh(run)
+    try:
+        run = await dispatch_queued_message(db, message, owner_id=settings.DEFAULT_OWNER_ID)
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     _start_runtime(run.id)
     return run
 

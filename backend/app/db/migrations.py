@@ -44,6 +44,11 @@ SQLITE_COLUMNS: dict[str, dict[str, str]] = {
         "follow_up_behavior": "VARCHAR(16) NOT NULL DEFAULT 'steer'",
         "proactive_paused": "BOOLEAN NOT NULL DEFAULT 0",
     },
+    "queued_messages": {
+        "trigger": "VARCHAR(40) NOT NULL DEFAULT 'user_message'",
+        "user_content": "TEXT",
+        "message_metadata": "JSON NOT NULL DEFAULT '{}'",
+    },
 }
 
 
@@ -109,7 +114,10 @@ async def migrate_sqlite_schema(connection: AsyncConnection) -> None:
             owner_id VARCHAR(64) NOT NULL,
             session_id VARCHAR(64),
             plan_id INTEGER,
+            trigger VARCHAR(40) NOT NULL DEFAULT 'user_message',
             objective TEXT NOT NULL,
+            user_content TEXT,
+            message_metadata JSON NOT NULL DEFAULT '{}',
             position INTEGER NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -133,6 +141,16 @@ async def migrate_sqlite_schema(connection: AsyncConnection) -> None:
     ))
     await connection.execute(text(
         "CREATE INDEX IF NOT EXISTS ix_run_steer_messages_run_id ON run_steer_messages (run_id)"
+    ))
+    # Older builds did not enable SQLite foreign-key enforcement. Repair the
+    # known SET NULL edge before new writes rely on the declared relationship.
+    await connection.execute(text(
+        """
+        UPDATE context_snapshots
+        SET run_id = NULL
+        WHERE run_id IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM agent_runs WHERE agent_runs.id = context_snapshots.run_id)
+        """
     ))
     await connection.execute(text(
         """

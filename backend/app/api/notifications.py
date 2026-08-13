@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -42,7 +42,12 @@ async def read_notifications(
     archived: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Notification).where(Notification.owner_id == settings.DEFAULT_OWNER_ID)
+    # The inbox is a logical-message view. Email/browser rows are delivery
+    # receipts for the same in-app primary and must not appear as duplicates.
+    query = select(Notification).where(
+        Notification.owner_id == settings.DEFAULT_OWNER_ID,
+        Notification.channel == "in_app",
+    )
     archive_filter = Notification.archived_at.is_not(None) if archived else Notification.archived_at.is_(None)
     query = query.where(archive_filter)
     if unread_only:
@@ -54,17 +59,18 @@ async def read_notifications(
 @router.post("/archive-read", response_model=NotificationArchiveResult)
 async def archive_read_notifications(db: AsyncSession = Depends(get_db)):
     archived_at = datetime.now(timezone.utc)
-    result = await db.execute(
-        update(Notification)
-        .where(
+    primaries = list((await db.execute(
+        select(Notification).where(
             Notification.owner_id == settings.DEFAULT_OWNER_ID,
+            Notification.channel == "in_app",
             Notification.archived_at.is_(None),
             Notification.read_at.is_not(None),
         )
-        .values(archived_at=archived_at)
-    )
+    )).scalars())
+    for primary in primaries:
+        await _set_delivery_group_archived(db, primary, archived_at)
     await db.commit()
-    return {"archived": result.rowcount or 0, "archived_at": archived_at}
+    return {"archived": len(primaries), "archived_at": archived_at}
 
 
 @router.post("/{notification_id}/read", response_model=NotificationRead)
@@ -103,7 +109,29 @@ async def set_notification_archived(
     notification = await db.get(Notification, notification_id)
     if not notification or notification.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Notification not found")
-    notification.archived_at = datetime.now(timezone.utc) if data.archived else None
+    await _set_delivery_group_archived(
+        db,
+        notification,
+        datetime.now(timezone.utc) if data.archived else None,
+    )
     await db.commit()
     await db.refresh(notification)
     return notification
+
+
+async def _set_delivery_group_archived(
+    db: AsyncSession,
+    notification: Notification,
+    archived_at: datetime | None,
+) -> None:
+    group = list((await db.execute(
+        select(Notification).where(
+            Notification.owner_id == notification.owner_id,
+            Notification.run_id == notification.run_id,
+            Notification.plan_id == notification.plan_id,
+            Notification.title == notification.title,
+            Notification.body == notification.body,
+        )
+    )).scalars())
+    for sibling in group or [notification]:
+        sibling.archived_at = archived_at

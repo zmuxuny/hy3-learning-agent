@@ -7,11 +7,11 @@ import re
 from datetime import datetime, timezone
 from email.header import decode_header, make_header
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import AgentRun, ChatMessage, LearningEvent, Notification
+from app.models import AgentRun, ChatMessage, LearningEvent, Notification, QueuedMessage
 from app.notifications.conversation import open_notification_in_conversation
 
 
@@ -21,7 +21,28 @@ class EmailReplyPoller:
             return []
         replies = await asyncio.to_thread(self._fetch_unseen)
         run_ids: list[str] = []
+        handled_reply = False
+        acknowledged_uids: list[str] = []
         for reply in replies:
+            mailbox_uid = str(reply.get("uid") or "")
+            email_uid = (
+                f"{settings.IMAP_USERNAME}:{settings.IMAP_FOLDER}:{mailbox_uid}"
+                if mailbox_uid else ""
+            )
+            if email_uid:
+                existing = (await db.execute(
+                    select(ChatMessage.id).where(
+                        ChatMessage.message_metadata["email_uid"].as_string() == email_uid
+                    ).limit(1)
+                )).scalar_one_or_none()
+                existing_queued = (await db.execute(
+                    select(QueuedMessage.id).where(
+                        QueuedMessage.message_metadata["email_uid"].as_string() == email_uid
+                    ).limit(1)
+                )).scalar_one_or_none()
+                if existing or existing_queued:
+                    acknowledged_uids.append(mailbox_uid)
+                    continue
             token = reply.get("reply_token", "")
             if not token:
                 continue
@@ -30,18 +51,54 @@ class EmailReplyPoller:
             )).scalars().one_or_none()
             if not notification:
                 continue
+            handled_reply = True
             session, _, _ = await open_notification_in_conversation(db, notification)
+            objective = (
+                f"学习者回复了通知 {notification.id} 的邮件。"
+                f"主题：{reply['subject']}\n回复内容：\n{reply['body']}\n"
+                "检查当前状态并理解回复，只执行安全且相关的学习动作；"
+                "处理完成后使用 notification_send 的 email 渠道把简洁回复发回邮箱。"
+            )
+            message_metadata = {
+                "channel": "email",
+                "notification_id": notification.id,
+                "reply_to_notification_id": notification.id,
+                **({"email_uid": email_uid} if email_uid else {}),
+            }
+            active_run = (await db.execute(
+                select(AgentRun.id).where(
+                    AgentRun.owner_id == owner_id,
+                    AgentRun.session_id == session.id,
+                    AgentRun.parent_run_id.is_(None),
+                    AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+                ).limit(1)
+            )).scalar_one_or_none()
+            if active_run:
+                max_position = await db.scalar(
+                    select(func.coalesce(func.max(QueuedMessage.position), -1)).where(
+                        QueuedMessage.owner_id == owner_id,
+                        QueuedMessage.session_id == session.id,
+                    )
+                )
+                db.add(QueuedMessage(
+                    owner_id=owner_id,
+                    plan_id=notification.plan_id,
+                    session_id=session.id,
+                    trigger="email_reply",
+                    objective=objective,
+                    user_content=reply["body"],
+                    message_metadata=message_metadata,
+                    position=int(max_position if max_position is not None else -1) + 1,
+                ))
+                if mailbox_uid:
+                    acknowledged_uids.append(mailbox_uid)
+                continue
             run = AgentRun(
                 owner_id=owner_id,
                 plan_id=notification.plan_id,
                 session_id=session.id,
                 trigger="email_reply",
-                objective=(
-                    f"学习者回复了通知 {notification.id} 的邮件。"
-                    f"主题：{reply['subject']}\n回复内容：\n{reply['body']}\n"
-                    "检查当前状态并理解回复，只执行安全且相关的学习动作；"
-                    "处理完成后使用 notification_send 的 email 渠道把简洁回复发回邮箱。"
-                ),
+                objective=objective,
                 model=settings.MODEL_NAME,
             )
             db.add(run)
@@ -51,7 +108,7 @@ class EmailReplyPoller:
                 run_id=run.id,
                 role="user",
                 content=reply["body"],
-                message_metadata={"channel": "email", "notification_id": notification.id},
+                message_metadata=message_metadata,
             ))
             db.add(LearningEvent(
                 owner_id=owner_id, plan_id=notification.plan_id, run_id=run.id,
@@ -60,8 +117,12 @@ class EmailReplyPoller:
             ))
             session.updated_at = datetime.now(timezone.utc)
             run_ids.append(run.id)
-        if run_ids:
+            if mailbox_uid:
+                acknowledged_uids.append(mailbox_uid)
+        if handled_reply:
             await db.commit()
+        if acknowledged_uids:
+            await asyncio.to_thread(self._mark_seen, acknowledged_uids)
         return run_ids
 
     @property
@@ -96,12 +157,25 @@ class EmailReplyPoller:
                 if not token:
                     continue
                 replies.append({
+                    "uid": uid.decode("ascii", errors="ignore"),
                     "reply_token": token.strip(),
                     "subject": subject,
                     "body": body[:20000],
                 })
-                client.uid("store", uid, "+FLAGS", "(\\Seen)")
             return replies
+        finally:
+            try:
+                client.logout()
+            except Exception:
+                pass
+
+    def _mark_seen(self, uids: list[str]) -> None:
+        client = imaplib.IMAP4_SSL(settings.IMAP_HOST, settings.IMAP_PORT, timeout=20)
+        try:
+            client.login(settings.IMAP_USERNAME, settings.IMAP_PASSWORD)
+            client.select(settings.IMAP_FOLDER)
+            for uid in uids:
+                client.uid("store", uid.encode("ascii"), "+FLAGS", "(\\Seen)")
         finally:
             try:
                 client.logout()

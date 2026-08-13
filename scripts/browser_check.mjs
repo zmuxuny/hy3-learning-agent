@@ -98,6 +98,9 @@ async function inspect(label) {
       proposalStages: document.querySelectorAll('.proposal-stages article').length,
       settingsSections: document.querySelectorAll('.settings-section').length,
       settingsOverflow: [...document.querySelectorAll('.settings-section')].some((node) => node.scrollWidth > node.clientWidth + 1),
+      mobileNavigation: [...document.querySelectorAll('.nav-item')]
+        .filter((node) => node.getBoundingClientRect().width > 0)
+        .map((node) => node.textContent.trim()),
       errorBanners: [...document.querySelectorAll('.error-banner')].map((node) => node.textContent.trim()).filter(Boolean),
       messageActions: document.querySelectorAll('.message-actions').length,
       tinyVisibleText: [...document.querySelectorAll('body *')].filter((node) => {
@@ -336,6 +339,9 @@ const requiredStates = [
   ['memory-1440', (item) => item.memoryToolbar === 1],
   ['inbox-1440', (item) => item.inboxTabs >= 2],
   ['settings-1440', (item) => item.settingsSections >= 3],
+  ['settings-mobile', (item) => ['对话', '学习计划', '收件箱', '学习记忆'].every(
+    (label) => item.mobileNavigation.includes(label),
+  )],
 ];
 const missingStates = requiredStates.filter(([label, predicate]) => {
   const item = report.find((entry) => entry.label === label);

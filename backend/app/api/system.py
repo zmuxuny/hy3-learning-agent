@@ -1,12 +1,12 @@
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import get_db
-from app.models import Achievement, LearningEvent, Quiz, ReviewSchedule
+from app.models import Achievement, LearningEvent, Plan, Quiz, ReviewSchedule
 from app.services.gamification import evaluate_achievements
 
 
@@ -46,21 +46,23 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
         .where(Achievement.owner_id == settings.DEFAULT_OWNER_ID)
         .order_by(Achievement.unlocked_at.desc())
     )
-    due_reviews = await db.scalar(
-        select(ReviewSchedule)
+    due_reviews = int((await db.scalar(
+        select(func.count(ReviewSchedule.id))
+        .join(Plan, Plan.id == ReviewSchedule.plan_id)
         .where(
             ReviewSchedule.owner_id == settings.DEFAULT_OWNER_ID,
             ReviewSchedule.status == "scheduled",
             ReviewSchedule.due_at <= datetime.now(timezone.utc),
+            Plan.status == "active",
         )
-        .limit(1)
-    )
+    )) or 0)
     open_quizzes = list(
         (
             await db.execute(
-                select(Quiz).where(
+                select(Quiz).join(Plan, Plan.id == Quiz.plan_id).where(
                     Quiz.owner_id == settings.DEFAULT_OWNER_ID,
                     Quiz.status == "open",
+                    Plan.status != "archived",
                 )
             )
         ).scalars()
@@ -78,6 +80,6 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
             {"key": item.key, "title": item.title, "description": item.description, "unlocked_at": item.unlocked_at}
             for item in achievement_result.scalars()
         ],
-        "due_review_count": 1 if due_reviews else 0,
+        "due_review_count": due_reviews,
         "open_quiz_count": len(open_quizzes),
     }

@@ -22,6 +22,7 @@ TOOL_OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "plan_create": output("PlanCreateOutput", plan_id=int, title=str, stage_count=int, operation_id=str),
     "task_patch": output("TaskPatchOutput", task_id=int, status=str, operation_id=str, undo_available=bool),
     "review_schedule": output("ReviewScheduleOutput", review_id=int, due_at=str, operation_id=str),
+    "review_resolve": output("ReviewResolveOutput", review_id=int, status=str, due_at=str, operation_id=str, undo_available=bool),
     "quiz_create": output("QuizCreateOutput", quiz_id=int, status=str, prompt=str, operation_id=str, undo_available=bool),
     "quiz_get": output("QuizGetOutput", quiz_id=int, plan_id=int, prompt=str, rubric=dict, status=str),
     "quiz_grade": output("QuizGradeOutput", quiz_id=int, score=float, status=str, operation_id=str, undo_available=bool),

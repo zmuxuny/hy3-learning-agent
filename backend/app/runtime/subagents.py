@@ -287,6 +287,29 @@ async def cancel_child(child: AgentRun, reason: str = "父 Agent 取消") -> boo
         return True
 
 
+async def cancel_children_for_parent(parent_run_id: str, reason: str) -> int:
+    """Cancel every still-active child so terminal parent Runs leave no orphans."""
+    async with AsyncSessionLocal() as db:
+        children = list((await db.execute(
+            select(AgentRun).where(
+                AgentRun.parent_run_id == parent_run_id,
+                AgentRun.trigger == "subagent",
+                AgentRun.status.in_(["queued", "running"]),
+            )
+        )).scalars())
+    cancelled = 0
+    for child in children:
+        if await cancel_child(child, reason):
+            cancelled += 1
+            async with AsyncSessionLocal() as event_db:
+                await emit_event(event_db, parent_run_id, "subagent.completed", "子 Agent 随父 Run 停止", {
+                    "child_run_id": child.id,
+                    "status": "cancelled",
+                    "report": "",
+                })
+    return cancelled
+
+
 async def wait_for_child(child_id: str, timeout_seconds: float = 60.0) -> AgentRun:
     deadline = asyncio.get_event_loop().time() + max(1.0, timeout_seconds)
     while True:

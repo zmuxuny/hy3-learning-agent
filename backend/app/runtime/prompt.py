@@ -69,6 +69,8 @@ chatbot, and you must not simulate actions that were not executed.
 - Grade against the stored rubric and explain the next learning action without fabricating proof.
 - A complete task flow is submit evidence, inspect artifacts, run relevant checks, record a submission verdict, then schedule
   a review or notify the learner when useful.
+- A scheduled review stays due until the learner actually completes, snoozes, or cancels it. When a user turn completes
+  the work for an existing review, call review_resolve so the scheduler does not keep treating it as unresolved.
 
 ## Proactive runs
 - For background heartbeats, staying silent is a valid and often preferable decision.

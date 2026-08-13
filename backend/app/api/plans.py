@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import get_db
-from app.models import LearningResource, Operation, Plan
+from app.models import AgentRun, LearningResource, Operation, Plan, QueuedMessage
 from app.schemas import LearningResourceRead, PlanArchiveUpdate, PlanCreate, PlanRead, TaskRead, TaskUpdate
 from app.services import plans as plan_service
 
@@ -44,6 +44,12 @@ async def read_plan(plan_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=PlanRead, status_code=201)
 async def create_plan(data: PlanCreate, db: AsyncSession = Depends(get_db)):
+    completeness_issues = plan_service.plan_completeness_issues(data)
+    if completeness_issues:
+        raise HTTPException(
+            status_code=422,
+            detail="A formal plan is incomplete: " + "; ".join(completeness_issues),
+        )
     return await plan_service.create_plan(db, settings.DEFAULT_OWNER_ID, data)
 
 
@@ -56,6 +62,30 @@ async def set_plan_archived(plan_id: int, data: PlanArchiveUpdate, db: AsyncSess
     if data.archived:
         if plan.status == "archived":
             return await plan_service.get_plan(db, settings.DEFAULT_OWNER_ID, plan.id)
+        active_run = (await db.execute(
+            select(AgentRun.id).where(
+                AgentRun.owner_id == settings.DEFAULT_OWNER_ID,
+                AgentRun.plan_id == plan.id,
+                AgentRun.parent_run_id.is_(None),
+                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if active_run:
+            raise HTTPException(
+                status_code=409,
+                detail="Stop or resolve the active plan run before archiving this plan",
+            )
+        queued_message = (await db.execute(
+            select(QueuedMessage.id).where(
+                QueuedMessage.owner_id == settings.DEFAULT_OWNER_ID,
+                QueuedMessage.plan_id == plan.id,
+            ).limit(1)
+        )).scalar_one_or_none()
+        if queued_message:
+            raise HTTPException(
+                status_code=409,
+                detail="Send or delete queued messages before archiving this plan",
+            )
         plan.archived_from_status = plan.status
         plan.status = "archived"
         action = "archive"

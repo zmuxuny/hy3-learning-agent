@@ -27,7 +27,7 @@ Harness 由四层共同组成：System Prompt 定义工作方式，ContextAssemb
 - `backend/app/runtime/prompt.py`：身份、循环、计划焦点、工具纪律、证据标准、主动触达和安全边界。
 - `backend/app/runtime/agent.py`：多轮 Function Calling、独立工具事务、结果回填、模型超时重试、取消、SSE 事件和 Session 压缩。
 - `backend/app/runtime/tasks.py`：按 `run_id` 跟踪当前进程内的主 Run、心跳和子 Run，使停止操作取消真实协程而不只写数据库标记。
-- `backend/app/tools/registry.py`：向 Hy3 注入 41 个真实工具输入 Schema，并用 41 个 Pydantic 输出 Schema 校验成功结果；契约同时声明 `idempotent` 与可能阻塞审批的 `blocking`，可由 `/api/v1/settings/tools` 检查。
+- `backend/app/tools/registry.py`：向 Hy3 注入 42 个真实工具输入 Schema，并用 42 个 Pydantic 输出 Schema 校验成功结果；契约同时声明 `idempotent` 与可能阻塞审批的 `blocking`，可由 `/api/v1/settings/tools` 检查。
 - `backend/app/runtime/scheduler.py`：先用确定性规则发现到期复习、24 小时内任务和长期停滞，再为有价值的候选启动 Hy3。
 
 ## 分层上下文与记忆

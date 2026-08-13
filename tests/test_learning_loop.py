@@ -364,9 +364,9 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
     assert completions.calls[0]["extra_body"] == {"reasoning_effort": "high"}
     assert "The supplied tool schemas are the complete set" in completions.calls[0]["messages"][0]["content"]
     tool_names = {tool["function"]["name"] for tool in completions.calls[0]["tools"]}
-    assert len(tool_names) == 41
+    assert "review_resolve" in tool_names
+    assert tool_names == {contract["name"] for contract in tool_contracts()}
     contracts = tool_contracts()
-    assert len(contracts) == 41
     assert all(contract["input_schema"] and contract["output_schema"] for contract in contracts)
     assert {
         "profile_get",
@@ -744,6 +744,7 @@ async def test_email_reply_returns_to_notification_session(monkeypatch):
         message = (await db.execute(select(ChatMessage).where(ChatMessage.run_id == run.id))).scalars().one()
         assert message.content == "我已经完成了，请检查。"
         assert message.message_metadata["channel"] == "email"
+        assert message.message_metadata["reply_to_notification_id"] == notification.id
 
 
 @pytest.mark.asyncio

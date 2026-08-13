@@ -375,7 +375,10 @@ class QueuedMessage(Base):
         ForeignKey("sessions.id", ondelete="CASCADE"), nullable=True, index=True
     )
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True)
+    trigger: Mapped[str] = mapped_column(String(40), default="user_message")
     objective: Mapped[str] = mapped_column(Text)
+    user_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     position: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

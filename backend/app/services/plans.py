@@ -13,6 +13,21 @@ from app.services.gamification import evaluate_achievements
 PLAN_LOAD = selectinload(Plan.stages).selectinload(Stage.tasks)
 
 
+def plan_completeness_issues(data: PlanCreate) -> list[str]:
+    """Return structural gaps that make a formal learning plan unusable."""
+    issues: list[str] = []
+    if not data.goal.strip():
+        issues.append("goal is required")
+    if not data.expected_outcome.strip():
+        issues.append("expected_outcome is required")
+    if not data.stages:
+        issues.append("at least one stage is required")
+    for index, stage in enumerate(data.stages, start=1):
+        if not stage.tasks:
+            issues.append(f"stage {index} must contain at least one task")
+    return issues
+
+
 async def list_plans(db: AsyncSession, owner_id: str, *, archived: bool = False) -> list[Plan]:
     query = select(Plan).where(Plan.owner_id == owner_id)
     query = query.where(Plan.status == "archived" if archived else Plan.status != "archived")
@@ -38,6 +53,7 @@ async def create_plan(
     *,
     commit: bool = True,
 ) -> Plan:
+    stage_count = len(data.stages)
     plan = Plan(
         owner_id=owner_id,
         title=data.title,
@@ -84,7 +100,7 @@ async def create_plan(
             run_id=run_id,
             event_type="plan.created",
             summary=f"Created plan: {plan.title}",
-            payload={"title": plan.title, "stage_count": len(plan.stages)},
+            payload={"title": plan.title, "stage_count": stage_count},
         )
     )
     if commit:
@@ -121,6 +137,8 @@ async def update_task(
     task = result.scalars().one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    if task.stage.plan.status == "archived":
+        raise HTTPException(status_code=409, detail="Restore the plan before changing its learning state")
 
     changes = data.model_dump(exclude_unset=True)
     evidence = changes.pop("evidence", None)
@@ -135,14 +153,24 @@ async def update_task(
     if changes.get("status") == "completed" and task.completed_at is None:
         task.completed_at = datetime.now(timezone.utc)
         if task.review_due_at:
-            db.add(
-                ReviewSchedule(
-                    owner_id=owner_id,
-                    plan_id=task.stage.plan_id,
-                    task_id=task.id,
-                    due_at=task.review_due_at,
+            existing_review = (await db.execute(
+                select(ReviewSchedule.id).where(
+                    ReviewSchedule.owner_id == owner_id,
+                    ReviewSchedule.plan_id == task.stage.plan_id,
+                    ReviewSchedule.task_id == task.id,
+                    ReviewSchedule.due_at == task.review_due_at,
+                    ReviewSchedule.status == "scheduled",
+                ).limit(1)
+            )).scalar_one_or_none()
+            if existing_review is None:
+                db.add(
+                    ReviewSchedule(
+                        owner_id=owner_id,
+                        plan_id=task.stage.plan_id,
+                        task_id=task.id,
+                        due_at=task.review_due_at,
+                    )
                 )
-            )
     elif changes.get("status") and changes["status"] != "completed":
         task.completed_at = None
     await recompute_plan_state(task.stage.plan)
@@ -172,14 +200,17 @@ async def update_task(
 
 async def recompute_plan_state(plan: Plan) -> None:
     all_tasks = [task for stage in plan.stages for task in stage.tasks]
+    progress_tasks = [task for task in all_tasks if task.status != "skipped"]
     plan.progress = (
-        sum(task.status == "completed" for task in all_tasks) / len(all_tasks)
-        if all_tasks
+        sum(task.status == "completed" for task in progress_tasks) / len(progress_tasks)
+        if progress_tasks
         else 0.0
     )
     for stage in plan.stages:
         statuses = [task.status for task in stage.tasks]
-        if statuses and all(status == "completed" for status in statuses):
+        if statuses and any(status == "completed" for status in statuses) and all(
+            status in {"completed", "skipped"} for status in statuses
+        ):
             stage.status = "completed"
         elif any(status in {"active", "completed"} for status in statuses):
             stage.status = "active"

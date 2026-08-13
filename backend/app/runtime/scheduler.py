@@ -48,7 +48,7 @@ class ProactiveScheduler:
                 select(AgentRun.id).where(
                     AgentRun.owner_id == settings.DEFAULT_OWNER_ID,
                     AgentRun.trigger.in_(["heartbeat", "manual_heartbeat"]),
-                    AgentRun.status.in_(["queued", "running"]),
+                    AgentRun.status.in_(["queued", "running", "waiting_approval"]),
                 ).limit(1)
             )
             if active.scalar_one_or_none():
@@ -114,12 +114,13 @@ class ProactiveScheduler:
             "scope": "global",
             "interval_seconds": settings.AGENT_HEARTBEAT_SECONDS,
             "progress_checkin_hours": settings.AGENT_PROGRESS_CHECKIN_HOURS,
+            "candidate_cooldown_minutes": settings.AGENT_CANDIDATE_COOLDOWN_MINUTES,
             "started_at": self._started_at.isoformat() if self._started_at else None,
             "last_cycle_at": self._last_cycle_at.isoformat() if self._last_cycle_at else None,
             "next_cycle_at": self._next_cycle_at.isoformat() if self._next_cycle_at else None,
             "last_decision": self._last_decision,
             "paused": await self._paused_by_user(),
-            "active": bool(latest and latest.status in {"queued", "running"}),
+            "active": bool(latest and latest.status in {"queued", "running", "waiting_approval"}),
             "last_run": ({
                 "id": latest.id,
                 "trigger": latest.trigger,
@@ -133,6 +134,19 @@ class ProactiveScheduler:
     async def _next_candidate(self) -> dict | None:
         now = datetime.now(timezone.utc)
         async with AsyncSessionLocal() as db:
+            recently_checked_plan_ids: set[int] = set()
+            if settings.AGENT_CANDIDATE_COOLDOWN_MINUTES > 0:
+                cooldown_start = now - timedelta(minutes=settings.AGENT_CANDIDATE_COOLDOWN_MINUTES)
+                recently_checked_plan_ids = set((await db.execute(
+                    select(AgentRun.plan_id).where(
+                        AgentRun.owner_id == settings.DEFAULT_OWNER_ID,
+                        AgentRun.trigger.in_(["heartbeat", "manual_heartbeat"]),
+                        AgentRun.parent_run_id.is_(None),
+                        AgentRun.plan_id.is_not(None),
+                        AgentRun.created_at >= cooldown_start,
+                    ).distinct()
+                )).scalars())
+
             due_review = (await db.execute(
                 select(ReviewSchedule)
                 .join(Plan, Plan.id == ReviewSchedule.plan_id)
@@ -141,6 +155,7 @@ class ProactiveScheduler:
                     ReviewSchedule.status == "scheduled",
                     ReviewSchedule.due_at <= now,
                     Plan.status == "active",
+                    ReviewSchedule.plan_id.notin_(recently_checked_plan_ids),
                 )
                 .order_by(ReviewSchedule.due_at)
                 .limit(1)
@@ -161,6 +176,7 @@ class ProactiveScheduler:
                     Task.status.in_(["pending", "active", "blocked"]),
                     Task.due_at.is_not(None),
                     Task.due_at <= now + timedelta(hours=24),
+                    Plan.id.notin_(recently_checked_plan_ids),
                 )
                 .order_by(Task.due_at)
                 .options(selectinload(Task.stage))
@@ -180,12 +196,22 @@ class ProactiveScheduler:
                 ).order_by(Plan.updated_at)
             )).scalars())
             for plan in plans:
-                last_event = (await db.execute(
+                if plan.id in recently_checked_plan_ids:
+                    continue
+                activity_events = list((await db.execute(
                     select(LearningEvent).where(
                         LearningEvent.owner_id == settings.DEFAULT_OWNER_ID,
                         LearningEvent.plan_id == plan.id,
-                    ).order_by(LearningEvent.created_at.desc()).limit(1)
-                )).scalars().one_or_none()
+                        LearningEvent.event_type.in_([
+                            "submission.created",
+                            "submission.checked",
+                            "quiz.graded",
+                            "task.updated",
+                            "email.reply.received",
+                        ]),
+                    ).order_by(LearningEvent.created_at.desc()).limit(20)
+                )).scalars())
+                last_event = next((event for event in activity_events if _is_learning_activity(event)), None)
                 checkin_before = now - timedelta(hours=settings.AGENT_PROGRESS_CHECKIN_HOURS)
                 last_activity_at = _aware(last_event.created_at) if last_event else _aware(plan.created_at)
                 recent_notification = (await db.execute(
@@ -219,6 +245,15 @@ class ProactiveScheduler:
 
 def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _is_learning_activity(event: LearningEvent) -> bool:
+    """Separate learner progress from Agent housekeeping and plan metadata edits."""
+    if event.event_type != "task.updated":
+        return True
+    payload = event.payload or {}
+    after = payload.get("after") or {}
+    return after.get("status") == "completed" or bool(payload.get("evidence"))
 
 
 proactive_scheduler = ProactiveScheduler()
