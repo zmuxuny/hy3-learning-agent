@@ -145,6 +145,7 @@ npm --prefix frontend audit --omit=dev
 - [工具与权限协议](docs/TOOL_PROTOCOL.md)
 - [邮箱配置与收发](docs/EMAIL.md)
 - [路线图](docs/ROADMAP.md)
+- [Learning Agent 2.0 路线图](docs/V2_ROADMAP.md)
 - [当前状态](docs/STATUS.md)
 
 ## License
