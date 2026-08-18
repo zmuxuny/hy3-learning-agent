@@ -1,0 +1,82 @@
+{
+  "manifest_version": 1,
+  "contains_personal_data": false,
+  "fixed_clock": "2026-01-01T00:00:00.000000Z",
+  "fixtures": {
+    "empty": {
+      "file": "empty.sql",
+      "kind": "empty",
+      "source_revision": "blank-sqlite",
+      "sha256": "741978db9a440b848b048d9e0c14c4ab0030b2eb37348bc439aba5c3c444d5f6",
+      "size_bytes": 231,
+      "schema_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "table_counts": {}
+    },
+    "v1_1_1_full": {
+      "file": "v1_1_1_full.sql",
+      "kind": "release-business",
+      "source_revision": "fe3db33a05c651cc9adee9e3d241c1102cf1eecb",
+      "sha256": "117ebeb7db3f9d1446faf768d40d4153d97acb68108e72afff1d44cb0740f972",
+      "size_bytes": 30660,
+      "schema_sha256": "7ed82d9e943b719aa13ac8155c625fde2150a0beb460f70f8623bfef2a96a3b2",
+      "table_counts": {
+        "achievements": 1,
+        "activity_days": 1,
+        "agent_runs": 1,
+        "calendar_events": 1,
+        "chat_message_revisions": 1,
+        "chat_messages": 1,
+        "context_snapshots": 1,
+        "learning_events": 1,
+        "learning_resources": 1,
+        "memories": 1,
+        "notifications": 1,
+        "operations": 1,
+        "owners": 1,
+        "plan_proposals": 1,
+        "planning_intakes": 1,
+        "plans": 1,
+        "push_subscriptions": 1,
+        "queued_messages": 1,
+        "quizzes": 1,
+        "review_schedules": 1,
+        "run_events": 1,
+        "run_steer_messages": 1,
+        "session_plan_links": 1,
+        "session_summaries": 1,
+        "sessions": 1,
+        "stages": 1,
+        "task_submissions": 1,
+        "tasks": 1,
+        "tool_invocations": 1,
+        "user_profiles": 1
+      }
+    },
+    "review_boundary": {
+      "file": "review_boundary.sql",
+      "kind": "review-boundary",
+      "source_revision": "1c5ff50",
+      "sha256": "7c08ced17dc5b12115b6b9f7c336f95d99616691f3d86241a826c88af00c3b90",
+      "size_bytes": 11363,
+      "schema_sha256": "fc351f1e18a28ee43e8aa21c5978337a09c69d4ca01d288b0dd839d1ebb2c6d7",
+      "table_counts": {
+        "agent_runs": 1,
+        "chat_messages": 10000,
+        "competencies": 5,
+        "evidence_observations": 11002,
+        "owners": 1,
+        "plans": 5,
+        "sessions": 1,
+        "stages": 5,
+        "tasks": 5
+      },
+      "evidence_counts_by_plan": {
+        "100": 0,
+        "101": 1,
+        "102": 500,
+        "103": 501,
+        "104": 10000
+      }
+    }
+  }
+}

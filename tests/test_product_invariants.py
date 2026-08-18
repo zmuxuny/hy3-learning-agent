@@ -390,7 +390,9 @@ async def test_undo_created_task_keeps_audit_without_dangling_task_reference():
 
 
 @pytest.mark.asyncio
-async def test_global_context_is_an_index_and_markdown_projection_excludes_session_transcript():
+async def test_global_context_is_an_index_and_markdown_projection_excludes_session_transcript(
+    isolated_runtime_root,
+):
     async with AsyncSessionLocal() as db:
         plan = await plan_service.create_plan(db, "local", plan_payload("无关计划"))
         session = Session(owner_id="local", title="全局对话")
@@ -412,8 +414,9 @@ async def test_global_context_is_an_index_and_markdown_projection_excludes_sessi
         assert "## Actionable learning state" not in snapshot.markdown
         assert "这是只属于本会话的句子" in snapshot.markdown
 
-        canonical = (PROJECT_ROOT / "data" / "context" / "global.md").read_text(encoding="utf-8")
-        exact = (PROJECT_ROOT / "data" / "context" / "runs" / f"{run.id}.md").read_text(encoding="utf-8")
+        context_root = isolated_runtime_root / "data" / "context"
+        canonical = (context_root / "global.md").read_text(encoding="utf-8")
+        exact = (context_root / "runs" / f"{run.id}.md").read_text(encoding="utf-8")
         assert "这是只属于本会话的句子" not in canonical
         assert "这是只属于本会话的句子" in exact
 

@@ -1,6 +1,14 @@
 # 主动 Agent 与上下文架构
 
-> 状态说明（2026-08-18）：本文同时包含已实现正常路径和目标契约。全盘审查发现 Runtime 恢复、事务、Evidence、Context/Memory、Intervention 与移动端仍有未满足的不变量；当前真实状态见 [`STATUS.md`](STATUS.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-18）：本文描述目标架构，并在“旧实现候选”段落记录 develop 上已有的正常路径。全盘审查已证明 Runtime 恢复、事务、Evidence、Context/Memory、Intervention、安全与移动端不满足目标；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+
+阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断当前实现已经满足。develop 的旧实现候选只证明正常路径可运行；H0 已用 strict xfail 证明以下关键差距：
+
+- 事务与副作用：H2-TXN-001–009；当前 handler 分散提交，并可能跨模型、HTTP、SMTP 或子 Run await 持有写锁。
+- Runtime：H3-RUN-001–011；审批拒绝、current tool、queued/no-checkpoint、二次中断、finalization、lease 和两套 child runtime 尚不耐久。
+- Evidence / Competency：H1-TIME-001/002、H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002。
+- Context / Intervention：H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002、H5-PRO-001–003。
+- 安全与 UI：H6-*、H7-UI-001–006。当前只允许受控 loopback Demo，不能作为无认证服务器或不可信代码沙箱。
 
 ## 1. 总体架构
 
@@ -60,17 +68,17 @@
 - Agent 的提醒决策，包括选择保持安静的决策
 - 用户对记忆或计划建议的确认与拒绝
 
-V2 从这些运行事件中另外维护追加式 `EvidenceObservation` 账本。提交、提交验收、测验评分和带证据的任务完成都会写入结构化来源、评分、提示/迁移等级和幂等键；观察本身不编辑、不物理删除，修订通过后续观察的替代/失效关系表达。`study_state_get` 和计划 Context 只读取同一个确定性证据摘要，避免对话、心跳各自推断一份学习状态。
+目标契约：V2 从这些运行事件中维护追加式 `EvidenceObservation` 账本。提交、提交验收、测验评分和带证据的任务完成写入结构化来源、评分、提示/迁移等级和幂等键；观察本身不编辑、不物理删除，修订通过后续观察的替代/失效关系表达。`study_state_get` 和计划 Context 必须读取同一个完整、确定性证据摘要。旧实现候选会截断 500 条、在 SQLite 往返后改变 digest、撤销后保留 active success，并重复计权（H1-TIME-001、H4-EVID-001–003）。
 
-每条实际证据先登记不可变 `Artifact`（来源 URI、内容哈希、作用域和元数据），观察只保存受限的 `artifact_id` 引用，不把完整提交正文复制到多个状态表。M14 的 `Competency` 只通过显式 key 和可审计映射关联计划、任务、资源；标题相似度不会自动跨计划合并，先决/组成关系写入前做环检测。
+目标契约：每条实际证据先登记可重验的不可变 `Artifact`（规范内容指纹、耐久内容、作用域和元数据），观察只保存受限引用。M14 的 `Competency` 只通过显式 key 和可审计映射关联计划、任务、资源，所有 endpoint 由后端校验 owner/plan。旧 Artifact 不覆盖完整 envelope/文件 bytes，旧 Competency unique/edge/link 可破坏计划隔离（H4-EVID-005、H4-COMP-001–004）。
 
 ### Conversation Window
 
-只装配当前对话需要的近期消息。较早消息压缩为当前 Session 摘要，但不会自动提升为全局或计划长期记忆；每次压缩写入不可变 `SessionSummary`，记录版本、覆盖到的消息、来源消息 ID 和生成方式。原始消息始终保留。
+目标契约：只装配当前对话需要的近期消息。较早消息压缩为当前 Session 摘要，但不会自动提升为长期记忆；coverage 只能推进到摘要器真实读取且成功提交的消息。旧压缩会遗漏长输入、把未读消息标为 covered，并在模型失败后推进 coverage（H5-CTX-002–004）。原始消息仍保留。
 
-每条会话拥有显式焦点：`plan_id = null` 表示全局对话，非空值表示计划对话。`currentPlan` 只代表界面正在查看的数据，不能被当作对话焦点；前端使用独立的 `focusPlanId` 组装 Run 请求。切换全局与计划焦点时建立新的会话边界，避免近期原文跨计划串入。后端同时校验已有 Session 的 `plan_id`，拒绝用同一个 Session 静默改绑其他计划，隔离不能只依赖 UI。
+目标契约：每条会话拥有显式焦点，后端校验 Session/Plan scope，`currentPlan` 与 `focusPlanId` 分离，隔离不依赖 UI。旧 ContextAssembler 会把 global Session 的 discussed link 当作读取私有计划状态的权限，前端归档又可能留下 stale focus（H5-CTX-001、H7-UI-003）。
 
-全局 Session 创建计划后不会被静默改绑。`SessionPlanLink` 记录 `created / discussed / focused` 关系，界面提供“打开计划”和“在计划中继续”。后者创建带 `parent_session_id` 与 `handoff_summary` 的计划 Session；原全局 Session 保持原作用域，新的计划 Session 获得可追溯的最小交接上下文。
+目标契约：全局 Session 创建计划后不静默改绑；新计划 Session 保存一次性冻结、可追溯的最小 handoff。旧重复 handoff 会用来源 Session 的后续消息改写既有 child 摘要（H5-CTX-005）。
 
 Session 与 Plan 都支持可恢复归档。归档只改变生命周期和默认列表，不删除原始消息、计划结构、记忆、证据或事件；归档计划退出主动候选扫描，归档 Session 为只读。手动归档同样写入 `Operation` 审计记录。
 
@@ -78,7 +86,7 @@ Session 与 Plan 都支持可恢复归档。归档只改变生命周期和默认
 
 计划制定在 Session 内增加两层持久状态：`PlanningIntake` 保存目标、带来源的已确认事实、结构化待确认问题、充分性结论/置信度/理由；`PlanProposal` 保存完整 PlanCreate 负载、主 Agent 理由、子 Agent 报告和 pending/accepted/rejected 生命周期。普通会话 Run 不能再直接调用 `plan_create`；必须先将 Intake 标为 ready，再写提案。`POST /agent/plan-proposals/{id}/decision` 是显式提交边界，采用操作幂等地创建正式 Plan、Operation 与 SessionPlanLink。
 
-用户编辑消息采用非破坏式当前分支语义：旧内容写入 `ChatMessageRevision`，旧 Run、事件、快照与 Operation 不变；目标消息之后的旧消息加 `superseded_by_edit` 标记并从 Session API、上下文组装、摘要压缩与 handoff 中排除。修订内容仍在原 Session 创建新 Run，因此不会在侧边栏产生伪对话。当前版本保留审计但不提供旧分支切换 UI。
+目标契约：用户编辑消息采用非破坏式当前分支语义，保留 Revision/Run/Event/Operation 审计，同时显式失效所有派生 Memory、Summary、Snapshot 与 handoff。旧实现只失效部分 Session/Run 来源，Plan/Global 与直接 Message 派生物可继续进入 Context（H5-CTX-006/007）。
 
 ### Working Memory
 
@@ -129,13 +137,13 @@ Hy3 支持长上下文，但系统仍需选择、分层和压缩。长上下文�
 
 调度器只有一个全局循环。每 `AGENT_HEARTBEAT_SECONDS` 做一次轻量确定性候选扫描，而不是为每个任务创建常驻心跳：先检查到期复习、24 小时内任务，再逐个检查活动计划的最新学习证据。扫描阶段不加载聊天全文；命中候选后才用明确的 `plan_id` 启动计划级 Run，由 ContextAssembler 注入该计划结构、证据、计划记忆和必要事件。`AGENT_PROGRESS_CHECKIN_HOURS` 默认 24 小时；`AGENT_CANDIDATE_COOLDOWN_MINUTES` 默认 180 分钟，避免计划被每轮重复交给模型。只有提交、考核、证据或任务完成等学习行为会刷新“最近活动”，计划元数据维护不再伪装成学习进展。`GET /settings/proactive` 暴露下一轮时间、最近判断和最近心跳 Run，前端每 15 秒同步状态与站内通知。
 
-主动提醒的权威回复位置是 Session，不是收件箱。`notification_send` 优先使用来源 Session；无会话后台 Run 会复用同计划最近的活动 Session，没有时建立一个稳定的“学习跟进”Session。提醒以 `ChatMessage(role=assistant, ui_kind=proactive_notification)` 投影到该对话，同时以 `Notification` 投影到各发送渠道。收件箱、页面 Toast、Service Worker 和邮件令牌都指向同一 Session；`POST /notifications/{id}/open` 会为旧通知幂等补链并返回精确 `message_id`。输入区持有显式回复目标，发送后用户消息保存 `reply_to_notification_id`；ContextAssembler 将目标提醒单独注入且从普通 Conversation 投影中去重，因此即使同一 Session 有多条提醒也不靠相邻顺序猜测。计划焦点继续提供完整状态与分层记忆。
+目标契约：主动提醒的权威回复位置是 Session，一次逻辑 Intervention 拥有稳定 ID，所有 delivery 和回复都引用它；活动 Run queue/steer 必须耐久保存 target。旧实现依赖 run/title/body/thread 启发式，活动 Run 回复会丢 target（H5-INT-001–003、H7-UI-004）。
 
-`Notification.archived_at` 只提供可恢复的收件箱生命周期。一个逻辑提醒可以拥有站内、邮件和 Push 多条投递记录，但收件箱只展示站内权威行，每日上限也按逻辑提醒计数；打开、已读、归档和恢复会同步同组投递。`GET /notifications` 默认返回活动消息，`?archived=true` 返回归档列表；单条归档/恢复和批量归档已读均保留通知事实与对话消息。ContextAssembler 排除已归档通知，也排除已经投影到当前 Session 的通知；后者由 Conversation 区只注入一次，避免同一提醒重复占用上下文。
+目标契约：收件箱归档是可恢复生命周期，一个逻辑 Intervention 的多渠道 delivery 只计数和注入一次。旧数据模型仍以 Notification delivery 为主，会重复 Context 或错误合并同文提醒（H5-INT-002/003）。
 
-同一 Session 同时只允许一个根 Run。用户在运行期间发送的跟进、后台提醒回复和邮件回复都先进入耐久 `QueuedMessage`；队列保存触发来源、原始用户正文与消息元数据。当前 Run 完成或失败后由后端在同一事务边界创建下一条 `ChatMessage` 和根 Run，再由前端跟随显示；浏览器关闭不会让队列失去消费者。用户主动停止 Run 时队列仍保留并等待手动发送，系统不会在明确停止后擅自启动下一项。等待阻塞审批时普通回复进入队列，审批回答只通过专用 approval 接口恢复检查点，避免两种语义互相覆盖。
+目标契约：同一 Session 同时只允许一个根 Run；queue item、ChatMessage 和新 Run 由短事务/CAS 仲裁，进程中断后仍 claimable。旧 queued/no-checkpoint 会被启动恢复误判失败，late steer 可悬空，且没有多 worker lease（H3-RUN-004/006/007）。
 
-IMAP 采用持久化后确认：邮件 UID 先写入消息或队列元数据并提交数据库，随后才标记为已读；进程在两步之间失败时，下轮以 UID 去重，不会重复创建用户消息。邮件回复仍恢复原提醒的 Session 和 `reply_to_notification_id`，不会生成独立邮件对话。
+目标契约：IMAP 先用 `BODY.PEEK[]` 读取，UID/reply job 提交后才标 Seen，并以稳定 Intervention/Session ID 路由。旧 `(RFC822)` fetch 可在 commit 前置 Seen，归档计划回复也缺少明确只读回执（H5-MAIL-001/002）。
 
 ## 5.1 Harness 运行事件
 
@@ -175,13 +183,13 @@ run.cancelled
 
 工具运行还维护每个 Run 独立的失败熔断器：同一工具连续失败两次后，本轮不再把该工具暴露给 Hy3，避免网络或依赖故障耗尽全部工具轮次；其他能力仍可继续使用，下一次 Run 会重新尝试。
 
-Web 工具对初始 URL 和每一次重定向都执行 SSRF 校验。localhost、IP 字面量、`.local`、RFC 私网和链路本地地址始终拒绝；在显式开启本地代理兼容时，只允许公网域名经 Clash/Mihomo 一类代理解析到 `198.18.0.0/15` 或 `2001::/32` 的 Fake-IP，直接请求这些地址仍被拒绝。搜索提供商通过统一接口选择，默认主源为 DuckDuckGo HTML、备选源为 Bing HTML，可通过环境变量关闭备选。
+目标契约：Web 工具对初始 URL、每次重定向和实际连接 peer 执行 SSRF 校验，并限制 wire/decompressed bytes 与精确 Content-Type。旧实现未 pin/复核 peer，接受部分 non-global 地址且无响应上限（H6-WEB-001）；修复前不能把当前校验描述为完整安全边界。
 
 学习资源采用两阶段协议：`web_search / web_open` 负责发现与正文核验，`resource_save` 才把 Agent 明确选择的课程、教程、实验、学习路径或参考资料写入计划。保存项包含平台、类型、难度、语言、核验摘要和适配理由，并生成可撤销 `Operation`；原始搜索结果不等同于课程资源。
 
 ## 7. 计划内存隔离
 
-每个计划只读取自己的 `Plan Memory` 和相关事件。全局画像可以被所有计划引用，但一个计划的私有对话不会自动泄漏到另一个计划。
+目标契约：每个计划只读取自己的 `Plan Memory` 和相关事件；全局画像可以被所有计划引用，私有对话不能自动泄漏。H5-CTX-001 的旧实现失败证明这项隔离尚未验收。
 
 当跨计划信息确实有价值时，Hy3 只能提出一条“提升为全局记忆”的候选，用户确认后写入 Global Learner Profile。
 
@@ -243,7 +251,7 @@ Plan Workspace
 
 ## 10. 子 Agent 边界
 
-当前注册 `planning_delegate`，可一次把最多三个规划调查分给独立 `AgentRun(trigger=subagent, parent_run_id=...)`；通用 `subagent_spawn/status/join/cancel` 使用同一只读执行器。子 Run 只接收父 Run 的只读上下文快照和单一任务；工具白名单限于画像/记忆/文件/日历读取及 `web_search/web_open`，并强制拒绝保存搜索结果和全部业务写工具。通用子 Run 在安全边界保存模型消息、轮次和待执行工具；异常进入 `failed`，重启按 `checkpoint.kind=subagent` 路由到专用恢复器。子 Run 不写主 Session 消息，返回报告后由主 Agent解决冲突和提交写操作。父事件流记录 `subagent.started/completed`，侧边栏与最近 Run 查询只投影根 Run，不把子 Run 冒充新对话。
+旧实现候选注册了 `planning_delegate` 与通用 `subagent_spawn/status/join/cancel`，并以只读工具白名单约束正常路径。但 planning delegate 仍是无 checkpoint 的第二套 child runtime，终态与父 completion 事件分次提交，transient error 无耐久重试，预算协议也未统一（H3-RUN-008–011）。
 
 这是以只读调查为边界的通用子 Agent v1；计划共创只是它的一种调用方式。其长期约束保持为：
 
@@ -252,6 +260,6 @@ Plan Workspace
 - 返回结果与证据给主 Agent，由主 Agent决定后续动作。
 - 产生独立 `run_id`，并在父 Run 的事件流中可见。
 
-通用 spawn/status/join/cancel、只读工具白名单、独立轮次/工具上限和崩溃检查点已经实现。SQLite 部署使用跨 Run 的事件单写者锁并对短暂 `locked/busy` 退避重试；工具观察和事件结果有界压缩，研究轮次耗尽后额外执行一次禁用工具的最终总结。`subagent_join` 的外层工具超时会在请求等待时长上增加收尾余量，不会先于子 Run 自身超时。规划子 Run 的成功报告或失败说明同时写入 `AgentRun.output` 并投影回父事件，主 Agent 可据此解决冲突或降级完成。
+上述 spawn/status/join/cancel、白名单、轮次限制和部分 checkpoint 是正常路径候选，不构成崩溃一致性证明。H2-TXN-009 已复现主/子/心跳 SQLite 竞争，H3-RUN-009 已复现 child 终态提交后父 completion 永久缺失。
 
-应用启动时会扫描遗留的 `queued/running` Run：有 `checkpoint` 的恢复为 `queued` 并从断点续跑；没有检查点的标记为 `failed(process_interrupted)` 并追加可见事件，保留原消息、工具结果和操作记录，同时解除 Session 的假占用。心跳等无会话 Run 恢复时会按当前数据库重建上下文（不重放旧快照），指向已删除计划的待恢复 Run 直接安全收口。阻塞型审批在 `waiting_approval` 状态下持久化待批工具与参数，批准后从检查点恢复，拒绝后把拒绝结果回填给模型继续调整。
+旧启动逻辑会扫描 `queued/running` Run，但它把合法 queued/no-checkpoint 直接标记 `failed(process_interrupted)`；resume 又会先清旧 checkpoint，审批 decision 未耐久保存时默认 approve。这里记录的是 known-bad baseline（H3-RUN-001/002/004），不是目标恢复机制。H3 必须改为带 phase/version/lease 的统一状态机后再更新本节。

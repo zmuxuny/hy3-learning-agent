@@ -4,7 +4,7 @@
 
 当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
 
-> 安全与开发状态：当前稳定版本只建议绑定 `127.0.0.1` 在本机使用；尚未提供服务器认证，也不能把有界 `code_execute` 当作安全沙箱。`develop` 的 V2 M13/M14 正在执行[前置硬化计划](docs/V2_HARDENING_PLAN.md)，尚不具备 V2 Alpha 发布条件。
+> 安全与开发状态：当前稳定版本只建议绑定 `127.0.0.1` 在本机使用；尚未提供服务器认证，也不能把有界 `code_execute` 当作安全沙箱。`develop` 的 V2 M13/M14 正在执行[前置硬化计划](docs/V2_HARDENING_PLAN.md)，[H0 缺陷矩阵](docs/V2_H0_DEFECT_MATRIX.md)中的生产缺陷仍全部 open，尚不具备 V2 Alpha 发布条件。
 
 ## Demo
 
@@ -50,31 +50,33 @@ flowchart LR
 - 输入框始终标明“综合学习上下文”或具体计划名称。综合对话协调多个计划，计划对话只装配该计划的任务、事件、记忆、证据与复习状态。
 - 长流程默认折叠为关键动作，用户可以展开全部步骤、即时停止实际执行协程，或在原位置处理阻塞审批。
 
-## 已实现能力
+## 已实现的正常路径候选
+
+以下条目说明界面或代码路径已经存在，不代表崩溃恢复、并发、迁移、长期 Context 和安全不变量已经验收：
 
 - 完整 `Plan → Stage → Task` 计划模型与多计划工作台
 - `AgentRun / RunEvent` 生命周期、SSE 实时轨迹和停止请求
-- Run 检查点、阻塞审批的暂停—批准—恢复，以及应用重启后从断点续跑
-- 写工具幂等重放（重复调用返回原结果）与可观察的 Run 预算（模型/工具/耗时/费用上限）
+- Run 检查点与审批暂停/恢复候选；拒绝重启、current tool、queued/no-checkpoint、二次中断和 finalization 仍由 H3-RUN-001–007 阻塞
+- 写工具幂等和 Run 预算候选；同 key 异内容冲突、统一 UoW、外部副作用 outbox 与 child 预算仍由 H2/H3 阻塞
 - Session 列表、原始消息恢复、语义命名、手动改名与多轮连续对话画布
 - Session/计划手动归档与恢复、归档列表，以及全局对话到计划对话的可追溯交接
 - 持久化计划共创：需求充分性判断、结构化提问卡、受限规划子 Agent、可审阅提案与显式采用
 - 用户消息复制与非破坏式编辑；旧版本、旧 Run 和工具操作保留，当前 Session 从修订处重新运行
 - Hy3 多轮 Function Calling，以及 TokenHub 交错式思考字段回填
-- 全局/计划/Session 分层记忆、来源/置信度、候选确认、纠正替代链、可恢复归档和 Markdown 快照
-- 长会话压缩与不可变摘要版本、BM25 + 本地 SimHash 混合检索（可解释分数分解）、使用痕迹、短期过期/情节归档和计划摘要维护
+- 全局/计划/Session 分层记忆、来源/置信度、候选确认、纠正替代链、归档和 Markdown 快照候选；跨计划隔离与恢复 expiry 未验收
+- 长会话压缩、摘要版本和混合检索候选；coverage、预算、阈值/层级配额和编辑失效仍由 H5-CTX 阻塞
 - Run 内联上下文检查器：实际来源构成、命中记忆分数、Token 估算和送入模型的 Markdown
-- 单实例全局心跳和手动检查，共用同一个 Agent Runtime；候选命中后切入计划级上下文。主动提醒作为 Agent 消息进入连续 Session，收件箱/系统通知点击后定位原消息并在同一上下文回复
+- 单实例全局心跳、提醒 Session/收件箱投影和回复候选；活动 Run target、多渠道事实、IMAP ack 与冷却语义仍由 H5 阻塞
 - 收件箱显示上次判断、下次检查与当前状态，并支持消息归档、恢复和批量归档已读；归档不删除对话中的提醒
 - 默认站内收件箱、Service Worker 浏览器通知、可选 VAPID Web Push、可选 SMTP 发送与 IMAP 回复
 - 简答测验、证据化评分、复习调度、XP 与可撤销操作基础
 - 核心任务证据门槛、真实计划进度和真实学习事件热力图
 - 对话优先的响应式工作台、消息内可收起工作记录、纵向计划时间线，以及热力图、连续天数、XP/等级和规则成就数据等轻游戏化基础
-- “设置”页：模型连接、SMTP/IMAP 凭据与测试、免打扰/频率/冷却策略；凭据只写本地 `.env`（0600），API 不回传密码
+- “设置”页候选：模型连接、SMTP/IMAP 与主动策略；`.env` 控制字符、原子临时文件和复杂值往返仍由 H6-CONFIG-001 阻塞
 - 48 个真实工具：需求澄清、规划分工与提案、通用只读子 Agent、学习位置快照、课程资源搜索/核验/策展、计划修改、提交验收、复习处置、文件、代码、日历、记忆维护和显式技能图映射
 - Web 搜索主源失败时自动降级到 Bing HTML 备选源，结果带 `fallback_used` 标记
 
-当前代码执行是个人工作区内的有界进程，不是容器级安全沙箱。规划与通用子 Agent 都使用独立只读子 Run；通用子 Run 支持 spawn/status/join/cancel、逐轮检查点、异常收口和应用重启恢复。SQLite 事件写入按单写者串行并有界重试，子 Run 拥有独立工具上限和强制最终报告轮。外部日历双向同步、容器级不可信代码隔离和子 Agent 写权限审批仍属于后续边界，不在界面中伪装成已完成能力。
+当前代码执行是宿主上的有界进程，不是容器级安全沙箱；H6-CODE-001 修复前不得运行不可信代码。子 Run、SQLite 写竞争和恢复只有正常路径候选，H2-TXN-009 与 H3-RUN-008–011 已建立失败基线。
 
 ## 快速开始
 
@@ -122,11 +124,12 @@ npm --prefix frontend audit --omit=dev
 本地数据管理：
 
 ```bash
-./scripts/reset-data.sh      # 把数据库/上下文/工作区备份到 data/backups/ 后清空
-./scripts/seed-fixture.sh    # 从最近备份恢复浏览器回归夹具（服务需停止）
+./scripts/reset-data.sh      # legacy unsafe：H1 修复前禁止对正式数据使用
+./scripts/seed-fixture.sh    # legacy unsafe：H1 修复前禁止对正式数据使用
+./scripts/demo-data.sh       # legacy unsafe：H1 修复前禁止对正式数据使用
 ```
 
-V2 的学习证据账本可以独立重建和审计；这些命令只生成派生快照，不改写原始证据：
+V2 的学习证据脚本目前是实现候选。H1-AUDIT-001 已证明 `--audit` 会在备份前触发 schema 写入；H1 完成前只允许对显式临时副本运行，禁止对正式数据库执行下列命令：
 
 ```bash
 ./.venv/bin/python scripts/rebuild-evidence.py --audit
@@ -134,13 +137,13 @@ V2 的学习证据账本可以独立重建和审计；这些命令只生成派�
 PYTHONPATH=backend ./.venv/bin/python scripts/evidence-baseline.py
 ```
 
-自动化测试使用隔离数据库和模拟模型响应，验证工具循环但不冒充真实 Hy3 调用。当前已经额外完成真实 TokenHub Hy3 的连续 Session、搜索和页面核验；模型超时会先进行一次可观察重试，最终失败仍会保留状态并显示稳定错误编号，不在界面中伪装成功。
+自动化测试使用临时数据库和模拟模型响应，不冒充真实 Hy3 调用。历史 TokenHub/搜索/页面验证只证明当时的正常路径；当前 H0 strict-xfail 才是已知失败事实，不能用历史场景数、截图数或构建通过替代领域验收。
 
 ## 数据与安全
 
 - SQLite 默认位于 `data/learning_companion.db`，上下文快照位于 `data/context/`，两者都被 Git 忽略。
 - Agent 文件工作区位于 `data/workspace/`；文件工具拒绝路径穿越。
-- SMTP 密码和 TokenHub Key 只保存在 `.env`。
+- SMTP 密码和 TokenHub Key 的配置源是本地 `.env`；H6-REDACT-001 修复前，工具轨迹、事件、Context 和错误路径尚不能保证统一脱敏，因此不得把真实秘密放入对话或工具参数。
 - 浏览器通知只有在用户授予权限后显示；VAPID Web Push 需要在 `.env` 配置密钥，电脑关机或浏览器完全退出时无法唤醒。
 - 本地服务或电脑停止时无法主动提醒。
 - 代码执行有工作目录、环境、时间与输出上限，但不应运行来源不可信的代码。
@@ -157,6 +160,7 @@ PYTHONPATH=backend ./.venv/bin/python scripts/evidence-baseline.py
 - [路线图](docs/ROADMAP.md)
 - [Learning Agent 2.0 路线图](docs/V2_ROADMAP.md)
 - [V2 前置硬化实施计划](docs/V2_HARDENING_PLAN.md)
+- [V2 H0 缺陷—测试—门禁矩阵](docs/V2_H0_DEFECT_MATRIX.md)
 - [当前状态](docs/STATUS.md)
 
 ## License

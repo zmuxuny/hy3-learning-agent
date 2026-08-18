@@ -1,8 +1,10 @@
 # Agent 工具与运行协议
 
+> 状态说明（2026-08-18）：本文的协议性文字是目标契约；工具名称和正常路径来自当前旧实现候选。H0 已证明事务、审批恢复、幂等、作用域、Evidence、提醒线程、子 Run 和安全边界仍有阻塞缺陷，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
+
 ## 设计原则
 
-工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。每个工具同时注册 Pydantic 输入模型和输出模型；输入用于 Function Calling，成功输出在回填模型前再次校验。完整契约通过 `GET /api/v1/settings/tools` 暴露。高层流程由 Hy3 规划；用户消息、后台候选、复习到期和邮件回复共享同一 `AgentRuntime`。
+目标上，工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。旧实现为工具注册输入/输出 Schema 并通过 `GET /api/v1/settings/tools` 暴露，但 H4-SCHEMA-001/002 已证明 Evidence 嵌套项仍有裸 `list/dict` 和 extra-field 缺口。高层流程由 Hy3 规划；各触发源必须在 H2/H3/H5 修复后才能称为共享同一耐久 Runtime。
 
 ## 48 个已注册工具
 
@@ -25,7 +27,7 @@
 | `subagent_cancel` | 取消由当前 Run 发起的子 Run |
 | `study_state_get` | 读取带计划版本的当前阶段/任务、下一步、证据、阻塞、逾期、复习和近期提交快照 |
 
-子 Agent 的模型轮次与工具调用分别有界；工具结果进入模型上下文前压缩，RunEvent 保留可展开的结构化预览。若所有调查轮次都用于调用工具，Runtime 会追加一次不暴露工具的总结轮，保证正常完成的子 Run 形成报告。SQLite 部署把跨 Run 事件写入串行化并对短暂锁冲突重试；成功报告或失败说明持久化在子 `AgentRun.output`，同时投影回父 Run。
+子 Agent 的轮次、工具上限、结果压缩和父事件投影已有正常路径候选。H3-RUN-008–011 已证明 planning delegate 未统一 checkpoint、child 终态与父 completion 非原子、瞬时模型错误无耐久重试且预算不完整；H2-TXN-009 也证明 SQLite 锁竞争仍可丢工作。因此这里不能保证崩溃后一定形成报告。
 
 ### 状态与计划
 
@@ -81,7 +83,7 @@
 | --- | --- |
 | `notification_send` | 先把主动提醒写入计划对应的连续 Session，再投影到站内收件箱；可选浏览器或 SMTP 邮件，返回 `session_id` 供追溯 |
 
-SMTP 邮件主题携带回复令牌。启用 IMAP 后，未读回复会被路由为 `email_reply` Run，并作为用户消息接在原提醒后由同一个 Agent 观察和处理。站内收件箱也通过同一 Session 深链回复，不建立第二套通知上下文。
+SMTP/IMAP 回复令牌和站内深链已有正常路径候选。活动 Run target、多渠道唯一 Intervention、归档计划回执和 IMAP durable ack 仍由 H5-INT-001–003、H5-MAIL-001/002 阻塞，不能保证中断/并发时不会形成错线程或丢回复。
 
 ## 统一结果与运行事件
 
@@ -95,7 +97,7 @@ SMTP 邮件主题携带回复令牌。启用 IMAP 后，未读回复会被路由
 }
 ```
 
-成功数据必须通过对应 Output Schema；错误统一为 `{"ok": false, "error": "...", "retryable": false}`，并作为 tool message 回填给模型。每次工具在独立数据库 Session 中执行，回滚不会污染主 Runtime。对用户可见的轨迹包括：
+目标要求成功数据通过具名 Output Schema，错误使用稳定 typed envelope，并把工具执行纳入单一 UoW/短事务 claim。旧实现的 handler/service 分散 `commit()`，Invocation 与领域/Operation/Evidence 可分裂，外部 await 还会持有 SQLite writer（H2-TXN-001–009）；“独立 Session”不能被当作原子或回滚保证。对用户可见的目标轨迹包括：
 
 ```text
 run.started → context.built → assistant.status
@@ -105,17 +107,17 @@ run.started → context.built → assistant.status
 → assistant.message → run.completed
 ```
 
-带 `blocking: true` 的审批会在 `approval.required` 事件后把 Run 停在 `waiting_approval` 并持久化待批工具与参数；`POST /agent/runs/{id}/approval` 批准后从检查点恢复并执行原工具，拒绝后把拒绝结果作为 tool message 回填给模型继续调整。候选式确认（如 `memory_propose`）不阻塞 Run。
+审批暂停/恢复已有正常路径候选；H3-RUN-001 已证明拒绝决定不是耐久事实，重启会默认批准，H3-RUN-002/003 又证明 checkpoint 可在二次中断或 current tool 边界丢失。修复前不能把上述流程写成重启保证。
 
-写工具带有 `idempotent` 契约标记：`run_id + 工具名 + provider call_id + 参数哈希` 生成 `idempotency_key`；同一个 provider 调用重放会返回首次提交结果并带 `replayed: true`，但不会错误吞掉模型后续有意发起的同参数新调用。审批中的调用记录为 `pending_approval`，只有批准执行后才转为 `committed`。每次模型调用和工具调用都计入 `budget_usage`，超限时产生 `run.budget_exceeded` 可观察事件后安全停止。
+`idempotent` 与预算字段是旧实现候选。H2-TXN-002/003 已证明 claim 与 stable action key/request digest 不满足冲突语义；H4-EVID-006 也会静默复用同键异内容，H3-RUN-011 则缺 child 完整预算。后续门禁必须用数据库约束、CAS 与持久预算关闭，而不是依赖标记或参数哈希描述。
 
 私有思维链不写入事件；TokenHub 要求的 `reasoning_content` 只在同一 Run 的模型轮次间回填。
 
 ## 权限与撤销
 
-- `plan_id` 是后端作用域，不依赖 Prompt 自觉。
+- 目标上 `plan_id` 必须由后端强制且不依赖 Prompt；旧 Competency/Context 路径仍可跨计划（H4-COMP-002–004、H5-CTX-001）。
 - Session 内的计划创建只能写提案；提案采用 API 幂等地物化正式计划，未采用时数据库中不存在对应 Plan。
-- 规划子 Run 与通用子 Agent 共用受限执行器；`spawn/status/join/cancel` 已开放，但只能看到显式只读白名单和最小上下文，不写主 Session 消息或业务状态。
-- 核心任务只有在 `submission_check` 通过或提供有效证据后才能完成。
+- `spawn/status/join/cancel` 与只读白名单已有候选，但 planning delegate 尚未复用统一 durable child 状态机（H3-RUN-008）。
+- 核心任务的目标门槛是可验证 Evidence；旧自由文本/self-report/checkbox 可越级 demonstrated，一次提交还会重复计权（H4-EVID-003/004）。
 - 删除、全局长期记忆和后台改变最终目标需要用户确认；阻塞型审批会暂停 Run 等待批准/拒绝，候选式确认只生成候选不中断运行。
-- `Operation` 保存正向和逆向 Patch。计划、任务、策展资源、测验、日历、提交验收和文件写入可从操作记录撤销。
+- `Operation` 有正向/逆向 Patch 候选，但 Evidence undo 不追加失效事实，图节点 undo 可静默级联，文件副作用与数据库提交也可分裂（H2-TXN-008、H4-EVID-002、H4-COMP-006）；当前不能保证所有列举操作可安全撤销。
