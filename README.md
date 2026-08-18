@@ -4,6 +4,8 @@
 
 当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
 
+> 安全与开发状态：当前稳定版本只建议绑定 `127.0.0.1` 在本机使用；尚未提供服务器认证，也不能把有界 `code_execute` 当作安全沙箱。`develop` 的 V2 M13/M14 正在执行[前置硬化计划](docs/V2_HARDENING_PLAN.md)，尚不具备 V2 Alpha 发布条件。
+
 ## Demo
 
 [![观看 Learning Agent · Hy3 92.6 秒完整 Demo](assets/demo/learning-agent-hy3-demo-cover.jpg)](https://zmuxuny.github.io/hy3-learning-agent/)
@@ -154,6 +156,7 @@ PYTHONPATH=backend ./.venv/bin/python scripts/evidence-baseline.py
 - [邮箱配置与收发](docs/EMAIL.md)
 - [路线图](docs/ROADMAP.md)
 - [Learning Agent 2.0 路线图](docs/V2_ROADMAP.md)
+- [V2 前置硬化实施计划](docs/V2_HARDENING_PLAN.md)
 - [当前状态](docs/STATUS.md)
 
 ## License

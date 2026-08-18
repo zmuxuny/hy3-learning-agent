@@ -1,5 +1,7 @@
 # 主动 Agent 与上下文架构
 
+> 状态说明（2026-08-18）：本文同时包含已实现正常路径和目标契约。全盘审查发现 Runtime 恢复、事务、Evidence、Context/Memory、Intervention 与移动端仍有未满足的不变量；当前真实状态见 [`STATUS.md`](STATUS.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+
 ## 1. 总体架构
 
 ```text

@@ -1,26 +1,36 @@
 # 项目状态
 
-更新时间：2026-08-13（Asia/Shanghai）
+更新时间：2026-08-18（Asia/Shanghai）
 当前版本：1.1.1
 
-下一版本：2.0.0-alpha.1（M13 已基本完成，M14 基础进行中）。本轮补齐了 Artifact 来源、41 个固定证据场景和第一版显式技能图工具；正式学习者状态 reducer、自适应动作和耐久主动队列仍未实现，不能视为当前 1.1.1 的完整能力。详细范围与验收门槛见 [`V2_ROADMAP.md`](V2_ROADMAP.md)。
+下一版本：2.0.0-alpha.1（已暂停发布）。M13/M14 当前代码是实现候选，不再视为“基本完成”；在进入 M15 前必须完成 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 门禁。
 
-## V2 当前实现（develop）
+## 2026-08-18 全盘审查结论
+
+- `develop` 暂不具备 V2 Alpha 发布条件，也不应继续在当前 Evidence 投影上实现 M15 learner state。
+- 审查确认了审批拒绝恢复、当前工具 checkpoint、queued Run 恢复、SQLite 长事务、Evidence undo/digest/完整投影、跨计划技能 Guard、Session 压缩、handoff、提醒回复和移动导航等 P0/P1 问题。
+- 当前代码适合单进程、本机、有人观察的 Demo；不适合无人值守长期运行、无认证个人服务器或不可信代码执行。
+- `main` / `v1.1.1` 仍是稳定发布基线；本轮审查没有合并、发布或改写 Git 历史。
+- 修复依赖顺序、失败基线、故障注入矩阵、提交纪律和发布条件以 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 为执行事实来源。
+
+## V2 当前实现候选（develop，尚未验收）
 
 - `EvidenceObservation` 是追加式事实层，带来源、计划/任务/Run/Session、评分、提示/迁移等级、Rubric 快照、因果链和幂等键；没有编辑或物理删除路径。
 - `submission_create`、`submission_check`、`quiz_grade` 和带证据的 `task_patch` 会双写账本；同一幂等键重试只返回原观察。
-- `study_state_get` 与计划 Context 使用同一个确定性 `evidence-summary-v1` 投影，按任务输出证据阶段、成功/失败次数、最佳归一化得分、最近证据和 digest。
-- `scripts/rebuild-evidence.py` 可以只读重建投影、执行账本完整性检查，并原子写入派生 JSON 快照；不会改写账本。
-- Artifact 已成为独立不可变来源表，提交/测验/任务证据均写入 `artifact_id + content_hash` 引用；审计会校验来源存在、URI 和哈希，`--backfill-v1` 会为明确的 v1 证据补建来源 Artifact。
-- M13 已完成第一版固定基线（41 个网络无关场景）；仍待补齐迁移回滚/失效策略后再打 M13 正式标签。M14 基础已落地显式技能节点、计划/任务/资源映射、关系环检测和只读工具。
+- `study_state_get` 与计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；完整账本、时间往返、撤销和重复计权语义尚未通过验收。
+- `scripts/rebuild-evidence.py` 已提供重建、审计、回填和派生快照命令；只读审计、迁移与备份先后顺序需按 H1 修复。
+- Artifact 表和 `artifact_id + content_hash` 引用已经存在；内容耐久性、文件指纹、作用域审计和幂等冲突尚未通过验收。
+- 当前仓库存在 41 个场景名称和第一版实现，但多数场景尚未形成独立领域断言，不能用“41/41”证明覆盖；M13/M14 均需按硬化计划重新验收。
 
 ## 当前结论
 
-Learning Agent 已形成可本地长期运行的个人学习 Harness，而不是一次问答式聊天页面。Hy3 在统一 Runtime 中读取分层上下文、调用原子工具、观察结果并继续决策；计划澄清、资源核验、计划采用、跟踪教学、提交验收、复习安排、主动提醒和提醒回复已经形成连续闭环。
+Learning Agent 已形成真实可运行的个人学习 Harness 原型，而不是一次问答式聊天页面。Hy3 在统一 Runtime 中读取分层上下文、调用工具、观察结果并继续决策；正常路径可以演示计划澄清、资源核验、计划采用、学习跟踪、提交验收、复习和提醒。当前审查同时证明这些路径的崩溃一致性、长期 Context 连续性和服务器安全边界尚未达到长期产品标准。
 
 `main` 是可发布分支，`develop` 用于集成下一版本。发布前必须在 `develop` 完成测试、浏览器回归和文档同步，再合并到 `main`；不再保留“main 固定为旧归档快照”的历史约定。
 
-## 已完成的产品闭环
+## 已实现的正常路径能力
+
+以下条目描述可运行能力，不代表其崩溃恢复、并发、迁移和长期上下文不变量已经通过 H0–H8：
 
 - 对话式计划制定：需求不充分时由 Agent 生成结构化提问卡；充分后可委派只读子 Agent 调研，汇总成可审阅提案，用户采用后才创建正式计划。
 - 计划执行与调整：Agent 能读取学习位置、计划版本、资源、事件和提交，教学下一步、修改阶段/任务、安排复习和日历；写操作受计划焦点 Guard、幂等键、预算与可撤销 Operation 约束。
@@ -41,17 +51,14 @@ Learning Agent 已形成可本地长期运行的个人学习 Harness，而不是
 - 每个 Run 保存不可变 `ContextSnapshot`。在消息内展开“读取计划、近期进度与相关记忆”，可查看实际来源构成、命中记忆分数、估算 Token 和送入模型的 Markdown。
 - SQLite 是事实来源，`data/context/global.md` 与 `data/context/plans/{id}.md` 是不含 Session 对话的最新可读投影，`data/context/runs/{run_id}.md` 是该轮精确输入副本；原始对话、事件、摘要版本和历史快照仍保留在数据库。
 
-## 发布验收
+## 当前审查验证
 
-- `pytest -q`：126 passed（包含 V2 证据账本、Artifact 来源完整性、技能图环检测、隔离和 41 场景基线测试）。
-- `npm run build`：通过。
-- `npm audit --omit=dev`：0 vulnerabilities。
-- 真实浏览器：23 个页面/交互状态，覆盖 375、768、1280、1440、2560 宽度；无横向溢出、按钮裁切或小于 11px 的可见正文；移动端四项底部导航可返回连续对话。
-- 真实设置链路：前端 HTTP 客户端已补齐 PUT，模型、邮箱、主动策略和通知策略保存路径可用；秘密只存在 Git 忽略的 `.env`，API 不回传凭据。
-- 真实 Hy3（临时数据库副本）：全局 Run 命中确认记忆并保存可解释快照，随后自主调用 `study_state_get → plan_get`，用 2 次模型调用形成当前学习位置与单一步骤建议；Run 正常进入 `completed`，未污染正式数据。
-- 真实 Web：DuckDuckGo Provider 返回 Real Python 的 asyncio 实战教程、Udemy 课程和 Python Academy 学习指南，证明搜索链路可返回具体教程/课程而非只有文档页。
-- 真实邮件诊断：QQ SMTP 握手/登录通过（未重复发送测试信），IMAP `INBOX` 登录通过并读取到邮件计数；对外响应只返回脱敏收件地址。
-- 凭据扫描：仓库未发现真实 API Key、邮箱授权码或本机 `.env` 内容。
+- 隔离源码副本 `pytest -q`：126 passed，但出现一个 aiosqlite 工作线程在事件循环关闭后仍回调的警告；现有测试主要覆盖正常路径，不能关闭已复现的崩溃一致性缺陷。
+- `npm run build`、`npm audit`、`pip check` 和 Python compileall：通过；npm 报告 0 vulnerabilities。
+- 真实 Chrome 使用临时数据库副本生成 23 个状态截图；视觉溢出检查未失败，但最终回归因 `settings-mobile` 缺失而失败。现有脚本还会先在桌面进入状态再缩小窗口，不能证明手机冷启动导航可用。
+- Evidence 探针复现了 SQLite 时间往返后 digest 改变，以及 naive/aware 时间混合可能导致投影异常。
+- 当前审查未重新发送真实邮件，也未用用户正式数据库运行破坏性测试；历史 Hy3/Web/SMTP/IMAP 验证仍只代表当时的正常路径结果。
+- 工作区在审查结束时保持干净，本地 `develop` 比 `origin/develop` 超前两个 V2 提交。
 
 ## 明确边界
 
@@ -62,4 +69,4 @@ Learning Agent 已形成可本地长期运行的个人学习 Harness，而不是
 - SMTP/IMAP、VAPID 和模型调用依赖用户自己的供应商配置及本地进程持续运行。
 - 子 Agent v1 默认只读；业务写操作回到主 Agent，避免多个执行体竞争修改计划和长期记忆。
 
-以上边界不阻塞当前个人学习闭环，未来扩展按 `docs/ROADMAP.md` 排期，不能在界面或文档中伪装成现有能力。
+上述边界不影响受控本机 Demo，但审批恢复、事务一致性、Evidence 正确性、Context 连续性、移动导航和服务器安全边界会阻塞 V2 Alpha、无人值守运行和对陌生用户公开推广。后续执行以 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 为准，不能在界面或文档中把待修能力写成已完成。
