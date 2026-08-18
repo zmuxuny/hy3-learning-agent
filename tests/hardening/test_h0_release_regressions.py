@@ -61,12 +61,31 @@ def _synthetic_repository(tmp_path: Path, *script_names: str) -> tuple[Path, dic
                 raise HarnessError(f"required maintenance fixture is missing: {script_name}")
             shutil.copy2(source, scripts_dir / script_name)
 
-        # Maintenance scripts use port 8000 health as their only process check.
-        # A deterministic fake keeps every regression offline and independent of
-        # services that happen to be running on the test host.
-        fake_curl = fake_bin / "curl"
-        fake_curl.write_text("#!/bin/sh\nexit 22\n", encoding="utf-8")
-        fake_curl.chmod(0o755)
+        if "start.sh" in script_names:
+            # Release probes must not depend on a service that happens to be
+            # listening on the host's port 8000.
+            fake_curl = fake_bin / "curl"
+            fake_curl.write_text("#!/bin/sh\nexit 22\n", encoding="utf-8")
+            fake_curl.chmod(0o755)
+
+        if set(script_names).intersection(
+            {"reset-data.sh", "seed-fixture.sh", "demo-data.sh"}
+        ):
+            driver_source = PROJECT_ROOT / "scripts" / "data-maintenance.py"
+            core_source = PROJECT_ROOT / "backend" / "app" / "db" / "maintenance.py"
+            version_source = PROJECT_ROOT / "backend" / "app" / "version.py"
+            if (
+                not driver_source.is_file()
+                or not core_source.is_file()
+                or not version_source.is_file()
+            ):
+                raise HarnessError("safe data-maintenance implementation is missing")
+            shutil.copy2(driver_source, scripts_dir / "data-maintenance.py")
+            core_destination = repository / "backend" / "app" / "db" / "maintenance.py"
+            core_destination.parent.mkdir(parents=True)
+            shutil.copy2(core_source, core_destination)
+            shutil.copy2(version_source, repository / "backend" / "app" / "version.py")
+
     except HarnessError:
         raise
     except OSError as exc:
@@ -118,6 +137,33 @@ def _run_harness_command(
         raise HarnessError(f"harness command could not start: {command[0]}") from exc
 
 
+def _maintenance_error_code(result: subprocess.CompletedProcess[str]) -> str | None:
+    try:
+        report = json.loads(result.stderr)
+    except json.JSONDecodeError:
+        return None
+    return report.get("code") if isinstance(report, dict) else None
+
+
+def _published_backup(repository: Path, purpose: str) -> Path:
+    candidates = sorted(
+        path
+        for path in (repository / "data" / "backups").iterdir()
+        if path.is_dir() and not path.name.startswith(".")
+    )
+    matching = []
+    for candidate in candidates:
+        try:
+            manifest = json.loads((candidate / "manifest.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise HarnessError("maintenance fixture emitted an unreadable manifest") from exc
+        if manifest.get("purpose") == purpose:
+            matching.append(candidate)
+    if len(matching) != 1:
+        raise HarnessError(f"expected one published {purpose} backup, got {len(matching)}")
+    return matching[0]
+
+
 def _create_database(path: Path, marker: str) -> None:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -137,7 +183,7 @@ def _sha256(path: Path) -> str:
 
 def _sqlite_runtime_snapshot(database_path: Path) -> dict[str, dict | None]:
     snapshot: dict[str, dict | None] = {}
-    for suffix in ("", "-wal", "-shm"):
+    for suffix in ("", "-wal", "-shm", "-journal"):
         path = database_path.with_name(database_path.name + suffix)
         try:
             if not path.exists():
@@ -184,26 +230,55 @@ def _write_corrupt_database_fixture(path: Path) -> None:
 
 @contextmanager
 def _held_write_transaction(path: Path):
-    connection: sqlite3.Connection | None = None
     try:
-        connection = sqlite3.connect(path)
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("CREATE TABLE fixture_marker (value TEXT NOT NULL)")
-        connection.commit()
-        connection.execute("BEGIN IMMEDIATE")
-        connection.execute("INSERT INTO fixture_marker (value) VALUES ('uncommitted')")
-    except sqlite3.Error as exc:
-        if connection is not None:
-            connection.close()
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise HarnessError("could not prepare the synthetic SQLite writer") from exc
+    program = """
+import sqlite3
+import sys
+
+connection = sqlite3.connect(sys.argv[1])
+connection.execute("PRAGMA journal_mode=WAL")
+connection.execute("CREATE TABLE fixture_marker (value TEXT NOT NULL)")
+connection.commit()
+connection.execute("BEGIN IMMEDIATE")
+connection.execute("INSERT INTO fixture_marker (value) VALUES ('uncommitted')")
+print("ready", flush=True)
+sys.stdin.readline()
+connection.rollback()
+connection.close()
+"""
+    try:
+        process = subprocess.Popen(
+            [sys.executable, "-c", program, str(path)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        ready = process.stdout.readline() if process.stdout is not None else ""
+    except OSError as exc:
         raise HarnessError("could not hold the synthetic SQLite writer") from exc
+    if ready != "ready\n":
+        stderr = process.stderr.read() if process.stderr is not None else ""
+        process.kill()
+        process.wait()
+        raise HarnessError(f"synthetic SQLite writer did not start: {stderr[-1000:]}")
     try:
         yield
     finally:
         try:
-            connection.rollback()
-            connection.close()
-        except sqlite3.Error as exc:
+            if process.stdin is not None:
+                process.stdin.write("\n")
+                process.stdin.flush()
+            returncode = process.wait(timeout=10)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            process.kill()
+            process.wait()
             raise HarnessError("could not close the synthetic SQLite writer") from exc
+        if returncode != 0:
+            raise HarnessError("synthetic SQLite writer exited unsuccessfully")
 
 
 def _run_node_contract(source: str) -> dict:
@@ -473,14 +548,6 @@ def _call_release_gate(gate: Path, candidate: Path) -> tuple[int, dict]:
     return result.returncode, report
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H1-BACKUP-001: reset-data checks only port 8000 health and moves a SQLite "
-        "database even while an independent writer holds it"
-    ),
-)
 def test_reset_refuses_database_held_by_active_writer(tmp_path: Path):
     repository, environment = _synthetic_repository(tmp_path, "reset-data.sh")
     database_path = repository / "data" / "learning_companion.db"
@@ -491,20 +558,13 @@ def test_reset_refuses_database_held_by_active_writer(tmp_path: Path):
         after = _sqlite_runtime_snapshot(database_path)
         backup_side_effects = list((repository / "data").glob("backups/*"))
 
-        assert result.returncode != 0
+        assert result.returncode == 2
+        assert _maintenance_error_code(result) == "active_sqlite_writer"
         assert database_path.is_file()
         assert after == before
         assert backup_side_effects == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H1-BACKUP-002: reset-data flattens distinct legacy database paths into one "
-        "backup directory and silently overwrites equal basenames"
-    ),
-)
 def test_reset_preserves_each_distinct_legacy_database(tmp_path: Path):
     repository, environment = _synthetic_repository(tmp_path, "reset-data.sh")
     source_paths = (
@@ -514,27 +574,30 @@ def test_reset_preserves_each_distinct_legacy_database(tmp_path: Path):
     )
     for index, source_path in enumerate(source_paths):
         _create_database(source_path, f"source-{index}")
-    expected_hashes = sorted(_sha256(path) for path in source_paths)
+    expected_markers = {
+        path.relative_to(repository).as_posix(): f"source-{index}"
+        for index, path in enumerate(source_paths)
+    }
 
     result = _run_script(repository, environment, "reset-data.sh")
-    backup_directories = list((repository / "data" / "backups").glob("pre-clean-*"))
 
     _require_harness(result.returncode == 0, f"legacy reset fixture failed: {result.stderr}")
-    _require_harness(len(backup_directories) == 1, "legacy reset fixture produced an unexpected layout")
-    actual_hashes = sorted(
-        _sha256(path) for path in backup_directories[0].rglob("learning_companion.db")
-    )
-    assert actual_hashes == expected_hashes
+    backup = _published_backup(repository, "pre_clean")
+    manifest = json.loads((backup / "manifest.json").read_text(encoding="utf-8"))
+    sqlite_entries = {
+        entry["source_path"]: entry
+        for entry in manifest["entries"]
+        if entry["kind"] == "sqlite"
+    }
+    assert set(sqlite_entries) == set(expected_markers)
+    for relative_path, marker in expected_markers.items():
+        entry = sqlite_entries[relative_path]
+        assert entry["archive_path"] == f"payload/{relative_path}"
+        assert _fixture_marker(backup / entry["archive_path"]) == (marker,)
+        assert entry["sqlite"]["integrity_check"] == "ok"
+        assert entry["sqlite"]["foreign_key_check_count"] == 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H1-RESTORE-001: seed-fixture replaces a valid live database with an "
-        "unverified corrupt backup and still exits successfully"
-    ),
-)
 def test_restore_rejects_corrupt_source_and_preserves_live_database(tmp_path: Path):
     repository, environment = _synthetic_repository(tmp_path, "seed-fixture.sh")
     live_database = repository / "data" / "learning_companion.db"
@@ -553,19 +616,12 @@ def test_restore_rejects_corrupt_source_and_preserves_live_database(tmp_path: Pa
     result = _run_script(repository, environment, "seed-fixture.sh")
 
     assert result.returncode != 0
+    assert _maintenance_error_code(result) in {"missing_backup", "manifest_missing"}
     assert live_database.is_file()
     assert _sha256(live_database) == live_hash_before
     assert _database_integrity(live_database) == [("ok",)]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H1-RESTORE-002: reset-data creates only pre-clean backups while "
-        "seed-fixture accepts only pre-demo backups despite telling users to run reset first"
-    ),
-)
 def test_reset_output_can_be_restored_by_documented_restore_workflow(tmp_path: Path):
     repository, environment = _synthetic_repository(
         tmp_path,
@@ -592,14 +648,6 @@ def test_reset_output_can_be_restored_by_documented_restore_workflow(tmp_path: P
     ("active_writer", "legacy_path_flattening"),
     ids=("active-writer", "legacy-path-flattening"),
 )
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H1-DEMO-001: demo-data reset relies only on port 8000 health and also "
-        "flattens distinct legacy SQLite paths into silently overwritten basenames"
-    ),
-)
 def test_demo_reset_preserves_live_and_legacy_sqlite_state(
     tmp_path: Path,
     failure_mode: str,
@@ -614,7 +662,8 @@ def test_demo_reset_preserves_live_and_legacy_sqlite_state(
             after = _sqlite_runtime_snapshot(live_database)
             backup_side_effects = list((repository / "data").glob("backups/*"))
 
-            assert result.returncode != 0
+            assert result.returncode == 2
+            assert _maintenance_error_code(result) == "active_sqlite_writer"
             assert after == before
             assert backup_side_effects == []
         return
@@ -626,30 +675,28 @@ def test_demo_reset_preserves_live_and_legacy_sqlite_state(
     )
     for index, source_path in enumerate(source_paths):
         _create_database(source_path, f"demo-source-{index}")
-    expected_hashes = sorted(_sha256(path) for path in source_paths)
+    expected_markers = {
+        path.relative_to(repository).as_posix(): f"demo-source-{index}"
+        for index, path in enumerate(source_paths)
+    }
 
     result = _run_script(repository, environment, "demo-data.sh", "reset")
-    backup_directories = list((repository / "data" / "backups").glob("pre-demo-*"))
 
     _require_harness(result.returncode == 0, f"legacy demo reset fixture failed: {result.stderr}")
-    _require_harness(
-        len(backup_directories) == 1,
-        "legacy demo reset fixture produced an unexpected layout",
-    )
-    actual_hashes = sorted(
-        _sha256(path) for path in backup_directories[0].rglob("learning_companion.db")
-    )
-    assert actual_hashes == expected_hashes
+    backup = _published_backup(repository, "pre_demo")
+    manifest = json.loads((backup / "manifest.json").read_text(encoding="utf-8"))
+    sqlite_entries = {
+        entry["source_path"]: entry
+        for entry in manifest["entries"]
+        if entry["kind"] == "sqlite"
+    }
+    assert set(sqlite_entries) == set(expected_markers)
+    for relative_path, marker in expected_markers.items():
+        entry = sqlite_entries[relative_path]
+        assert entry["archive_path"] == f"payload/{relative_path}"
+        assert _fixture_marker(backup / entry["archive_path"]) == (marker,)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H1-DEMO-002: demo-data restore accepts a corrupt SQLite source, moves "
-        "the known-good live database aside, and reports success without verification"
-    ),
-)
 def test_demo_restore_rejects_corrupt_source_and_preserves_live_database(tmp_path: Path):
     repository, environment = _synthetic_repository(tmp_path, "demo-data.sh")
     live_database = repository / "data" / "learning_companion.db"
@@ -674,6 +721,7 @@ def test_demo_restore_rejects_corrupt_source_and_preserves_live_database(tmp_pat
     )
 
     assert result.returncode != 0
+    assert _maintenance_error_code(result) == "manifest_missing"
     assert live_database.is_file()
     assert _sha256(live_database) == live_hash_before
     assert _database_integrity(live_database) == [("ok",)]

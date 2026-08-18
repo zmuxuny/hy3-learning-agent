@@ -1,18 +1,66 @@
-from app.db.migrations import SQLITE_COLUMNS
+from pathlib import Path
+
+from app.core.paths import lexical_absolute
+from app.db.migrations import (
+    CANONICAL_SCHEMA_CHECKSUM,
+    CURRENT_MIGRATION_NAME,
+    CURRENT_SCHEMA_VERSION,
+    MIGRATION_REGISTRY,
+    MigrationError,
+)
 
 
-def test_incremental_migrations_cover_new_columns():
-    agent_columns = set(SQLITE_COLUMNS["agent_runs"])
-    assert {"checkpoint", "pending_approval", "budget_usage", "output", "created_plan_id"} <= agent_columns
-    memory_columns = set(SQLITE_COLUMNS["memories"])
-    assert {
-        "embedding",
-        "embedding_provider",
-        "archived_from_status",
-        "archived_reason",
-        "supersedes_id",
-        "superseded_by_id",
-        "last_accessed_at",
-        "access_count",
-        "last_reinforced_at",
-    } <= memory_columns
+FROZEN_H1_SCHEMA_CHECKSUM = (
+    "e7130a9013e7bd4754c3318520d9101f18d18b88c11e8ebbe7c965ead4c5e293"
+)
+
+
+def test_current_migration_identity_is_explicit_and_stable() -> None:
+    assert CURRENT_SCHEMA_VERSION == 1
+    assert CURRENT_MIGRATION_NAME == "h1_canonical_schema"
+    assert CANONICAL_SCHEMA_CHECKSUM == FROZEN_H1_SCHEMA_CHECKSUM
+
+
+def test_migration_registry_is_literal_contiguous_and_unique() -> None:
+    registry_contract = tuple(
+        (revision.version, revision.name, revision.checksum)
+        for revision in MIGRATION_REGISTRY
+    )
+
+    assert registry_contract == (
+        (1, "h1_canonical_schema", FROZEN_H1_SCHEMA_CHECKSUM),
+    )
+    versions = [revision.version for revision in MIGRATION_REGISTRY]
+    names = [revision.name for revision in MIGRATION_REGISTRY]
+    checksums = [revision.checksum for revision in MIGRATION_REGISTRY]
+    assert versions == list(range(1, CURRENT_SCHEMA_VERSION + 1))
+    assert len(versions) == len(set(versions))
+    assert len(names) == len(set(names))
+    assert all(len(checksum) == 64 for checksum in checksums)
+
+
+def test_migration_error_exposes_machine_code_and_recovery_backup() -> None:
+    backup = Path("synthetic-backup")
+
+    error = MigrationError("synthetic_failure", "safe public message", recovery_backup=backup)
+
+    assert error.code == "synthetic_failure"
+    assert error.recovery_backup == backup
+    assert str(error) == "safe public message"
+
+
+def test_lexical_absolute_normalizes_dot_segments_without_following_symlinks(
+    tmp_path: Path,
+) -> None:
+    real_directory = tmp_path / "real"
+    real_directory.mkdir()
+    link = tmp_path / "link"
+    link.symlink_to(real_directory, target_is_directory=True)
+    (tmp_path / "decoy").mkdir()
+
+    normalized = lexical_absolute(
+        tmp_path / "decoy" / ".." / "link" / "database.sqlite3"
+    )
+
+    assert normalized == tmp_path / "link" / "database.sqlite3"
+    assert normalized != real_directory / "database.sqlite3"

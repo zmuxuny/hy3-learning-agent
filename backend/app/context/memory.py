@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
+from app.core.time import coerce_legacy_utc, utc_now
 from app.models import ChatMessage, Memory, Plan, Session, SessionSummary, Stage
 from app.retrieval import get_embedding_provider
 from app.retrieval.bm25 import BM25
@@ -66,13 +67,13 @@ class MemoryManager:
         query: str,
         limit: int = 20,
     ) -> tuple[list[Memory], list[dict[str, Any]]]:
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         result = await self.db.execute(
             select(Memory).where(Memory.owner_id == owner_id, Memory.status == "confirmed")
         )
         candidates: list[Memory] = []
         for memory in result.scalars():
-            if memory.expires_at and _aware(memory.expires_at) <= now:
+            if memory.expires_at and coerce_legacy_utc(memory.expires_at) <= now:
                 continue
             scope_match = memory.scope == "global" or (
                 plan_id is not None and memory.scope == "plan" and memory.scope_id == str(plan_id)
@@ -114,7 +115,7 @@ class MemoryManager:
             ranks = [rank_list[index] for rank_list in rank_lists]
             rrf = _rrf(ranks)
             hybrid = (rrf / (len(rank_lists) / 61) * 100) if rank_lists else 0.0
-            age_days = max(0, (now - _aware(memory.updated_at)).days)
+            age_days = max(0, (now - coerce_legacy_utc(memory.updated_at)).days)
             recency = max(0.0, 2.0 - age_days / 30)
             scope_bonus = 3.0 if memory.scope in {"plan", "session"} else 1.0
             layer_weight = LAYER_WEIGHT.get(memory.layer, 1.0)
@@ -133,7 +134,10 @@ class MemoryManager:
             }
             scored.append((total, memory, breakdown))
 
-        scored.sort(key=lambda item: (item[0], _aware(item[1].updated_at)), reverse=True)
+        scored.sort(
+            key=lambda item: (item[0], coerce_legacy_utc(item[1].updated_at)),
+            reverse=True,
+        )
         ranked = scored[:limit]
         for _, memory, _ in ranked:
             memory.last_accessed_at = now
@@ -190,7 +194,7 @@ class MemoryManager:
         )
         for existing in result.scalars():
             if existing.scope_id == scope_id and _normalize_memory(existing.content) == normalized:
-                now = datetime.now(timezone.utc)
+                now = utc_now()
                 existing.confidence = max(existing.confidence, confidence)
                 existing.last_reinforced_at = now
                 existing.updated_at = now
@@ -228,7 +232,7 @@ class MemoryManager:
         if not memory or memory.owner_id != owner_id:
             raise LookupError("Memory not found")
         if memory.status == "confirmed":
-            now = datetime.now(timezone.utc)
+            now = utc_now()
             memory.last_reinforced_at = now
             memory.updated_at = now
             await self.db.flush()
@@ -236,7 +240,7 @@ class MemoryManager:
         if memory.status != "proposed":
             raise ValueError("Only proposed memory can be confirmed")
 
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         if memory.supersedes_id is not None:
             previous = await self.db.get(Memory, memory.supersedes_id)
             if not previous or previous.owner_id != owner_id:
@@ -282,7 +286,7 @@ class MemoryManager:
         memory.archived_from_status = memory.status
         memory.status = "archived"
         memory.archived_reason = reason
-        memory.updated_at = datetime.now(timezone.utc)
+        memory.updated_at = utc_now()
         await self.db.flush()
         return memory
 
@@ -304,17 +308,21 @@ class MemoryManager:
         memory.archived_from_status = None
         memory.archived_reason = ""
         memory.expires_at = None
-        memory.updated_at = datetime.now(timezone.utc)
+        memory.updated_at = utc_now()
         await self.db.flush()
         return memory
 
     async def maintain(self, owner_id: str) -> dict[str, int]:
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         expired = 0
         archived = 0
         memories = list((await self.db.execute(select(Memory).where(Memory.owner_id == owner_id))).scalars())
         for memory in memories:
-            if memory.status == "confirmed" and memory.expires_at and _aware(memory.expires_at) <= now:
+            if (
+                memory.status == "confirmed"
+                and memory.expires_at
+                and coerce_legacy_utc(memory.expires_at) <= now
+            ):
                 memory.archived_from_status = "confirmed"
                 memory.archived_reason = "已到期"
                 memory.status = "expired"
@@ -323,7 +331,7 @@ class MemoryManager:
             elif (
                 memory.status == "confirmed"
                 and memory.layer in {"short_term", "episodic"}
-                and _aware(memory.updated_at) < now - timedelta(days=90)
+                and coerce_legacy_utc(memory.updated_at) < now - timedelta(days=90)
             ):
                 memory.archived_from_status = "confirmed"
                 memory.archived_reason = "短期/情节记忆超过 90 天未更新"
@@ -431,10 +439,6 @@ class MemoryManager:
             message.message_metadata = {**message.message_metadata, "included_in_summary": True}
         await self.db.flush()
         return True
-
-
-def _aware(value: datetime) -> datetime:
-    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 def _normalize_memory(value: str) -> str:

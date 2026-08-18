@@ -1,11 +1,11 @@
 import json
 import hashlib
-from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
+from app.core.time import UTCInstant, canonical_utc, utc_now
 from app.models import AgentRun, LearningEvent, Operation, Plan, Quiz, ReviewSchedule, Stage, Task, ToolInvocation, UserProfile
 from app.notifications import NotificationService
 from app.schemas import PlanCreate, TaskUpdate
@@ -45,7 +45,7 @@ class TaskPatchArgs(BaseModel):
 class ReviewScheduleArgs(BaseModel):
     plan_id: int
     task_id: int | None = None
-    due_at: datetime
+    due_at: UTCInstant
     review_type: str = "quiz"
 
 
@@ -53,7 +53,7 @@ class ReviewResolveArgs(BaseModel):
     review_id: int
     action: Literal["complete", "snooze", "cancel"]
     reason: str = Field(min_length=1, max_length=1000)
-    next_due_at: datetime | None = None
+    next_due_at: UTCInstant | None = None
 
 
 class QuizCreateArgs(BaseModel):
@@ -73,7 +73,7 @@ class QuizGradeArgs(BaseModel):
     score: float = Field(ge=0, le=100)
     feedback: str
     evidence: list[dict[str, Any]] = Field(default_factory=list)
-    next_review_at: datetime | None = None
+    next_review_at: UTCInstant | None = None
 
 
 class MemoryProposalArgs(BaseModel):
@@ -130,7 +130,7 @@ async def plan_get(ctx: ToolContext, args: PlanIdArgs) -> dict:
         "description": plan.description,
         "goal": plan.goal,
         "current_level": plan.current_level,
-        "deadline": plan.deadline.isoformat() if plan.deadline else None,
+        "deadline": canonical_utc(plan.deadline),
         "weekly_minutes": plan.weekly_minutes,
         "preferences": plan.preferences,
         "expected_outcome": plan.expected_outcome,
@@ -154,8 +154,8 @@ async def plan_get(ctx: ToolContext, args: PlanIdArgs) -> dict:
                         "description": task.description,
                         "kind": task.kind,
                         "status": task.status,
-                        "due_at": task.due_at.isoformat() if task.due_at else None,
-                        "review_due_at": task.review_due_at.isoformat() if task.review_due_at else None,
+                        "due_at": canonical_utc(task.due_at),
+                        "review_due_at": canonical_utc(task.review_due_at),
                         "is_core": task.is_core,
                         "evidence_required": task.evidence_required,
                         "estimated_minutes": task.estimated_minutes,
@@ -324,7 +324,11 @@ async def review_schedule(ctx: ToolContext, args: ReviewScheduleArgs) -> dict:
     )
     ctx.db.add(operation)
     await ctx.db.commit()
-    return {"review_id": schedule.id, "due_at": schedule.due_at.isoformat(), "operation_id": operation.id}
+    return {
+        "review_id": schedule.id,
+        "due_at": canonical_utc(schedule.due_at),
+        "operation_id": operation.id,
+    }
 
 
 async def review_resolve(ctx: ToolContext, args: ReviewResolveArgs) -> dict:
@@ -357,7 +361,7 @@ async def review_resolve(ctx: ToolContext, args: ReviewResolveArgs) -> dict:
             "reason": "A background run cannot resolve a learner review without confirmation",
         }
 
-    before = {"status": review.status, "due_at": review.due_at.isoformat()}
+    before = {"status": review.status, "due_at": canonical_utc(review.due_at)}
     if args.action == "snooze":
         review.due_at = args.next_due_at
     else:
@@ -371,7 +375,7 @@ async def review_resolve(ctx: ToolContext, args: ReviewResolveArgs) -> dict:
         forward_patch={
             "action": args.action,
             "status": review.status,
-            "due_at": review.due_at.isoformat(),
+            "due_at": canonical_utc(review.due_at),
             "reason": args.reason,
         },
         inverse_patch={"changes": before},
@@ -381,7 +385,7 @@ async def review_resolve(ctx: ToolContext, args: ReviewResolveArgs) -> dict:
     return {
         "review_id": review.id,
         "status": review.status,
-        "due_at": review.due_at.isoformat(),
+        "due_at": canonical_utc(review.due_at),
         "operation_id": operation.id,
         "undo_available": True,
     }
@@ -464,14 +468,14 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         "feedback": quiz.feedback,
         "evidence": quiz.evidence,
         "status": quiz.status,
-        "graded_at": quiz.graded_at.isoformat() if quiz.graded_at else None,
+        "graded_at": canonical_utc(quiz.graded_at),
     }
     quiz.answer = args.answer
     quiz.score = args.score
     quiz.feedback = args.feedback
     quiz.evidence = args.evidence
     quiz.status = "passed" if args.score >= 70 else "needs_review"
-    quiz.graded_at = datetime.now().astimezone()
+    quiz.graded_at = utc_now()
     learning_event = LearningEvent(
         owner_id=ctx.owner_id,
         plan_id=quiz.plan_id,

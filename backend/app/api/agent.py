@@ -1,7 +1,6 @@
 import asyncio
 import json
 from contextlib import suppress
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -10,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.context.memory import MemoryManager
+from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.database import AsyncSessionLocal, get_db
 from app.models import (
     AgentRun,
@@ -94,7 +94,7 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="This Session already has an active run")
         if session.plan_id != data.plan_id:
             raise HTTPException(status_code=409, detail="Session focus does not match requested plan")
-        session.updated_at = datetime.now(timezone.utc)
+        session.updated_at = utc_now()
     elif data.trigger == "user_message":
         session = Session(
             owner_id=settings.DEFAULT_OWNER_ID,
@@ -219,7 +219,7 @@ async def list_sessions(limit: int = 30, db: AsyncSession = Depends(get_db), arc
             "created_at": session.created_at,
             "updated_at": session.updated_at,
         })
-    rows.sort(key=lambda item: item["updated_at"], reverse=True)
+    rows.sort(key=lambda item: coerce_legacy_utc(item["updated_at"]), reverse=True)
     return rows
 
 
@@ -250,17 +250,17 @@ async def rename_session(session_id: str, data: SessionUpdate, db: AsyncSession 
         session.title = data.title
     if data.archived is not None:
         before = session.archived_at
-        session.archived_at = datetime.now(timezone.utc) if data.archived else None
+        session.archived_at = utc_now() if data.archived else None
         db.add(Operation(
             owner_id=settings.DEFAULT_OWNER_ID,
             run_id=None,
             tool_name="session.archive" if data.archived else "session.restore",
             entity_type="session",
             entity_id=session.id,
-            forward_patch={"changes": {"archived_at": session.archived_at.isoformat() if session.archived_at else None}},
-            inverse_patch={"changes": {"archived_at": before.isoformat() if before else None}},
+            forward_patch={"changes": {"archived_at": canonical_utc(session.archived_at)}},
+            inverse_patch={"changes": {"archived_at": canonical_utc(before)}},
         ))
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = utc_now()
     await db.commit()
     await db.refresh(session)
     messages = _visible_messages(list(session.messages))
@@ -328,7 +328,7 @@ async def handoff_session(
         await db.flush()
     elif child.handoff_summary != latest_handoff:
         child.handoff_summary = latest_handoff
-        child.updated_at = datetime.now(timezone.utc)
+        child.updated_at = utc_now()
     await link_session_plan(
         db,
         owner_id=settings.DEFAULT_OWNER_ID,
@@ -480,7 +480,7 @@ async def submit_planning_answers(
     intake.readiness = "collecting"
     intake.readiness_confidence = min(intake.readiness_confidence, 0.95)
     intake.rationale = "回答已提交，Agent 正在重新判断需求是否充分。"
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = utc_now()
     await db.commit()
     await db.refresh(run)
     _start_runtime(run.id)
@@ -509,7 +509,7 @@ async def decide_plan_proposal(
         raise HTTPException(status_code=409, detail="Restore the proposal Session before deciding this proposal")
     if not data.accepted:
         proposal.status = "rejected"
-        proposal.decided_at = datetime.now(timezone.utc)
+        proposal.decided_at = utc_now()
         await db.commit()
         await db.refresh(proposal)
         return proposal
@@ -551,7 +551,7 @@ async def decide_plan_proposal(
     )
     proposal.plan_id = plan.id
     proposal.status = "accepted"
-    proposal.decided_at = datetime.now(timezone.utc)
+    proposal.decided_at = utc_now()
     if proposal.source_run_id:
         source_run = await db.get(AgentRun, proposal.source_run_id)
         if source_run is not None:
@@ -593,7 +593,9 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
             ChatMessage.id > message.id,
         ).order_by(ChatMessage.id)
     )).scalars())
-    edit_token = f"message:{message.id}:{datetime.now(timezone.utc).isoformat()}"
+    edited_at = utc_now()
+    edited_at_text = canonical_utc(edited_at)
+    edit_token = f"message:{message.id}:{edited_at_text}"
     for stale in downstream:
         stale.message_metadata = {**stale.message_metadata, "superseded_by_edit": edit_token}
     downstream_run_ids = {stale.run_id for stale in downstream if stale.run_id}
@@ -611,7 +613,7 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
             memory.archived_from_status = memory.status
             memory.status = "archived"
             memory.archived_reason = "来源消息已被用户修订"
-            memory.updated_at = datetime.now(timezone.utc)
+            memory.updated_at = edited_at
     previous_run_id = message.run_id
     run = AgentRun(
         owner_id=settings.DEFAULT_OWNER_ID,
@@ -627,7 +629,7 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
     message.run_id = run.id
     message.message_metadata = {
         **{key: value for key, value in message.message_metadata.items() if key != "included_in_summary"},
-        "edited_at": datetime.now(timezone.utc).isoformat(),
+        "edited_at": edited_at_text,
         "revises_run_id": previous_run_id,
     }
     session.summary = ""
@@ -648,7 +650,7 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
             }
     await db.flush()
     await MemoryManager(db).compress_session(session)
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = edited_at
     db.add(Operation(
         owner_id=settings.DEFAULT_OWNER_ID,
         run_id=run.id,
@@ -738,7 +740,7 @@ async def stream_run_events(run_id: str):
                                 "type": event.event_type,
                                 "summary": event.summary,
                                 "payload": event.payload,
-                                "created_at": event.created_at.isoformat(),
+                                "created_at": canonical_utc(event.created_at),
                             }
                             yield f"event: {event.event_type}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
                         if run.status in {"completed", "failed", "cancelled"}:
@@ -784,7 +786,7 @@ async def cancel_run(run_id: str, db: AsyncSession = Depends(get_db)):
     run.status = "cancelled"
     run.checkpoint = None
     run.pending_approval = None
-    run.completed_at = datetime.now(timezone.utc)
+    run.completed_at = utc_now()
     await db.commit()
     cancel_tracked_task(run.id)
     if run.parent_run_id is None:

@@ -1,12 +1,12 @@
 # 主动 Agent 与上下文架构
 
-> 状态说明（2026-08-18）：本文描述目标架构，并在“旧实现候选”段落记录 develop 上已有的正常路径。全盘审查已证明 Runtime 恢复、事务、Evidence、Context/Memory、Intervention、安全与移动端不满足目标；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-19）：本文描述目标架构，并在“旧实现候选”段落记录 develop 上已有的正常路径。H1 的迁移/UTC/备份基础已完成，关闭 13 个缺陷 ID、15 个基线节点；矩阵剩余 74 个 open ID，下一门禁为 H2，M15–M20 继续冻结。Runtime 恢复、事务、Evidence、Context/Memory、Intervention、安全与移动端仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
 
 阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断当前实现已经满足。develop 的旧实现候选只证明正常路径可运行；H0 已用 strict xfail 证明以下关键差距：
 
 - 事务与副作用：H2-TXN-001–009；当前 handler 分散提交，并可能跨模型、HTTP、SMTP 或子 Run await 持有写锁。
 - Runtime：H3-RUN-001–011；审批拒绝、current tool、queued/no-checkpoint、二次中断、finalization、lease 和两套 child runtime 尚不耐久。
-- Evidence / Competency：H1-TIME-001/002、H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002。
+- Evidence / Competency：H1-TIME-001/002 已关闭；H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002 仍待修复。
 - Context / Intervention：H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002、H5-PRO-001–003。
 - 安全与 UI：H6-*、H7-UI-001–006。当前只允许受控 loopback Demo，不能作为无认证服务器或不可信代码沙箱。
 
@@ -68,7 +68,7 @@
 - Agent 的提醒决策，包括选择保持安静的决策
 - 用户对记忆或计划建议的确认与拒绝
 
-目标契约：V2 从这些运行事件中维护追加式 `EvidenceObservation` 账本。提交、提交验收、测验评分和带证据的任务完成写入结构化来源、评分、提示/迁移等级和幂等键；观察本身不编辑、不物理删除，修订通过后续观察的替代/失效关系表达。`study_state_get` 和计划 Context 必须读取同一个完整、确定性证据摘要。旧实现候选会截断 500 条、在 SQLite 往返后改变 digest、撤销后保留 active success，并重复计权（H1-TIME-001、H4-EVID-001–003）。
+目标契约：V2 从这些运行事件中维护追加式 `EvidenceObservation` 账本。提交、提交验收、测验评分和带证据的任务完成写入结构化来源、评分、提示/迁移等级和幂等键；观察本身不编辑、不物理删除，修订通过后续观察的替代/失效关系表达。`study_state_get` 和计划 Context 必须读取同一个完整、确定性证据摘要。H1-TIME-001/002 已使 UTC instant 与 digest 在 SQLite 往返后稳定；旧在线投影仍会截断 500 条之后的账本，撤销后保留 active success，并重复计权（H4-EVID-001–003）。
 
 目标契约：每条实际证据先登记可重验的不可变 `Artifact`（规范内容指纹、耐久内容、作用域和元数据），观察只保存受限引用。M14 的 `Competency` 只通过显式 key 和可审计映射关联计划、任务、资源，所有 endpoint 由后端校验 owner/plan。旧 Artifact 不覆盖完整 envelope/文件 bytes，旧 Competency unique/edge/link 可破坏计划隔离（H4-EVID-005、H4-COMP-001–004）。
 
@@ -99,6 +99,10 @@ Session 与 Plan 都支持可恢复归档。归档只改变生命周期和默认
 ## 3. 数据库与 Markdown 快照
 
 数据库是事实来源；Markdown 是面向模型和用户的可读快照，不作为唯一存储。
+
+H1 已建立冻结 migration registry/history、规范 fresh/upgrade schema、全局 UTC 类型和协调维护协议。迁移发布、恢复和回滚会固定并复核路径、目录描述符/inode 与内容摘要，只从复验通过的 trusted snapshot 回退；restore 在写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中，source backup 位于安全备份根目录下仍是正常布局。共享 lexical normalization 消除 `.`/`..` 别名但不跟随 symlink，SQLite URI 对空格、`%`、`#`、`?` 安全；legacy `_write_probe` 只接受精确的空单列旧残留，其他近似 schema 失败关闭。该协议覆盖受控 lifecycle lease，不承诺协调绕过 Runtime/maintenance 的原始 SQLite writer。
+
+H1 定向套件为 281 passed，H0 跨阶段回归为 27 passed / 17 strict xfailed，全仓为 441 passed / 98 strict xfailed。外部安装、连续学习闭环和 7 日留存仍须在 H8 由真人记录验证。
 
 当前生成：
 

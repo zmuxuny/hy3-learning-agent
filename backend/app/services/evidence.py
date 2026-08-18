@@ -11,24 +11,21 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Iterable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.models import Artifact, EvidenceObservation, LearningEvent, Quiz, TaskSubmission
 
 
 EVIDENCE_SCHEMA_VERSION = 1
 
 
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
 def _iso(value: datetime | None) -> str | None:
-    return value.isoformat() if value else None
+    return canonical_utc(value)
 
 
 def _stable_json(value: Any) -> str:
@@ -158,8 +155,8 @@ async def append_observation(
         evaluator=evaluator or {},
         artifact_refs=normalized_artifact_refs,
         payload=payload or {},
-        occurred_at=occurred_at or _utc_now(),
-        recorded_at=_utc_now(),
+        occurred_at=occurred_at or utc_now(),
+        recorded_at=utc_now(),
         schema_version=EVIDENCE_SCHEMA_VERSION,
         correlation_id=correlation_id,
         causation_id=causation_id,
@@ -282,7 +279,7 @@ def build_evidence_state(observations: list[EvidenceObservation]) -> dict[str, A
         scores = [item.normalized_score for item in task_records if item.normalized_score is not None]
         successful = sum(item.outcome in {"accepted", "passed", "verified"} for item in task_records)
         failed = sum(item.outcome in {"failed", "needs_revision"} for item in task_records)
-        latest = max(task_records, key=lambda item: (item.occurred_at, item.id))
+        latest = max(task_records, key=lambda item: (coerce_legacy_utc(item.occurred_at), item.id))
         by_task.append({
             "task_id": int(task_key),
             "evidence_stage": _task_stage(task_records),
@@ -297,7 +294,7 @@ def build_evidence_state(observations: list[EvidenceObservation]) -> dict[str, A
 
     return {
         "schema_version": 1,
-        "algorithm_version": "evidence-summary-v1",
+        "algorithm_version": "evidence-summary-v2-utc",
         "digest": digest,
         "observation_count": len(records),
         "task_count": len(by_task),
@@ -374,7 +371,7 @@ async def backfill_legacy_observations(
                 "backfilled": True,
             },
             artifact_refs=[artifact_ref(submission_artifact, kind="submission")],
-            occurred_at=submission.created_at or _utc_now(),
+            occurred_at=submission.created_at or utc_now(),
             correlation_id=submission.run_id,
         )
         created += int(was_created)
@@ -395,7 +392,7 @@ async def backfill_legacy_observations(
             is_correct=submission.status == "accepted",
             payload={"feedback": submission.feedback or "", "backfilled": True},
             artifact_refs=[artifact_ref(submission_artifact, kind="submission")],
-            occurred_at=submission.checked_at or submission.created_at or _utc_now(),
+            occurred_at=submission.checked_at or submission.created_at or utc_now(),
             correlation_id=submission.run_id,
         )
         created += int(was_created)
@@ -435,7 +432,7 @@ async def backfill_legacy_observations(
             evaluator={"type": "legacy_record", "backfilled": True},
             payload={"evidence": quiz.evidence or []},
             artifact_refs=[artifact_ref(quiz_artifact, kind="quiz_answer")],
-            occurred_at=quiz.graded_at or quiz.created_at or _utc_now(),
+            occurred_at=quiz.graded_at or quiz.created_at or utc_now(),
             correlation_id=quiz.run_id,
         )
         created += int(was_created)
@@ -479,7 +476,7 @@ async def backfill_legacy_observations(
             task_id=event.task_id,
             payload={"evidence": evidence, "backfilled": True},
             artifact_refs=[artifact_ref(completion_artifact, kind="task_evidence")],
-            occurred_at=event.occurred_at or event.created_at or _utc_now(),
+            occurred_at=event.occurred_at or event.created_at or utc_now(),
             correlation_id=event.run_id,
             causation_id=f"learning_event:{event.id}",
         )

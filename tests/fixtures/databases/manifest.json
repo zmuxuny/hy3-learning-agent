@@ -2,6 +2,40 @@
   "manifest_version": 1,
   "contains_personal_data": false,
   "fixed_clock": "2026-01-01T00:00:00.000000Z",
+  "pre_h1_schema_fixtures": {
+    "source_revision": "baf2564",
+    "source_artifact_sha256": {
+      "backend/app/models/entities.py": "b59ab54b70fa054476bc2c4c817bf2a82eee7f0b5a98e6da1584b6cb91bab47f",
+      "backend/app/db/migrations.py": "26c9b02be53701a32750c782b830207d49498960df8dacb7bb9203ff4792b745",
+      "tests/fixtures/databases/v1_1_1_full.sql": "117ebeb7db3f9d1446faf768d40d4153d97acb68108e72afff1d44cb0740f972"
+    },
+    "schemas": {
+      "metadata_only": {
+        "file": "pre_h1/metadata_only.sql",
+        "kind": "schema-only",
+        "recipe": "Base.metadata.create_all only",
+        "size_bytes": 31493,
+        "ddl_sha256": "d5fad63738141d2ecc1838ffd05210b5cb1ed3e94ff88fea3f2708f4123822c1",
+        "semantic_checksum": "fb12a30b50595c4e61a06424eb27d4ad586a047a1f9d917fb0bcf7ecb3236b3c"
+      },
+      "fresh_create_schema": {
+        "file": "pre_h1/fresh_create_schema.sql",
+        "kind": "schema-only",
+        "recipe": "Base.metadata.create_all then migrate_sqlite_schema",
+        "size_bytes": 32594,
+        "ddl_sha256": "ef337aee9b1dc0c28f3d3c0d2eba606efb1d1047b836b74cf19410eca6d5d70d",
+        "semantic_checksum": "40063b72061ee0a42dd4f7fccdd4e8d9e64a346ca70452041b579e05d2805d89"
+      },
+      "v1_additive_upgrade": {
+        "file": "pre_h1/v1_additive_upgrade.sql",
+        "kind": "schema-only",
+        "recipe": "v1_1_1_full.sql then create_all then migrate_sqlite_schema",
+        "size_bytes": 33644,
+        "ddl_sha256": "00eb148ab284fd1da12f98bf4da5b440b8b67dcfc5c60193fbeb2d09d8e25617",
+        "semantic_checksum": "21150d5fff8e32807d38e1902f2257cf41154ab47a44bc497a2436002cd9f04e"
+      }
+    }
+  },
   "fixtures": {
     "empty": {
       "file": "empty.sql",

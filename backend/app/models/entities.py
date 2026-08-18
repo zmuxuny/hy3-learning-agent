@@ -1,17 +1,34 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.db.database import Base
+from app.core.time import utc_now
+from app.db.types import UTCDateTime
 
 
 def uuid_string() -> str:
     return str(uuid4())
+
+
+class SchemaMigration(Base):
+    """Verified canonical schema revision applied to this database."""
+
+    __tablename__ = "schema_migrations"
+    __table_args__ = (
+        CheckConstraint("result = 'applied'", name="ck_schema_migration_applied"),
+    )
+
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    checksum: Mapped[str] = mapped_column(String(64))
+    applied_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+    result: Mapped[str] = mapped_column(String(24))
 
 
 class Owner(Base):
@@ -20,7 +37,7 @@ class Owner(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default="local")
     display_name: Mapped[str] = mapped_column(String(120), default="Learner")
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Shanghai")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class UserProfile(Base):
@@ -38,7 +55,7 @@ class UserProfile(Base):
     streak_days: Mapped[int] = mapped_column(Integer, default=0)
     follow_up_behavior: Mapped[str] = mapped_column(String(16), default="steer")
     proactive_paused: Mapped[bool] = mapped_column(Boolean, default=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now)
 
 
 class Plan(Base):
@@ -50,7 +67,7 @@ class Plan(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     goal: Mapped[str] = mapped_column(Text, default="")
     current_level: Mapped[str] = mapped_column(Text, default="")
-    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deadline: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     weekly_minutes: Mapped[int] = mapped_column(Integer, default=0)
     preferences: Mapped[dict] = mapped_column(JSON, default=dict)
     expected_outcome: Mapped[str] = mapped_column(Text, default="")
@@ -61,8 +78,8 @@ class Plan(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     memory_summary: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now)
 
     stages: Mapped[list[Stage]] = relationship(
         back_populates="plan", cascade="all, delete-orphan", order_by="Stage.position", lazy="selectin"
@@ -99,9 +116,9 @@ class Task(Base):
     evidence_required: Mapped[bool] = mapped_column(Boolean, default=False)
     estimated_minutes: Mapped[int] = mapped_column(Integer, default=30)
     position: Mapped[int] = mapped_column(Integer, default=0)
-    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    review_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    due_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    review_due_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
     resource_url: Mapped[str] = mapped_column(Text, default="")
     task_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
 
@@ -123,8 +140,8 @@ class LearningResource(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     why_recommended: Mapped[str] = mapped_column(Text, default="")
     source: Mapped[str] = mapped_column(String(120), default="agent")
-    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    verified_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class TaskSubmission(Base):
@@ -141,8 +158,8 @@ class TaskSubmission(Base):
     status: Mapped[str] = mapped_column(String(32), default="submitted", index=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     feedback: Mapped[str] = mapped_column(Text, default="")
-    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class CalendarEvent(Base):
@@ -154,12 +171,12 @@ class CalendarEvent(Base):
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(240))
     description: Mapped[str] = mapped_column(Text, default="")
-    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    starts_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
+    ends_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="scheduled", index=True)
     source: Mapped[str] = mapped_column(String(64), default="agent")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now)
 
 
 class Session(Base):
@@ -174,9 +191,9 @@ class Session(Base):
     title: Mapped[str] = mapped_column(String(240), default="新对话")
     summary: Mapped[str] = mapped_column(Text, default="")
     handoff_summary: Mapped[str] = mapped_column(Text, default="")
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    archived_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now)
 
     messages: Mapped[list[ChatMessage]] = relationship(
         back_populates="session", cascade="all, delete-orphan", order_by="ChatMessage.created_at", lazy="selectin"
@@ -197,7 +214,7 @@ class SessionPlanLink(Base):
     source_run_id: Mapped[str | None] = mapped_column(
         ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class PlanningIntake(Base):
@@ -218,9 +235,9 @@ class PlanningIntake(Base):
     readiness: Mapped[str] = mapped_column(String(32), default="collecting", index=True)
     readiness_confidence: Mapped[float] = mapped_column(Float, default=0.0)
     rationale: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
 
 
@@ -243,10 +260,10 @@ class PlanProposal(Base):
     plan_id: Mapped[int | None] = mapped_column(
         ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
 
 
@@ -259,7 +276,7 @@ class ChatMessage(Base):
     role: Mapped[str] = mapped_column(String(32))
     content: Mapped[str] = mapped_column(Text, default="")
     message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
     session: Mapped[Session] = relationship(back_populates="messages")
 
@@ -282,7 +299,7 @@ class SessionSummary(Base):
     covered_through_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_message_ids: Mapped[list] = mapped_column(JSON, default=list)
     method: Mapped[str] = mapped_column(String(32), default="model")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class ChatMessageRevision(Base):
@@ -298,7 +315,7 @@ class ChatMessageRevision(Base):
     )
     content: Mapped[str] = mapped_column(Text)
     message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class AgentRun(Base):
@@ -314,16 +331,16 @@ class AgentRun(Base):
     status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
     model: Mapped[str] = mapped_column(String(120), default="hy3")
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
-    checkpoint: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    pending_approval: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    budget_usage: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    checkpoint: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    pending_approval: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    budget_usage: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     output: Mapped[str] = mapped_column(Text, default="")
     created_plan_id: Mapped[int | None] = mapped_column(
         ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
     events: Mapped[list[RunEvent]] = relationship(
         back_populates="run", cascade="all, delete-orphan", order_by="RunEvent.sequence", lazy="selectin"
@@ -343,9 +360,9 @@ class ToolInvocation(Base):
     args_hash: Mapped[str] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(32), default="running", index=True)
     result_payload: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
 
 
@@ -359,7 +376,7 @@ class RunEvent(Base):
     event_type: Mapped[str] = mapped_column(String(64), index=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
     run: Mapped[AgentRun] = relationship(back_populates="events")
 
@@ -380,9 +397,9 @@ class QueuedMessage(Base):
     user_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     position: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
 
 
@@ -395,12 +412,20 @@ class RunSteerMessage(Base):
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
     content: Mapped[str] = mapped_column(Text)
-    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    applied_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class LearningEvent(Base):
     __tablename__ = "learning_events"
+    __table_args__ = (
+        Index(
+            "uq_learning_events_idempotency_key",
+            "idempotency_key",
+            unique=True,
+            sqlite_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
@@ -410,16 +435,16 @@ class LearningEvent(Base):
     event_type: Mapped[str] = mapped_column(String(64), index=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
-    schema_version: Mapped[int] = mapped_column(Integer, default=1)
+    schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+        UTCDateTime(), default=utc_now, index=True
     )
     correlation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     causation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
-    idempotency_key: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True, default=uuid_string)
-    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    invalidation_reason: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(180), nullable=True, default=uuid_string)
+    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(Text, default="", server_default=text("''"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), index=True)
 
 
 class EvidenceObservation(Base):
@@ -432,6 +457,11 @@ class EvidenceObservation(Base):
     """
 
     __tablename__ = "evidence_observations"
+    __table_args__ = (
+        Index("ix_evidence_observations_owner_plan", "owner_id", "plan_id", "recorded_at"),
+        Index("ix_evidence_observations_task", "owner_id", "task_id", "occurred_at"),
+        Index("ix_evidence_observations_source", "owner_id", "source_type", "source_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
@@ -446,23 +476,27 @@ class EvidenceObservation(Base):
     outcome: Mapped[str] = mapped_column(String(40), index=True)
     normalized_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    assistance_level: Mapped[str] = mapped_column(String(24), default="unknown")
-    transfer_level: Mapped[str] = mapped_column(String(24), default="unknown")
-    rubric_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
-    evaluator: Mapped[dict] = mapped_column(JSON, default=dict)
-    artifact_refs: Mapped[list] = mapped_column(JSON, default=list)
-    payload: Mapped[dict] = mapped_column(JSON, default=dict)
-    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
-    schema_version: Mapped[int] = mapped_column(Integer, default=1)
+    assistance_level: Mapped[str] = mapped_column(
+        String(24), default="unknown", server_default=text("'unknown'")
+    )
+    transfer_level: Mapped[str] = mapped_column(
+        String(24), default="unknown", server_default=text("'unknown'")
+    )
+    rubric_snapshot: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    evaluator: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    artifact_refs: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    occurred_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
+    recorded_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), index=True)
+    schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     correlation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     causation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     idempotency_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
     supersedes_id: Mapped[int | None] = mapped_column(
         ForeignKey("evidence_observations.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    invalidation_reason: Mapped[str] = mapped_column(Text, default="")
+    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(Text, default="", server_default=text("''"))
 
 
 class Artifact(Base):
@@ -471,6 +505,7 @@ class Artifact(Base):
     __tablename__ = "artifacts"
     __table_args__ = (
         UniqueConstraint("owner_id", "idempotency_key", name="uq_artifact_owner_idempotency"),
+        Index("ix_artifacts_owner_plan", "owner_id", "plan_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -486,14 +521,17 @@ class Artifact(Base):
     run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
     session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     idempotency_key: Mapped[str] = mapped_column(String(180), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), index=True)
 
 
 class Competency(Base):
     """An explicitly named skill/concept node; keys never merge silently."""
 
     __tablename__ = "competencies"
-    __table_args__ = (UniqueConstraint("owner_id", "key", name="uq_competency_owner_key"),)
+    __table_args__ = (
+        UniqueConstraint("owner_id", "key", name="uq_competency_owner_key"),
+        Index("ix_competencies_owner_scope", "owner_id", "scope", "plan_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
@@ -505,8 +543,8 @@ class Competency(Base):
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(24), default="active", index=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now)
 
 
 class CompetencyEdge(Base):
@@ -521,7 +559,7 @@ class CompetencyEdge(Base):
     target_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
     relation: Mapped[str] = mapped_column(String(24), index=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class PlanCompetencyLink(Base):
@@ -536,7 +574,7 @@ class PlanCompetencyLink(Base):
     competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
     target_stage: Mapped[str] = mapped_column(String(24), default="practicing")
     relation: Mapped[str] = mapped_column(String(24), default="targets")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class TaskCompetencyLink(Base):
@@ -551,7 +589,7 @@ class TaskCompetencyLink(Base):
     competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
     relation: Mapped[str] = mapped_column(String(24), default="teaches")
     target_stage: Mapped[str] = mapped_column(String(24), default="practicing")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class ResourceCompetencyLink(Base):
@@ -566,7 +604,7 @@ class ResourceCompetencyLink(Base):
     competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
     depth: Mapped[str] = mapped_column(String(24), default="overview")
     relation: Mapped[str] = mapped_column(String(24), default="covers")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class Memory(Base):
@@ -590,16 +628,16 @@ class Memory(Base):
     superseded_by_id: Mapped[int | None] = mapped_column(
         ForeignKey("memories.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    last_accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_accessed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     access_count: Mapped[int] = mapped_column(Integer, default=0)
-    last_reinforced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    embedding: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    last_reinforced_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    embedding: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     embedding_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     # Access counters are updated during retrieval and must not refresh semantic
     # freshness. Lifecycle code updates this timestamp explicitly when the fact changes.
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
     @property
     def restorable(self) -> bool:
@@ -626,7 +664,7 @@ class ContextSnapshot(Base):
     markdown: Mapped[str] = mapped_column(Text)
     source_manifest: Mapped[list] = mapped_column(JSON, default=list)
     estimated_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class Operation(Base):
@@ -641,8 +679,8 @@ class Operation(Base):
     forward_patch: Mapped[dict] = mapped_column(JSON, default=dict)
     inverse_patch: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(32), default="committed", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+    undone_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 class Notification(Base):
@@ -658,10 +696,10 @@ class Notification(Base):
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
     reply_token: Mapped[str] = mapped_column(String(64), default=uuid_string, unique=True)
-    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class PushSubscription(Base):
@@ -671,9 +709,9 @@ class PushSubscription(Base):
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     endpoint: Mapped[str] = mapped_column(Text, unique=True)
     keys: Mapped[dict] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
 
 
@@ -684,10 +722,10 @@ class ReviewSchedule(Base):
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), index=True)
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True, index=True)
-    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    due_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
     review_type: Mapped[str] = mapped_column(String(32), default="quiz")
     status: Mapped[str] = mapped_column(String(32), default="scheduled", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
 class Quiz(Base):
@@ -705,8 +743,8 @@ class Quiz(Base):
     feedback: Mapped[str] = mapped_column(Text, default="")
     evidence: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(32), default="open", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    graded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+    graded_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 class Achievement(Base):
@@ -719,7 +757,7 @@ class Achievement(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     badge_kind: Mapped[str] = mapped_column(String(32), default="rule")
     badge_image_url: Mapped[str] = mapped_column(Text, default="")
-    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    unlocked_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
     __table_args__ = (UniqueConstraint("owner_id", "key", name="uq_owner_achievement"),)
 

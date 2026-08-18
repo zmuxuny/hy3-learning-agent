@@ -136,13 +136,13 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 不使用无条件 skip，不放宽或删除失败断言；只能在修复后删除 xfail 标记。
 - 不继续 M15、复杂技能 UI或新主动策略。
 
-### H0 实施记录（2026-08-19）
+### H0 实施记录（2026-08-18）
 
 - 生产代码未改；全局测试数据库已移出仓库 `data/`，所有故障注入使用临时 SQLite 或确定性 SQL 副本。
 - 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景已登记独立 contract，但仍为 `pending_rewrite`，不会被当作 41 项已覆盖。
 - 定向套件登记 87 个 open defect ID、113 个 strict-xfail 节点和 20 个 passing gate。实现门禁修复每一项时必须删除对应 xfail，并在矩阵写入修复提交。
 - 最终全量回归为 146 passed、113 xfailed、0 XPASS、0 failed；Python compileall、pip check、前端生产构建与完整/production-only npm audit 均通过。五尺寸 Chrome 使用独立临时数据库和精确合成 Session 令牌，得到 3 个已登记 H7-UI-001 XFAIL，未产生非预期失败或 API 写请求。
-- H0 只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；下一门禁仍是 H1。
+- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1 已于后续阶段关闭，当前下一门禁为 H2。
 
 ## 5. H1：迁移、时间与备份基础
 
@@ -173,6 +173,17 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 中断迁移可以安全重试，或停止启动并给出恢复路径。
 - 备份发生在任何迁移、建表、回填和 audit 写入之前。
 - 时间和 digest 在重启、备份恢复后保持一致。
+
+### H1 实施记录（2026-08-19，已完成）
+
+- 已新增冻结 `MIGRATION_REGISTRY`、`schema_migrations` 历史表、fresh/install 与 `v1.1.1` upgrade 对照校验，以及只接受公开 provenance legacy schema checksum 的分类器。
+- 已统一 `UTCDateTime`、`canonical_utc()`、固定精度时间串与历史 naive → UTC 兼容；所有 H1 定向时间契约均通过。
+- 迁移协议已经切为 `snapshot → dry-run → verified backup → candidate publish → post-publish verify/rollback`，覆盖 writer gap、WAL/rollback journal、new inode、absent target、killpoint、restore safety backup 与 portable `database_identity`。发布、回滚和恢复在交接边界重新校验固定的路径、目录描述符/inode 与内容摘要，晚到篡改时只从已验证的 trusted snapshot 回退，不返回无效 recovery reference。
+- legacy `_write_probe` 只接受“精确名称、精确单列 INTEGER、零行且无 index/trigger/view”的旧启动残留；其他同名或近似 schema 一律以 `unknown_legacy_schema` 失败关闭，规范新库不会保留该表。
+- 已提供 `scripts/data-maintenance.py` / `app.db.maintenance` 的安全维护协议，`reset-data.sh`、`seed-fixture.sh`、`demo-data.sh` 与 `rebuild-evidence.py` 已接入该协议。restore 会在加锁和写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中；source backup 位于安全备份根目录下仍是正常布局。共享 lexical normalization 消除 `.`/`..` 别名但不跟随 symlink，SQLite URI 对空格、`%`、`#`、`?` 等路径字符安全。
+- H1 定向套件共 281 passed：`test_h1_time_contracts.py` 10、`test_h1_migration_protocol.py` 183、`test_h1_maintenance.py` 79、`test_h1_rebuild_coordinator.py` 5、`tests/test_migrations.py` 4。H0 跨阶段回归为 27 passed / 17 strict xfailed；全仓为 441 passed / 98 strict xfailed，0 unexpected failure、0 XPASS。
+- H1 已关闭 13 个缺陷 ID、15 个基线节点；矩阵剩余 74 个 open ID，下一门禁为 H2。M15–M20 继续冻结。
+- 已知限制保留到后续门禁：前端尚无独立自动化 `test` 脚本；legacy naive 时间不会恢复不存在的原始 offset；受控 lease 不能约束绕过 Runtime/maintenance 的外部原始 SQLite writer；外部安装、连续学习闭环和 7 日留存仍待真实用户在 H8 验证。
 
 ## 6. H2：事务、幂等与 Outbox
 

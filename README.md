@@ -4,7 +4,7 @@
 
 当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
 
-> 安全与开发状态：当前稳定版本只建议绑定 `127.0.0.1` 在本机使用；尚未提供服务器认证，也不能把有界 `code_execute` 当作安全沙箱。`develop` 的 V2 M13/M14 正在执行[前置硬化计划](docs/V2_HARDENING_PLAN.md)，[H0 缺陷矩阵](docs/V2_H0_DEFECT_MATRIX.md)中的生产缺陷仍全部 open，尚不具备 V2 Alpha 发布条件。
+> 安全与开发状态：当前稳定版本只建议绑定 `127.0.0.1` 在本机使用；尚未提供服务器认证，也不能把有界 `code_execute` 当作安全沙箱。`develop` 的 V2 M13/M14 正在执行[前置硬化计划](docs/V2_HARDENING_PLAN.md)：H1 已修复 13 个缺陷 ID（15 个基线节点），矩阵剩余 74 个 open ID，下一门禁是 H2。M15–M20 继续冻结，当前尚不具备 V2 Alpha 发布条件。
 
 ## Demo
 
@@ -124,12 +124,19 @@ npm --prefix frontend audit --omit=dev
 本地数据管理：
 
 ```bash
-./scripts/reset-data.sh      # legacy unsafe：H1 修复前禁止对正式数据使用
-./scripts/seed-fixture.sh    # legacy unsafe：H1 修复前禁止对正式数据使用
-./scripts/demo-data.sh       # legacy unsafe：H1 修复前禁止对正式数据使用
+./scripts/reset-data.sh
+./scripts/seed-fixture.sh
+./scripts/demo-data.sh reset
+./scripts/demo-data.sh restore <backup-directory>
+python3 scripts/data-maintenance.py preflight
+python3 scripts/data-maintenance.py backup --purpose manual
 ```
 
-V2 的学习证据脚本目前是实现候选。H1-AUDIT-001 已证明 `--audit` 会在备份前触发 schema 写入；H1 完成前只允许对显式临时副本运行，禁止对正式数据库执行下列命令：
+H1 已把维护协议收敛到 `preflight / backup / verify / restore / recover` 与显式 migration backup verify/restore。它们使用受控 lifecycle lease 和验证过的备份发布流程；但仍不支持绕过 Runtime/maintenance 直接写 SQLite 的外部进程。
+
+迁移和恢复会在交接边界复核固定的路径、目录描述符/inode 与内容摘要，只把复验通过的候选库、备份 payload 或工作快照作为 trusted snapshot；目标数据库或安全备份根目录若指向 source backup 本身或其子路径，会在写入前失败关闭。source backup 位于安全备份根目录下仍是正常布局。共享路径规范化会消除 `.`/`..` 别名而不跟随 symlink，并正确编码含空格、`%`、`#`、`?` 的 SQLite 路径。旧 `_write_probe` 也只按精确的空单列表识别，近似或被污染的同名 schema 不会被静默接受。
+
+V2 的学习证据脚本目前仍是实现候选。H1 回归已经证明 `rebuild-evidence --audit` 逐字节只读，任何回填/重建写操作都会先取得协调 lease 并完成全量验证备份；首次真实用户大规模回填、外部安装、连续学习闭环与 7 日留存仍待后续门禁和真人样本，因此以下写命令仍建议先在显式副本或临时根目录验证：
 
 ```bash
 ./.venv/bin/python scripts/rebuild-evidence.py --audit
@@ -137,7 +144,9 @@ V2 的学习证据脚本目前是实现候选。H1-AUDIT-001 已证明 `--audit`
 PYTHONPATH=backend ./.venv/bin/python scripts/evidence-baseline.py
 ```
 
-自动化测试使用临时数据库和模拟模型响应，不冒充真实 Hy3 调用。历史 TokenHub/搜索/页面验证只证明当时的正常路径；当前 H0 strict-xfail 才是已知失败事实，不能用历史场景数、截图数或构建通过替代领域验收。
+自动化测试使用临时数据库和模拟模型响应，不冒充真实 Hy3 调用。历史 TokenHub/搜索/页面验证只证明当时的正常路径；当前事实以缺陷矩阵逐项状态、仍保留的 strict xfail 和各门禁修复后的 passing 回归为准，不能用历史场景数、截图数或构建通过替代领域验收。
+
+H1 当前验证为 281 passed（时间 10、迁移协议 183、维护 79、Evidence rebuild 协调 5、迁移单元 4）；H0 跨阶段回归为 27 passed / 17 strict xfailed，全仓为 441 passed / 98 strict xfailed。自动化结果不替代 H8 的外部安装、连续使用和 7 日真人留存记录。
 
 ## 数据与安全
 

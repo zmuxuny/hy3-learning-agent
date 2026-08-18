@@ -1,16 +1,16 @@
-from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from app.core.time import UTCInstant, canonical_utc, coerce_legacy_utc, utc_now
 from app.models import CalendarEvent, Operation, Plan, Task
 from app.tools.base import ToolContext, ToolDefinition, json_safe
 
 
 class CalendarListArgs(BaseModel):
-    starts_after: datetime | None = None
-    starts_before: datetime | None = None
+    starts_after: UTCInstant | None = None
+    starts_before: UTCInstant | None = None
     plan_id: int | None = None
     limit: int = Field(default=30, ge=1, le=100)
 
@@ -18,8 +18,8 @@ class CalendarListArgs(BaseModel):
 class CalendarCreateArgs(BaseModel):
     title: str = Field(min_length=1, max_length=240)
     description: str = ""
-    starts_at: datetime
-    ends_at: datetime | None = None
+    starts_at: UTCInstant
+    ends_at: UTCInstant | None = None
     plan_id: int | None = None
     task_id: int | None = None
 
@@ -28,8 +28,8 @@ class CalendarPatchArgs(BaseModel):
     event_id: int
     title: str | None = None
     description: str | None = None
-    starts_at: datetime | None = None
-    ends_at: datetime | None = None
+    starts_at: UTCInstant | None = None
+    ends_at: UTCInstant | None = None
     status: Literal["scheduled", "completed", "cancelled"] | None = None
 
 
@@ -53,7 +53,7 @@ async def calendar_list(ctx: ToolContext, args: CalendarListArgs) -> dict:
     events = list((await ctx.db.execute(query.order_by(CalendarEvent.starts_at).limit(args.limit))).scalars())
     return {"events": [{
         "id": event.id, "title": event.title, "description": event.description,
-        "starts_at": event.starts_at.isoformat(), "ends_at": event.ends_at.isoformat() if event.ends_at else None,
+        "starts_at": canonical_utc(event.starts_at), "ends_at": canonical_utc(event.ends_at),
         "plan_id": event.plan_id, "task_id": event.task_id, "status": event.status,
     } for event in events]}
 
@@ -90,7 +90,7 @@ async def calendar_create(ctx: ToolContext, args: CalendarCreateArgs) -> dict:
     )
     ctx.db.add(operation)
     await ctx.db.commit()
-    return {"event_id": event.id, "starts_at": event.starts_at.isoformat(), "operation_id": operation.id, "undo_available": True}
+    return {"event_id": event.id, "starts_at": canonical_utc(event.starts_at), "operation_id": operation.id, "undo_available": True}
 
 
 async def calendar_patch(ctx: ToolContext, args: CalendarPatchArgs) -> dict:
@@ -106,14 +106,18 @@ async def calendar_patch(ctx: ToolContext, args: CalendarPatchArgs) -> dict:
         if plan.status == "archived":
             return {"error": "Restore the plan before changing its learning state"}
     changes = args.model_dump(exclude={"event_id"}, exclude_unset=True)
-    effective_start = changes.get("starts_at", event.starts_at)
-    effective_end = changes.get("ends_at", event.ends_at)
+    raw_effective_start = changes.get("starts_at", event.starts_at)
+    raw_effective_end = changes.get("ends_at", event.ends_at)
+    effective_start = (
+        coerce_legacy_utc(raw_effective_start) if raw_effective_start is not None else None
+    )
+    effective_end = coerce_legacy_utc(raw_effective_end) if raw_effective_end is not None else None
     if effective_end and effective_end <= effective_start:
         return {"error": "ends_at must be later than starts_at"}
     before = {key: json_safe(getattr(event, key)) for key in changes}
     for key, value in changes.items():
         setattr(event, key, value)
-    event.updated_at = datetime.now(timezone.utc)
+    event.updated_at = utc_now()
     operation = Operation(
         owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="calendar.patch",
         entity_type="calendar_event", entity_id=str(event.id),

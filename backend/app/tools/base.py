@@ -1,9 +1,12 @@
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Awaitable, Callable
 
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.time import canonical_utc
 
 
 class EmptyArgs(BaseModel):
@@ -70,6 +73,8 @@ class ToolDefinition:
 
 
 def json_safe(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return canonical_utc(value)
     if hasattr(value, "isoformat"):
         return value.isoformat()
     if isinstance(value, dict):

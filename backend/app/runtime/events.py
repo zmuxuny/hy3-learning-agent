@@ -5,6 +5,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.time import canonical_utc
 from app.models import RunEvent
 
 
@@ -119,6 +120,6 @@ async def emit_event(
         "type": event.event_type,
         "summary": event.summary,
         "payload": event.payload,
-        "created_at": event.created_at.isoformat(),
+        "created_at": canonical_utc(event.created_at),
     })
     return event

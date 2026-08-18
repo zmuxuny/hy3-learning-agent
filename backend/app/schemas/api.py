@@ -1,7 +1,8 @@
-from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.core.time import UTCInstant
 
 
 class APIModel(BaseModel):
@@ -15,8 +16,8 @@ class TaskCreate(BaseModel):
     is_core: bool = False
     evidence_required: bool = False
     estimated_minutes: int = Field(default=30, ge=1, le=1440)
-    due_at: datetime | None = None
-    review_due_at: datetime | None = None
+    due_at: UTCInstant | None = None
+    review_due_at: UTCInstant | None = None
     resource_url: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -33,7 +34,7 @@ class PlanCreate(BaseModel):
     description: str = ""
     goal: str = ""
     current_level: str = ""
-    deadline: datetime | None = None
+    deadline: UTCInstant | None = None
     weekly_minutes: int = Field(default=0, ge=0, le=10080)
     preferences: dict[str, Any] = Field(default_factory=dict)
     expected_outcome: str = ""
@@ -53,9 +54,9 @@ class TaskRead(APIModel):
     evidence_required: bool
     estimated_minutes: int
     position: int
-    due_at: datetime | None
-    completed_at: datetime | None
-    review_due_at: datetime | None
+    due_at: UTCInstant | None
+    completed_at: UTCInstant | None
+    review_due_at: UTCInstant | None
     resource_url: str
     task_metadata: dict[str, Any]
 
@@ -78,7 +79,7 @@ class PlanRead(APIModel):
     description: str
     goal: str
     current_level: str
-    deadline: datetime | None
+    deadline: UTCInstant | None
     weekly_minutes: int
     preferences: dict[str, Any]
     expected_outcome: str
@@ -89,8 +90,8 @@ class PlanRead(APIModel):
     version: int
     progress: float
     memory_summary: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCInstant
+    updated_at: UTCInstant
     stages: list[StageRead]
 
 
@@ -106,17 +107,17 @@ class LearningResourceRead(APIModel):
     summary: str
     why_recommended: str
     source: str
-    verified_at: datetime | None
-    created_at: datetime
+    verified_at: UTCInstant | None
+    created_at: UTCInstant
 
 
 class TaskUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     status: Literal["pending", "active", "completed", "blocked", "skipped"] | None = None
-    due_at: datetime | None = None
+    due_at: UTCInstant | None = None
     estimated_minutes: int | None = Field(default=None, ge=1, le=1440)
-    review_due_at: datetime | None = None
+    review_due_at: UTCInstant | None = None
     evidence: list[dict[str, Any]] | None = None
     kind: str | None = None
     is_core: bool | None = None
@@ -133,7 +134,7 @@ class ProfileRead(APIModel):
     xp: int
     level: int
     streak_days: int
-    updated_at: datetime
+    updated_at: UTCInstant
 
 
 class ProfileUpdate(BaseModel):
@@ -159,12 +160,12 @@ class MemoryRead(APIModel):
     archived_reason: str
     supersedes_id: int | None
     superseded_by_id: int | None
-    last_accessed_at: datetime | None
+    last_accessed_at: UTCInstant | None
     access_count: int
-    last_reinforced_at: datetime | None
-    expires_at: datetime | None
-    created_at: datetime
-    updated_at: datetime
+    last_reinforced_at: UTCInstant | None
+    expires_at: UTCInstant | None
+    created_at: UTCInstant
+    updated_at: UTCInstant
 
 
 class MemoryProposalCreate(BaseModel):
@@ -175,7 +176,7 @@ class MemoryProposalCreate(BaseModel):
     source_type: str = "user"
     source_id: str | None = None
     confidence: float = Field(default=1.0, ge=0, le=1)
-    expires_at: datetime | None = None
+    expires_at: UTCInstant | None = None
     supersedes_id: int | None = Field(default=None, ge=1)
 
 
@@ -188,10 +189,10 @@ class NotificationRead(APIModel):
     title: str
     body: str
     status: str
-    sent_at: datetime | None
-    read_at: datetime | None
-    archived_at: datetime | None
-    created_at: datetime
+    sent_at: UTCInstant | None
+    read_at: UTCInstant | None
+    archived_at: UTCInstant | None
+    created_at: UTCInstant
 
 
 class NotificationArchiveUpdate(BaseModel):
@@ -200,7 +201,7 @@ class NotificationArchiveUpdate(BaseModel):
 
 class NotificationArchiveResult(BaseModel):
     archived: int = Field(ge=0)
-    archived_at: datetime
+    archived_at: UTCInstant
 
 
 class NotificationOpenResult(BaseModel):
@@ -219,8 +220,8 @@ class PushSubscriptionRead(APIModel):
     id: int
     endpoint: str
     keys: dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCInstant
+    updated_at: UTCInstant
 
 
 class ContextSnapshotRead(APIModel):
@@ -230,7 +231,7 @@ class ContextSnapshotRead(APIModel):
     markdown: str
     source_manifest: list[dict[str, Any]]
     estimated_tokens: int
-    created_at: datetime
+    created_at: UTCInstant
 
 
 class SessionSummaryRead(APIModel):
@@ -241,7 +242,7 @@ class SessionSummaryRead(APIModel):
     covered_through_message_id: int | None
     source_message_ids: list[int]
     method: str
-    created_at: datetime
+    created_at: UTCInstant
 
 
 class AgentRunCreate(BaseModel):
@@ -269,9 +270,9 @@ class AgentRunRead(APIModel):
     budget_usage: dict[str, Any] | None
     output: str
     created_plan_id: int | None
-    started_at: datetime | None
-    completed_at: datetime | None
-    created_at: datetime
+    started_at: UTCInstant | None
+    completed_at: UTCInstant | None
+    created_at: UTCInstant
 
 
 class RunApprovalRequest(BaseModel):
@@ -318,8 +319,8 @@ class QueuedMessageRead(APIModel):
     user_content: str | None
     message_metadata: dict[str, Any]
     position: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCInstant
+    updated_at: UTCInstant
 
 
 class RunSteerCreate(BaseModel):
@@ -345,15 +346,15 @@ class SessionRead(APIModel):
     title: str
     summary: str
     handoff_summary: str
-    archived_at: datetime | None
+    archived_at: UTCInstant | None
     linked_plan_ids: list[int]
     message_count: int
     run_count: int
     last_message: str
     last_run_id: str | None
     last_run_status: str | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCInstant
+    updated_at: UTCInstant
 
 
 class SessionUpdate(BaseModel):
@@ -398,8 +399,8 @@ class PlanningIntakeRead(APIModel):
     readiness_confidence: float
     rationale: str
     source_run_id: str | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCInstant
+    updated_at: UTCInstant
 
 
 class PlanProposalRead(APIModel):
@@ -412,9 +413,9 @@ class PlanProposalRead(APIModel):
     specialist_reports: list[dict[str, Any]]
     status: str
     plan_id: int | None
-    decided_at: datetime | None
-    created_at: datetime
-    updated_at: datetime
+    decided_at: UTCInstant | None
+    created_at: UTCInstant
+    updated_at: UTCInstant
 
 
 class PlanningStateRead(BaseModel):
@@ -464,7 +465,7 @@ class ChatMessageRead(APIModel):
     role: str
     content: str
     message_metadata: dict[str, Any]
-    created_at: datetime
+    created_at: UTCInstant
 
 
 class RunEventRead(APIModel):
@@ -474,7 +475,7 @@ class RunEventRead(APIModel):
     event_type: str
     summary: str
     payload: dict[str, Any]
-    created_at: datetime
+    created_at: UTCInstant
 
 
 class OperationRead(APIModel):
@@ -486,5 +487,5 @@ class OperationRead(APIModel):
     forward_patch: dict[str, Any]
     inverse_patch: dict[str, Any]
     status: str
-    created_at: datetime
-    undone_at: datetime | None
+    created_at: UTCInstant
+    undone_at: UTCInstant | None

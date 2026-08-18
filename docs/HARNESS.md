@@ -1,6 +1,6 @@
 # Personal Learning Harness
 
-> 状态说明（2026-08-18）：本文描述产品目标和正常路径候选，不代表崩溃恢复、事务一致性、长期 Context 或服务器安全已经验收。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)；完成前仅建议受控 loopback 使用。
+> 状态说明（2026-08-19）：本文描述产品目标和正常路径候选，不代表崩溃恢复、事务一致性、长期 Context 或服务器安全已经验收。H1 的迁移/UTC/备份基础已完成，关闭 13 个缺陷 ID、15 个基线节点；矩阵剩余 74 个 open ID，下一门禁为 H2，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)；完成前仅建议受控 loopback 使用。
 
 ## 产品边界
 
@@ -41,7 +41,7 @@ Harness 的目标由四层共同实现：System Prompt 定义工作方式，Cont
 | Planning | Intake 已确认事实/问题/充分性、提案与规划子 Run 报告 | 绑定 Session；提案显式采用后才成为正式 Plan |
 | Session–Plan relation | 创建、讨论、聚焦关系和跨作用域交接摘要 | 目标：永久保留来源且只在显式转场建立；旧 handoff 可被后续消息改写（H5-CTX-005） |
 | Event ledger | 计划、任务、提交、评分、提醒和邮件回复事件 | 不可变运行事实流 |
-| Evidence ledger (V2 M13) | `EvidenceObservation`：提交/验收/测验/带证据完成的结构化观察、Rubric、来源和因果链 | 目标为追加式和 digest 稳定；旧 undo、时间往返、截断和幂等冲突仍未修（H1/H4） |
+| Evidence ledger (V2 M13) | `EvidenceObservation`：提交/验收/测验/带证据完成的结构化观察、Rubric、来源和因果链 | H1 已关闭 UTC/SQLite 时间往返差异；undo、完整账本截断和幂等冲突仍待 H4 |
 | Episodic | 某次学习表现、阻塞或干预结果 | 相关性检索；90 天后可归档 |
 | Plan semantic | 计划目标、进度、当前任务和阻塞摘要 | 目标是严格按 `plan_id` 隔离；旧 global discussed link 会泄漏私有块（H5-CTX-001） |
 | Global semantic | 稳定偏好、长期约束和跨计划画像 | Agent 只可提出候选，用户确认后生效 |
@@ -59,8 +59,10 @@ Harness 的目标由四层共同实现：System Prompt 定义工作方式，Cont
 - 计划、任务、策展资源、测验、日历和文件写入尽可能生成 `Operation` 与逆向 Patch。
 - 用户消息编辑会保存 Revision 并排除部分旧下游消息；旧实现没有失效全部派生 Memory/Summary/Snapshot/handoff（H5-CTX-006/007），因此不能保证编辑后的 Context 已完全收敛。
 
+H1 的数据维护边界已经使用受控 lifecycle lease、固定的路径/目录描述符/inode、内容摘要复验和 trusted snapshot 回退。restore 在写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中；source backup 位于安全备份根目录下仍是正常布局。路径规范化消除 `.`/`..` 别名但不跟随 symlink；legacy `_write_probe` 也只接受精确的空单列旧残留。该协议不能约束绕过 Runtime/maintenance 的原始 SQLite writer。
+
 ## 完整性结论
 
 当前版本已经形成真实可运行的个人学习 Harness 原型：计划、资源、执行、证据、检查、记忆和主动提醒均有正常路径能力；SMTP/IMAP 代码、连续 Session 路由和诊断接口已经存在，真实供应商收发仍依赖本机邮箱凭据。它不是通用操作系统 Agent，也不宣称拥有容器级代码隔离、任意宿主目录权限或多节点分布式调度能力。
 
-2026-08-18 审查确认：阻塞审批、进程恢复、call-id 幂等和子 Agent 检查点虽然已有第一版实现，但尚未满足故障注入和长期运行门槛；Evidence、Context、提醒线程、移动导航和服务器安全也存在阻塞问题。这些项目会阻塞 V2 Alpha 和无人值守使用，统一按硬化计划 H0–H8 修复。
+截至 2026-08-19，H1 定向验证为 281 passed，H0 跨阶段回归为 27 passed / 17 strict xfailed，全仓为 441 passed / 98 strict xfailed。阻塞审批、进程恢复、call-id 幂等和子 Agent 检查点虽然已有第一版实现，但尚未满足故障注入和长期运行门槛；Evidence、Context、提醒线程、移动导航和服务器安全也仍有阻塞问题。这些项目会阻塞 V2 Alpha 和无人值守使用，统一按硬化计划 H2–H8 修复；外部安装、连续使用和 7 日留存必须由真人记录验收。

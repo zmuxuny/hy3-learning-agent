@@ -36,14 +36,6 @@ from app.tools import ToolContext, execute_tool
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-H1_TIME_001 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H1-TIME-001: SQLite drops timezone offsets and the old projection "
-        "serializes/compares naive and aware datetimes without canonicalization"
-    ),
-)
 H4_EVID_001 = pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
@@ -291,7 +283,6 @@ def _expected_artifact_envelope_hash(
     return hashlib.sha256(canonical_envelope).hexdigest()
 
 
-@H1_TIME_001
 @pytest.mark.asyncio
 async def test_h1_time_001_sqlite_roundtrip_preserves_utc_digest(isolated_database):
     occurred_at = datetime(
@@ -327,7 +318,6 @@ async def test_h1_time_001_sqlite_roundtrip_preserves_utc_digest(isolated_databa
     assert actual == expected
 
 
-@H1_TIME_001
 def test_h1_time_001_projection_orders_mixed_naive_and_aware_history():
     records = [
         _fact(

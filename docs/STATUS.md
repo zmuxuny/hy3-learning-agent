@@ -20,14 +20,42 @@
 - 全局 pytest 数据库已从仓库内固定文件迁到进程独占的系统临时目录；大型迁移、Evidence、并发和故障注入用例进一步使用每用例 `tmp_path`。三类 SQL 夹具均为公开合成数据并由 manifest 固定 hash、schema digest 和行数。
 - 测试现会把 Context、workspace、upload 与配置写入重定向到每用例临时目录，并在 session 前后用不输出内容的单向指纹守卫正式 `.env`、SQLite 与运行目录。保护夹具落地前的基线试跑曾触发旧测试对 Git 忽略的 `data/context` / `data/workspace` 写路径；为避免误删预存数据，H0 没有自动清理或恢复这些歧义文件，后续测试已被禁止再次写入。
 - 原 41 个场景已逐项登记独立输入、字面期望、reason code、不变量和 mutant，但仍标为 `pending_rewrite`。旧执行器只有 27 个输入指纹和 3 个场景专属 oracle；在 H4 逐条变成可执行领域断言前，不得宣称“41 项覆盖”。
-- H0 没有修改生产代码；87 项缺陷仍全部 open。M15–M20 继续冻结，下一实现门禁为 H1。
+- H0 阶段没有修改生产代码，当时 87 项缺陷全部 open。H1 现已关闭其中 13 个 ID、15 个基线节点；当前剩余 74 个 open ID，M15–M20 继续冻结，下一实现门禁为 H2。
+
+## H1：迁移、时间与备份基础（已完成）
+
+- 已实现：
+  - `schema_migrations` 冻结历史表、显式 schema version、不可变 revision checksum 与 fresh/install upgrade 等价校验。
+  - 全局 UTC canonicalization：新增 `UTCDateTime`、`core/time.py`、固定精度 digest 时间串，以及历史 naive 时间按 UTC 解释的兼容策略。
+  - crash-safe SQLite 迁移协议：`dry-run → verified backup → candidate publish → post-publish verify/rollback`，覆盖 writer gap、new inode、absent target creator、WAL/rollback journal、killpoint 和安全恢复。
+  - 备份发布、迁移交接与回滚会固定并复核路径、目录描述符/inode 和内容摘要；候选库、备份 payload 与工作快照只有通过边界复验才能作为 trusted snapshot，晚到篡改会回滚且不会暴露无效恢复引用。
+  - legacy `_write_probe` 仅接受精确的空单列旧残留；任何额外列、约束、行、index、trigger 或 view 均按未知 schema 失败关闭，规范 schema 不保留探针表。
+  - 新的维护入口 `scripts/data-maintenance.py` 与 `app.db.maintenance`：`preflight / backup / verify / restore / recover / migration-backup-verify / migration-backup-restore`。
+  - `scripts/rebuild-evidence.py`、`reset-data.sh`、`seed-fixture.sh`、`demo-data.sh` 均切到 H1 维护协议，避免在备份前修改原库。restore 在任何锁或写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中；source backup 位于安全备份根目录下仍是正常布局。共享 lexical path normalization 消除 `.`/`..` 别名但不跟随 symlink，SQLite URI 对空格、`%`、`#`、`?` 安全。
+
+- 已验证：
+  - H1 定向套件共 `281 passed`：`tests/hardening/test_h1_time_contracts.py` 10、`test_h1_migration_protocol.py` 183、`test_h1_maintenance.py` 79、`test_h1_rebuild_coordinator.py` 5、`tests/test_migrations.py` 4。
+  - H0 跨阶段回归为 `27 passed, 17 strict xfailed`；剩余均属于后续门禁的已登记预期失败。
+  - 全量回归为 `441 passed, 98 strict xfailed`，0 unexpected failure、0 XPASS；`python -m compileall backend tests scripts`、`pip check`、前端生产构建、完整与 production-only `npm audit` 以及 `git diff --check` 均通过，npm audit 为 0 vulnerabilities。
+
+- 尚未实现：
+  - H2 Unit of Work / outbox / claim 短事务、H3 durable run queue/checkpoint、H4 Evidence/Competency 事实层、H5 Context/Intervention、H6 安全边界、H7 前端状态架构、H8 首启与发布工程。
+
+- 已知限制：
+  - 历史 naive 时间会按 UTC 解释；旧数据若原本丢失本地偏移，H1 不会伪造恢复不存在的时区信息。
+  - 迁移与维护协议只支持受控 lifecycle lease；绕过 Runtime/maintenance 直接写 SQLite 的外部进程不在兼容承诺内。
+  - `frontend` 目前没有独立自动化 `test` 脚本；当前工程门禁只有生产构建与 `npm audit`，这一缺口仍待后续里程碑补齐。
+  - 外部用户安装完成率、连续学习闭环和 7 日留存仍是**待真实用户验证**，不能由自动化测试替代。
+
+- 下一门禁：
+  - 按计划进入 H2：事务、幂等与 Outbox；在 H2–H8 全部关闭及真人门槛完成前，不恢复 M15–M20。
 
 ## V2 当前实现候选（develop，尚未验收）
 
 - `EvidenceObservation` 是追加式事实层，带来源、计划/任务/Run/Session、评分、提示/迁移等级、Rubric 快照、因果链和幂等键；没有编辑或物理删除路径。
 - `submission_create`、`submission_check`、`quiz_grade` 和带证据的 `task_patch` 会双写账本；同一幂等键重试只返回原观察。
-- `study_state_get` 与计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；完整账本、时间往返、撤销和重复计权语义尚未通过验收。
-- `scripts/rebuild-evidence.py` 已提供重建、审计、回填和派生快照命令；只读审计、迁移与备份先后顺序需按 H1 修复。
+- `study_state_get` 与计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；H1 已关闭 UTC/SQLite 往返稳定性，完整账本、撤销和重复计权语义仍待 H4 验收。
+- `scripts/rebuild-evidence.py` 已提供重建、审计、回填和派生快照命令；H1 已证明纯 audit 不建表、不迁移、不写入，任何回填/重建写操作都会先取得协调 lease 并完成全量验证备份。
 - Artifact 表和 `artifact_id + content_hash` 引用已经存在；内容耐久性、文件指纹、作用域审计和幂等冲突尚未通过验收。
 - 当前仓库存在 41 个场景名称和第一版实现，但多数场景尚未形成独立领域断言，不能用“41/41”证明覆盖；M13/M14 均需按硬化计划重新验收。
 
@@ -52,7 +80,7 @@ Learning Agent 已形成真实可运行的个人学习 Harness 原型，而不�
 ## Context 与 Memory 1.1
 
 - Context 有 Global/Profile/Plan/Session 分层组装候选，但 H5-CTX-001 已证明 global Session 的 discussed link 会解锁计划私有事件、测验、提醒、复习和日历；当前不能宣称严格隔离。
-- V2 第一批新增 `EvidenceObservation` 账本与统一投影候选；H1-TIME-001/002 和 H4-EVID-001 已证明 SQLite 往返与 500 条截断会改变或分裂 digest，因此当前不能宣称 digest 稳定。
+- V2 第一批新增 `EvidenceObservation` 账本与统一投影候选；H1-TIME-001/002 已关闭 SQLite 时间往返差异，但 H4-EVID-001 仍证明 501/10,000 条账本会被在线路径截断，因此当前仍不能宣称完整账本 digest 稳定。
 - 长 Session 会保留原文并写 `SessionSummary` 候选；H5-CTX-002–004 已证明压缩会遗漏输入或在失败后错误推进 coverage，尚不具备长期连续性保证。
 - 长期记忆先以 proposal 存在；确认后才进入检索。重复内容会强化原记录而不是复制；用户纠正会建立 `supersedes_id / superseded_by_id` 替代链，旧认识保留为历史。
 - 记忆归档已有软归档/恢复候选；H5-CTX-011 已证明恢复会清空未来 `expires_at`，生命周期语义尚未通过。

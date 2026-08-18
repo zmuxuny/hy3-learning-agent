@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
@@ -16,8 +17,8 @@ from sqlalchemy import event, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.db.database import Base
-from app.db.migrations import migrate_sqlite_schema
+from app.core.time import canonical_utc, parse_legacy_datetime
+from app.db.migrations import migrate_sqlite_database
 from app.models import EvidenceObservation, Owner
 from app.services.evidence import build_evidence_state
 
@@ -26,16 +27,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = PROJECT_ROOT / "tests" / "fixtures" / "databases"
 MANIFEST_PATH = FIXTURE_ROOT / "manifest.json"
 FIXTURE_NAMES = ("empty", "v1_1_1_full", "review_boundary")
-
-M13_TABLES = {
-    "evidence_observations",
-    "artifacts",
-    "competencies",
-    "competency_edges",
-    "plan_competency_links",
-    "task_competency_links",
-    "resource_competency_links",
-}
 
 M13_EVIDENCE_TABLE_SQL = """
 CREATE TABLE evidence_observations (
@@ -164,9 +155,15 @@ def _canonical_schema(path: Path) -> dict:
         return result
 
 
-def _sqlite_value_token(value: object) -> list[object]:
+def _sqlite_value_token(value: object, declared_type: str) -> list[object]:
     if isinstance(value, bytes):
         return ["blob", value.hex()]
+    normalized_type = declared_type.upper()
+    if value is not None and "DATETIME" in normalized_type:
+        return ["datetime", canonical_utc(parse_legacy_datetime(value))]
+    if value is not None and "JSON" in normalized_type:
+        parsed = json.loads(value) if isinstance(value, str) else value
+        return ["json", parsed]
     return [type(value).__name__, value]
 
 
@@ -180,11 +177,14 @@ def _business_data_snapshot(
     content_digests: dict[str, str] = {}
     for table_name in table_names:
         quoted_table = table_name.replace('"', '""')
+        column_info = {
+            row[1]: row[2]
+            for row in connection.execute(f'PRAGMA table_xinfo("{quoted_table}")')
+            if row[6] == 0
+        }
         if columns_by_table is None:
             columns = tuple(
-                row[1]
-                for row in connection.execute(f'PRAGMA table_xinfo("{quoted_table}")')
-                if row[6] == 0
+                column_info
             )
         else:
             columns = columns_by_table[table_name]
@@ -199,7 +199,10 @@ def _business_data_snapshot(
         ).fetchall()
         encoded_rows = sorted(
             json.dumps(
-                [_sqlite_value_token(value) for value in row],
+                [
+                    _sqlite_value_token(value, column_info[column])
+                    for column, value in zip(columns, row, strict=True)
+                ],
                 ensure_ascii=False,
                 separators=(",", ":"),
             )
@@ -237,13 +240,12 @@ def _test_engine(path: Path):
 
 
 async def _upgrade_current_schema(path: Path) -> None:
-    engine = _test_engine(path)
-    try:
-        async with engine.begin() as connection:
-            await connection.run_sync(Base.metadata.create_all)
-            await migrate_sqlite_schema(connection)
-    finally:
-        await engine.dispose()
+    await asyncio.to_thread(
+        migrate_sqlite_database,
+        path,
+        backup_root=path.parent / "migration-backups",
+        application_version="h1-test",
+    )
 
 
 def _subprocess_environment(database_path: Path) -> dict[str, str]:
@@ -357,11 +359,6 @@ def test_review_boundary_fixture_has_exact_isolated_cardinalities(tmp_path: Path
     assert message_count == 10000
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H1-MIG-001: create_schema relies on callers importing app.models before fresh initialization",
-)
 def test_create_schema_registers_models_without_import_side_effects(tmp_path: Path):
     database_path = tmp_path / "fresh.sqlite3"
     command = (
@@ -404,11 +401,6 @@ def test_create_schema_registers_models_without_import_side_effects(tmp_path: Pa
     }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H1-MIG-002: additive v1.1.1 upgrade leaves nullability, defaults, indexes, and order divergent from fresh schema",
-)
 @pytest.mark.asyncio
 async def test_v1_1_1_upgrade_schema_matches_fresh_schema(tmp_path: Path):
     fresh_path = _materialize_sql("empty", tmp_path / "fresh.sqlite3")
@@ -463,29 +455,20 @@ async def test_v1_1_1_upgrade_schema_matches_fresh_schema(tmp_path: Path):
     }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H1-MIG-003: ALTER-added evidence competency_id has no declared competencies foreign key",
-)
 @pytest.mark.asyncio
 async def test_partial_m13_upgrade_adds_competency_foreign_key(tmp_path: Path):
-    database_path = tmp_path / "partial-m13.sqlite3"
+    database_path = _materialize_sql(
+        "v1_1_1_full",
+        tmp_path / "partial-m13.sqlite3",
+    )
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute(M13_EVIDENCE_TABLE_SQL)
+
+    await _upgrade_current_schema(database_path)
     engine = _test_engine(database_path)
     try:
         async with engine.begin() as connection:
-            legacy_tables = [
-                table for name, table in Base.metadata.tables.items() if name not in M13_TABLES
-            ]
-            await connection.run_sync(
-                lambda sync_connection: Base.metadata.create_all(
-                    sync_connection,
-                    tables=legacy_tables,
-                )
-            )
-            await connection.execute(text(M13_EVIDENCE_TABLE_SQL))
-            await connection.run_sync(Base.metadata.create_all)
-            await migrate_sqlite_schema(connection)
             foreign_keys = [
                 tuple(row)
                 for row in (
@@ -504,12 +487,6 @@ async def test_partial_m13_upgrade_adds_competency_foreign_key(tmp_path: Path):
             }
             if "competency_id" not in evidence_columns:
                 raise RuntimeError("partial M13 migration did not add competency_id")
-            await connection.execute(text(
-                """
-                INSERT INTO owners (id, display_name, timezone)
-                VALUES ('fixture-owner', 'Fixture Learner', 'Asia/Shanghai')
-                """
-            ))
             invalid_write_rejected = False
             try:
                 await connection.execute(text(
@@ -556,12 +533,10 @@ async def test_partial_m13_upgrade_adds_competency_foreign_key(tmp_path: Path):
 
 
 async def _roundtrip_evidence(path: Path, occurred_at: datetime) -> tuple[datetime, str]:
+    await _upgrade_current_schema(path)
     engine = _test_engine(path)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     try:
-        async with engine.begin() as connection:
-            await connection.run_sync(Base.metadata.create_all)
-            await migrate_sqlite_schema(connection)
         async with session_factory() as session:
             session.add(Owner(
                 id="fixture-owner",
@@ -591,11 +566,6 @@ async def _roundtrip_evidence(path: Path, occurred_at: datetime) -> tuple[dateti
         await engine.dispose()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H1-TIME-002: SQLite stores offset wall time without UTC canonicalization, so equal instants diverge",
-)
 @pytest.mark.asyncio
 async def test_equal_instants_with_different_offsets_roundtrip_identically(tmp_path: Path):
     utc_value = datetime(2026, 8, 18, 9, 23, 45, 123456, tzinfo=timezone.utc)
@@ -612,11 +582,6 @@ async def test_equal_instants_with_different_offsets_roundtrip_identically(tmp_p
     assert utc_digest == shanghai_digest
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H1-AUDIT-001: rebuild-evidence --audit calls create_schema and changes the source before backup",
-)
 def test_evidence_audit_is_byte_for_byte_read_only(tmp_path: Path):
     database_path = _materialize_sql("v1_1_1_full", tmp_path / "audit-source.sqlite3")
     before = database_path.read_bytes()
@@ -659,11 +624,6 @@ def test_evidence_audit_is_byte_for_byte_read_only(tmp_path: Path):
     }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H1-SCHEMA-001: verify_database_writable leaves a permanent _write_probe table",
-)
 @pytest.mark.asyncio
 async def test_writability_probe_leaves_no_schema_object(tmp_path: Path, monkeypatch):
     from app import main as main_module

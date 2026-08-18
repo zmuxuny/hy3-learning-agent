@@ -1,11 +1,12 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.time import canonical_utc, utc_now
 from app.models import LearningEvent, Plan, ReviewSchedule, Stage, Task
 from app.schemas import PlanCreate, TaskUpdate
 from app.services.gamification import evaluate_achievements
@@ -153,7 +154,7 @@ async def update_task(
     if evidence is not None:
         task.task_metadata = {**task.task_metadata, "completion_evidence": evidence}
     if changes.get("status") == "completed" and task.completed_at is None:
-        task.completed_at = datetime.now(timezone.utc)
+        task.completed_at = utc_now()
         if task.review_due_at:
             existing_review = (await db.execute(
                 select(ReviewSchedule.id).where(
@@ -186,8 +187,14 @@ async def update_task(
         summary=f"Updated task: {task.title}",
         correlation_id=run_id,
         payload={
-            "before": {k: str(v) if isinstance(v, datetime) else v for k, v in before.items()},
-            "after": {k: str(v) if isinstance(v, datetime) else v for k, v in changes.items()},
+            "before": {
+                key: canonical_utc(value) if isinstance(value, datetime) else value
+                for key, value in before.items()
+            },
+            "after": {
+                key: canonical_utc(value) if isinstance(value, datetime) else value
+                for key, value in changes.items()
+            },
             "evidence": evidence or [],
         },
     )
@@ -203,7 +210,7 @@ async def update_task(
             source_uri=f"task:{task.id}:event:{learning_event.id}",
             idempotency_key=f"task:{task.id}:event:{learning_event.id}:artifact",
             title=f"任务证据：{task.title}",
-            content=json.dumps(evidence, ensure_ascii=False, sort_keys=True, default=str),
+            content=json.dumps(evidence, ensure_ascii=False, sort_keys=True, default=canonical_utc),
             metadata={"task_id": task.id, "event_id": learning_event.id},
             plan_id=task.stage.plan_id,
             task_id=task.id,
@@ -224,7 +231,7 @@ async def update_task(
             task_id=task.id,
             payload={"evidence": evidence},
             artifact_refs=[artifact_ref(completion_artifact, kind="task_evidence")],
-            occurred_at=task.completed_at or datetime.now(timezone.utc),
+            occurred_at=task.completed_at or utc_now(),
             correlation_id=run_id,
             causation_id=f"learning_event:{learning_event.id}",
         )

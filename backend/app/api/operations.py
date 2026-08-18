@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.time import parse_legacy_datetime
 from app.db.database import get_db
 from app.core.config import PROJECT_ROOT
 from app.models import ActivityDay, CalendarEvent, Competency, CompetencyEdge, LearningEvent, LearningResource, Operation, Plan, PlanCompetencyLink, PlanProposal, Quiz, ResourceCompetencyLink, ReviewSchedule, Session, Stage, Task, TaskCompetencyLink, TaskSubmission, UserProfile
@@ -43,7 +44,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Task no longer exists")
         for field, value in inverse["changes"].items():
             if field.endswith("_at") and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+                value = parse_legacy_datetime(value)
             setattr(task, field, value)
         await db.refresh(task, ["stage"])
         await db.refresh(task.stage, ["plan"])
@@ -60,7 +61,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Plan no longer exists")
         for field, value in inverse["changes"].items():
             if field.endswith("_at") or field == "deadline":
-                value = datetime.fromisoformat(value) if isinstance(value, str) else value
+                value = parse_legacy_datetime(value) if isinstance(value, str) else value
             setattr(plan, field, value)
         plan.version += 1
         audit_plan_id = plan.id
@@ -84,7 +85,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Session no longer exists")
         for field, value in inverse["changes"].items():
             if field.endswith("_at") and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+                value = parse_legacy_datetime(value)
             setattr(session, field, value)
         audit_plan_id = session.plan_id
         session.updated_at = datetime.now(timezone.utc)
@@ -99,7 +100,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Learning resource no longer exists")
         for field, value in inverse["changes"].items():
             if field.endswith("_at") and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+                value = parse_legacy_datetime(value)
             setattr(resource, field, value)
         audit_plan_id = resource.plan_id
     elif operation.entity_type == "review_schedule" and "delete" in inverse:
@@ -114,7 +115,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Review schedule no longer exists")
         for field, value in inverse["changes"].items():
             if field.endswith("_at") and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+                value = parse_legacy_datetime(value)
             setattr(schedule, field, value)
         audit_plan_id = schedule.plan_id
         audit_task_id = schedule.task_id
@@ -159,7 +160,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Calendar event no longer exists")
         for field, value in inverse["changes"].items():
             if field.endswith("_at") and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+                value = parse_legacy_datetime(value)
             setattr(event, field, value)
         audit_plan_id = event.plan_id
     elif operation.entity_type == "submission" and "submission" in inverse:
@@ -169,11 +170,11 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Submission or task no longer exists")
         for field, value in inverse["submission"].items():
             if field.endswith("_at") and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+                value = parse_legacy_datetime(value)
             setattr(submission, field, value)
         for field, value in inverse["task"].items():
             if field.endswith("_at") and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+                value = parse_legacy_datetime(value)
             setattr(task, field, value)
         await db.refresh(task, ["stage"])
         await db.refresh(task.stage, ["plan"])
@@ -219,7 +220,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=409, detail="Quiz no longer exists")
         for field, value in inverse["changes"].items():
             if field.endswith("_at") and isinstance(value, str):
-                value = datetime.fromisoformat(value)
+                value = parse_legacy_datetime(value)
             setattr(quiz, field, value)
         audit_plan_id = quiz.plan_id
         audit_task_id = quiz.task_id

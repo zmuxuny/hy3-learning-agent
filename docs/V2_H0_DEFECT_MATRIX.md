@@ -8,7 +8,7 @@
 
 本文件是 H0 新建立的稳定追踪表，不是对一份历史缺陷清单的转录。Git 历史中没有保存逐项 P0/P1 编号或优先级；审查文档只把问题集合描述为 P0/P1。因此下表的 ID 是本轮依据修复门禁派生的稳定 ID，`优先级来源=U` 表示“逐项优先级未留档”，不能引用为原审查编号或原始 P0/P1 分级。
 
-所有 `open · strict xfail` 都表示旧实现已被自动化测试稳定复现，**不表示缺陷已修复**。对应门禁修复后必须删除该测试的 xfail 标记；全局 `xfail_strict=true` 使未登记的提前通过成为 CI 失败。测试只使用进程级或用例级临时 SQLite、合成数据和离线 fake；不会以 SQLite 打开、查询、迁移、复制或修改正式数据库，也不调用真实邮箱或公网。全局保护夹具只在本机读取受保护路径字节并计算不输出的单向完整性指纹。
+所有 `open · strict xfail` 都表示旧实现已被自动化测试稳定复现，**不表示缺陷已修复**；`fixed · passing` 表示对应门禁已删除 xfail，并由当前生产实现稳定通过原基线断言。全局 `xfail_strict=true` 使未登记的提前通过成为 CI 失败。测试只使用进程级或用例级临时 SQLite、合成数据和离线 fake；不会以 SQLite 打开、查询、迁移、复制或修改正式数据库，也不调用真实邮箱或公网。全局保护夹具只在本机读取受保护路径字节并计算不输出的单向完整性指纹。
 
 来源缩写：
 
@@ -42,19 +42,19 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H1-MIG-001 | fresh 初始化必须显式注册全部模型；旧 `create_schema()` 依赖调用方导入副作用。 | HP5 | MIG | U | H1 | open · strict xfail / — |
-| H1-MIG-002 | `v1.1.1` 升级后规范 schema 必须与 fresh schema 相同；旧 additive migration 留下 nullability、default、index 和列序差异。 | HP5 | MIG | U | H1 | open · strict xfail / — |
-| H1-MIG-003 | 部分 M13 schema 升级也必须补齐 `competency_id` 外键；旧 `ALTER` 只加列。 | HP5, VR14 | MIG | U | H1 | open · strict xfail / — |
-| H1-TIME-001 | 时间写入 SQLite、关闭、重开后必须保持同一 UTC instant 和 digest，且 naive/aware 历史可比较；旧实现丢 offset。 | HP4, HP5, VR13 | EVID（2 节点） | U | H1 | open · strict xfail / — |
-| H1-TIME-002 | 相同 instant 的 UTC/Asia-Shanghai 表示必须规范为同一 aware UTC 值与 digest；旧实现保存 wall time。 | HP5 | MIG | U | H1 | open · strict xfail / — |
-| H1-AUDIT-001 | audit 在备份前必须逐字节只读；旧 rebuild audit 会先建/迁移 schema。 | HP5, STATUS | MIG | U | H1 | open · strict xfail / — |
-| H1-SCHEMA-001 | 启动可写性探针不得留下 schema 对象；旧实现永久留下 `_write_probe`。 | HP5 | MIG | U | H1 | open · strict xfail / — |
-| H1-BACKUP-001 | 活动 SQLite writer 存在时 reset 必须 fail closed 且源 DB/WAL/SHM 与备份目录均不变；旧脚本只探测 8000 端口后直接移动。 | HP5, HP12 | REL | U | H1 | open · strict xfail / — |
-| H1-BACKUP-002 | 不同历史路径的同名数据库必须按 manifest 保留各自身份；旧 reset 把 basename 压平并静默覆盖。 | HP5, HP12 | REL | U | H1 | open · strict xfail / — |
-| H1-RESTORE-001 | restore 必须先验证 integrity/schema/manifest，验证失败时保留 live 状态；旧 seed 会用损坏文件替换有效库并返回成功。 | HP5, HP12 | REL | U | H1 | open · strict xfail / — |
-| H1-RESTORE-002 | 文档化 reset 产物必须可由 restore 完整往返；旧 reset 只生成 `pre-clean-*`，seed 只接受 `pre-demo-*`。 | HP5, HP12 | REL | U | H1 | open · strict xfail / — |
-| H1-DEMO-001 | Demo reset 也必须拒绝活动 writer 并按原路径保存同名库；旧 `demo-data.sh` 复制了端口探测与 basename 压平缺陷。 | HP5, HP12 | REL（2 节点） | U | H1 | open · strict xfail / — |
-| H1-DEMO-002 | Demo restore 必须验证来源并在失败时保持 live 状态；旧脚本先移动 live，再接受损坏 source。 | HP5, HP12 | REL | U | H1 | open · strict xfail / — |
+| H1-MIG-001 | fresh 初始化必须显式注册全部模型；旧 `create_schema()` 依赖调用方导入副作用。 | HP5 | MIG | U | H1 | fixed · passing / H1 阶段 |
+| H1-MIG-002 | `v1.1.1` 升级后规范 schema 必须与 fresh schema 相同；旧 additive migration 留下 nullability、default、index 和列序差异。 | HP5 | MIG | U | H1 | fixed · passing / H1 阶段 |
+| H1-MIG-003 | 部分 M13 schema 升级也必须补齐 `competency_id` 外键；旧 `ALTER` 只加列。 | HP5, VR14 | MIG | U | H1 | fixed · passing / H1 阶段 |
+| H1-TIME-001 | 时间写入 SQLite、关闭、重开后必须保持同一 UTC instant 和 digest，且 naive/aware 历史可比较；旧实现丢 offset。 | HP4, HP5, VR13 | EVID（2 节点） | U | H1 | fixed · passing / H1 阶段 |
+| H1-TIME-002 | 相同 instant 的 UTC/Asia-Shanghai 表示必须规范为同一 aware UTC 值与 digest；旧实现保存 wall time。 | HP5 | MIG | U | H1 | fixed · passing / H1 阶段 |
+| H1-AUDIT-001 | audit 在备份前必须逐字节只读；旧 rebuild audit 会先建/迁移 schema。 | HP5, STATUS | MIG | U | H1 | fixed · passing / H1 阶段 |
+| H1-SCHEMA-001 | 启动可写性探针不得留下 schema 对象；旧实现永久留下 `_write_probe`。 | HP5 | MIG | U | H1 | fixed · passing / H1 阶段 |
+| H1-BACKUP-001 | 活动 SQLite writer 存在时 reset 必须 fail closed 且源 DB/WAL/SHM 与备份目录均不变；旧脚本只探测 8000 端口后直接移动。 | HP5, HP12 | REL | U | H1 | fixed · passing / H1 阶段 |
+| H1-BACKUP-002 | 不同历史路径的同名数据库必须按 manifest 保留各自身份；旧 reset 把 basename 压平并静默覆盖。 | HP5, HP12 | REL | U | H1 | fixed · passing / H1 阶段 |
+| H1-RESTORE-001 | restore 必须先验证 integrity/schema/manifest，验证失败时保留 live 状态；旧 seed 会用损坏文件替换有效库并返回成功。 | HP5, HP12 | REL | U | H1 | fixed · passing / H1 阶段 |
+| H1-RESTORE-002 | 文档化 reset 产物必须可由 restore 完整往返；旧 reset 只生成 `pre-clean-*`，seed 只接受 `pre-demo-*`。 | HP5, HP12 | REL | U | H1 | fixed · passing / H1 阶段 |
+| H1-DEMO-001 | Demo reset 也必须拒绝活动 writer 并按原路径保存同名库；旧 `demo-data.sh` 复制了端口探测与 basename 压平缺陷。 | HP5, HP12 | REL（2 节点） | U | H1 | fixed · passing / H1 阶段 |
+| H1-DEMO-002 | Demo restore 必须验证来源并在失败时保持 live 状态；旧脚本先移动 live，再接受损坏 source。 | HP5, HP12 | REL | U | H1 | fixed · passing / H1 阶段 |
 
 ## H2：事务、幂等与外部副作用
 
@@ -170,11 +170,19 @@
 
 H0 的 passing contract tests 只证明清单完整、输入/oracle/mutant 互不重复；`H0-COV-001` strict xfail 则持续证明旧 `evaluate_baseline()` 仍只有 27 个输入指纹和 3 个场景专属 oracle。H4 必须把 41 项逐条接入真实 reducer/audit，确保对应 mutant 会触发指定 reason code，才能删除 `H0-COV-001` 并宣称覆盖闭环。
 
-## H0 基线验收记录
+## 验收记录
+
+### H1 当前结果（2026-08-19）
+
+- H1 的 13 个缺陷 ID、15 个基线节点均已删除 xfail 并固定通过；矩阵当前剩余 74 个 open ID，下一门禁是 H2，M15–M20 继续冻结。
+- H1 定向套件共 281 passed：时间 10、迁移协议 183、维护 79、Evidence rebuild 协调 5、迁移单元 4。
+- H0 跨阶段回归为 27 passed、17 strict xfailed；全仓为 441 passed、98 strict xfailed，没有非预期失败或 XPASS。
+
+### H0 基线记录（2026-08-18）
 
 - `pytest -q tests/hardening -rxX`：20 passed，113 xfailed，0 XPASS，0 failed。
 - `pytest -q tests/hardening --runxfail --tb=no`：20 passed，113 failed；解除登记后 113 个旧实现缺陷节点全部失败。
 - `pytest -q -rxX`：146 passed，113 xfailed，0 XPASS，0 failed；Python compileall、pip check、前端生产构建、完整 npm audit 与 production-only npm audit 均通过。
 - 真实 Chrome：375/768/1280/1440/2560 各自冷启动；375/768 Session 与 375 设置共 3 项 strict expected failure，五尺寸 shell/overflow/error/read-only gate 均通过。验收脚本必须显式传入 loopback URL 与随机 `H0_BROWSER_FIXTURE_TOKEN`，目标 API 必须且只能含标题为 `H0 synthetic alpha/beta <token>` 的两条合成 Session；报告不保存 Session ID 或标题。
 - 三类确定性数据库源位于 [`tests/fixtures/databases/`](../tests/fixtures/databases/README.md)：空库、v1.1.1 全业务库、0/1/500/501/10,000 Evidence 与 10,000 messages 边界库；manifest 固定 hash、schema digest 和行数。
-- H0 只建立失败基线和追踪关系。表中所有生产缺陷仍为 open；下一门禁是 H1，M15–M20 继续冻结。
+- H0 当时只建立失败基线和追踪关系，87 个生产缺陷在该阶段均为 open；当前状态以上方 H1 记录及逐项表格为准。

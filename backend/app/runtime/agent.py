@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from types import SimpleNamespace
 
 from openai import AsyncOpenAI
@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.core.config import settings
+from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, ChatMessage, PlanProposal, RunSteerMessage, Session
 from app.runtime.events import emit_event, publish_stream_event
@@ -115,7 +116,7 @@ def _compact_tool_message(result: dict) -> str:
             return {str(key): compact(item) for key, item in value.items()}
         return value
 
-    payload = json.dumps(compact(result), ensure_ascii=False, default=str)
+    payload = json.dumps(compact(result), ensure_ascii=False, default=_json_default)
     if len(payload) <= limit:
         return payload
     return json.dumps(
@@ -139,14 +140,16 @@ def _event_tool_arguments(raw_arguments: str) -> dict:
         value = json.loads(raw_arguments or "{}")
     except json.JSONDecodeError:
         return {"raw": (raw_arguments or "")[:2000]}
-    encoded = json.dumps(value, ensure_ascii=False, default=str)
+    encoded = json.dumps(value, ensure_ascii=False)
     if len(encoded) > 6000:
         return {"preview": encoded[:6000], "truncated": True}
     return value if isinstance(value, dict) else {"value": value}
 
 
-def _aware(value: datetime) -> datetime:
-    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+def _json_default(value) -> str:
+    if isinstance(value, datetime):
+        return canonical_utc(value)
+    return str(value)
 
 
 def _upsert_card(run_cards: list[dict], card: dict) -> None:
@@ -174,9 +177,9 @@ async def _proposal_snapshot(proposal_id: str) -> dict | None:
             "specialist_reports": row.specialist_reports,
             "status": row.status,
             "plan_id": row.plan_id,
-            "decided_at": row.decided_at.isoformat() if row.decided_at else None,
-            "created_at": row.created_at.isoformat(),
-            "updated_at": row.updated_at.isoformat(),
+            "decided_at": canonical_utc(row.decided_at),
+            "created_at": canonical_utc(row.created_at),
+            "updated_at": canonical_utc(row.updated_at),
         }
 
 
@@ -196,7 +199,7 @@ class AgentRuntime:
 
     async def _start(self, db, run: AgentRun) -> None:
         run.status = "running"
-        run.started_at = datetime.now(timezone.utc)
+        run.started_at = utc_now()
         await db.commit()
         await emit_event(db, run.id, "run.started", "Agent run started", {"trigger": run.trigger})
 
@@ -246,7 +249,7 @@ class AgentRuntime:
                 )).scalar_one_or_none()
                 if existing_user_message is None:
                     db.add(ChatMessage(session_id=session.id, run_id=run.id, role="user", content=run.objective))
-                session.updated_at = datetime.now(timezone.utc)
+                session.updated_at = utc_now()
                 await db.commit()
 
             messages: list[dict] = [
@@ -561,7 +564,7 @@ class AgentRuntime:
                     _upsert_card(run_cards, {
                         "kind": "planning_questions",
                         "source_run_id": run.id,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "created_at": canonical_utc(utc_now()),
                         "intake": {**data, "source_run_id": run.id},
                     })
                 if result.get("ok") and call["name"] == "plan_proposal_create" and data.get("proposal_id"):
@@ -570,7 +573,7 @@ class AgentRuntime:
                         _upsert_card(run_cards, {
                             "kind": "plan_proposal",
                             "source_run_id": run.id,
-                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "created_at": canonical_utc(utc_now()),
                             "proposal": proposal_snapshot,
                         })
                 if data.get("approval_required") and data.get("blocking"):
@@ -628,7 +631,7 @@ class AgentRuntime:
                     content=final_text,
                     message_metadata=message_metadata,
                 ))
-                session.updated_at = datetime.now(timezone.utc)
+                session.updated_at = utc_now()
                 await db.flush()
                 await generate_session_title(
                     session,
@@ -638,7 +641,7 @@ class AgentRuntime:
                 )
                 await MemoryManager(db).compress_session(session, self.client)
             run.status = "completed"
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = utc_now()
             final_budget = self._budget(run)
             self._refresh_elapsed(run, final_budget, ended_at=run.completed_at)
             run.budget_usage = final_budget
@@ -733,7 +736,7 @@ class AgentRuntime:
                         "delta": reasoning,
                         "text": "".join(reasoning_parts),
                     },
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": canonical_utc(utc_now()),
                 })
             content = getattr(delta, "content", None)
             if content:
@@ -746,7 +749,7 @@ class AgentRuntime:
                         "delta": content,
                         "text": "".join(content_parts),
                     },
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": canonical_utc(utc_now()),
                 })
             tool_deltas = getattr(delta, "tool_calls", None)
             if tool_deltas:
@@ -778,7 +781,7 @@ class AgentRuntime:
         if not pending:
             return messages
         for steer in pending:
-            steer.applied_at = datetime.now(timezone.utc)
+            steer.applied_at = utc_now()
             messages.append({"role": "user", "content": f"[中途转向] {steer.content}"})
         await db.commit()
         return messages
@@ -795,7 +798,7 @@ class AgentRuntime:
                 owner_id = run.owner_id
                 session_id = run.session_id
                 run.status = "failed"
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = utc_now()
                 await failure_db.commit()
                 if isinstance(exc, AgentModelTimeout):
                     summary = "模型暂时没有响应。本轮已执行的工具结果和会话内容均已保留，可以直接重试。"
@@ -886,7 +889,13 @@ class AgentRuntime:
         if started:
             budget["elapsed_ms"] = max(
                 0,
-                int(((ended_at or datetime.now(timezone.utc)) - _aware(started)).total_seconds() * 1000),
+                int(
+                    (
+                        coerce_legacy_utc(ended_at or utc_now())
+                        - coerce_legacy_utc(started)
+                    ).total_seconds()
+                    * 1000
+                ),
             )
 
     async def _ensure_session(self, db, run: AgentRun) -> Session | None:

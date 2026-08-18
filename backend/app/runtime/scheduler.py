@@ -1,11 +1,12 @@
 import asyncio
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
+from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, LearningEvent, Notification, Plan, ReviewSchedule, Stage, Task, UserProfile
 from app.notifications.email import EmailReplyPoller
@@ -24,7 +25,7 @@ class ProactiveScheduler:
 
     def start(self) -> None:
         if settings.ENABLE_SCHEDULER and self._loop_task is None:
-            self._started_at = datetime.now(timezone.utc)
+            self._started_at = utc_now()
             self._next_cycle_at = self._started_at + timedelta(seconds=settings.AGENT_HEARTBEAT_SECONDS)
             self._loop_task = asyncio.create_task(self._loop())
 
@@ -75,7 +76,7 @@ class ProactiveScheduler:
     async def _loop(self) -> None:
         while True:
             await asyncio.sleep(settings.AGENT_HEARTBEAT_SECONDS)
-            self._last_cycle_at = datetime.now(timezone.utc)
+            self._last_cycle_at = utc_now()
             self._next_cycle_at = self._last_cycle_at + timedelta(seconds=settings.AGENT_HEARTBEAT_SECONDS)
             try:
                 await self._poll_email_replies()
@@ -115,9 +116,9 @@ class ProactiveScheduler:
             "interval_seconds": settings.AGENT_HEARTBEAT_SECONDS,
             "progress_checkin_hours": settings.AGENT_PROGRESS_CHECKIN_HOURS,
             "candidate_cooldown_minutes": settings.AGENT_CANDIDATE_COOLDOWN_MINUTES,
-            "started_at": self._started_at.isoformat() if self._started_at else None,
-            "last_cycle_at": self._last_cycle_at.isoformat() if self._last_cycle_at else None,
-            "next_cycle_at": self._next_cycle_at.isoformat() if self._next_cycle_at else None,
+            "started_at": canonical_utc(self._started_at),
+            "last_cycle_at": canonical_utc(self._last_cycle_at),
+            "next_cycle_at": canonical_utc(self._next_cycle_at),
             "last_decision": self._last_decision,
             "paused": await self._paused_by_user(),
             "active": bool(latest and latest.status in {"queued", "running", "waiting_approval"}),
@@ -126,13 +127,13 @@ class ProactiveScheduler:
                 "trigger": latest.trigger,
                 "status": latest.status,
                 "plan_id": latest.plan_id,
-                "created_at": latest.created_at.isoformat(),
-                "completed_at": latest.completed_at.isoformat() if latest.completed_at else None,
+                "created_at": canonical_utc(latest.created_at),
+                "completed_at": canonical_utc(latest.completed_at),
             } if latest else None),
         }
 
     async def _next_candidate(self) -> dict | None:
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         async with AsyncSessionLocal() as db:
             recently_checked_plan_ids: set[int] = set()
             if settings.AGENT_CANDIDATE_COOLDOWN_MINUTES > 0:
@@ -213,7 +214,9 @@ class ProactiveScheduler:
                 )).scalars())
                 last_event = next((event for event in activity_events if _is_learning_activity(event)), None)
                 checkin_before = now - timedelta(hours=settings.AGENT_PROGRESS_CHECKIN_HOURS)
-                last_activity_at = _aware(last_event.created_at) if last_event else _aware(plan.created_at)
+                last_activity_at = coerce_legacy_utc(
+                    last_event.created_at if last_event else plan.created_at
+                )
                 recent_notification = (await db.execute(
                     select(Notification.id).where(
                         Notification.owner_id == settings.DEFAULT_OWNER_ID,
@@ -241,10 +244,6 @@ class ProactiveScheduler:
             task = start_tracked_task(run_id, AgentRuntime().run(run_id))
             self._run_tasks.add(task)
             task.add_done_callback(self._run_tasks.discard)
-
-
-def _aware(value: datetime) -> datetime:
-    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 def _is_learning_activity(event: LearningEvent) -> bool:

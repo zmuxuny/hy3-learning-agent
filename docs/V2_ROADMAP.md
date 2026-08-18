@@ -1,10 +1,12 @@
 # Learning Agent 2.0 路线图
 
-更新时间：2026-08-18（Asia/Shanghai）
+更新时间：2026-08-19（Asia/Shanghai）
 目标版本：2.0.0
 当前基线：1.1.1
 
-> 2026-08-18 审查门禁：`develop` 中的 M13/M14 是实现候选，尚未通过领域、崩溃恢复、迁移和真实浏览器验收。M15–M20 暂停，先按 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 完成 H0–H8；H0 建立的逐项失败事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。下方“M13/M14 当前实现状态”仅记录已有代码范围，不构成完成声明。
+> 2026-08-19 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1 已关闭迁移、UTC、备份与恢复基础的 13 个缺陷 ID（15 个基线节点），矩阵剩余 74 个 open ID，下一门禁是 H2；M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成完成声明。
+
+H1 的当前证据为 281 passed；H0 跨阶段回归为 27 passed / 17 strict xfailed；全仓为 441 passed / 98 strict xfailed。外部安装、连续学习闭环和 7 日留存仍待 H8 真人验证。
 
 ## 1. 版本定义
 
@@ -389,12 +391,12 @@ M13 学习账本
 
 - `LearningEvent` 增加 v2 公共信封字段；新增 `EvidenceObservation` 追加式事实表，包含来源、作用域、Rubric/评价者、评分、提示/迁移等级、因果链和幂等键。
 - 提交创建、提交验收、测验评分和带证据的任务完成已经双写；同一幂等键重试会复用原观察，原观察没有编辑或物理删除路径。
-- `study_state_get` 与当前计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；时间往返、完整账本和撤销后的 digest 稳定性仍待修复。
+- `study_state_get` 与当前计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；H1 已关闭 UTC/SQLite 时间往返差异，完整账本和撤销后的 digest 稳定性仍待 H4 修复。
 - 新增独立 `Artifact` 来源表，并在观察中保存 `artifact_id/content_hash`；内容耐久性、文件指纹和幂等冲突语义尚未通过验收。
-- `scripts/rebuild-evidence.py` 已提供重建、审计、v1 回填和派生快照命令；只读审计、迁移和备份先后顺序仍需按 H1 重新设计。
+- `scripts/rebuild-evidence.py` 已提供重建、审计、v1 回填和派生快照命令；H1 已使纯 audit 保持逐字节只读，并要求任何回填/重建写操作先取得协调 lease 和全量验证备份。
 - 新增 41 个网络无关场景名称和报告框架；多数场景尚未构造名称所代表的领域行为和独立断言。
 
-尚未满足 M13 正式标签。除 v1 回填失效/回滚外，审查还确认了时间 canonicalization、undo 后证据继续生效、500 条投影截断、重复成功计权、自由文本 `verified`、Artifact 指纹、幂等冲突和基线场景无独立断言等阻塞项；统一按硬化计划 H0–H4 修复。
+尚未满足 M13 正式标签。H1 已关闭时间 canonicalization 与 audit/备份顺序；v1 回填失效/回滚、undo 后证据继续生效、500 条之后的投影截断、重复成功计权、自由文本 `verified`、Artifact 指纹、幂等冲突和基线场景无独立断言等阻塞项仍须按 H2–H4 修复。
 
 ### M14：技能图与计划映射
 

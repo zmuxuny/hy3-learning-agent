@@ -1,9 +1,9 @@
-from datetime import datetime, timezone
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import PROJECT_ROOT, settings
+from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.models import (
     CalendarEvent,
     ChatMessage,
@@ -38,7 +38,8 @@ class ContextAssembler:
         objective: str = "",
     ) -> ContextSnapshot:
         manifest: list[dict] = []
-        sections = ["# Agent Context", f"Generated: {datetime.now(timezone.utc).isoformat()}"]
+        generated_at = utc_now()
+        sections = ["# Agent Context", f"Generated: {canonical_utc(generated_at)}"]
 
         profile = await self.db.get(UserProfile, owner_id)
         if profile:
@@ -99,7 +100,13 @@ class ContextAssembler:
             relation_map: dict[int, set[str]] = {}
             for link in related_plan_links:
                 relation_map.setdefault(link.plan_id, set()).add(link.relation_type)
-            plans.sort(key=lambda plan: (plan.id in related_plan_ids, plan.updated_at), reverse=True)
+            plans.sort(
+                key=lambda plan: (
+                    plan.id in related_plan_ids,
+                    coerce_legacy_utc(plan.updated_at),
+                ),
+                reverse=True,
+            )
             if plans:
                 sections.append("## Plan index")
                 sections.append("Compact summaries only. Use plan_get before relying on task-level details or changing a plan.")
@@ -111,7 +118,8 @@ class ContextAssembler:
                     relation = ",".join(sorted(relation_map.get(plan.id, set()))) or "none"
                     sections.append(
                         f"- plan:{plan.id} [{plan.status}] {plan.title}; progress={plan.progress:.0%}; "
-                        f"deadline={plan.deadline}; version={plan.version}; relation={relation}; "
+                        f"deadline={canonical_utc(plan.deadline)}; version={plan.version}; "
+                        f"relation={relation}; "
                         f"current={'、'.join(current[:2]) or '无'}; summary={plan.memory_summary or '(empty)'}"
                     )
                     manifest.append({"type": "plan_index", "id": plan.id, "version": plan.version})
@@ -130,7 +138,7 @@ class ContextAssembler:
                         f"- Plan: {plan.title} (plan:{plan.id}, version:{plan.version})",
                         f"- Goal: {plan.goal}",
                         f"- Current level: {plan.current_level}",
-                        f"- Deadline: {plan.deadline}",
+                        f"- Deadline: {canonical_utc(plan.deadline)}",
                         f"- Progress: {plan.progress:.0%}",
                         f"- Plan memory: {plan.memory_summary or '(empty)'}",
                     ]
@@ -139,7 +147,9 @@ class ContextAssembler:
                     sections.append(f"### {stage.title} [{stage.status}]")
                     for task in stage.tasks:
                         sections.append(
-                            f"- task:{task.id} [{task.status}] {task.title}; due={task.due_at}; review={task.review_due_at}; core={task.is_core}"
+                            f"- task:{task.id} [{task.status}] {task.title}; "
+                            f"due={canonical_utc(task.due_at)}; "
+                            f"review={canonical_utc(task.review_due_at)}; core={task.is_core}"
                         )
                 manifest.append({"type": "plan", "id": plan.id, "version": plan.version})
                 evidence_state = await build_plan_evidence_state(self.db, owner_id, plan.id)
@@ -187,7 +197,10 @@ class ContextAssembler:
         if events:
             sections.append("## Recent learning events")
             for event in reversed(events):
-                sections.append(f"- {event.created_at}: {event.event_type} — {event.summary} (event:{event.id})")
+                sections.append(
+                    f"- {canonical_utc(event.created_at)}: "
+                    f"{event.event_type} — {event.summary} (event:{event.id})"
+                )
                 manifest.append({"type": "learning_event", "id": event.id})
 
         review_query = select(ReviewSchedule).where(
@@ -231,7 +244,8 @@ class ContextAssembler:
             sections.append("## Actionable learning state")
             for review in reviews:
                 sections.append(
-                    f"- review:{review.id} due={review.due_at}; plan={review.plan_id}; task={review.task_id}; type={review.review_type}"
+                    f"- review:{review.id} due={canonical_utc(review.due_at)}; "
+                    f"plan={review.plan_id}; task={review.task_id}; type={review.review_type}"
                 )
                 manifest.append({"type": "review", "id": review.id})
             for quiz in quizzes:
@@ -243,7 +257,9 @@ class ContextAssembler:
             sections.append("## Recent notifications")
             for notification in reversed(notifications):
                 sections.append(
-                    f"- {notification.created_at}: [{notification.channel}/{notification.status}] {notification.title} — {notification.body}"
+                    f"- {canonical_utc(notification.created_at)}: "
+                    f"[{notification.channel}/{notification.status}] "
+                    f"{notification.title} — {notification.body}"
                 )
                 manifest.append({"type": "notification", "id": notification.id})
 
@@ -294,7 +310,10 @@ class ContextAssembler:
         if calendar_events:
             sections.append("## Study calendar")
             for event in calendar_events:
-                sections.append(f"- calendar:{event.id} {event.starts_at} — {event.title} [{event.status}]")
+                sections.append(
+                    f"- calendar:{event.id} {canonical_utc(event.starts_at)} — "
+                    f"{event.title} [{event.status}]"
+                )
                 manifest.append({"type": "calendar_event", "id": event.id})
 
         if session_id:
@@ -355,6 +374,7 @@ class ContextAssembler:
             markdown=markdown,
             source_manifest=manifest,
             estimated_tokens=max(1, len(markdown) // 4),
+            created_at=generated_at,
         )
         self.db.add(snapshot)
         await self.db.flush()

@@ -1,5 +1,6 @@
 import hashlib
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -79,47 +80,33 @@ def _protected_runtime_fingerprint() -> str:
 
 
 _PROTECTED_FINGERPRINT_BEFORE_IMPORT = _protected_runtime_fingerprint()
-_REAL_PATH_MKDIR = Path.mkdir
 
+# Configuration import is now side-effect free; runtime directories are
+# created only by the explicit application lifespan boundary.  Point modules
+# that retain a root at import time at a disposable bootstrap root.
+import app.core.config as config_module  # noqa: E402
 
-def _redirect_import_time_runtime_mkdir(
-    path: Path,
-    mode: int = 0o777,
-    parents: bool = False,
-    exist_ok: bool = False,
-) -> None:
-    """Redirect config's eager runtime mkdir calls while app modules import."""
+config_module.PROJECT_ROOT = TEST_BOOTSTRAP_ROOT
 
-    try:
-        relative = path.relative_to(PROJECT_ROOT / "data")
-    except ValueError:
-        target = path
-    else:
-        target = TEST_BOOTSTRAP_ROOT / "data" / relative
-    _REAL_PATH_MKDIR(target, mode=mode, parents=parents, exist_ok=exist_ok)
-
-
-# app.core.config eagerly creates runtime directories at module import.  Patch
-# only that import window, then point modules that copy PROJECT_ROOT at import
-# at the disposable bootstrap root.  Production files are not changed for H0.
-Path.mkdir = _redirect_import_time_runtime_mkdir
-try:
-    import app.core.config as config_module  # noqa: E402
-
-    config_module.PROJECT_ROOT = TEST_BOOTSTRAP_ROOT
-
-    from app.db.database import AsyncSessionLocal, Base, engine  # noqa: E402
-    from app.models import Owner, UserProfile  # noqa: E402
-    import app.api.operations as operations_api  # noqa: E402
-    import app.api.workspace as workspace_api  # noqa: E402
-    import app.context.assembler as context_assembler  # noqa: E402
-    import app.core.envfile as envfile_module  # noqa: E402
-    import app.tools.workspace as workspace_tools  # noqa: E402
-finally:
-    Path.mkdir = _REAL_PATH_MKDIR
+from app.db.database import AsyncSessionLocal, Base, engine  # noqa: E402
+from app.db.migrations import migrate_sqlite_database  # noqa: E402
+from app.models import Owner, UserProfile  # noqa: E402
+import app.api.operations as operations_api  # noqa: E402
+import app.api.workspace as workspace_api  # noqa: E402
+import app.context.assembler as context_assembler  # noqa: E402
+import app.core.envfile as envfile_module  # noqa: E402
+import app.tools.workspace as workspace_tools  # noqa: E402
 
 if _protected_runtime_fingerprint() != _PROTECTED_FINGERPRINT_BEFORE_IMPORT:
     raise RuntimeError("app import modified a protected runtime path")
+
+
+TEST_SCHEMA_TEMPLATE = TEST_DATABASE_DIR / "canonical-template.sqlite3"
+migrate_sqlite_database(
+    TEST_SCHEMA_TEMPLATE,
+    backup_root=TEST_DATABASE_DIR / "template-backups",
+    application_version="pytest",
+)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -159,9 +146,14 @@ def isolated_runtime_root(tmp_path: Path, monkeypatch) -> Path:
 
 @pytest_asyncio.fixture(autouse=True)
 async def clean_database():
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.drop_all)
-        await connection.run_sync(Base.metadata.create_all)
+    # Every test starts from the exact production migration output, including
+    # migration history and canonical indexes.  The files are process-local
+    # temporaries, never a repository or user database.
+    await engine.dispose()
+    for suffix in ("", "-wal", "-shm"):
+        target = TEST_DATABASE_PATH.with_name(TEST_DATABASE_PATH.name + suffix)
+        target.unlink(missing_ok=True)
+    shutil.copyfile(TEST_SCHEMA_TEMPLATE, TEST_DATABASE_PATH)
     async with AsyncSessionLocal() as db:
         db.add(Owner(id="local", display_name="Test learner", timezone="Asia/Shanghai"))
         db.add(UserProfile(owner_id="local"))

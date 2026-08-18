@@ -1,10 +1,11 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.time import canonical_utc, utc_now
 from app.db.database import get_db
 from app.models import Achievement, LearningEvent, Plan, Quiz, ReviewSchedule
 from app.services.gamification import evaluate_achievements
@@ -27,7 +28,8 @@ async def health():
 async def dashboard(db: AsyncSession = Depends(get_db)):
     await evaluate_achievements(db, settings.DEFAULT_OWNER_ID)
     await db.commit()
-    start = datetime.now(timezone.utc) - timedelta(days=83)
+    now = utc_now()
+    start = now - timedelta(days=83)
     event_result = await db.execute(
         select(LearningEvent)
         .where(LearningEvent.owner_id == settings.DEFAULT_OWNER_ID, LearningEvent.created_at >= start)
@@ -52,7 +54,7 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
         .where(
             ReviewSchedule.owner_id == settings.DEFAULT_OWNER_ID,
             ReviewSchedule.status == "scheduled",
-            ReviewSchedule.due_at <= datetime.now(timezone.utc),
+            ReviewSchedule.due_at <= now,
             Plan.status == "active",
         )
     )) or 0)
@@ -77,7 +79,12 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
             for offset in reversed(range(84))
         ],
         "achievements": [
-            {"key": item.key, "title": item.title, "description": item.description, "unlocked_at": item.unlocked_at}
+            {
+                "key": item.key,
+                "title": item.title,
+                "description": item.description,
+                "unlocked_at": canonical_utc(item.unlocked_at),
+            }
             for item in achievement_result.scalars()
         ],
         "due_review_count": due_reviews,

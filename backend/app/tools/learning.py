@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.time import UTCInstant, canonical_utc, coerce_legacy_utc, utc_now
 from app.models import (
     ActivityDay,
     AgentRun,
@@ -34,7 +35,7 @@ class PlanPatchArgs(BaseModel):
     description: str | None = None
     goal: str | None = None
     current_level: str | None = None
-    deadline: datetime | None = None
+    deadline: UTCInstant | None = None
     weekly_minutes: int | None = Field(default=None, ge=0, le=10080)
     preferences: dict[str, Any] | None = None
     expected_outcome: str | None = None
@@ -280,7 +281,7 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
         event_type="submission.created", summary=f"Submitted evidence for: {task.title}",
         payload={"submission_id": submission.id, "type": submission.submission_type, "artifacts": submission.artifacts},
         correlation_id=ctx.run_id,
-        occurred_at=submission.created_at,
+        occurred_at=coerce_legacy_utc(submission.created_at),
     )
     ctx.db.add(learning_event)
     await ctx.db.flush()
@@ -301,7 +302,7 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
             "has_text": bool(submission.content.strip()),
         },
         artifact_refs=[artifact_ref(submission_artifact, kind="submission")],
-        occurred_at=submission.created_at,
+        occurred_at=coerce_legacy_utc(submission.created_at),
         correlation_id=ctx.run_id,
         causation_id=f"learning_event:{learning_event.id}",
     )
@@ -354,7 +355,7 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
     submission.score = args.score
     submission.feedback = args.feedback
     submission.status = "accepted" if passed else "revision_required"
-    submission.checked_at = datetime.now(timezone.utc)
+    submission.checked_at = utc_now()
     submission_artifact, _ = await create_artifact(
         ctx.db,
         owner_id=ctx.owner_id,
@@ -448,7 +449,7 @@ async def resource_list(ctx: ToolContext, args: ResourceListArgs) -> dict:
         "difficulty": item.difficulty,
         "summary": item.summary,
         "why_recommended": item.why_recommended,
-        "verified_at": item.verified_at.isoformat() if item.verified_at else None,
+        "verified_at": canonical_utc(item.verified_at),
         "source": item.source,
     } for item in resources]}
 
@@ -465,7 +466,18 @@ async def learning_event_list(ctx: ToolContext, args: EventListArgs) -> dict:
     if args.event_types:
         query = query.where(LearningEvent.event_type.in_(args.event_types))
     events = list((await ctx.db.execute(query.order_by(LearningEvent.created_at.desc()).limit(args.limit))).scalars())
-    return {"events": [{"id": item.id, "type": item.event_type, "summary": item.summary, "payload": item.payload, "created_at": item.created_at.isoformat()} for item in events]}
+    return {
+        "events": [
+            {
+                "id": item.id,
+                "type": item.event_type,
+                "summary": item.summary,
+                "payload": item.payload,
+                "created_at": canonical_utc(item.created_at),
+            }
+            for item in events
+        ]
+    }
 
 
 async def study_state_get(ctx: ToolContext, args: StudyStateArgs) -> dict:
@@ -481,12 +493,12 @@ async def study_state_get(ctx: ToolContext, args: StudyStateArgs) -> dict:
     next_pending = next(((stage, task) for stage, task in ordered if task.status == "pending"), None)
     current = active or (blocked[0] if blocked else None) or next_pending
     recommended = active or next_pending
-    now = datetime.now(timezone.utc)
+    now = utc_now()
 
     def is_overdue(task: Task) -> bool:
         if task.status in {"completed", "skipped"} or task.due_at is None:
             return False
-        due = task.due_at if task.due_at.tzinfo else task.due_at.replace(tzinfo=timezone.utc)
+        due = coerce_legacy_utc(task.due_at)
         return due < now
 
     overdue = [task for _, task in ordered if is_overdue(task)]
@@ -525,14 +537,24 @@ async def study_state_get(ctx: ToolContext, args: StudyStateArgs) -> dict:
             "core_evidence_pending": len(core_incomplete),
             "reviews_due": len(reviews),
         },
-        "overdue_tasks": [{"id": task.id, "title": task.title, "due_at": task.due_at.isoformat()} for task in overdue],
+        "overdue_tasks": [
+            {"id": task.id, "title": task.title, "due_at": canonical_utc(task.due_at)}
+            for task in overdue
+        ],
         "blocked_tasks": [{"id": task.id, "title": task.title} for _, task in blocked],
-        "scheduled_reviews": [{"id": review.id, "task_id": review.task_id, "due_at": review.due_at.isoformat()} for review in reviews],
+        "scheduled_reviews": [
+            {
+                "id": review.id,
+                "task_id": review.task_id,
+                "due_at": canonical_utc(review.due_at),
+            }
+            for review in reviews
+        ],
         "recent_submissions": [{"id": item.id, "task_id": item.task_id, "status": item.status, "score": item.score} for item in submissions],
         "evidence_state": evidence_state,
         "weekly_minutes": plan.weekly_minutes,
         "completed_estimated_minutes": sum(task.estimated_minutes for task in completed),
-        "generated_at": now.isoformat(),
+        "generated_at": canonical_utc(now),
     }
 
 
@@ -541,7 +563,7 @@ def _submission_dict(item: TaskSubmission) -> dict:
         "id": item.id, "plan_id": item.plan_id, "task_id": item.task_id,
         "type": item.submission_type, "content": item.content, "artifacts": item.artifacts,
         "status": item.status, "score": item.score, "feedback": item.feedback,
-        "created_at": item.created_at.isoformat(),
+        "created_at": canonical_utc(item.created_at),
     }
 
 

@@ -9,8 +9,13 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, text
 
 from app.api.api import api_router
-from app.core.config import PROJECT_ROOT, settings
-from app.db.database import AsyncSessionLocal, create_schema
+from app.core.config import PROJECT_ROOT, prepare_runtime_directories, settings
+from app.db.database import (
+    AsyncSessionLocal,
+    create_schema,
+    validate_runtime_database_target,
+)
+from app.db.maintenance import runtime_state_lease
 from app.models import AgentRun, Owner, Plan, Session, UserProfile  # noqa: F401 - imports register every mapped entity
 from app.runtime.agent import AgentRuntime
 from app.runtime.events import emit_event
@@ -46,12 +51,15 @@ async def verify_database_writable() -> None:
     """Fail fast with a clear message when the local SQLite file is not writable."""
     async with AsyncSessionLocal() as db:
         try:
-            await db.execute(text("CREATE TABLE IF NOT EXISTS _write_probe (id INTEGER)"))
-            await db.execute(text("DELETE FROM _write_probe"))
-            await db.commit()
+            # BEGIN IMMEDIATE proves that the main database can acquire a write
+            # transaction without leaving a table, row, or schema revision.
+            await db.execute(text("BEGIN IMMEDIATE"))
+            await db.execute(text("SELECT 1"))
+            await db.rollback()
         except Exception as exc:
+            await db.rollback()
             raise RuntimeError(
-                f"Database is not writable ({settings.DATABASE_URL}): {type(exc).__name__}: {exc}"
+                f"Database is not writable: {type(exc).__name__}"
             ) from exc
 
 
@@ -148,17 +156,23 @@ async def resume_interrupted_run(run_id: str) -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await create_schema()
-    await verify_database_writable()
-    await ensure_local_owner()
-    resumable_runs = await reconcile_interrupted_runs()
-    proactive_scheduler.start()
-    try:
-        for run_id in resumable_runs:
-            start_tracked_task(run_id, resume_interrupted_run(run_id))
-        yield
-    finally:
-        await proactive_scheduler.stop()
+    # Hold the same cross-process lease used by backup/reset/restore for the
+    # full service lifetime.  It is acquired before any directory creation or
+    # database connection, so an idle server cannot race a state replacement.
+    with runtime_state_lease(PROJECT_ROOT):
+        validate_runtime_database_target(PROJECT_ROOT)
+        prepare_runtime_directories()
+        await create_schema(state_lease_held=True, state_root=PROJECT_ROOT)
+        await verify_database_writable()
+        await ensure_local_owner()
+        resumable_runs = await reconcile_interrupted_runs()
+        proactive_scheduler.start()
+        try:
+            for run_id in resumable_runs:
+                start_tracked_task(run_id, resume_interrupted_run(run_id))
+            yield
+        finally:
+            await proactive_scheduler.stop()
 
 
 app = FastAPI(

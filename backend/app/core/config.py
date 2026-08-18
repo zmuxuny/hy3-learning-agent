@@ -4,6 +4,8 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.version import APPLICATION_VERSION
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -16,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     PROJECT_NAME: str = "Learning Agent"
-    VERSION: str = "1.1.1"
+    VERSION: str = APPLICATION_VERSION
     API_V1_STR: str = "/api/v1"
     DEFAULT_OWNER_ID: str = "local"
     DEFAULT_TIMEZONE: str = "Asia/Shanghai"
@@ -93,12 +95,16 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    settings = Settings()
-    (PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
-    (PROJECT_ROOT / "data" / "context" / "plans").mkdir(parents=True, exist_ok=True)
-    (PROJECT_ROOT / "data" / "context" / "decisions").mkdir(parents=True, exist_ok=True)
-    (PROJECT_ROOT / "data" / "workspace").mkdir(parents=True, exist_ok=True)
-    return settings
+    return Settings()
+
+
+def prepare_runtime_directories(root: Path | None = None) -> None:
+    """Create runtime-owned directories at an explicit startup boundary."""
+
+    runtime_root = root or PROJECT_ROOT
+    (runtime_root / "data" / "context" / "plans").mkdir(parents=True, exist_ok=True)
+    (runtime_root / "data" / "context" / "decisions").mkdir(parents=True, exist_ok=True)
+    (runtime_root / "data" / "workspace").mkdir(parents=True, exist_ok=True)
 
 
 settings = get_settings()
