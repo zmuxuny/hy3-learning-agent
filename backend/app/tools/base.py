@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Any, Awaitable, Callable
 
 from pydantic import BaseModel
@@ -13,6 +14,15 @@ class EmptyArgs(BaseModel):
     pass
 
 
+class ToolEffectKind(str, Enum):
+    """The persistence/external-effect protocol used by one tool."""
+
+    PURE_READ = "pure_read"
+    DATABASE_WRITE = "database_write"
+    EXTERNAL_READ = "external_read"
+    EXTERNAL_WRITE = "external_write"
+
+
 @dataclass
 class ToolContext:
     db: AsyncSession
@@ -23,9 +33,33 @@ class ToolContext:
     session_id: str | None = None
     approval_granted: bool = False
     # Stable provider-assigned id for one concrete tool call.  A model may
-    # intentionally invoke the same write tool with identical arguments twice
-    # in one Run; only a replay of the same call id should be deduplicated.
+    # intentionally invoke the same write tool twice in one Run; only a replay
+    # of this id is deduplicated.  Direct callers without an id get one
+    # fail-closed action slot per run/tool and cannot create ambiguous writes.
     tool_call_id: str | None = None
+    # Populated by the execution coordinator after the durable claim.  Handlers
+    # use these values to associate Operations, evidence, and outbox intents
+    # with the canonical invocation instead of inventing parallel identities.
+    invocation_id: int | None = None
+    action_key: str | None = None
+    request_digest: str | None = None
+    # Opaque lease ownership for the current executor. Finalization is always
+    # fenced by this token so an expired worker cannot overwrite a reclaimed
+    # invocation or commit stale domain facts.
+    claim_token: str | None = None
+    claim_version: int | None = None
+    # Runtime opts into an atomic tool.completed row for database writes.  The
+    # mutable flag lets the caller avoid emitting a duplicate event afterward.
+    persist_completion_event: bool = False
+    completion_event_persisted: bool = False
+    # Mixed external-read/database-write tools invoke this after all provider
+    # waits and before their first ORM mutation/flush. Ordinary write tools are
+    # guarded by the registry before the handler starts.
+    database_write_ready: Callable[[], Awaitable[None]] | None = None
+
+    async def enter_database_write_phase(self) -> None:
+        if self.database_write_ready is not None:
+            await self.database_write_ready()
 
 
 ToolHandler = Callable[[ToolContext, BaseModel], Awaitable[dict[str, Any]]]
@@ -38,10 +72,15 @@ class ToolDefinition:
     args_model: type[BaseModel]
     handler: ToolHandler
     output_model: type[BaseModel] | None = None
+    effect_kind: ToolEffectKind = ToolEffectKind.PURE_READ
     idempotent: bool = False
     # True means the tool can produce a blocking approval request.  Runtime
     # guards still decide conditionally whether a concrete invocation blocks.
     blocking: bool = False
+    # A mixed-effect tool may perform read-only external preflight before it
+    # needs RunEvent sequence serialization. Its handler must explicitly call
+    # ``ctx.enter_database_write_phase()`` before any mutation or flush.
+    defer_write_guard: bool = False
 
     def openai_schema(self) -> dict:
         output_fields = []
@@ -65,6 +104,7 @@ class ToolDefinition:
         return {
             "name": self.name,
             "description": self.description,
+            "effect_kind": self.effect_kind.value,
             "idempotent": self.idempotent,
             "blocking": self.blocking,
             "input_schema": self.args_model.model_json_schema(),

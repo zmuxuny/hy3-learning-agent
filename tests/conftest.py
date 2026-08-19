@@ -91,7 +91,6 @@ config_module.PROJECT_ROOT = TEST_BOOTSTRAP_ROOT
 from app.db.database import AsyncSessionLocal, Base, engine  # noqa: E402
 from app.db.migrations import migrate_sqlite_database  # noqa: E402
 from app.models import Owner, UserProfile  # noqa: E402
-import app.api.operations as operations_api  # noqa: E402
 import app.api.workspace as workspace_api  # noqa: E402
 import app.context.assembler as context_assembler  # noqa: E402
 import app.core.envfile as envfile_module  # noqa: E402
@@ -137,7 +136,6 @@ def isolated_runtime_root(tmp_path: Path, monkeypatch) -> Path:
     monkeypatch.setattr(config_module, "PROJECT_ROOT", runtime_root)
     monkeypatch.setattr(envfile_module, "PROJECT_ROOT", runtime_root)
     monkeypatch.setattr(context_assembler, "PROJECT_ROOT", runtime_root)
-    monkeypatch.setattr(operations_api, "PROJECT_ROOT", runtime_root)
     monkeypatch.setattr(workspace_tools, "WORKSPACE_ROOT", workspace_root)
     monkeypatch.setattr(workspace_api, "WORKSPACE_ROOT", workspace_root)
     monkeypatch.setattr(workspace_api, "UPLOAD_ROOT", upload_root)

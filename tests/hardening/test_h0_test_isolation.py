@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import app.api.operations as operations_api
 import app.api.workspace as workspace_api
 import app.context.assembler as context_assembler
 import app.core.config as config_module
@@ -43,7 +42,6 @@ def test_runtime_file_writes_are_isolated_from_repository(
     assert config_module.PROJECT_ROOT.resolve() == runtime_root
     assert envfile_module.PROJECT_ROOT.resolve() == runtime_root
     assert context_assembler.PROJECT_ROOT.resolve() == runtime_root
-    assert operations_api.PROJECT_ROOT.resolve() == runtime_root
     assert workspace_tools.WORKSPACE_ROOT.resolve() == workspace_root
     assert workspace_api.WORKSPACE_ROOT.resolve() == workspace_root
     assert workspace_api.UPLOAD_ROOT.resolve() == workspace_root / "uploads"

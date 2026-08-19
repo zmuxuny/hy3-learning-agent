@@ -31,6 +31,7 @@ from sqlalchemy.engine import make_url  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.paths import lexical_absolute  # noqa: E402
 from app.db.database import AsyncSessionLocal, create_schema  # noqa: E402
+from app.db.uow import commit as commit_uow  # noqa: E402
 from app.db.maintenance import (  # noqa: E402
     DATABASE_PATHS,
     MaintenanceError,
@@ -135,14 +136,22 @@ async def _run_uncoordinated(args: argparse.Namespace) -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
-    async with AsyncSessionLocal() as db:
-        backfill = None
-        if args.backfill_v1:
+    backfill = None
+    if args.backfill_v1:
+        # Phase 1 owns the only writer transaction.  A failed commit must stop
+        # before a projection derived from uncommitted facts can be published.
+        async with AsyncSessionLocal() as db:
             backfill = await backfill_legacy_observations(
                 db,
                 settings.DEFAULT_OWNER_ID,
                 plan_id=args.plan_id,
             )
+            await commit_uow(db)
+
+    # Phase 2 deliberately uses a fresh session.  It can only observe the
+    # committed ledger, and the session is closed before any mkdir/write/fsync
+    # or atomic replacement below.
+    async with AsyncSessionLocal() as db:
         query = select(EvidenceObservation).where(EvidenceObservation.owner_id == settings.DEFAULT_OWNER_ID)
         if args.plan_id is not None:
             query = query.where(EvidenceObservation.plan_id == args.plan_id)
@@ -172,19 +181,18 @@ async def _run_uncoordinated(args: argparse.Namespace) -> int:
                 ])
                 for plan_id in sorted(plan_ids)
             }
-        if args.write:
-            output_dir = _state_root(args) / "data" / "context" / "evidence"
-            if args.plan_id is not None:
-                _write_json(output_dir / "plans" / f"{args.plan_id}.json", result["projection"])
-            else:
-                for plan_id, projection in result["plans"].items():
-                    _write_json(output_dir / "plans" / f"{plan_id}.json", projection)
-            if args.audit:
-                _write_json(output_dir / "audit.json", result["audit"])
-        if args.backfill_v1:
-            await db.commit()
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 0 if not args.audit or result["audit"]["ok"] else 1
+
+    if args.write:
+        output_dir = _state_root(args) / "data" / "context" / "evidence"
+        if args.plan_id is not None:
+            _write_json(output_dir / "plans" / f"{args.plan_id}.json", result["projection"])
+        else:
+            for plan_id, projection in result["plans"].items():
+                _write_json(output_dir / "plans" / f"{plan_id}.json", projection)
+        if args.audit:
+            _write_json(output_dir / "audit.json", result["audit"])
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if not args.audit or result["audit"]["ok"] else 1
 
 
 async def run(args: argparse.Namespace) -> int:

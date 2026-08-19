@@ -8,10 +8,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.db.uow import flush as flush_uow
 from app.models import LearningEvent, LearningResource, Operation, Plan
 from app.search import fetch_with_safe_redirects, get_search_provider
 from app.search.security import validate_public_url
-from app.tools.base import ToolContext, ToolDefinition, json_safe
+from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
 
 
 class WebSearchArgs(BaseModel):
@@ -66,11 +67,13 @@ class _TextParser(HTMLParser):
 async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
     if ctx.plan_id is not None and args.plan_id not in {None, ctx.plan_id}:
         return {"error": "Plan-focused runs cannot save resources to another plan"}
-    target_plan = args.plan_id if args.plan_id is not None else ctx.plan_id
-    if args.save_results and target_plan is not None:
-        plan = await ctx.db.get(Plan, target_plan)
-        if not plan or plan.owner_id != ctx.owner_id:
-            return {"error": "Plan not found"}
+    if args.save_results:
+        return {
+            "error": (
+                "web_search is read-only; inspect the results and use resource_save "
+                "for one deliberately selected resource"
+            )
+        }
 
     primary_name = settings.WEB_SEARCH_PROVIDER
     fallback_name = settings.WEB_SEARCH_FALLBACK_PROVIDER
@@ -93,38 +96,11 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
         row = result.as_dict()
         row.update(_catalog_metadata(result.url, result.title))
         result_rows.append(row)
-    saved_ids: list[int] = []
-    if args.save_results:
-        existing_urls = {
-            item.url for item in (await ctx.db.execute(
-                select(LearningResource).where(
-                    LearningResource.owner_id == ctx.owner_id,
-                    LearningResource.plan_id == target_plan,
-                )
-            )).scalars()
-        }
-        for result in result_rows:
-            if result["url"] in existing_urls:
-                continue
-            resource = LearningResource(
-                owner_id=ctx.owner_id,
-                plan_id=target_plan,
-                title=result["title"],
-                url=result["url"],
-                resource_type=result["resource_type"],
-                provider=result["provider"],
-                summary=f"Search result for: {args.query}",
-                source=f"web_search:{provider.name}",
-            )
-            ctx.db.add(resource)
-            await ctx.db.flush()
-            saved_ids.append(resource.id)
-        await ctx.db.commit()
     return {
         "provider": provider.name,
         "query": args.query,
         "results": result_rows,
-        "saved_resource_ids": saved_ids,
+        "saved_resource_ids": [],
         "fallback_used": fallback_used,
     }
 
@@ -132,13 +108,15 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
 async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
     if ctx.plan_id is not None and args.plan_id != ctx.plan_id:
         return {"error": "Plan-focused runs cannot save resources to another plan"}
+    # DNS/redirect validation is external I/O and must finish before this
+    # handler opens its domain-write transaction.
+    await validate_public_url(args.url)
+    await ctx.enter_database_write_phase()
     plan = await ctx.db.get(Plan, args.plan_id)
     if not plan or plan.owner_id != ctx.owner_id:
         return {"error": "Plan not found"}
     if plan.status == "archived":
         return {"error": "Restore the plan before saving resources"}
-    await validate_public_url(args.url)
-
     resource = (await ctx.db.execute(
         select(LearningResource).where(
             LearningResource.owner_id == ctx.owner_id,
@@ -150,7 +128,7 @@ async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
     if created:
         resource = LearningResource(owner_id=ctx.owner_id, plan_id=args.plan_id, title=args.title, url=args.url)
         ctx.db.add(resource)
-        await ctx.db.flush()
+        await flush_uow(ctx.db)
         inverse = {"delete": resource.id}
     else:
         inverse = {"changes": {
@@ -181,6 +159,7 @@ async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
         setattr(resource, field, value)
     operation = Operation(
         owner_id=ctx.owner_id,
+        invocation_id=ctx.invocation_id,
         run_id=ctx.run_id,
         tool_name="resource.save",
         entity_type="learning_resource",
@@ -199,7 +178,7 @@ async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
             payload={"resource_id": resource.id, "url": args.url, "provider": provider},
         ),
     ])
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {
         "resource_id": resource.id,
         "plan_id": args.plan_id,
@@ -282,7 +261,7 @@ def _catalog_metadata(url: str, title: str = "") -> dict[str, str]:
 
 
 WEB_TOOLS = [
-    ToolDefinition("web_search", "Search the public web. Results include inferred provider and resource type; raw auto-save is for capture only, not curriculum curation.", WebSearchArgs, web_search, idempotent=True),
-    ToolDefinition("web_open", "Open a public HTTP(S) page, validate every redirect hop, and extract readable text for source verification.", WebOpenArgs, web_open),
-    ToolDefinition("resource_save", "Save or update one deliberately selected learning resource after opening it. Record its course/tutorial type, level, language, summary, and why it fits this plan.", ResourceSaveArgs, resource_save, idempotent=True),
+    ToolDefinition("web_search", "Search the public web without mutating the resource catalog. Results include inferred provider and resource type; use resource_save after inspection.", WebSearchArgs, web_search, effect_kind=ToolEffectKind.EXTERNAL_READ, idempotent=True),
+    ToolDefinition("web_open", "Open a public HTTP(S) page, validate every redirect hop, and extract readable text for source verification.", WebOpenArgs, web_open, effect_kind=ToolEffectKind.EXTERNAL_READ),
+    ToolDefinition("resource_save", "Save or update one deliberately selected learning resource after opening it. Record its course/tutorial type, level, language, summary, and why it fits this plan.", ResourceSaveArgs, resource_save, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True, defer_write_guard=True),
 ]

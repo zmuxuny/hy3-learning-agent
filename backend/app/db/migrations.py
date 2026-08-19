@@ -63,6 +63,11 @@ MIGRATION_REGISTRY: tuple[MigrationRevision, ...] = (
         name="h1_canonical_schema",
         checksum="e7130a9013e7bd4754c3318520d9101f18d18b88c11e8ebbe7c965ead4c5e293",
     ),
+    MigrationRevision(
+        version=2,
+        name="h2_transaction_outbox",
+        checksum="7f42435d235b1497a358abc4353ff6b52771514a4b252c5ba74acec6e1493de1",
+    ),
 )
 if [revision.version for revision in MIGRATION_REGISTRY] != list(
     range(1, len(MIGRATION_REGISTRY) + 1)
@@ -1482,6 +1487,32 @@ def _apply_legacy_backfills(connection) -> None:
         UPDATE notifications SET session_id = (
             SELECT agent_runs.session_id FROM agent_runs WHERE agent_runs.id = notifications.run_id
         ) WHERE session_id IS NULL AND run_id IS NOT NULL
+        """
+    )
+    # H1 invocation rows did not retain validated canonical arguments.  A
+    # running row can therefore represent an interrupted domain or external
+    # write whose outcome is unknowable.  Preserve the absent digest and fence
+    # that row for explicit reconciliation; never synthesize request identity
+    # from the legacy raw-argument hash.
+    connection.exec_driver_sql(
+        """
+        UPDATE tool_invocations
+        SET status = 'needs_reconciliation'
+        WHERE request_digest IS NULL AND status = 'running'
+        """
+    )
+    # H1 delivered email/Web Push inline and had no durable external-effect
+    # receipt.  A surviving queued row therefore cannot prove that delivery
+    # was never attempted.  Keep in-app rows unchanged, but fence external
+    # channels for explicit reconciliation instead of leaving an intent that
+    # the H2 outbox worker can neither identify nor safely replay.
+    connection.exec_driver_sql(
+        """
+        UPDATE notifications
+        SET status = 'needs_reconciliation'
+        WHERE channel IN ('email', 'browser')
+          AND status = 'queued'
+          AND invocation_id IS NULL
         """
     )
 

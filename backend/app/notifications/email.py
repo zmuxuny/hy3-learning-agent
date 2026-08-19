@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.db.uow import commit as commit_uow, flush as flush_uow
 from app.models import AgentRun, ChatMessage, LearningEvent, Notification, QueuedMessage
 from app.notifications.conversation import open_notification_in_conversation
 
@@ -19,6 +20,14 @@ class EmailReplyPoller:
     async def poll(self, db: AsyncSession, owner_id: str) -> list[str]:
         if not self.configured:
             return []
+        if db.in_nested_transaction():
+            raise RuntimeError("email polling cannot coordinate inside a SAVEPOINT")
+        if db.new or db.dirty or db.deleted:
+            raise RuntimeError(
+                "email polling requires a clean session before an IMAP wait"
+            )
+        if db.in_transaction():
+            await commit_uow(db)
         replies = await asyncio.to_thread(self._fetch_unseen)
         run_ids: list[str] = []
         handled_reply = False
@@ -102,7 +111,7 @@ class EmailReplyPoller:
                 model=settings.MODEL_NAME,
             )
             db.add(run)
-            await db.flush()
+            await flush_uow(db)
             db.add(ChatMessage(
                 session_id=session.id,
                 run_id=run.id,
@@ -119,8 +128,13 @@ class EmailReplyPoller:
             run_ids.append(run.id)
             if mailbox_uid:
                 acknowledged_uids.append(mailbox_uid)
-        if handled_reply:
-            await db.commit()
+        if handled_reply or (acknowledged_uids and db.in_transaction()):
+            # Persist the reply/queue/run before the explicit IMAP Seen ACK.
+            # The durable email_uid guard makes a later poll idempotent.  H5
+            # separately upgrades the fetch itself from RFC822 to BODY.PEEK.
+            # Exact duplicate probes may be read-only, but their snapshot must
+            # also end before the external Seen mutation.
+            await commit_uow(db)
         if acknowledged_uids:
             await asyncio.to_thread(self._mark_seen, acknowledged_uids)
         return run_ids

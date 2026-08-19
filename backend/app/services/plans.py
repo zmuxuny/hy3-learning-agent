@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.time import canonical_utc, utc_now
+from app.db.uow import flush as flush_uow
 from app.models import LearningEvent, Plan, ReviewSchedule, Stage, Task
 from app.schemas import PlanCreate, TaskUpdate
 from app.services.gamification import evaluate_achievements
@@ -52,8 +53,6 @@ async def create_plan(
     owner_id: str,
     data: PlanCreate,
     run_id: str | None = None,
-    *,
-    commit: bool = True,
 ) -> Plan:
     stage_count = len(data.stages)
     plan = Plan(
@@ -94,7 +93,7 @@ async def create_plan(
             )
         plan.stages.append(stage)
     db.add(plan)
-    await db.flush()
+    await flush_uow(db)
     db.add(
         LearningEvent(
             owner_id=owner_id,
@@ -105,13 +104,8 @@ async def create_plan(
             payload={"title": plan.title, "stage_count": stage_count},
         )
     )
-    if commit:
-        await db.commit()
-        await evaluate_achievements(db, owner_id)
-        await db.commit()
-        return await get_plan(db, owner_id, plan.id)
-    await db.flush()
     await evaluate_achievements(db, owner_id)
+    await flush_uow(db)
     return plan
 
 
@@ -122,7 +116,6 @@ async def update_task(
     data: TaskUpdate,
     run_id: str | None = None,
     *,
-    commit: bool = True,
     session_id: str | None = None,
 ) -> Task:
     result = await db.execute(
@@ -199,7 +192,7 @@ async def update_task(
         },
     )
     db.add(learning_event)
-    await db.flush()
+    await flush_uow(db)
     if evidence:
         from app.services.evidence import append_observation, artifact_ref, create_artifact
 
@@ -235,11 +228,7 @@ async def update_task(
             correlation_id=run_id,
             causation_id=f"learning_event:{learning_event.id}",
         )
-    if commit:
-        await db.commit()
-        await db.refresh(task)
-    else:
-        await db.flush()
+    await flush_uow(db)
     return task
 
 

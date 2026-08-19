@@ -6,7 +6,16 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
-from app.models import AgentRun, Operation, Plan, RunEvent, ToolInvocation
+from app.models import (
+    AgentRun,
+    Operation,
+    OutboxAction,
+    OutboxReceipt,
+    Plan,
+    RunEvent,
+    ToolInvocation,
+)
+from app.outbox import dispatch_action
 from app.runtime.agent import AgentRuntime
 from app.tools import ToolContext, execute_tool
 from app.tools.registry import tool_contracts
@@ -97,16 +106,45 @@ async def test_idempotent_write_returns_original_result_and_marks_contract():
         )
 
         assert first["ok"] is True
+        assert first["status"] == "pending_delivery"
         assert second["ok"] is True
         assert second["replayed"] is True
+        assert second["status"] == "pending_delivery"
         assert second["data"]["operation_id"] == first["data"]["operation_id"]
         operations = list((await db.execute(
             select(Operation).where(Operation.tool_name == "file.write")
         )).scalars())
         assert len(operations) == 1
+        assert operations[0].status == "pending_delivery"
         invocations = list((await db.execute(select(ToolInvocation))).scalars())
         assert len(invocations) == 1
-        assert invocations[0].status == "committed"
+        assert invocations[0].status == "pending_delivery"
+        action = (await db.execute(select(OutboxAction))).scalar_one()
+        assert action.status == "queued"
+        assert action.operation_id == operations[0].id
+        assert action.invocation_id == invocations[0].id
+        action_key = action.action_key
+        operation_id = operations[0].id
+        invocation_id = invocations[0].id
+        await db.rollback()
+
+    delivery = await dispatch_action(action_key=action_key)
+    assert delivery["status"] == "delivered"
+    assert delivery["delivered"] is True
+
+    async with AsyncSessionLocal() as db:
+        operation = await db.get(Operation, operation_id)
+        invocation = await db.get(ToolInvocation, invocation_id)
+        action = await db.scalar(
+            select(OutboxAction).where(OutboxAction.action_key == action_key)
+        )
+        receipt = await db.scalar(
+            select(OutboxReceipt).where(OutboxReceipt.action_key == action_key)
+        )
+        assert operation.status == "committed"
+        assert invocation.status == "committed"
+        assert action.status == "delivered"
+        assert receipt.status == "delivered"
 
 
 @pytest.mark.asyncio
@@ -115,6 +153,7 @@ async def test_idempotency_replays_only_the_same_provider_tool_call():
         run = AgentRun(owner_id="local", trigger="user_message", objective="写两份相同内容")
         db.add(run)
         await db.commit()
+        run_id = run.id
         raw = json.dumps({"path": "call-id.txt", "content": "hello", "overwrite": True})
 
         first = await execute_tool(
@@ -123,7 +162,7 @@ async def test_idempotency_replays_only_the_same_provider_tool_call():
             ToolContext(
                 db=db,
                 owner_id="local",
-                run_id=run.id,
+                run_id=run_id,
                 trigger="user_message",
                 tool_call_id="call-one",
             ),
@@ -134,7 +173,7 @@ async def test_idempotency_replays_only_the_same_provider_tool_call():
             ToolContext(
                 db=db,
                 owner_id="local",
-                run_id=run.id,
+                run_id=run_id,
                 trigger="user_message",
                 tool_call_id="call-one",
             ),
@@ -145,20 +184,34 @@ async def test_idempotency_replays_only_the_same_provider_tool_call():
             ToolContext(
                 db=db,
                 owner_id="local",
-                run_id=run.id,
+                run_id=run_id,
                 trigger="user_message",
                 tool_call_id="call-two",
             ),
         )
 
         assert first["ok"] is True
+        assert first["status"] == "pending_delivery"
         assert replay["replayed"] is True
+        assert replay["status"] == "pending_delivery"
         assert second_call["ok"] is True
+        assert second_call["status"] == "pending_delivery"
         assert "replayed" not in second_call
         invocations = list((await db.execute(
-            select(ToolInvocation).where(ToolInvocation.run_id == run.id)
+            select(ToolInvocation).where(ToolInvocation.run_id == run_id)
         )).scalars())
         assert len(invocations) == 2
+        assert {item.status for item in invocations} == {"pending_delivery"}
+        actions = list(
+            (
+                await db.execute(
+                    select(OutboxAction).where(OutboxAction.run_id == run_id)
+                )
+            ).scalars()
+        )
+        assert len(actions) == 2
+        assert {item.status for item in actions} == {"queued"}
+        assert len({item.action_key for item in actions}) == 2
 
 
 @pytest.mark.asyncio

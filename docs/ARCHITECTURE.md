@@ -1,11 +1,11 @@
 # 主动 Agent 与上下文架构
 
-> 状态说明（2026-08-19）：本文描述目标架构，并在“旧实现候选”段落记录 develop 上已有的正常路径。H1 的迁移/UTC/备份基础已完成，关闭 13 个缺陷 ID、15 个基线节点；矩阵剩余 74 个 open ID，下一门禁为 H2，M15–M20 继续冻结。Runtime 恢复、事务、Evidence、Context/Memory、Intervention、安全与移动端仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-19）：本文描述目标架构，并明确 develop 上已经验收的边界。H1 的迁移/UTC/备份基础与 H2 的事务/幂等/outbox 已完成；累计关闭 24 个缺陷 ID，矩阵剩余 63 个 open ID，下一门禁为 H3，M15–M20 继续冻结。Runtime 其余恢复语义、Evidence、Context/Memory、Intervention、安全与移动端仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
 
-阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断当前实现已经满足。develop 的旧实现候选只证明正常路径可运行；H0 已用 strict xfail 证明以下关键差距：
+阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断全部门禁已经满足。H0 建立的失败基线会在对应门禁修复后删除 xfail；当前边界为：
 
-- 事务与副作用：H2-TXN-001–009；当前 handler 分散提交，并可能跨模型、HTTP、SMTP 或子 Run await 持有写锁。
-- Runtime：H3-RUN-001–011；审批拒绝、current tool、queued/no-checkpoint、二次中断、finalization、lease 和两套 child runtime 尚不耐久。
+- 事务与副作用：H2-TXN-001–009 已关闭；统一 UoW、physical outer transaction、短 CAS、request digest 和 outbox/receipt 已验收。
+- Runtime：planning delegate 已在 model wait 前保存耐久 checkpoint，提前关闭 H3-RUN-008；审批拒绝、current tool、queued/no-checkpoint、二次中断、finalization、lease、child terminal/父事件、重试和完整预算仍不耐久。
 - Evidence / Competency：H1-TIME-001/002 已关闭；H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002 仍待修复。
 - Context / Intervention：H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002、H5-PRO-001–003。
 - 安全与 UI：H6-*、H7-UI-001–006。当前只允许受控 loopback Demo，不能作为无认证服务器或不可信代码沙箱。
@@ -17,16 +17,20 @@
 后台心跳 ─┼─▶ AgentRuntime ─▶ ContextAssembler ─▶ Hy3
 任务事件 ─┘        ▲                                  │
                   └──── 观察结果 ◀──── ToolRegistry ◀─┘
-                                           │
-                  SQLite / Markdown ◀──────┼──────▶ 通知渠道
-                                           │
-                                   Operation / RunEvent
+                                           │ effect_kind
+                         ┌─────────────────┴──────────────────┐
+                         │                                    │
+                    短 CAS / UoW                         durable outbox
+                         │                                    │
+             SQLite / Operation / RunEvent          独立 dispatcher → 外部渠道
+                         │                                    │
+                         └──────── receipt / reconciliation ──┘
                                            │ SSE
                                            ▼
                                       Harness 工作台
 ```
 
-后台 Worker 持续运行；Hy3 按事件调用。用户消息和主动事件共享同一个可观察、可停止、有轮次预算的工具循环，确定性 Guard 只约束权限、触达频率和安全边界。
+后台 Worker 持续运行；Hy3 按事件调用。用户消息和主动事件共享同一个可观察、可停止、有轮次预算的工具循环，确定性 Guard 约束权限、触达频率和安全边界。H2 的 effect coordinator 进一步根据 `pure_read / database_write / external_read / external_write` 选择执行协议：数据库写在一个 UoW 完成，外部等待不持有 writer，外部写先提交 durable intent 再由 dispatcher 执行。
 
 用户对话和后台心跳都进入同一个 `AgentRuntime`，只改变触发源：
 
@@ -70,7 +74,7 @@
 
 目标契约：V2 从这些运行事件中维护追加式 `EvidenceObservation` 账本。提交、提交验收、测验评分和带证据的任务完成写入结构化来源、评分、提示/迁移等级和幂等键；观察本身不编辑、不物理删除，修订通过后续观察的替代/失效关系表达。`study_state_get` 和计划 Context 必须读取同一个完整、确定性证据摘要。H1-TIME-001/002 已使 UTC instant 与 digest 在 SQLite 往返后稳定；旧在线投影仍会截断 500 条之后的账本，撤销后保留 active success，并重复计权（H4-EVID-001–003）。
 
-目标契约：每条实际证据先登记可重验的不可变 `Artifact`（规范内容指纹、耐久内容、作用域和元数据），观察只保存受限引用。M14 的 `Competency` 只通过显式 key 和可审计映射关联计划、任务、资源，所有 endpoint 由后端校验 owner/plan。旧 Artifact 不覆盖完整 envelope/文件 bytes，旧 Competency unique/edge/link 可破坏计划隔离（H4-EVID-005、H4-COMP-001–004）。
+目标契约：每条实际证据先登记可重验的不可变 `Artifact`（规范内容指纹、耐久内容、作用域和元数据），观察只保存受限引用。H2 已为 Artifact/Observation 固定 request digest，同键异内容稳定冲突并保留原行（H4-EVID-006 提前关闭）；完整 envelope/文件 bytes 仍由 H4-EVID-005 阻塞。M14 的 `Competency` 只通过显式 key 和可审计映射关联计划、任务、资源，所有 endpoint 由后端校验 owner/plan；旧 Competency unique/edge/link 仍可破坏计划隔离（H4-COMP-001–004）。
 
 ### Conversation Window
 
@@ -102,7 +106,11 @@ Session 与 Plan 都支持可恢复归档。归档只改变生命周期和默认
 
 H1 已建立冻结 migration registry/history、规范 fresh/upgrade schema、全局 UTC 类型和协调维护协议。迁移发布、恢复和回滚会固定并复核路径、目录描述符/inode 与内容摘要，只从复验通过的 trusted snapshot 回退；restore 在写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中，source backup 位于安全备份根目录下仍是正常布局。共享 lexical normalization 消除 `.`/`..` 别名但不跟随 symlink，SQLite URI 对空格、`%`、`#`、`?` 安全；legacy `_write_probe` 只接受精确的空单列旧残留，其他近似 schema 失败关闭。该协议覆盖受控 lifecycle lease，不承诺协调绕过 Runtime/maintenance 的原始 SQLite writer。
 
-H1 定向套件为 281 passed，H0 跨阶段回归为 27 passed / 17 strict xfailed，全仓为 441 passed / 98 strict xfailed。外部安装、连续学习闭环和 7 日留存仍须在 H8 由真人记录验证。
+H2 在此基础上追加 schema revision 2：ToolInvocation 保存 canonical args、request digest、effect kind 与 fenced claim；OutboxAction/Receipt 保存外部 intent、destination、claim、receipt 和不确定状态。H1 遗留 running invocation 或无 receipt 的外部 queued notification 无法证明是否执行，因此迁移时 fail closed 到 `needs_reconciliation`，不会从旧 args hash 猜测新身份。
+
+应用事务统一由 `app.db.uow` 协调。SQLite 写路径在创建嵌套 savepoint 前显式建立 physical outer transaction，避免 release 最外层 savepoint 时提前提交；service/tool handler 默认只 flush，API/Runtime coordinator 提交完整原子集。短事务退避只包住可安全重放的 claim/CAS、事件和 receipt callback，不重跑隐藏任意业务工作的 ORM session。
+
+当前 H2 定向为 84 passed，H0 为 49 passed / 84 strict xfailed，普通非-hardening 为 139 passed；完整验证结果统一见 [`STATUS.md`](STATUS.md)。外部安装、连续学习闭环和 7 日留存仍须在 H8 由真人记录验证。
 
 当前生成：
 
@@ -206,9 +214,10 @@ backend/app/
 ├── api/             # HTTP and SSE endpoints
 ├── context/         # assembly, snapshots and consolidation
 ├── core/            # configuration and scheduling
-├── db/              # engine and repositories
+├── db/              # engine, migration and Unit of Work
 ├── models/          # persistent entities
 ├── notifications/   # inbox/browser/email adapters
+├── outbox.py        # external-write intent, dispatch, receipt and reconciliation
 ├── runtime/         # run loop, event stream and sub-agent boundary
 ├── services/        # plans, quizzes and learning events
 └── tools/           # atomic agent capabilities
@@ -255,7 +264,7 @@ Plan Workspace
 
 ## 10. 子 Agent 边界
 
-旧实现候选注册了 `planning_delegate` 与通用 `subagent_spawn/status/join/cancel`，并以只读工具白名单约束正常路径。但 planning delegate 仍是无 checkpoint 的第二套 child runtime，终态与父 completion 事件分次提交，transient error 无耐久重试，预算协议也未统一（H3-RUN-008–011）。
+当前实现注册了 `planning_delegate` 与通用 `subagent_spawn/status/join/cancel`，并以只读工具白名单约束正常路径。H2 已让 planning delegate 使用稳定 action key/index 派生 child ID，并在 model wait 前持久 Context、messages 与 checkpoint，H3-RUN-008 因此提前关闭；child 终态与父 completion 事件仍非原子，transient error 无耐久重试，预算协议也未统一（H3-RUN-009–011）。
 
 这是以只读调查为边界的通用子 Agent v1；计划共创只是它的一种调用方式。其长期约束保持为：
 
@@ -264,6 +273,6 @@ Plan Workspace
 - 返回结果与证据给主 Agent，由主 Agent决定后续动作。
 - 产生独立 `run_id`，并在父 Run 的事件流中可见。
 
-上述 spawn/status/join/cancel、白名单、轮次限制和部分 checkpoint 是正常路径候选，不构成崩溃一致性证明。H2-TXN-009 已复现主/子/心跳 SQLite 竞争，H3-RUN-009 已复现 child 终态提交后父 completion 永久缺失。
+上述 spawn/status/join/cancel、白名单、轮次限制和 planning checkpoint 不构成整个 H3 崩溃一致性证明。H2-TXN-009 已关闭主/子/心跳 SQLite 竞争的 typed retry 边界；H3-RUN-009 仍证明 child 终态提交后父 completion 可能永久缺失。
 
 旧启动逻辑会扫描 `queued/running` Run，但它把合法 queued/no-checkpoint 直接标记 `failed(process_interrupted)`；resume 又会先清旧 checkpoint，审批 decision 未耐久保存时默认 approve。这里记录的是 known-bad baseline（H3-RUN-001/002/004），不是目标恢复机制。H3 必须改为带 phase/version/lease 的统一状态机后再更新本节。

@@ -7,4 +7,4 @@ matching immutable revision in :mod:`app.db.migrations`.
 """
 
 APPLICATION_VERSION = "1.1.1"
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2

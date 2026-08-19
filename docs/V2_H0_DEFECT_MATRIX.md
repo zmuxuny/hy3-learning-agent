@@ -8,7 +8,7 @@
 
 本文件是 H0 新建立的稳定追踪表，不是对一份历史缺陷清单的转录。Git 历史中没有保存逐项 P0/P1 编号或优先级；审查文档只把问题集合描述为 P0/P1。因此下表的 ID 是本轮依据修复门禁派生的稳定 ID，`优先级来源=U` 表示“逐项优先级未留档”，不能引用为原审查编号或原始 P0/P1 分级。
 
-所有 `open · strict xfail` 都表示旧实现已被自动化测试稳定复现，**不表示缺陷已修复**；`fixed · passing` 表示对应门禁已删除 xfail，并由当前生产实现稳定通过原基线断言。全局 `xfail_strict=true` 使未登记的提前通过成为 CI 失败。测试只使用进程级或用例级临时 SQLite、合成数据和离线 fake；不会以 SQLite 打开、查询、迁移、复制或修改正式数据库，也不调用真实邮箱或公网。全局保护夹具只在本机读取受保护路径字节并计算不输出的单向完整性指纹。
+所有 `open · strict xfail` 都表示旧实现已被自动化测试稳定复现，**不表示缺陷已修复**；`fixed · passing` 表示对应门禁已删除 xfail，并由当前生产实现稳定通过原基线断言。一个 ID 若只修复部分节点，会继续标为 open 并明确列出 passing/xfail 数，不能用局部通过关闭整项。全局 `xfail_strict=true` 使未登记的提前通过成为 CI 失败。测试只使用进程级或用例级临时 SQLite、合成数据和离线 fake；不会以 SQLite 打开、查询、迁移、复制或修改正式数据库，也不调用真实邮箱或公网。全局保护夹具只在本机读取受保护路径字节并计算不输出的单向完整性指纹。
 
 来源缩写：
 
@@ -31,6 +31,14 @@
 - `BROWSER`：[`h0_browser_check.mjs`](../scripts/h0_browser_check.mjs)
 - `COV`：[`test_h0_scenario_contracts.py`](../tests/hardening/test_h0_scenario_contracts.py)
 - `REL`：[`test_h0_release_regressions.py`](../tests/hardening/test_h0_release_regressions.py)
+- `H2TXN`：[`test_h2_transaction_protocol.py`](../tests/hardening/test_h2_transaction_protocol.py)
+- `H2MIG`：[`test_h2_migration_contract.py`](../tests/hardening/test_h2_migration_contract.py)
+- `H2OUT`：[`test_h2_outbox_protocol.py`](../tests/hardening/test_h2_outbox_protocol.py)
+- `H2UNDO`：[`test_h2_operation_undo.py`](../tests/hardening/test_h2_operation_undo.py)
+- `H2PROC`：[`test_h2_process_faults.py`](../tests/hardening/test_h2_process_faults.py)
+- `H2FILE`：[`test_h2_local_file_protocol.py`](../tests/hardening/test_h2_local_file_protocol.py)
+- `H2MEM`：[`test_h2_memory_transaction_boundary.py`](../tests/hardening/test_h2_memory_transaction_boundary.py)
+- `DOC`：[`test_doc_links.py`](../tests/test_doc_links.py)
 
 ## H0：覆盖真实性
 
@@ -60,15 +68,15 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H2-TXN-001 | 工具必须声明副作用类型，写事务由单一 UoW 持有；旧 handler/service 各自 `commit()`。 | HP6, STATUS | TXN | U | H2 | open · strict xfail / — |
-| H2-TXN-002 | 同一 ToolInvocation 并发 claim 只能有一个执行者，输家得到 typed replay/claim 结果；旧 SELECT→INSERT 在错误边界外冲突。 | HP6 | TXN | U | H2 | open · strict xfail / — |
-| H2-TXN-003 | stable action key 与 canonical request digest 必须分离；同 key 异内容返回 `idempotency_conflict`，旧实现执行第二次。 | HP6 | TXN | U | H2 | open · strict xfail / — |
-| H2-TXN-004 | 领域对象、Operation、Evidence、LearningEvent、Invocation 结果必须全有或全无；旧实现分次提交。 | HP6, STATUS | TXN | U | H2 | open · strict xfail / — |
-| H2-TXN-005 | 等待 HTTP/搜索时不得持有 SQLite writer；旧未提交 Invocation claim 跨外部 await。 | HP6 | TXN | U | H2 | open · strict xfail / — |
-| H2-TXN-006 | 等待标题/压缩模型和取消 child 时不得持有父写事务或形成自锁；旧 finalization 先 flush 后 await。 | HP6 | TXN（2 节点） | U | H2 | open · strict xfail / — |
-| H2-TXN-007 | SMTP 接受而 receipt commit 失败必须进入 outbox reconciliation，不能盲重发；旧重试会重复发送。 | HP6 | TXN | U | H2 | open · strict xfail / — |
-| H2-TXN-008 | 文件写入与数据库故障必须可回滚或留下耐久 reconciliation；旧实现可留下孤儿文件。 | HP6 | TXN | U | H2 | open · strict xfail / — |
-| H2-TXN-009 | 主 Run、子 Run、心跳并发遇锁必须形成可重试耐久工作；旧锁异常直接逃逸或丢 Run。 | HP4, HP6 | TXN | U | H2 | open · strict xfail / — |
+| H2-TXN-001 | 工具必须声明副作用类型，写事务由单一 UoW 持有；旧 handler/service 各自 `commit()`。 | HP6, STATUS | TXN, H2TXN | U | H2 | fixed · passing / H2 阶段 |
+| H2-TXN-002 | 同一 ToolInvocation 并发 claim 只能有一个执行者，输家得到 typed replay/claim 结果；旧 SELECT→INSERT 在错误边界外冲突。 | HP6 | TXN, H2TXN | U | H2 | fixed · passing / H2 阶段 |
+| H2-TXN-003 | stable action key 与 canonical request digest 必须分离；同 key 异内容返回 `idempotency_conflict`，旧实现执行第二次。 | HP6 | TXN, H2TXN | U | H2 | fixed · passing / H2 阶段 |
+| H2-TXN-004 | 领域对象、Operation、Evidence、LearningEvent、Invocation 结果必须全有或全无；旧实现分次提交。 | HP6, STATUS | TXN, H2TXN | U | H2 | fixed · passing / H2 阶段 |
+| H2-TXN-005 | 等待 HTTP/搜索时不得持有 SQLite writer；旧未提交 Invocation claim 跨外部 await。 | HP6 | TXN, H2TXN, H2MEM | U | H2 | fixed · passing / H2 阶段 |
+| H2-TXN-006 | 等待标题/压缩模型和取消 child 时不得持有父写事务或形成自锁；旧 finalization 先 flush 后 await。 | HP6 | TXN（2 节点）, H2TXN | U | H2 | fixed · passing / H2 阶段 |
+| H2-TXN-007 | SMTP 接受而 receipt commit 失败必须进入 outbox reconciliation，不能盲重发；旧重试会重复发送。 | HP6 | TXN, H2OUT, H2PROC | U | H2 | fixed · passing / H2 阶段 |
+| H2-TXN-008 | 文件写入与数据库故障必须可回滚或留下耐久 reconciliation；旧实现可留下孤儿文件。 | HP6 | TXN, H2OUT, H2UNDO, H2PROC, H2FILE | U | H2 | fixed · passing / H2 阶段 |
+| H2-TXN-009 | 主 Run、子 Run、心跳并发遇锁必须形成可重试耐久工作；旧锁异常直接逃逸或丢 Run。 | HP4, HP6 | TXN, H2TXN, H2MIG | U | H2 | fixed · passing / H2 阶段 |
 
 ## H3：耐久 Runtime、Queue 与子 Agent
 
@@ -81,7 +89,7 @@
 | H3-RUN-005 | final reply、ChatMessage 与终态必须有稳定 finalization phase/key；旧 kill-point 会丢回复或重放 final。 | HP7 | RUN | U | H3 | open · strict xfail / — |
 | H3-RUN-006 | final stream 期间到达的 steer 必须被消费或原子转队列；旧终态留下 `applied_at=NULL`。 | HP7 | RUN | U | H3 | open · strict xfail / — |
 | H3-RUN-007 | reconcile 必须使用 lease/version/CAS，单 Run 只能被一个 worker 领取；旧实现可双恢复。 | HP7 | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-008 | planning delegate 必须复用统一 durable child 状态机并在 model wait 前 checkpoint；旧实现是无 checkpoint 的第二套 runtime。 | HP7 | RUN | U | H3 | open · strict xfail / — |
+| H3-RUN-008 | planning delegate 必须复用统一 durable child 状态机并在 model wait 前 checkpoint；旧实现是无 checkpoint 的第二套 runtime。 | HP7 | RUN, H2TXN | U | H3 | fixed · passing / H2 提前关闭 |
 | H3-RUN-009 | child 终态与父 `subagent.completed` 投影必须可原子提交/修复；旧分次提交会永久缺父事件。 | HP7 | RUN | U | H3 | open · strict xfail / — |
 | H3-RUN-010 | 可重试模型错误必须有有界、可观察、耐久重试；旧 child 第一次超时即失败并清 checkpoint。 | HP7 | RUN | U | H3 | open · strict xfail / — |
 | H3-RUN-011 | child 与主 Run 必须共享并持久化 model/tool/time/network/cost 预算；旧 child 只存局部工具计数。 | HP7 | RUN | U | H3 | open · strict xfail / — |
@@ -95,7 +103,7 @@
 | H4-EVID-003 | 一次 accepted submission 只能贡献一次主成功；旧 task completion 与 submission 双重计权。 | HP8, VR13 | EVID | U | H4 | open · strict xfail / — |
 | H4-EVID-004 | self-report、checkbox、自由文本不能仅凭 `verified/passed` 达到 demonstrated；旧 reducer 只信 outcome。 | HP8, VR13 | EVID（3 节点） | U | H4 | open · strict xfail / — |
 | H4-EVID-005 | Artifact 必须使用规范 envelope 指纹并耐久保存文件 bytes；旧实现 body/metadata 二选一且只记路径。 | HP8, VR13 | EVID（2 节点） | U | H4 | open · strict xfail / — |
-| H4-EVID-006 | Observation/Artifact 同幂等键异内容必须稳定冲突且原行不变；旧实现静默复用。 | HP8, VR13 | EVID（2 节点） | U | H4 | open · strict xfail / — |
+| H4-EVID-006 | Observation/Artifact 同幂等键异内容必须稳定冲突且原行不变；旧实现静默复用。 | HP8, VR13 | EVID（2 节点）, H2TXN | U | H4 | fixed · passing / H2 提前关闭 |
 | H4-EVID-007 | `assesses` 必须自动关联 Evidence，且一条行为可映射多个技能；旧模型只有单 competency。 | HP8, VR14 | COMP（2 节点） | U | H4 | open · strict xfail / — |
 | H4-EVID-008 | competency 过滤必须在 limit/pagination 前完成；旧实现先取最新 N 条再在 Python 过滤。 | HP8, VR14 | COMP | U | H4 | open · strict xfail / — |
 | H4-COMP-001 | 计划私有 competency key 的唯一性必须包含 plan；旧 owner-wide unique 阻止不同计划复用同 key。 | HP8, VR14 | COMP | U | H4 | open · strict xfail / — |
@@ -141,7 +149,7 @@
 | H6-TRUST-001 | Web/File/Email 内容必须标成 untrusted，且不能成为隐式写授权；旧外部内容进入模型后可触发持久写。 | HP10 | SEC（3 节点） | U | H6 | open · strict xfail / — |
 | H6-WEB-001 | fetch 必须拒绝所有 non-global 地址、防 DNS rebinding、限制 wire/decompressed bytes、精确校验 Content-Type；旧边界均可绕过。 | HP10 | SEC（5 节点） | U | H6 | open · strict xfail / — |
 | H6-ENV-001 | 子进程 allowlist 中的 `PATH` 必须是固定可信值，解释器不得按父 PATH 解析；旧实现把父 PATH 原样带入并可被劫持。 | HP10 | SEC | U | H6 | open · strict xfail / — |
-| H6-CONFIG-001 | `.env` 更新必须拒绝控制字符、使用安全原子临时文件并可无损往返复杂值；旧实现可注入/跟随 symlink/损坏值。 | HP10 | SEC（3 节点） | U | H6 | open · strict xfail / — |
+| H6-CONFIG-001 | `.env` 更新必须拒绝控制字符、使用安全原子临时文件并可无损往返复杂值；旧实现可注入/跟随 symlink/损坏值。H2 已关闭“可预测临时文件跟随预置 symlink”节点，但控制字符与复杂值往返仍未修复。 | HP10 | SEC（1 passing / 2 strict xfail）, H2FILE | U | H6 | open · partial passing / H2 部分硬化 |
 | H6-REDACT-001 | tool trace、模型观察、RunEvent、Context、诊断错误必须统一脱敏；旧多条路径原样持久化合成 secret。 | HP10 | SEC（4 节点） | U | H6 | open · strict xfail / — |
 
 ## H7：前端状态与浏览器契约
@@ -172,9 +180,16 @@ H0 的 passing contract tests 只证明清单完整、输入/oracle/mutant 互�
 
 ## 验收记录
 
-### H1 当前结果（2026-08-19）
+### H2 当前结果（2026-08-19）
 
-- H1 的 13 个缺陷 ID、15 个基线节点均已删除 xfail 并固定通过；矩阵当前剩余 74 个 open ID，下一门禁是 H2，M15–M20 继续冻结。
+- H2-TXN-001–009 的 9 个 ID、10 个原基线节点均已删除 xfail 并固定通过；同一 request identity 工作提前关闭 H4-EVID-006 的 2 个节点，planning delegate checkpoint 提前关闭 H3-RUN-008 的 1 个节点。H6-CONFIG-001 有 1 个节点提前通过但仍有 2 个 strict xfail，因此该 ID 不关闭。
+- 当前累计关闭 24 个 defect ID、剩余 63 个 open ID；H0 当前为 49 passed、84 strict xfailed，0 XPASS、0 unexpected failure。下一门禁为 H3，M15–M20 继续冻结。
+- H2 定向套件为 84 passed，包含新增的 4 个 physical outer transaction/savepoint 与 nested transaction guard 节点，覆盖 TXN/H2TXN/H2MIG/H2OUT/H2UNDO/H2PROC/H2FILE/H2MEM；普通非-hardening 回归为 139 passed。前端 Node 为 6 passed，生产构建通过，完整与 production-only audit 均为 0 vulnerabilities；DOC 与本地相对链接检查通过。
+- H2 不把外部副作用的不确定状态伪装成成功：SMTP/Web Push/subprocess 等待人工或 provider 对账，仅 workspace effect 可按 hash 自动恢复。真实 SMTP/VAPID 和外部用户验收尚未执行；完整 pytest 的待确认结果只在 `STATUS.md` 保留一个占位符。
+
+### H1 收口记录（2026-08-19）
+
+- H1 的 13 个缺陷 ID、15 个基线节点均已删除 xfail 并固定通过；H1 收口当时剩余 74 个 open ID、下一门禁是 H2。该数字是历史快照，当前状态以上方 H2 记录及逐项表格为准。
 - H1 定向套件共 281 passed：时间 10、迁移协议 183、维护 79、Evidence rebuild 协调 5、迁移单元 4。
 - H0 跨阶段回归为 27 passed、17 strict xfailed；全仓为 441 passed、98 strict xfailed，没有非预期失败或 XPASS。
 

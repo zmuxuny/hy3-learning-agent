@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.time import UTCInstant, canonical_utc, coerce_legacy_utc, utc_now
+from app.db.uow import flush as flush_uow
 from app.models import (
     ActivityDay,
     AgentRun,
@@ -25,7 +26,7 @@ from app.models import (
 from app.schemas import TaskCreate, TaskUpdate
 from app.services.evidence import append_observation, artifact_ref, build_plan_evidence_state, create_artifact
 from app.services import plans as plan_service
-from app.tools.base import ToolContext, ToolDefinition, json_safe
+from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
 
 
 class PlanPatchArgs(BaseModel):
@@ -187,13 +188,14 @@ async def plan_patch(ctx: ToolContext, args: PlanPatchArgs) -> dict:
     )
     ctx.db.add(event)
     operation = Operation(
-        owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="plan.patch",
+        owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
+        run_id=ctx.run_id, tool_name="plan.patch",
         entity_type="plan", entity_id=str(plan.id),
         forward_patch={"changes": json_safe(changes), "reason": args.reason},
         inverse_patch={"changes": before},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {"plan_id": plan.id, "version": plan.version, "operation_id": operation.id, "undo_available": True}
 
 
@@ -209,14 +211,15 @@ async def stage_create(ctx: ToolContext, args: StageCreateArgs) -> dict:
             existing_stage.position += 1
     stage = Stage(plan_id=plan.id, title=args.title, description=args.description, objectives=args.objectives, position=position)
     ctx.db.add(stage)
-    await ctx.db.flush()
+    await flush_uow(ctx.db)
     plan.version += 1
     operation = Operation(
-        owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="stage.create",
+        owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
+        run_id=ctx.run_id, tool_name="stage.create",
         entity_type="stage", entity_id=str(stage.id), forward_patch={"created": stage.id}, inverse_patch={"delete": stage.id},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {"stage_id": stage.id, "plan_id": plan.id, "operation_id": operation.id, "undo_available": True}
 
 
@@ -235,14 +238,15 @@ async def task_create(ctx: ToolContext, args: TaskCreateArgs) -> dict:
     values = args.model_dump(exclude={"stage_id", "metadata"})
     task = Task(stage_id=stage.id, position=len(existing), task_metadata=args.metadata, **values)
     ctx.db.add(task)
-    await ctx.db.flush()
+    await flush_uow(ctx.db)
     plan.version += 1
     operation = Operation(
-        owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="task.create",
+        owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
+        run_id=ctx.run_id, tool_name="task.create",
         entity_type="task", entity_id=str(task.id), forward_patch={"created": task.id}, inverse_patch={"delete": task.id},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {"task_id": task.id, "stage_id": stage.id, "operation_id": operation.id, "undo_available": True}
 
 
@@ -261,7 +265,7 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
         submission_type=args.submission_type, content=args.content, artifacts=args.artifacts,
     )
     ctx.db.add(submission)
-    await ctx.db.flush()
+    await flush_uow(ctx.db)
     submission_artifact, _ = await create_artifact(
         ctx.db,
         owner_id=ctx.owner_id,
@@ -284,7 +288,7 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
         occurred_at=coerce_legacy_utc(submission.created_at),
     )
     ctx.db.add(learning_event)
-    await ctx.db.flush()
+    await flush_uow(ctx.db)
     await append_observation(
         ctx.db,
         owner_id=ctx.owner_id,
@@ -306,7 +310,7 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
         correlation_id=ctx.run_id,
         causation_id=f"learning_event:{learning_event.id}",
     )
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {"submission_id": submission.id, "status": submission.status, "task_id": task.id}
 
 
@@ -362,7 +366,7 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
         artifact_type="submission",
         source_uri=f"submission:{submission.id}",
         idempotency_key=f"submission:{submission.id}:artifact",
-        title=f"提交：任务 {submission.task_id}",
+        title=f"提交：{task.title}",
         content=submission.content,
         metadata={"submission_type": submission.submission_type, "artifacts": submission.artifacts},
         plan_id=submission.plan_id,
@@ -379,7 +383,6 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
             task.id,
             TaskUpdate(status="completed", evidence=evidence),
             ctx.run_id,
-            commit=False,
             session_id=ctx.session_id,
         )
         award_inverse = await _award_completion(ctx, task)
@@ -393,7 +396,7 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
         occurred_at=submission.checked_at,
     )
     ctx.db.add(learning_event)
-    await ctx.db.flush()
+    await flush_uow(ctx.db)
     await append_observation(
         ctx.db,
         owner_id=ctx.owner_id,
@@ -416,13 +419,14 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
         causation_id=f"learning_event:{learning_event.id}",
     )
     operation = Operation(
-        owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="submission.check",
+        owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
+        run_id=ctx.run_id, tool_name="submission.check",
         entity_type="submission", entity_id=str(submission.id),
         forward_patch={"score": args.score, "status": submission.status},
         inverse_patch={"submission": json_safe(before_submission), "task": json_safe(before_task), "award": award_inverse},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {
         "submission_id": submission.id, "task_id": task.id, "status": submission.status,
         "task_status": task.status, "score": submission.score,
@@ -580,7 +584,7 @@ async def _award_completion(ctx: ToolContext, task: Task) -> dict:
     if day is None:
         day = ActivityDay(owner_id=ctx.owner_id, date=day_key)
         ctx.db.add(day)
-        await ctx.db.flush()
+        await flush_uow(ctx.db)
         day_before = None
     else:
         day_before = {"xp": day.xp, "completed_tasks": day.completed_tasks, "passed_quizzes": day.passed_quizzes}
@@ -593,14 +597,14 @@ async def _award_completion(ctx: ToolContext, task: Task) -> dict:
 
 
 LEARNING_TOOLS = [
-    ToolDefinition("plan_patch", "Modify plan metadata or timing. Background goal/status changes require approval; successful changes are reversible.", PlanPatchArgs, plan_patch, idempotent=True, blocking=True),
-    ToolDefinition("stage_create", "Append a reversible stage to the focused learning plan.", StageCreateArgs, stage_create, idempotent=True),
-    ToolDefinition("task_create", "Add a reversible task to a stage in the focused learning plan.", TaskCreateArgs, task_create, idempotent=True),
-    ToolDefinition("submission_create", "Submit text, code, file references, or links as durable evidence for a task.", SubmissionCreateArgs, submission_create, idempotent=True),
-    ToolDefinition("submission_get", "Inspect one task submission and its artifacts before evaluating it.", SubmissionIdArgs, submission_get),
-    ToolDefinition("submission_list", "List recent submissions for a task or focused plan.", SubmissionListArgs, submission_list),
-    ToolDefinition("submission_check", "Record an evidence-based submission verdict; accepted work completes the task and awards progress.", SubmissionCheckArgs, submission_check, idempotent=True),
-    ToolDefinition("resource_list", "List learning resources saved from web research for the focused plan.", ResourceListArgs, resource_list),
-    ToolDefinition("learning_event_list", "Retrieve immutable learning events relevant to the current plan or task.", EventListArgs, learning_event_list),
-    ToolDefinition("study_state_get", "Read one canonical, versioned progress snapshot with the current task, recommended next step, evidence, blockers, overdue work, reviews, and recent submissions.", StudyStateArgs, study_state_get),
+    ToolDefinition("plan_patch", "Modify plan metadata or timing. Background goal/status changes require approval; successful changes are reversible.", PlanPatchArgs, plan_patch, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True, blocking=True),
+    ToolDefinition("stage_create", "Append a reversible stage to the focused learning plan.", StageCreateArgs, stage_create, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True),
+    ToolDefinition("task_create", "Add a reversible task to a stage in the focused learning plan.", TaskCreateArgs, task_create, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True),
+    ToolDefinition("submission_create", "Submit text, code, file references, or links as durable evidence for a task.", SubmissionCreateArgs, submission_create, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True),
+    ToolDefinition("submission_get", "Inspect one task submission and its artifacts before evaluating it.", SubmissionIdArgs, submission_get, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("submission_list", "List recent submissions for a task or focused plan.", SubmissionListArgs, submission_list, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("submission_check", "Record an evidence-based submission verdict; accepted work completes the task and awards progress.", SubmissionCheckArgs, submission_check, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True),
+    ToolDefinition("resource_list", "List learning resources saved from web research for the focused plan.", ResourceListArgs, resource_list, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("learning_event_list", "Retrieve immutable learning events relevant to the current plan or task.", EventListArgs, learning_event_list, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("study_state_get", "Read one canonical, versioned progress snapshot with the current task, recommended next step, evidence, blockers, overdue work, reviews, and recent submissions.", StudyStateArgs, study_state_get, effect_kind=ToolEffectKind.PURE_READ),
 ]

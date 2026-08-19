@@ -1,6 +1,6 @@
 # 产品定义
 
-> 状态说明（2026-08-18）：本文主要定义目标产品契约。develop 上已有正常路径候选，但 H0 已证明 Runtime、事务、Evidence、Context、提醒、安全和移动端仍有阻塞缺陷；逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前只建议受控 loopback Demo。
+> 状态说明（2026-08-19）：本文主要定义目标产品契约。H1 与 H2 已完成，累计关闭 24 个缺陷 ID、剩余 63 个 open ID，下一门禁是 H3；Runtime finalization、Evidence、Context、提醒、安全和移动端仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前只建议受控 loopback Demo。
 
 ## 一句话描述
 
@@ -58,7 +58,7 @@ Hy3 读取经过组装的上下文并自主决策。系统再经过冷却时间�
 
 ## 自主权模型
 
-目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。持久化业务变更必须产生版本或审计记录；外部副作用必须先进入 outbox，并能表达 uncertain/needs-reconciliation，不能伪装为可撤销或安全重放。旧实现尚不满足 H2/H3/H6。
+目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW，并用 physical outer transaction 防止最外层 SQLite savepoint 提前提交；持久化业务变更产生版本或审计记录，外部副作用可表达 uncertain/needs-reconciliation。H3 的 Runtime finalization/child 预算、H4 的领域语义与 H6 的安全边界仍未满足完整目标契约。
 
 - **自动执行**：提醒、抽查、安排复习、创建通知、生成临时学习材料。
 - **自动执行且可撤销**：调整任务时间、创建补救任务、重排低风险任务。
@@ -110,17 +110,17 @@ Plan
 - 跨计划全局短期记忆
 - 经确认的全局长期画像
 
-数据库存储结构化事实，同时生成可读 Markdown 快照。用户可以在“AI 记忆”页面查看来源和使用痕迹、确认候选、提出纠正、归档与恢复；纠正会保留新旧替代关系，公开 API 不物理删除历史认识。
+数据库存储结构化事实，同时生成可读 Markdown 快照。用户可以在“AI 记忆”页面查看来源和使用痕迹、确认候选、提出纠正、归档与恢复；纠正会保留新旧替代关系，公开 API 不物理删除历史认识。当前跨重启仍以 Markdown 快照为投影边界，结构化 Context Pack 与完整 source-version 重建属于 H5/M17 债务。
 
 ## 通知渠道
 
-站内收件箱是无需外部凭据的默认渠道；浏览器通知和 SMTP/IMAP 是可选增强。所有渠道共享唯一 Intervention 与 Session、邮件 reply job 耐久提交后才 ack，是 H5 的目标契约；当前只有正常路径候选，不能承诺在活动 Run、归档计划或进程中断下保持该语义。
+站内收件箱是无需外部凭据的默认渠道；浏览器通知和 SMTP/IMAP 是可选增强。H2 已要求 SMTP/WebPush 先写耐久 outbox，发送中断后保留 uncertain/needs-reconciliation，不能盲目重放；只有 workspace 文件可凭已持久化 hash 自动恢复。所有渠道共享唯一 Intervention 与 Session、邮件 reply job 耐久提交后才 ack 仍是 H5 的目标契约，不能承诺在活动 Run、归档计划或进程中断下已经满足该语义。
 
 应用关闭或主机停机时不保证提醒；用户需要让本地服务持续运行。
 
 ## Harness 体验
 
-Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用户消息、后台心跳、任务事件、复习到期和邮件回复进入同一个耐久 Runtime；Agent 自主选择工具，确定性 Guard 强制权限、频率、预算和安全边界。旧实现尚无统一 lease/phase/UoW/outbox，不能以 Prompt 或正常路径替代这些后端约束。
+Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用户消息、后台心跳、任务事件、复习到期和邮件回复进入同一个耐久 Runtime；Agent 自主选择工具，确定性 Guard 强制权限、频率、预算和安全边界。H2 已落实 UoW、幂等 CAS 与 outbox；统一 lease/phase、终态提交和崩溃后的 finalization 仍是 H3 债务，不能以 Prompt 或正常路径替代这些后端约束。
 
 前端以 Session 为连续对话主画布和侧栏导航单位；这些交互已有正常路径候选。目标状态要求 steer 的实时事实顺序、SSE 断线对账、归档焦点清理、提醒 target 和唯一根 Run 都以耐久后端事实恢复；当前 H3-RUN-006/007 与 H7-UI-002–005 仍失败。
 
@@ -137,7 +137,7 @@ Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用
 - 进入计划工作区会显示计划焦点；“新对话”始终回到全局焦点。浏览列表、后台刷新和 Run 完成都不能偷偷改变当前页面或焦点。
 - 切换焦点使用新的会话边界，避免一个计划的近期原始对话无意进入另一计划；有价值的跨计划结论仍需通过全局记忆候选提升。
 
-统一主 Agent 负责证据、权限和最终写操作；受限子 Run 的 spawn/status/join/cancel 与只读白名单已有正常路径候选。planning delegate 尚未统一 checkpoint，child final/parent event、重试和预算也未耐久闭环（H3-RUN-008–011）。
+统一主 Agent 负责证据、权限和最终写操作；受限子 Run 的 spawn/status/join/cancel 与只读白名单已有正常路径候选。H2 已让 planning delegate 在模型等待前持久化确定性 AgentRun/checkpoint，关闭 H3-RUN-008；child final/parent event、重试和预算仍未耐久闭环（H3-RUN-009–011）。
 
 ## 视觉与游戏化
 

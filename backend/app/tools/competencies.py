@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.db.uow import flush as flush_uow
 from app.models import LearningResource, Operation
 from app.services.competencies import (
     add_edge,
@@ -12,7 +13,7 @@ from app.services.competencies import (
     link_competency,
 )
 from app.services.evidence import list_observations, observation_dict
-from app.tools.base import ToolContext, ToolDefinition, json_safe
+from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
 
 
 class CompetencyCreateArgs(BaseModel):
@@ -80,6 +81,7 @@ async def competency_create(ctx: ToolContext, args: CompetencyCreateArgs) -> dic
         return {"error": str(exc)}
     operation = Operation(
         owner_id=ctx.owner_id,
+        invocation_id=ctx.invocation_id,
         run_id=ctx.run_id,
         tool_name="competency.create",
         entity_type="competency",
@@ -88,7 +90,7 @@ async def competency_create(ctx: ToolContext, args: CompetencyCreateArgs) -> dic
         inverse_patch={"delete": competency.id} if created else {},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {"competency_id": competency.id, "key": competency.key, "created": created, "operation_id": operation.id}
 
 
@@ -114,6 +116,7 @@ async def competency_link(ctx: ToolContext, args: CompetencyLinkArgs) -> dict:
         return {"error": str(exc)}
     operation = Operation(
         owner_id=ctx.owner_id,
+        invocation_id=ctx.invocation_id,
         run_id=ctx.run_id,
         tool_name="competency.link",
         entity_type=f"{result['kind']}_competency_link",
@@ -122,7 +125,7 @@ async def competency_link(ctx: ToolContext, args: CompetencyLinkArgs) -> dict:
         inverse_patch={"delete": result["link_id"]} if result["created"] else {},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {**result, "operation_id": operation.id}
 
 
@@ -135,6 +138,7 @@ async def competency_edge(ctx: ToolContext, args: CompetencyEdgeArgs) -> dict:
         return {"error": str(exc)}
     operation = Operation(
         owner_id=ctx.owner_id,
+        invocation_id=ctx.invocation_id,
         run_id=ctx.run_id,
         tool_name="competency.edge",
         entity_type="competency_edge",
@@ -143,7 +147,7 @@ async def competency_edge(ctx: ToolContext, args: CompetencyEdgeArgs) -> dict:
         inverse_patch={"delete": edge.id} if created else {},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {"edge_id": edge.id, "source_id": edge.source_id, "target_id": edge.target_id, "relation": edge.relation, "created": created, "operation_id": operation.id}
 
 
@@ -181,10 +185,10 @@ async def evidence_list(ctx: ToolContext, args: EvidenceListArgs) -> dict:
 
 
 COMPETENCY_TOOLS = [
-    ToolDefinition("competency_create", "Create an explicitly named skill or concept node without silently merging similar titles.", CompetencyCreateArgs, competency_create, idempotent=True, blocking=True),
-    ToolDefinition("competency_link", "Map an explicit competency to a plan, task, or curated resource.", CompetencyLinkArgs, competency_link, idempotent=True, blocking=True),
-    ToolDefinition("competency_edge", "Add an auditable relation between competency nodes; prerequisite and part_of edges are cycle-checked.", CompetencyEdgeArgs, competency_edge, idempotent=True, blocking=True),
-    ToolDefinition("competency_graph_get", "Read the explicit competency graph and plan/task/resource mappings.", CompetencyGraphArgs, competency_graph_get),
-    ToolDefinition("competency_get", "Read one competency node without inferring mastery.", CompetencyGetArgs, competency_get),
-    ToolDefinition("evidence_list", "List immutable evidence observations for the focused plan, task, or competency.", EvidenceListArgs, evidence_list),
+    ToolDefinition("competency_create", "Create an explicitly named skill or concept node without silently merging similar titles.", CompetencyCreateArgs, competency_create, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True, blocking=True),
+    ToolDefinition("competency_link", "Map an explicit competency to a plan, task, or curated resource.", CompetencyLinkArgs, competency_link, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True, blocking=True),
+    ToolDefinition("competency_edge", "Add an auditable relation between competency nodes; prerequisite and part_of edges are cycle-checked.", CompetencyEdgeArgs, competency_edge, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True, blocking=True),
+    ToolDefinition("competency_graph_get", "Read the explicit competency graph and plan/task/resource mappings.", CompetencyGraphArgs, competency_graph_get, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("competency_get", "Read one competency node without inferring mastery.", CompetencyGetArgs, competency_get, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("evidence_list", "List immutable evidence observations for the focused plan, task, or competency.", EvidenceListArgs, evidence_list, effect_kind=ToolEffectKind.PURE_READ),
 ]

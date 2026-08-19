@@ -2,25 +2,49 @@ from typing import Literal
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.envfile import clear_env_keys, update_env_file
 from app.core.config import settings
 from app.db.database import get_db
+from app.db.uow import DatabaseBusyError, commit as commit_uow
 from app.models import Memory, Notification, Plan, Session, UserProfile
+from app.notifications.diagnostics import (
+    SMTP_DIAGNOSTIC_BODY,
+    SMTP_DIAGNOSTIC_TITLE,
+    email_configuration,
+    require_smtp_configuration,
+    test_imap,
+    test_smtp,
+)
+from app.outbox import OutboxConflictError, enqueue_smtp_diagnostic
 from app.tools.registry import tool_contracts
 from sqlalchemy import func, select
-from app.notifications.diagnostics import email_configuration, test_imap, test_smtp
 from app.runtime.scheduler import proactive_scheduler
 
 
 router = APIRouter()
+NOTIFICATION_COOLDOWN_PREFERENCE = "notification_cooldown_minutes"
 
 
 class EmailTestRequest(BaseModel):
     channel: Literal["smtp", "imap"]
     send_message: bool = False
+    action_id: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="after")
+    def validate_action_identity(self):
+        if self.send_message and self.channel != "smtp":
+            raise ValueError("send_message is supported only for SMTP diagnostics")
+        if self.channel == "smtp" and self.send_message:
+            normalized = (self.action_id or "").strip()
+            if not normalized:
+                raise ValueError("action_id is required when sending an SMTP diagnostic")
+            self.action_id = normalized
+        elif self.action_id is not None:
+            raise ValueError("action_id is accepted only when sending an SMTP diagnostic")
+        return self
 
 
 class EmailSettingsUpdate(BaseModel):
@@ -72,8 +96,18 @@ def _database_path_label() -> str:
     return url
 
 
+def _notification_cooldown(profile: UserProfile | None) -> int:
+    if profile is None:
+        return settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES
+    value = (profile.preferences or {}).get(NOTIFICATION_COOLDOWN_PREFERENCE)
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 1440:
+        return settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES
+    return value
+
+
 @router.get("")
 async def read_settings(db: AsyncSession = Depends(get_db)):
+    profile = await db.get(UserProfile, settings.DEFAULT_OWNER_ID)
     counts = {
         "plans": int((await db.scalar(
             select(func.count(Plan.id)).where(Plan.owner_id == settings.DEFAULT_OWNER_ID)
@@ -118,7 +152,7 @@ async def read_settings(db: AsyncSession = Depends(get_db)):
             and settings.VAPID_SUBJECT
         ),
         "vapid_public_key": settings.VAPID_PUBLIC_KEY,
-        "notification_cooldown_minutes": settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES,
+        "notification_cooldown_minutes": _notification_cooldown(profile),
         "timezone": settings.DEFAULT_TIMEZONE,
     }
 
@@ -149,7 +183,7 @@ async def update_followup_behavior(
         profile = UserProfile(owner_id=settings.DEFAULT_OWNER_ID)
         db.add(profile)
     profile.follow_up_behavior = data.follow_up_behavior
-    await db.commit()
+    await commit_uow(db)
     return {"follow_up_behavior": profile.follow_up_behavior}
 
 
@@ -160,7 +194,7 @@ async def update_proactive_pause(data: ProactivePauseUpdate, db: AsyncSession = 
         profile = UserProfile(owner_id=settings.DEFAULT_OWNER_ID)
         db.add(profile)
     profile.proactive_paused = data.paused
-    await db.commit()
+    await commit_uow(db)
     return {**await proactive_scheduler.describe(), "paused": profile.proactive_paused}
 
 
@@ -170,11 +204,42 @@ async def read_email_configuration():
 
 
 @router.post("/email/test")
-async def test_email_configuration(data: EmailTestRequest):
+async def test_email_configuration(
+    data: EmailTestRequest,
+    db: AsyncSession = Depends(get_db),
+):
     try:
         if data.channel == "smtp":
-            return await test_smtp(send_message=data.send_message)
+            if not data.send_message:
+                return await test_smtp()
+            configuration = require_smtp_configuration()
+            action = await enqueue_smtp_diagnostic(
+                db,
+                owner_id=settings.DEFAULT_OWNER_ID,
+                action_id=data.action_id or "",
+                title=SMTP_DIAGNOSTIC_TITLE,
+                body=SMTP_DIAGNOSTIC_BODY,
+            )
+            action_status = action.status
+            action_key = action.action_key
+            await commit_uow(db)
+            return {
+                "ok": True,
+                "channel": "smtp",
+                "status": action_status,
+                "action_id": data.action_id,
+                "action_key": action_key,
+                "message_queued": action_status == "queued",
+                "recipient": configuration["smtp_to"],
+            }
         return await test_imap()
+    except OutboxConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="SMTP diagnostic action_id conflicts with a different request",
+        ) from exc
+    except DatabaseBusyError:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
@@ -273,16 +338,14 @@ async def update_notification_policy(
         profile.quiet_hours = data.quiet_hours
     if data.daily_notification_limit is not None:
         profile.daily_notification_limit = data.daily_notification_limit
-    await db.commit()
     if data.cooldown_minutes is not None:
-        update_env_file({"AGENT_NOTIFICATION_COOLDOWN_MINUTES": str(data.cooldown_minutes)})
+        preferences = dict(profile.preferences or {})
+        preferences[NOTIFICATION_COOLDOWN_PREFERENCE] = data.cooldown_minutes
+        profile.preferences = preferences
+    await commit_uow(db)
     return {
-        "restart_required": data.cooldown_minutes is not None,
+        "restart_required": False,
         "quiet_hours": profile.quiet_hours,
         "daily_notification_limit": profile.daily_notification_limit,
-        "cooldown_minutes": (
-            data.cooldown_minutes
-            if data.cooldown_minutes is not None
-            else settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES
-        ),
+        "cooldown_minutes": _notification_cooldown(profile),
     }

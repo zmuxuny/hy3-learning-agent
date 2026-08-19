@@ -385,6 +385,107 @@ async def test_backfill_backup_precedes_legacy_evidence_and_artifact_writes(
 
 
 @pytest.mark.asyncio
+async def test_backfill_commit_precedes_projection_filesystem_publish(
+    tmp_path: Path,
+    canonical_database: Path,
+    rebuild_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, database = _state_root(tmp_path, canonical_database)
+    engine = create_async_engine(f"sqlite+aiosqlite:///{database}")
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        plan_id = await _seed_owner_and_plan(sessions, legacy_submission=True)
+        await engine.dispose()
+        target = root / f"data/context/evidence/plans/{plan_id}.json"
+        _configure_script(
+            rebuild_module,
+            monkeypatch,
+            database=database,
+            sessions=sessions,
+        )
+        opened_sessions: list[Any] = []
+
+        def tracked_session_factory() -> Any:
+            session = sessions()
+            opened_sessions.append(session)
+            return session
+
+        monkeypatch.setattr(rebuild_module, "AsyncSessionLocal", tracked_session_factory)
+        original_write_json = rebuild_module._write_json
+        counts_at_publish: list[tuple[int, int]] = []
+
+        def write_only_from_committed_facts(path: Path, value: dict[str, Any]) -> None:
+            # This hook runs before _write_json performs mkdir, write, fsync, or
+            # os.replace.  An independent read must already see the backfill.
+            assert len(opened_sessions) == 2
+            assert all(not session.in_transaction() for session in opened_sessions)
+            counts = _row_counts(database)
+            counts_at_publish.append(counts)
+            assert counts[0] >= 2
+            assert counts[1] >= 1
+            original_write_json(path, value)
+
+        monkeypatch.setattr(rebuild_module, "_write_json", write_only_from_committed_facts)
+
+        assert await rebuild_module.run(
+            _args(root, plan_id=plan_id, backfill_v1=True, write=True)
+        ) == 0
+        await engine.dispose()
+
+        assert counts_at_publish == [_row_counts(database)]
+        projection = json.loads(target.read_text(encoding="utf-8"))
+        assert projection["observation_count"] == counts_at_publish[0][0]
+        assert projection["observation_count"] >= 2
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_backfill_commit_failure_cannot_publish_uncommitted_projection(
+    tmp_path: Path,
+    canonical_database: Path,
+    rebuild_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, database = _state_root(tmp_path, canonical_database)
+    engine = create_async_engine(f"sqlite+aiosqlite:///{database}")
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        plan_id = await _seed_owner_and_plan(sessions, legacy_submission=True)
+        await engine.dispose()
+        target = root / f"data/context/evidence/plans/{plan_id}.json"
+        _configure_script(
+            rebuild_module,
+            monkeypatch,
+            database=database,
+            sessions=sessions,
+        )
+
+        async def fail_commit(db: Any) -> None:
+            assert db.in_transaction()
+            raise RuntimeError("injected backfill commit failure")
+
+        def forbidden_publish(*_: object, **__: object) -> None:
+            raise AssertionError("projection publication must follow a successful commit")
+
+        monkeypatch.setattr(rebuild_module, "commit_uow", fail_commit)
+        monkeypatch.setattr(rebuild_module, "_write_json", forbidden_publish)
+
+        with pytest.raises(RuntimeError, match="injected backfill commit failure"):
+            await rebuild_module.run(
+                _args(root, plan_id=plan_id, backfill_v1=True, write=True)
+            )
+        await engine.dispose()
+
+        assert _row_counts(database) == (0, 0)
+        assert not target.exists()
+        assert not (root / "data/context/evidence").exists()
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("target_kind", ("inside-unmanaged", "outside"))
 async def test_mutation_rejects_unmanaged_or_outside_database_without_side_effects(
     tmp_path: Path,

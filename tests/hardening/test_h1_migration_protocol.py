@@ -29,6 +29,7 @@ import app.db.migrations as migration_module
 from app.core.paths import lexical_absolute
 from app.db.migrations import (
     CANONICAL_SCHEMA_CHECKSUM,
+    CURRENT_SCHEMA_VERSION,
     LEGACY_SCHEMA_REGISTRY,
     MIGRATION_REGISTRY,
     MigrationError,
@@ -65,6 +66,8 @@ CANONICAL_TABLES = {
     "memories",
     "notifications",
     "operations",
+    "outbox_actions",
+    "outbox_receipts",
     "owners",
     "plan_competency_links",
     "plan_proposals",
@@ -895,7 +898,7 @@ def _assert_verified(database_path: Path, expected_checksum: str) -> None:
     assert verification == {
         "integrity": ["ok"],
         "foreign_key_violation_count": 0,
-        "user_version": 1,
+        "user_version": CURRENT_SCHEMA_VERSION,
         "schema_checksum": expected_checksum,
     }
 
@@ -920,12 +923,18 @@ def test_history_records_version_checksum_timestamp_result_and_user_version(
 
     after = datetime.now(timezone.utc)
     rows = _history_rows(database_path)
-    assert len(rows) == 1
-    version, name, checksum, applied_at, result = rows[0]
-    assert version == 1
-    assert name == "h1_canonical_schema"
+    assert len(rows) == len(MIGRATION_REGISTRY)
+    h1_version, h1_name, h1_checksum, _h1_applied_at, h1_result = rows[0]
+    assert (h1_version, h1_name, h1_checksum, h1_result) == (
+        1,
+        "h1_canonical_schema",
+        FROZEN_H1_SCHEMA_CHECKSUM,
+        "applied",
+    )
+    version, name, checksum, applied_at, result = rows[-1]
+    assert version == CURRENT_SCHEMA_VERSION
+    assert name == MIGRATION_REGISTRY[-1].name
     assert re.fullmatch(r"[0-9a-f]{64}", checksum)
-    assert checksum == FROZEN_H1_SCHEMA_CHECKSUM
     assert checksum == CANONICAL_SCHEMA_CHECKSUM
     assert checksum == schema_checksum(database_path)
     assert isinstance(applied_at, str)
@@ -941,8 +950,8 @@ def test_history_records_version_checksum_timestamp_result_and_user_version(
         (revision.version, revision.name, revision.checksum, "applied")
         for revision in MIGRATION_REGISTRY
     ]
-    assert _health(database_path) == (["ok"], [], 1)
-    assert report.version == 1
+    assert _health(database_path) == (["ok"], [], CURRENT_SCHEMA_VERSION)
+    assert report.version == CURRENT_SCHEMA_VERSION
     assert report.target_schema_checksum == checksum
     assert report.backup_path is not None
     assert Path(report.backup_path) in _backup_directories(backup_root)
@@ -1027,13 +1036,13 @@ def test_each_registry_history_field_tamper_fails_closed_without_backup(
     with sqlite3.connect(database_path) as connection:
         connection.execute("PRAGMA ignore_check_constraints=ON")
         statement = {
-            "name": "UPDATE schema_migrations SET name = ?",
-            "checksum": "UPDATE schema_migrations SET checksum = ?",
-            "result": "UPDATE schema_migrations SET result = ?",
+            "name": "UPDATE schema_migrations SET name = ? WHERE version = ?",
+            "checksum": "UPDATE schema_migrations SET checksum = ? WHERE version = ?",
+            "result": "UPDATE schema_migrations SET result = ? WHERE version = ?",
         }[column]
         connection.execute(
             statement,
-            (tampered_value,),
+            (tampered_value, CURRENT_SCHEMA_VERSION),
         )
     before = _file_state(database_path)
     backup_count = len(_backup_directories(backup_root))
@@ -1051,7 +1060,7 @@ def test_each_registry_history_field_tamper_fails_closed_without_backup(
     assert _file_state(database_path) == before
     assert len(_backup_directories(backup_root)) == backup_count
     field_index = {"name": 1, "checksum": 2, "result": 4}[column]
-    assert _history_rows(database_path)[0][field_index] == tampered_value
+    assert _history_rows(database_path)[-1][field_index] == tampered_value
 
 
 def test_invalid_history_applied_at_fails_closed_before_backup(
@@ -1077,7 +1086,7 @@ def test_invalid_history_applied_at_fails_closed_before_backup(
     assert len(_backup_directories(backup_root)) == backup_count
 
 
-def test_schema_changing_v2_revision_preserves_v1_history_and_is_idempotent(
+def test_schema_changing_v3_revision_preserves_prior_history_and_is_idempotent(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1090,103 +1099,107 @@ def test_schema_changing_v2_revision_preserves_v1_history_and_is_idempotent(
         "h1_canonical_schema",
         FROZEN_H1_SCHEMA_CHECKSUM,
     )
-    v2_table_sql = (
-        "CREATE TABLE registry_v2_markers ("
+    v3_table_sql = (
+        "CREATE TABLE registry_v3_markers ("
         "id INTEGER NOT NULL PRIMARY KEY, "
         "marker TEXT NOT NULL UNIQUE CHECK(length(marker) > 0))"
     )
-    schema_oracle = tmp_path / "registry-v2-schema-oracle.sqlite3"
+    schema_oracle = tmp_path / "registry-v3-schema-oracle.sqlite3"
     shutil.copyfile(database_path, schema_oracle)
     with sqlite3.connect(schema_oracle) as connection:
-        connection.execute(v2_table_sql)
-    v2_checksum = schema_checksum(schema_oracle)
-    assert v2_checksum != FROZEN_H1_SCHEMA_CHECKSUM
-    schema_v2 = MigrationRevision(
-        version=2,
-        name="schema_changing_v2_probe",
-        checksum=v2_checksum,
+        connection.execute(v3_table_sql)
+    v3_checksum = schema_checksum(schema_oracle)
+    assert v3_checksum != CANONICAL_SCHEMA_CHECKSUM
+    schema_v3 = MigrationRevision(
+        version=CURRENT_SCHEMA_VERSION + 1,
+        name="schema_changing_v3_probe",
+        checksum=v3_checksum,
     )
-    expanded_registry = MIGRATION_REGISTRY + (schema_v2,)
+    expanded_registry = MIGRATION_REGISTRY + (schema_v3,)
     real_create_tables = migration_module._create_tables
 
-    def create_v2_tables(connection: Any) -> None:
+    def create_v3_tables(connection: Any) -> None:
         real_create_tables(connection)
-        connection.exec_driver_sql(v2_table_sql)
+        connection.exec_driver_sql(v3_table_sql)
 
-    monkeypatch.setattr(migration_module, "_create_tables", create_v2_tables)
+    monkeypatch.setattr(migration_module, "_create_tables", create_v3_tables)
     monkeypatch.setattr(migration_module, "MIGRATION_REGISTRY", expanded_registry)
     monkeypatch.setattr(
         migration_module,
         "_REVISION_BY_VERSION",
         {revision.version: revision for revision in expanded_registry},
     )
-    monkeypatch.setattr(migration_module, "CURRENT_REVISION", schema_v2)
-    monkeypatch.setattr(migration_module, "CURRENT_SCHEMA_VERSION", 2)
+    monkeypatch.setattr(migration_module, "CURRENT_REVISION", schema_v3)
+    monkeypatch.setattr(
+        migration_module,
+        "CURRENT_SCHEMA_VERSION",
+        CURRENT_SCHEMA_VERSION + 1,
+    )
     monkeypatch.setattr(
         migration_module,
         "CURRENT_MIGRATION_NAME",
-        "schema_changing_v2_probe",
+        "schema_changing_v3_probe",
     )
-    monkeypatch.setattr(migration_module, "CANONICAL_SCHEMA_CHECKSUM", v2_checksum)
+    monkeypatch.setattr(migration_module, "CANONICAL_SCHEMA_CHECKSUM", v3_checksum)
 
     second = migration_module.migrate_sqlite_database(
         database_path,
-        backup_root=tmp_path / "v2-backups",
+        backup_root=tmp_path / "v3-backups",
         application_version="h1-registry-evolution-test",
     )
 
     upgraded_history = _history_rows(database_path)
-    assert first.version == 1
+    assert first.version == CURRENT_SCHEMA_VERSION
     assert second.applied is True
     assert second.source_kind == "versioned"
-    assert second.version == 2
-    assert upgraded_history[0] == original_history[0]
-    assert upgraded_history[1][0:3] == (
-        2,
-        "schema_changing_v2_probe",
-        v2_checksum,
+    assert second.version == CURRENT_SCHEMA_VERSION + 1
+    assert upgraded_history[:-1] == original_history
+    assert upgraded_history[-1][0:3] == (
+        CURRENT_SCHEMA_VERSION + 1,
+        "schema_changing_v3_probe",
+        v3_checksum,
     )
-    assert upgraded_history[1][4] == "applied"
-    assert _health(database_path) == (["ok"], [], 2)
+    assert upgraded_history[-1][4] == "applied"
+    assert _health(database_path) == (["ok"], [], CURRENT_SCHEMA_VERSION + 1)
     verification = verify_sqlite_database(
         database_path,
-        expected_schema_checksum=v2_checksum,
+        expected_schema_checksum=v3_checksum,
     )
-    assert verification["schema_checksum"] == v2_checksum
+    assert verification["schema_checksum"] == v3_checksum
     assert _business_snapshot(
         database_path,
         columns=source_business.columns,
     ) == source_business
     with sqlite3.connect(database_path) as connection:
         columns = connection.execute(
-            "PRAGMA table_xinfo('registry_v2_markers')"
+            "PRAGMA table_xinfo('registry_v3_markers')"
         ).fetchall()
         assert [(row[1], row[2], row[3], row[5]) for row in columns] == [
             ("id", "INTEGER", 1, 1),
             ("marker", "TEXT", 1, 0),
         ]
         connection.execute(
-            "INSERT INTO registry_v2_markers (id, marker) VALUES (1, 'retained')"
+            "INSERT INTO registry_v3_markers (id, marker) VALUES (1, 'retained')"
         )
         with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
             connection.execute(
-                "INSERT INTO registry_v2_markers (id, marker) VALUES (2, '')"
+                "INSERT INTO registry_v3_markers (id, marker) VALUES (2, '')"
             )
     before_noop = _file_state(database_path)
 
     third = migration_module.migrate_sqlite_database(
         database_path,
-        backup_root=tmp_path / "v2-backups",
+        backup_root=tmp_path / "v3-backups",
         application_version="h1-registry-evolution-test",
     )
 
     assert third.applied is False
-    assert third.version == 2
+    assert third.version == CURRENT_SCHEMA_VERSION + 1
     assert _file_state(database_path) == before_noop
     assert _history_rows(database_path) == upgraded_history
     with sqlite3.connect(database_path) as connection:
         assert connection.execute(
-            "SELECT id, marker FROM registry_v2_markers"
+            "SELECT id, marker FROM registry_v3_markers"
         ).fetchall() == [(1, "retained")]
 
 
@@ -1197,8 +1210,11 @@ def test_future_history_version_fails_closed_without_backup_or_source_change(
     backup_root = tmp_path / "migration-backups"
     _migrate(database_path, backup_root)
     with sqlite3.connect(database_path) as connection:
-        connection.execute("UPDATE schema_migrations SET version = 2")
-        connection.execute("PRAGMA user_version=2")
+        connection.execute(
+            "UPDATE schema_migrations SET version = ? WHERE version = ?",
+            (CURRENT_SCHEMA_VERSION + 1, CURRENT_SCHEMA_VERSION),
+        )
+        connection.execute(f"PRAGMA user_version={CURRENT_SCHEMA_VERSION + 1}")
     before = _file_state(database_path)
     backup_count = len(_backup_directories(backup_root))
 
@@ -1209,7 +1225,7 @@ def test_future_history_version_fails_closed_without_backup_or_source_change(
     assert raised.value.recovery_backup is None
     assert _file_state(database_path) == before
     assert len(_backup_directories(backup_root)) == backup_count
-    assert _history_rows(database_path)[0][0] == 2
+    assert _history_rows(database_path)[-1][0] == CURRENT_SCHEMA_VERSION + 1
 
 
 def test_schema_tamper_is_detected_by_checksum_and_migration_entrypoint(
@@ -1218,7 +1234,7 @@ def test_schema_tamper_is_detected_by_checksum_and_migration_entrypoint(
     database_path = _materialize_sql("empty", tmp_path / "tampered-schema.sqlite3")
     backup_root = tmp_path / "migration-backups"
     _migrate(database_path, backup_root)
-    expected_checksum = _history_rows(database_path)[0][2]
+    expected_checksum = _history_rows(database_path)[-1][2]
     with sqlite3.connect(database_path) as connection:
         connection.execute("DROP INDEX ix_learning_events_occurred_at")
     tampered_checksum = schema_checksum(database_path)
@@ -1535,14 +1551,14 @@ def test_supported_sources_converge_to_identical_canonical_schema(
         _assert_verified(database_path, empty_report.target_schema_checksum)
 
 
-def test_canonical_schema_has_exact_h1_table_inventory(
+def test_canonical_schema_has_exact_current_table_inventory(
     canonical_database: Path,
 ) -> None:
     with sqlite3.connect(canonical_database) as connection:
         actual_tables = _table_names(connection)
 
     assert actual_tables == CANONICAL_TABLES
-    assert len(actual_tables) == 38
+    assert len(actual_tables) == 40
 
 
 def test_learning_event_canonical_columns_defaults_and_partial_unique_index(
@@ -1688,6 +1704,7 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "correlation_id",
         "causation_id",
         "idempotency_key",
+        "request_digest",
         "supersedes_id",
         "invalidated_at",
         "invalidation_reason",
@@ -1719,6 +1736,7 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "correlation_id": None,
         "causation_id": None,
         "idempotency_key": None,
+        "request_digest": None,
         "supersedes_id": None,
         "invalidated_at": None,
         "invalidation_reason": "''",
@@ -1753,6 +1771,7 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "ix_evidence_observations_owner_plan",
         "ix_evidence_observations_plan_id",
         "ix_evidence_observations_recorded_at",
+        "ix_evidence_observations_request_digest",
         "ix_evidence_observations_run_id",
         "ix_evidence_observations_session_id",
         "ix_evidence_observations_source",
@@ -1883,7 +1902,7 @@ def test_sigkill_at_each_backup_publication_phase_is_private_and_retryable(
     )
     assert migrated_business.cardinalities == source_business.cardinalities
     assert migrated_business.content_digests == source_business.content_digests
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 @pytest.mark.parametrize(
@@ -2010,6 +2029,11 @@ def test_sigkill_at_each_candidate_phase_preserves_source_and_retry_converges(
     assert _history_rows(database_path)[0][:3] == (
         1,
         "h1_canonical_schema",
+        FROZEN_H1_SCHEMA_CHECKSUM,
+    )
+    assert _history_rows(database_path)[-1][:3] == (
+        CURRENT_SCHEMA_VERSION,
+        MIGRATION_REGISTRY[-1].name,
         report.target_schema_checksum,
     )
     _assert_verified(database_path, report.target_schema_checksum)
@@ -2184,7 +2208,7 @@ def test_sigkill_at_rollback_replace_leaves_only_complete_old_or_verified_new(
     assert observed["foreign_key_violation_count"] == 0
     assert observed["schema_checksum"] in {
         source_checksum,
-        FROZEN_H1_SCHEMA_CHECKSUM,
+        CANONICAL_SCHEMA_CHECKSUM,
     }
     after_kill_business = _business_snapshot(
         database_path,
@@ -2194,13 +2218,13 @@ def test_sigkill_at_rollback_replace_leaves_only_complete_old_or_verified_new(
     assert after_kill_business.content_digests == source_business.content_digests
     with sqlite3.connect(database_path) as connection:
         is_new = "schema_migrations" in _table_names(connection)
-    assert is_new is (observed["schema_checksum"] == FROZEN_H1_SCHEMA_CHECKSUM)
+    assert is_new is (observed["schema_checksum"] == CANONICAL_SCHEMA_CHECKSUM)
 
     report = _migrate(database_path, backup_root)
 
     assert report.applied is (not is_new)
     assert report.source_kind in {"partial_v2", "versioned"}
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     converged_business = _business_snapshot(
         database_path,
         columns=source_business.columns,
@@ -2247,13 +2271,13 @@ def test_migration_rollback_killpoint_when_original_database_was_absent(
     )
     database_existed_after_kill = database_path.exists()
     if database_existed_after_kill:
-        _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+        _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     assert len(_backup_directories(backup_root)) == 1
 
     report = _migrate(database_path, backup_root)
 
     assert report.applied is (not database_existed_after_kill)
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     assert not tuple(
         database_path.parent.glob(f".{database_path.name}.migration-work-*")
     )
@@ -2302,8 +2326,8 @@ def test_sigkill_after_publish_leaves_complete_old_or_new_database_then_converge
 
     if "schema_migrations" in tables_after_kill:
         assert tables_after_kill == CANONICAL_TABLES
-        assert observed["schema_checksum"] == FROZEN_H1_SCHEMA_CHECKSUM
-        assert observed["user_version"] == 1
+        assert observed["schema_checksum"] == CANONICAL_SCHEMA_CHECKSUM
+        assert observed["user_version"] == CURRENT_SCHEMA_VERSION
         assert _history_rows(database_path)[0][0:3] == (
             1,
             "h1_canonical_schema",
@@ -2324,7 +2348,7 @@ def test_sigkill_after_publish_leaves_complete_old_or_new_database_then_converge
     )
     assert converged_business.cardinalities == source_business.cardinalities
     assert converged_business.content_digests == source_business.content_digests
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 def test_active_wal_reader_fails_closed_after_verified_backup_without_publish(
@@ -2397,7 +2421,7 @@ def test_active_wal_reader_fails_closed_after_verified_backup_without_publish(
     )
     assert converged_business.cardinalities == expected_business.cardinalities
     assert converged_business.content_digests == expected_business.content_digests
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 @pytest.mark.parametrize(
@@ -2471,7 +2495,7 @@ def test_crashed_committed_wal_is_old_or_new_at_each_publication_killpoint(
     assert observed["foreign_key_violation_count"] == 0
     assert observed["schema_checksum"] in {
         legacy_checksum,
-        FROZEN_H1_SCHEMA_CHECKSUM,
+        CANONICAL_SCHEMA_CHECKSUM,
     }
     after_kill_business = _business_snapshot(
         database_path,
@@ -2484,7 +2508,7 @@ def test_crashed_committed_wal_is_old_or_new_at_each_publication_killpoint(
         assert connection.execute(
             "SELECT display_name FROM owners WHERE id='fixture-owner'"
         ).fetchone() == ("WAL fixture learner",)
-    assert is_new is (observed["schema_checksum"] == FROZEN_H1_SCHEMA_CHECKSUM)
+    assert is_new is (observed["schema_checksum"] == CANONICAL_SCHEMA_CHECKSUM)
 
     report = _migrate(database_path, backup_root)
 
@@ -2496,7 +2520,7 @@ def test_crashed_committed_wal_is_old_or_new_at_each_publication_killpoint(
     )
     assert converged_business.cardinalities == expected_business.cardinalities
     assert converged_business.content_digests == expected_business.content_digests
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     assert not tuple(
         database_path.parent.glob(f".{database_path.name}.migration-work-*")
     )
@@ -2547,8 +2571,11 @@ def test_two_migrator_processes_apply_one_history_revision_and_one_backup(
         "v1_1_1",
         "versioned",
     ]
-    assert len(_history_rows(database_path)) == 1
-    assert _history_rows(database_path)[0][0:2] == (1, "h1_canonical_schema")
+    assert len(_history_rows(database_path)) == len(MIGRATION_REGISTRY)
+    assert [row[0:3] for row in _history_rows(database_path)] == [
+        (revision.version, revision.name, revision.checksum)
+        for revision in MIGRATION_REGISTRY
+    ]
     assert len(_backup_directories(backup_root)) == 1
     after_business = _business_snapshot(
         database_path,
@@ -2627,7 +2654,7 @@ def test_writer_in_journal_canonicalization_gap_is_detected_without_lost_write(
         assert connection.execute(
             "SELECT display_name FROM owners WHERE id='fixture-owner'"
         ).fetchone() == ("Committed during canonicalization gap",)
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 def test_new_inode_writer_is_blocked_at_after_main_replace(
@@ -2683,7 +2710,7 @@ def test_new_inode_writer_is_blocked_at_after_main_replace(
         assert connection.execute(
             "SELECT display_name FROM owners WHERE id='fixture-owner'"
         ).fetchone() == ("Fixture Learner",)
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
     post_migration_writer = _run_concurrent_writer(
         database_path,
@@ -2697,7 +2724,7 @@ def test_new_inode_writer_is_blocked_at_after_main_replace(
         assert connection.execute(
             "SELECT display_name FROM owners WHERE id='fixture-owner'"
         ).fetchone() == ("Post-migration writer succeeds",)
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 def test_active_writer_fails_before_backup_and_does_not_touch_source(
@@ -2820,7 +2847,7 @@ def test_stale_work_path_cleanup_is_private_and_fail_closed(
         report = _migrate(database_path, backup_root)
         assert report.applied is True
         assert not stale.exists()
-        _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+        _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     else:
         with pytest.raises(MigrationError) as raised:
             _migrate(database_path, backup_root)
@@ -3052,7 +3079,7 @@ def test_managed_identity_backup_is_portable_across_checkout_roots(
         reupgraded.content_digests["evidence_observations"]
         == source_evidence_digest
     )
-    _assert_verified(target_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(target_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 def test_restore_rejects_future_live_history_with_stable_code_and_no_mutation(
@@ -3062,8 +3089,11 @@ def test_restore_rejects_future_live_history_with_stable_code_and_no_mutation(
     report = _migrate(database_path, tmp_path / "migration-backups")
     assert report.backup_path is not None
     with sqlite3.connect(database_path) as connection:
-        connection.execute("UPDATE schema_migrations SET version=2")
-        connection.execute("PRAGMA user_version=2")
+        connection.execute(
+            "UPDATE schema_migrations SET version=? WHERE version=?",
+            (CURRENT_SCHEMA_VERSION + 1, CURRENT_SCHEMA_VERSION),
+        )
+        connection.execute(f"PRAGMA user_version={CURRENT_SCHEMA_VERSION + 1}")
     live_state = _file_state(database_path)
     live_business = _business_snapshot(database_path)
     safety_root = tmp_path / "restore-safety-backups"
@@ -3227,7 +3257,7 @@ def test_restore_sigkill_at_each_direct_publish_phase_converges_without_mixing(
         assert observed["integrity"] == ["ok"]
         assert observed["foreign_key_violation_count"] == 0
         assert observed["schema_checksum"] in {
-            FROZEN_H1_SCHEMA_CHECKSUM,
+            CANONICAL_SCHEMA_CHECKSUM,
             manifest["source"]["schema_checksum"],
         }
         after_kill_business = _business_snapshot(
@@ -3261,7 +3291,7 @@ def test_restore_sigkill_at_each_direct_publish_phase_converges_without_mixing(
     )
     assert reupgraded.cardinalities == legacy_business.cardinalities
     assert reupgraded.content_digests == legacy_business.content_digests
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 def test_restore_post_publish_validation_failure_restores_live_semantics(
@@ -3373,7 +3403,7 @@ def test_restore_sigkill_at_rollback_replace_is_old_or_verified_payload(
     assert observed["integrity"] == ["ok"]
     assert observed["foreign_key_violation_count"] == 0
     assert observed["schema_checksum"] in {
-        FROZEN_H1_SCHEMA_CHECKSUM,
+        CANONICAL_SCHEMA_CHECKSUM,
         manifest["source"]["schema_checksum"],
     }
     after_kill_business = _business_snapshot(
@@ -3407,7 +3437,7 @@ def test_restore_sigkill_at_rollback_replace_is_old_or_verified_payload(
     )
     assert reupgraded_business.cardinalities == legacy_business.cardinalities
     assert reupgraded_business.content_digests == legacy_business.content_digests
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 @pytest.mark.parametrize(
@@ -3695,7 +3725,7 @@ def test_tampered_rollback_staging_never_claims_the_source_was_restored(
     assert _business_snapshot(recovery_payload) == source_business
     assert migration_module._sha256_file(recovery_payload) == manifest["payload_sha256"]
     if tamper_timing == "before_replace":
-        _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+        _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
         migrated_business = _business_snapshot(
             database_path,
             columns=source_business.columns,
@@ -3813,8 +3843,8 @@ def test_shared_backup_root_serializes_same_identity_staging_across_checkouts(
     manifest = verify_migration_backup(backup_path)
     assert manifest["source"]["database_identity"] == "shared.sqlite3"
     assert not tuple(backup_root.glob(".staging-*"))
-    _assert_verified(first_database, FROZEN_H1_SCHEMA_CHECKSUM)
-    _assert_verified(second_database, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(first_database, CANONICAL_SCHEMA_CHECKSUM)
+    _assert_verified(second_database, CANONICAL_SCHEMA_CHECKSUM)
     for database_path, original_business in (
         (first_database, first_business),
         (second_database, second_business),
@@ -3875,7 +3905,7 @@ def test_restore_detects_writer_in_guard_release_gap_and_preserves_commit(
         assert connection.execute(
             "SELECT display_name FROM owners WHERE id='fixture-owner'"
         ).fetchone() == ("Committed during restore guard-release gap",)
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     assert not tuple(
         database_path.parent.glob(f".{database_path.name}.restore-work-*")
     )
@@ -4625,7 +4655,7 @@ def test_all_pre_h1_schema_paths_have_frozen_registry_provenance(
     assert first.source_schema_checksum == expected_checksum
     assert first.backup_path is not None
     verify_migration_backup(Path(first.backup_path))
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     before_noop = _file_state(database_path)
     history_before_noop = _history_rows(database_path)
 
@@ -5118,7 +5148,7 @@ def test_sqlite_maintenance_paths_treat_uri_metacharacters_as_literal_names(
         assert migrated.applied is True
         assert migrated.backup_path is not None
         verify_migration_backup(Path(migrated.backup_path))
-        _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+        _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     else:
         _materialize_sql("v1_1_1_full", database_path)
         source_state = _file_state(database_path)
@@ -5253,7 +5283,7 @@ def test_exact_empty_legacy_write_probe_migrates_and_is_removed(
     with sqlite3.connect(database_path) as connection:
         assert "_write_probe" not in _table_names(connection)
     assert _business_snapshot(database_path, columns=legacy_columns) == source_business
-    _assert_verified(database_path, FROZEN_H1_SCHEMA_CHECKSUM)
+    _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
 @pytest.mark.parametrize(

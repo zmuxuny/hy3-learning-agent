@@ -4,8 +4,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core.time import UTCInstant, canonical_utc, coerce_legacy_utc, utc_now
+from app.db.uow import flush as flush_uow
 from app.models import CalendarEvent, Operation, Plan, Task
-from app.tools.base import ToolContext, ToolDefinition, json_safe
+from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
 
 
 class CalendarListArgs(BaseModel):
@@ -82,14 +83,15 @@ async def calendar_create(ctx: ToolContext, args: CalendarCreateArgs) -> dict:
             return {"error": "Task does not belong to the selected plan"}
     event = CalendarEvent(owner_id=ctx.owner_id, source="agent", **args.model_dump(exclude={"plan_id"}), plan_id=plan_id)
     ctx.db.add(event)
-    await ctx.db.flush()
+    await flush_uow(ctx.db)
     operation = Operation(
-        owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="calendar.create",
+        owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
+        run_id=ctx.run_id, tool_name="calendar.create",
         entity_type="calendar_event", entity_id=str(event.id),
         forward_patch={"created": event.id}, inverse_patch={"delete": event.id},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {"event_id": event.id, "starts_at": canonical_utc(event.starts_at), "operation_id": operation.id, "undo_available": True}
 
 
@@ -119,17 +121,18 @@ async def calendar_patch(ctx: ToolContext, args: CalendarPatchArgs) -> dict:
         setattr(event, key, value)
     event.updated_at = utc_now()
     operation = Operation(
-        owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="calendar.patch",
+        owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
+        run_id=ctx.run_id, tool_name="calendar.patch",
         entity_type="calendar_event", entity_id=str(event.id),
         forward_patch={"changes": json_safe(changes)}, inverse_patch={"changes": before},
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return {"event_id": event.id, "status": event.status, "operation_id": operation.id, "undo_available": True}
 
 
 CALENDAR_TOOLS = [
-    ToolDefinition("calendar_list", "Inspect scheduled personal study events, optionally limited to the focused plan.", CalendarListArgs, calendar_list),
-    ToolDefinition("calendar_create", "Create a reversible study calendar event for a plan or task.", CalendarCreateArgs, calendar_create, idempotent=True),
-    ToolDefinition("calendar_patch", "Reschedule or update an existing study calendar event; changes are reversible.", CalendarPatchArgs, calendar_patch, idempotent=True),
+    ToolDefinition("calendar_list", "Inspect scheduled personal study events, optionally limited to the focused plan.", CalendarListArgs, calendar_list, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("calendar_create", "Create a reversible study calendar event for a plan or task.", CalendarCreateArgs, calendar_create, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True),
+    ToolDefinition("calendar_patch", "Reschedule or update an existing study calendar event; changes are reversible.", CalendarPatchArgs, calendar_patch, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True),
 ]

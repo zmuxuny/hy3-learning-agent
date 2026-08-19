@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.uow import flush as flush_uow
 from app.models import Achievement, ActivityDay, Plan, Quiz, Stage, Task, UserProfile
 
 
@@ -35,7 +36,7 @@ async def refresh_streak(db: AsyncSession, owner_id: str) -> int:
         streak += 1
         cursor -= timedelta(days=1)
     profile.streak_days = streak
-    await db.flush()
+    await flush_uow(db)
     return streak
 
 
@@ -87,5 +88,5 @@ async def evaluate_achievements(db: AsyncSession, owner_id: str) -> list[Achieve
         db.add(achievement)
         unlocked.append(achievement)
     if unlocked:
-        await db.flush()
+        await flush_uow(db)
     return unlocked

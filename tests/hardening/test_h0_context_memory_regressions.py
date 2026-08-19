@@ -14,6 +14,7 @@ from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
+from app.db.uow import commit as commit_uow
 from app.models import (
     AgentRun,
     CalendarEvent,
@@ -567,6 +568,9 @@ async def test_message_edit_preserves_audit_and_marks_summary_and_snapshot_inval
         )
         db.add(summary)
         await db.flush()
+        # H2 requires ContextAssembler to start from a caller-owned clean UoW;
+        # this fixture setup is durable before the snapshot under test.
+        await db.commit()
         snapshot = await ContextAssembler(db).build(
             "local",
             session_id=session.id,
@@ -831,6 +835,7 @@ async def test_context_budget_accounts_for_system_tools_and_output_reserve(
                         reserve_overrides[field] = override
 
         if len(reserve_overrides) == 2:
+            await commit_uow(db)
             configured_snapshot = await ContextAssembler(db).build(
                 "local",
                 objective="full budget source after reserve override",

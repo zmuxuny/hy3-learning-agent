@@ -176,11 +176,13 @@ async def test_plan_scoped_competency_key_is_unique_per_plan(isolated_db: AsyncS
     await isolated_db.commit()
     ctx = _context(isolated_db, run)
 
+    ctx.tool_call_id = "h0-comp-001-create-plan-a"
     first = await _tool_ok(
         "competency_create",
         {"key": "python.async", "title": "Async Python", "scope": "plan", "plan_id": plan_a.id},
         ctx,
     )
+    ctx.tool_call_id = "h0-comp-001-create-plan-b"
     second = await execute_tool(
         "competency_create",
         json.dumps({"key": "python.async", "title": "Async Python", "scope": "plan", "plan_id": plan_b.id}),
@@ -348,16 +350,19 @@ async def test_node_undo_rejects_later_edge_dependencies(isolated_db: AsyncSessi
     run = await _add_run(isolated_db, plan.id)
     await isolated_db.commit()
     ctx = _context(isolated_db, run)
+    ctx.tool_call_id = "h0-comp-006-create-source"
     source = await _tool_ok(
         "competency_create",
         {"key": "dependency.source", "title": "Source", "scope": "plan", "plan_id": plan.id},
         ctx,
     )
+    ctx.tool_call_id = "h0-comp-006-create-target"
     target = await _tool_ok(
         "competency_create",
         {"key": "dependency.target", "title": "Target", "scope": "plan", "plan_id": plan.id},
         ctx,
     )
+    ctx.tool_call_id = "h0-comp-006-link-edge"
     edge = await _tool_ok(
         "competency_edge",
         {"source_id": source["competency_id"], "target_id": target["competency_id"], "relation": "related_to"},
@@ -443,7 +448,8 @@ async def test_one_quiz_observation_maps_to_multiple_assessed_competencies(
     run = await _add_run(isolated_db, plan.id)
     await isolated_db.commit()
     ctx = _context(isolated_db, run)
-    for competency in (first, second):
+    for label, competency in (("first", first), ("second", second)):
+        ctx.tool_call_id = f"h0-evid-007-link-{label}"
         await _tool_ok(
             "competency_link",
             {
@@ -455,6 +461,7 @@ async def test_one_quiz_observation_maps_to_multiple_assessed_competencies(
             ctx,
         )
 
+    ctx.tool_call_id = None
     await _grade_quiz(ctx, plan.id, task.id)
     all_observations = await _list_evidence(ctx, plan_id=plan.id)
     first_observations = await _list_evidence(ctx, plan_id=plan.id, competency_id=first.id)

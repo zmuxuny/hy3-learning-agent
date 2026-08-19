@@ -351,15 +351,45 @@ class ToolInvocation(Base):
     """Persisted idempotency record for write tools inside one Agent run."""
 
     __tablename__ = "tool_invocations"
+    __table_args__ = (
+        CheckConstraint(
+            "request_digest IS NULL OR length(request_digest) = 64",
+            name="ck_tool_invocation_request_digest",
+        ),
+        CheckConstraint(
+            "effect_kind IS NULL OR effect_kind IN "
+            "('pure_read', 'database_write', 'external_read', 'external_write')",
+            name="ck_tool_invocation_effect_kind",
+        ),
+        CheckConstraint(
+            "status IN ('running', 'pending_approval', 'pending_delivery', "
+            "'committed', 'failed', 'needs_reconciliation', 'retry_pending', 'cancelled')",
+            name="ck_tool_invocation_status",
+        ),
+        CheckConstraint("attempt >= 1", name="ck_tool_invocation_attempt"),
+        CheckConstraint("version >= 1", name="ck_tool_invocation_version"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
-    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
     tool_name: Mapped[str] = mapped_column(String(120))
     args_hash: Mapped[str] = mapped_column(String(64))
+    # ``NULL`` is intentionally reserved for pre-H2 rows whose original
+    # validated request cannot be reconstructed.  Coordinators must fail
+    # closed instead of inventing a digest and replaying uncertain work.
+    request_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    canonical_args: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    effect_kind: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), default="running", index=True)
     result_payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    attempt: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    claimed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    claim_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
@@ -461,6 +491,10 @@ class EvidenceObservation(Base):
         Index("ix_evidence_observations_owner_plan", "owner_id", "plan_id", "recorded_at"),
         Index("ix_evidence_observations_task", "owner_id", "task_id", "occurred_at"),
         Index("ix_evidence_observations_source", "owner_id", "source_type", "source_id"),
+        CheckConstraint(
+            "request_digest IS NULL OR length(request_digest) = 64",
+            name="ck_evidence_observation_request_digest",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -492,6 +526,7 @@ class EvidenceObservation(Base):
     correlation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     causation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     idempotency_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    request_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     supersedes_id: Mapped[int | None] = mapped_column(
         ForeignKey("evidence_observations.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -506,6 +541,10 @@ class Artifact(Base):
     __table_args__ = (
         UniqueConstraint("owner_id", "idempotency_key", name="uq_artifact_owner_idempotency"),
         Index("ix_artifacts_owner_plan", "owner_id", "plan_id", "created_at"),
+        CheckConstraint(
+            "request_digest IS NULL OR length(request_digest) = 64",
+            name="ck_artifact_request_digest",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -521,6 +560,7 @@ class Artifact(Base):
     run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
     session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     idempotency_key: Mapped[str] = mapped_column(String(180), index=True)
+    request_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), index=True)
 
 
@@ -667,12 +707,103 @@ class ContextSnapshot(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
+class OutboxAction(Base):
+    """Durable intent and uncertainty fence for one external write."""
+
+    __tablename__ = "outbox_actions"
+    __table_args__ = (
+        CheckConstraint("length(request_digest) = 64", name="ck_outbox_action_request_digest"),
+        CheckConstraint("effect_kind = 'external_write'", name="ck_outbox_action_effect_kind"),
+        CheckConstraint(
+            "destination IN ('smtp', 'web_push', 'workspace_file', 'subprocess')",
+            name="ck_outbox_action_destination",
+        ),
+        CheckConstraint(
+            "status IN ('queued', 'delivering', 'needs_reconciliation', "
+            "'retry_pending', 'delivered', 'failed', 'cancelled')",
+            name="ck_outbox_action_status",
+        ),
+        CheckConstraint("attempt >= 0", name="ck_outbox_action_attempt"),
+        CheckConstraint("version >= 1", name="ck_outbox_action_version"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    invocation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tool_invocations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    notification_id: Mapped[int | None] = mapped_column(
+        ForeignKey("notifications.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    operation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("operations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    action_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    request_digest: Mapped[str] = mapped_column(String(64), index=True)
+    effect_kind: Mapped[str] = mapped_column(
+        String(32), default="external_write", server_default=text("'external_write'")
+    )
+    destination: Mapped[str] = mapped_column(String(32), index=True)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    status: Mapped[str] = mapped_column(
+        String(32), default="queued", server_default=text("'queued'"), index=True
+    )
+    claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    attempt: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    available_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), index=True
+    )
+    claimed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    last_error: Mapped[str] = mapped_column(Text, default="", server_default=text("''"))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
+    )
+
+
+class OutboxReceipt(Base):
+    """Provider acknowledgement for an outbox action, written at most once."""
+
+    __tablename__ = "outbox_receipts"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('accepted', 'delivered', 'reconciled')",
+            name="ck_outbox_receipt_status",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    outbox_action_id: Mapped[str] = mapped_column(
+        ForeignKey("outbox_actions.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    action_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="accepted", server_default=text("'accepted'"))
+    provider_id: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    response: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    accepted_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
 class Operation(Base):
     __tablename__ = "operations"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    invocation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tool_invocations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     tool_name: Mapped[str] = mapped_column(String(120))
     entity_type: Mapped[str] = mapped_column(String(64))
     entity_id: Mapped[str] = mapped_column(String(64))
@@ -689,6 +820,9 @@ class Notification(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True)
+    invocation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tool_invocations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
     channel: Mapped[str] = mapped_column(String(32), default="in_app")

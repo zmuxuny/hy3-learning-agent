@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.context.memory import MemoryManager, search_terms
 from app.db.database import AsyncSessionLocal
+from app.db.uow import commit as commit_uow
 from app.models import Memory
 from app.retrieval.bm25 import BM25
 from app.retrieval.simhash import simhash
@@ -137,6 +138,7 @@ async def test_memory_archive_is_recoverable_without_deleting_history():
         restored = await manager.restore("local", memory.id)
         assert restored.status == "confirmed"
         assert restored.archived_reason == ""
+        await commit_uow(db)
         await manager.maintain("local")
         assert expired_memory.status == "expired"
         assert expired_memory.restorable is True

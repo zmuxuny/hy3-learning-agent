@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+from uuid import NAMESPACE_URL, uuid5
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -9,16 +10,17 @@ from pydantic import BaseModel, Field
 from app.context import ContextAssembler
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
+from app.db.uow import commit as commit_uow
 from app.models import AgentRun
 from app.runtime.events import emit_event
-from app.runtime.tasks import cancel_tracked_task, start_tracked_task
+from app.runtime.tasks import start_tracked_task
 from app.runtime.subagents import (
     READ_ONLY_TOOL_NAMES,
     child_cancel_requested,
     run_restricted_child,
     wait_for_child,
 )
-from app.tools.base import ToolContext, ToolDefinition
+from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind
 
 
 class SubagentSpawnArgs(BaseModel):
@@ -37,7 +39,78 @@ class SubagentJoinArgs(BaseModel):
     timeout_seconds: float = Field(default=60, ge=1, le=300)
 
 
-_active_child_tasks: set[asyncio.Task] = set()
+_active_child_tasks: dict[str, asyncio.Task] = {}
+
+
+def _stable_child_id(action_key: str) -> str:
+    return str(uuid5(NAMESPACE_URL, f"learning-travel:subagent:{action_key}"))
+
+
+class _SubagentToolCoordinator:
+    """Own the short durable phases around in-process child execution."""
+
+    def __init__(self, ctx: ToolContext) -> None:
+        self.ctx = ctx
+
+    async def persist_new_child(
+        self,
+        child: AgentRun,
+        *,
+        role: str,
+        objective: str,
+        allowlist: set[str],
+    ) -> None:
+        self.ctx.db.add(child)
+        await commit_uow(self.ctx.db)
+        await self.ctx.db.refresh(child)
+        await emit_event(self.ctx.db, child.id, "run.started", f"{role} 子 Agent 已开始", {
+            "parent_run_id": self.ctx.run_id,
+            "role": role,
+            "action_key": self.ctx.action_key,
+        })
+        await emit_event(self.ctx.db, self.ctx.run_id, "subagent.started", f"已委派给 {role}", {
+            "child_run_id": child.id,
+            "role": role,
+            "objective": objective,
+            "allowlist": sorted(allowlist),
+            "action_key": self.ctx.action_key,
+        })
+
+    async def release_replay_read(self) -> None:
+        if self.ctx.db.new or self.ctx.db.dirty or self.ctx.db.deleted:
+            raise RuntimeError("sub-agent wait requires a clean caller session")
+        await commit_uow(self.ctx.db)
+
+    async def persist_cancellation(self, child: AgentRun) -> None:
+        child_id = child.id
+        role = child.objective.split("]", 1)[0].lstrip("[")
+        await commit_uow(self.ctx.db)
+        active_task = _active_child_tasks.get(child_id)
+        if active_task is not None and active_task is not asyncio.current_task():
+            # Cancellation is first made durable. Give the child a bounded
+            # opportunity to observe that state and unwind cooperatively.
+            # Abruptly cancelling an aiosqlite await can strand its worker
+            # thread with the writer lock after the coroutine is already done.
+            done, _ = await asyncio.wait({active_task}, timeout=0.75)
+            if active_task in done:
+                try:
+                    active_task.result()
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    # The durable cancellation state wins over an overlapping
+                    # child failure; terminal events below remain authoritative.
+                    pass
+        await emit_event(self.ctx.db, child_id, "run.cancelled", "父 Agent 取消", {
+            "parent_run_id": self.ctx.run_id,
+            "action_key": self.ctx.action_key,
+        })
+        await emit_event(self.ctx.db, self.ctx.run_id, "subagent.completed", f"{role} 已停止", {
+            "child_run_id": child_id,
+            "status": "cancelled",
+            "report": "",
+            "action_key": self.ctx.action_key,
+        })
 
 
 def _effective_allowlist(requested: list[str] | None) -> set[str]:
@@ -69,6 +142,7 @@ async def _run_child_async(
             stored_child = await checkpoint_db.get(AgentRun, child_id)
             if stored_child is None or stored_child.status not in {"queued", "running"}:
                 return
+            durable_identity = dict(stored_child.checkpoint or {})
             stored_child.checkpoint = {
                 "kind": "subagent",
                 "role": role,
@@ -77,17 +151,23 @@ async def _run_child_async(
                 "allowlist": sorted(allowlist),
                 "max_steps": max_steps,
                 **runtime_checkpoint,
+                # The runtime checkpoint is replaced on every model/tool step.
+                # Keep the coordinator identity authoritative so a reclaimed
+                # parent invocation can reuse this exact child instead of
+                # manufacturing a second run.
+                "action_key": durable_identity.get("action_key"),
             }
-            await checkpoint_db.commit()
+            await commit_uow(checkpoint_db)
 
     try:
         async with AsyncSessionLocal() as db:
             child = await db.get(AgentRun, child_id)
             if child is None or child.status == "cancelled" or child.cancel_requested:
                 return
-            child.status = "running"
-            child.started_at = child.started_at or datetime.now(timezone.utc)
-            await db.commit()
+            if child.status == "queued":
+                child.status = "running"
+                child.started_at = child.started_at or datetime.now(timezone.utc)
+                await commit_uow(db)
 
         client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
         report = await run_restricted_child(
@@ -111,14 +191,14 @@ async def _run_child_async(
                 stored.status = "cancelled"
                 stored.checkpoint = None
                 stored.completed_at = datetime.now(timezone.utc)
-                await db.commit()
+                await commit_uow(db)
                 await emit_event(db, child_id, "run.cancelled", "子 Agent 已按要求停止", {"role": role})
                 return
             stored.status = "completed"
             stored.output = report
             stored.checkpoint = None
             stored.completed_at = datetime.now(timezone.utc)
-            await db.commit()
+            await commit_uow(db)
             await emit_event(db, child_id, "run.completed", report, {"role": role})
             await emit_event(db, stored.parent_run_id, "subagent.completed", f"{role} 已返回结论", {
                 "child_run_id": child_id,
@@ -139,7 +219,7 @@ async def _run_child_async(
             stored.output = safe_error
             stored.checkpoint = None
             stored.completed_at = datetime.now(timezone.utc)
-            await db.commit()
+            await commit_uow(db)
             await emit_event(db, child_id, "run.failed", safe_error, {"role": role, "recoverable": False})
             await emit_event(db, stored.parent_run_id, "subagent.completed", f"{role} 调查失败", {
                 "child_run_id": child_id,
@@ -172,55 +252,95 @@ async def resume_subagent_run(child_id: str) -> None:
 async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
     if not settings.OPENAI_API_KEY:
         return {"error": "OPENAI_API_KEY is not configured"}
+    if not ctx.action_key:
+        return {"error": "subagent_spawn requires a durable action key"}
     allowlist = _effective_allowlist(args.tool_whitelist)
-    snapshot = await ContextAssembler(ctx.db).build(
-        ctx.owner_id,
-        plan_id=ctx.plan_id,
-        session_id=ctx.session_id,
-        run_id=ctx.run_id,
-        objective=args.objective,
-    )
-    child = AgentRun(
-        owner_id=ctx.owner_id,
-        session_id=ctx.session_id,
-        plan_id=ctx.plan_id,
-        parent_run_id=ctx.run_id,
-        trigger="subagent",
-        objective=f"[{args.role}] {args.objective}",
-        status="queued",
-        model=settings.MODEL_NAME,
-        checkpoint={
-            "kind": "subagent",
-            "role": args.role,
-            "objective": args.objective,
-            "context": snapshot.markdown,
-            "allowlist": sorted(allowlist),
-            "max_steps": args.max_steps,
-            "step": 0,
-            "messages": [],
-            "pending_tool_calls": [],
-        },
-    )
-    ctx.db.add(child)
-    await ctx.db.commit()
-    await ctx.db.refresh(child)
-    await emit_event(ctx.db, child.id, "run.started", f"{args.role} 子 Agent 已开始", {
-        "parent_run_id": ctx.run_id,
+    child_id = _stable_child_id(ctx.action_key)
+    coordinator = _SubagentToolCoordinator(ctx)
+    child = await ctx.db.get(AgentRun, child_id)
+    created = child is None
+    if child is not None:
+        checkpoint = dict(child.checkpoint or {})
+        expected_objective = f"[{args.role}] {args.objective}"
+        if (
+            not _own_child(ctx, child)
+            or child.objective != expected_objective
+            or (
+                checkpoint
+                and checkpoint.get("action_key") != ctx.action_key
+            )
+        ):
+            return {"error": "stable sub-agent identity conflicts with another action"}
+        child_status = child.status
+        stored_context = str(checkpoint.get("context") or "")
+        await coordinator.release_replay_read()
+    else:
+        snapshot = await ContextAssembler(ctx.db).build(
+            ctx.owner_id,
+            plan_id=ctx.plan_id,
+            session_id=ctx.session_id,
+            run_id=ctx.run_id,
+            objective=args.objective,
+        )
+        stored_context = snapshot.markdown
+        child = AgentRun(
+            id=child_id,
+            owner_id=ctx.owner_id,
+            session_id=ctx.session_id,
+            plan_id=ctx.plan_id,
+            parent_run_id=ctx.run_id,
+            trigger="subagent",
+            objective=f"[{args.role}] {args.objective}",
+            status="running",
+            started_at=datetime.now(timezone.utc),
+            model=settings.MODEL_NAME,
+            checkpoint={
+                "kind": "subagent",
+                "action_key": ctx.action_key,
+                "role": args.role,
+                "objective": args.objective,
+                "context": stored_context,
+                "allowlist": sorted(allowlist),
+                "max_steps": args.max_steps,
+                "step": 0,
+                "messages": [],
+                "pending_tool_calls": [],
+            },
+        )
+        await coordinator.persist_new_child(
+            child,
+            role=args.role,
+            objective=args.objective,
+            allowlist=allowlist,
+        )
+        child_status = child.status
+
+    if child_status in {"queued", "running"}:
+        task = start_tracked_task(
+            child_id,
+            _run_child_async(
+                child_id,
+                args.role,
+                args.objective,
+                stored_context,
+                allowlist,
+                args.max_steps,
+            ),
+        )
+        _active_child_tasks[child_id] = task
+
+        def discard(completed: asyncio.Task) -> None:
+            if _active_child_tasks.get(child_id) is completed:
+                _active_child_tasks.pop(child_id, None)
+
+        task.add_done_callback(discard)
+    return {
+        "run_id": child_id,
         "role": args.role,
-    })
-    await emit_event(ctx.db, ctx.run_id, "subagent.started", f"已委派给 {args.role}", {
-        "child_run_id": child.id,
-        "role": args.role,
-        "objective": args.objective,
+        "status": child_status,
         "allowlist": sorted(allowlist),
-    })
-    task = start_tracked_task(
-        child.id,
-        _run_child_async(child.id, args.role, args.objective, snapshot.markdown, allowlist, args.max_steps)
-    )
-    _active_child_tasks.add(task)
-    task.add_done_callback(_active_child_tasks.discard)
-    return {"run_id": child.id, "role": args.role, "status": child.status, "allowlist": sorted(allowlist)}
+        "replayed_child": not created,
+    }
 
 
 async def subagent_status(ctx: ToolContext, args: SubagentIdArgs) -> dict:
@@ -239,7 +359,10 @@ async def subagent_join(ctx: ToolContext, args: SubagentJoinArgs) -> dict:
     child = await ctx.db.get(AgentRun, args.run_id)
     if not _own_child(ctx, child):
         return {"error": "Sub-agent run not found"}
-    terminal = await wait_for_child(child.id, args.timeout_seconds)
+    child_id = child.id
+    # Release the ownership read transaction before awaiting another actor.
+    await _SubagentToolCoordinator(ctx).release_replay_read()
+    terminal = await wait_for_child(child_id, args.timeout_seconds)
     timed_out = terminal.status not in {"completed", "failed", "cancelled"}
     return {
         "run_id": terminal.id,
@@ -259,16 +382,7 @@ async def subagent_cancel(ctx: ToolContext, args: SubagentIdArgs) -> dict:
         child.status = "cancelled"
         child.checkpoint = None
         child.completed_at = datetime.now(timezone.utc)
-        await ctx.db.commit()
-        cancel_tracked_task(child.id)
-        await emit_event(ctx.db, child.id, "run.cancelled", "父 Agent 取消", {
-            "parent_run_id": ctx.run_id,
-        })
-        await emit_event(ctx.db, ctx.run_id, "subagent.completed", f"{child.objective.split(']', 1)[0].lstrip('[')} 已停止", {
-            "child_run_id": child.id,
-            "status": "cancelled",
-            "report": "",
-        })
+        await _SubagentToolCoordinator(ctx).persist_cancellation(child)
     return {"run_id": child.id, "status": "cancelled" if cancelled else child.status}
 
 
@@ -278,6 +392,7 @@ SUBAGENT_TOOLS = [
         "Spawn one bounded read-only sub-agent for independent investigation; it can only use read-only tools and returns a structured report.",
         SubagentSpawnArgs,
         subagent_spawn,
+        effect_kind=ToolEffectKind.EXTERNAL_WRITE,
         idempotent=True,
     ),
     ToolDefinition(
@@ -285,18 +400,21 @@ SUBAGENT_TOOLS = [
         "Check the status and output of a child sub-agent owned by this run.",
         SubagentIdArgs,
         subagent_status,
+        effect_kind=ToolEffectKind.PURE_READ,
     ),
     ToolDefinition(
         "subagent_join",
         "Wait until a child sub-agent finishes and return its report; the parent remains responsible for all writes.",
         SubagentJoinArgs,
         subagent_join,
+        effect_kind=ToolEffectKind.EXTERNAL_READ,
     ),
     ToolDefinition(
         "subagent_cancel",
         "Cancel a child sub-agent owned by this run.",
         SubagentIdArgs,
         subagent_cancel,
+        effect_kind=ToolEffectKind.EXTERNAL_WRITE,
         idempotent=True,
     ),
 ]

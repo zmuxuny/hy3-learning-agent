@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.context.memory import MemoryManager
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.database import AsyncSessionLocal, get_db
+from app.db.uow import commit as commit_uow, flush as flush_uow
 from app.models import (
     AgentRun,
     ChatMessage,
@@ -102,7 +103,7 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             title=initial_session_title(data.objective),
         )
         db.add(session)
-        await db.flush()
+        await flush_uow(db)
         session_id = session.id
     if data.plan_id is not None:
         plan = await db.get(Plan, data.plan_id)
@@ -119,7 +120,7 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
         model=settings.MODEL_NAME,
     )
     db.add(run)
-    await db.flush()
+    await flush_uow(db)
     message_metadata = {}
     if data.reply_to_notification_id is not None:
         if data.trigger != "user_message" or session_id is None:
@@ -149,7 +150,7 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             relation_type="focused",
             source_run_id=run.id,
         )
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(run)
     _start_runtime(run.id)
     return run
@@ -261,7 +262,7 @@ async def rename_session(session_id: str, data: SessionUpdate, db: AsyncSession 
             inverse_patch={"changes": {"archived_at": canonical_utc(before)}},
         ))
     session.updated_at = utc_now()
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(session)
     messages = _visible_messages(list(session.messages))
     latest = (await db.execute(
@@ -325,7 +326,7 @@ async def handoff_session(
             handoff_summary=latest_handoff,
         )
         db.add(child)
-        await db.flush()
+        await flush_uow(db)
     elif child.handoff_summary != latest_handoff:
         child.handoff_summary = latest_handoff
         child.updated_at = utc_now()
@@ -343,7 +344,7 @@ async def handoff_session(
         plan_id=plan.id,
         relation_type="focused",
     )
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(child)
     latest = (await db.execute(
         select(AgentRun).where(AgentRun.session_id == child.id).order_by(AgentRun.created_at.desc()).limit(1)
@@ -464,7 +465,7 @@ async def submit_planning_answers(
         model=settings.MODEL_NAME,
     )
     db.add(run)
-    await db.flush()
+    await flush_uow(db)
     db.add(ChatMessage(
         session_id=session.id,
         run_id=run.id,
@@ -481,7 +482,7 @@ async def submit_planning_answers(
     intake.readiness_confidence = min(intake.readiness_confidence, 0.95)
     intake.rationale = "回答已提交，Agent 正在重新判断需求是否充分。"
     session.updated_at = utc_now()
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(run)
     _start_runtime(run.id)
     return run
@@ -510,7 +511,7 @@ async def decide_plan_proposal(
     if not data.accepted:
         proposal.status = "rejected"
         proposal.decided_at = utc_now()
-        await db.commit()
+        await commit_uow(db)
         await db.refresh(proposal)
         return proposal
 
@@ -529,7 +530,6 @@ async def decide_plan_proposal(
         settings.DEFAULT_OWNER_ID,
         plan_data,
         proposal.source_run_id,
-        commit=False,
     )
     operation = Operation(
         owner_id=settings.DEFAULT_OWNER_ID,
@@ -556,7 +556,7 @@ async def decide_plan_proposal(
         source_run = await db.get(AgentRun, proposal.source_run_id)
         if source_run is not None:
             source_run.created_plan_id = plan.id
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(proposal)
     return proposal
 
@@ -624,7 +624,7 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
         model=settings.MODEL_NAME,
     )
     db.add(run)
-    await db.flush()
+    await flush_uow(db)
     message.content = data.content
     message.run_id = run.id
     message.message_metadata = {
@@ -633,7 +633,7 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
         "revises_run_id": previous_run_id,
     }
     session.summary = ""
-    await db.flush()
+    await flush_uow(db)
     visible_after_edit = list((await db.execute(
         select(ChatMessage).where(ChatMessage.session_id == session.id)
     )).scalars())
@@ -648,7 +648,7 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
                 for key, value in visible.message_metadata.items()
                 if key != "included_in_summary"
             }
-    await db.flush()
+    await flush_uow(db)
     await MemoryManager(db).compress_session(session)
     session.updated_at = edited_at
     db.add(Operation(
@@ -661,7 +661,7 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
         inverse_patch={"revision_preserved": True, "previous_run_id": previous_run_id},
         status="recorded",
     ))
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(run)
     if data.rerun:
         _start_runtime(run.id)
@@ -787,7 +787,7 @@ async def cancel_run(run_id: str, db: AsyncSession = Depends(get_db)):
     run.checkpoint = None
     run.pending_approval = None
     run.completed_at = utc_now()
-    await db.commit()
+    await commit_uow(db)
     cancel_tracked_task(run.id)
     if run.parent_run_id is None:
         from app.runtime.subagents import cancel_children_for_parent
@@ -834,7 +834,7 @@ async def decide_run_approval(
         pending["answer"] = data.answer
         run.pending_approval = pending
     run.status = "queued"
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(run)
     _start_runtime(
         run.id,
@@ -870,7 +870,7 @@ async def steer_run(run_id: str, data: RunSteerCreate, db: AsyncSession = Depend
             content=data.content,
             message_metadata={"ui_kind": "steer"},
         ))
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(steer)
     await emit_event(db, run.id, "steer.received", "已收到你的中途转向", {
         "steer_id": steer.id,
@@ -925,7 +925,7 @@ async def enqueue_message(data: QueuedMessageCreate, db: AsyncSession = Depends(
         position=int(max_position) + 1,
     )
     db.add(message)
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(message)
     return message
 
@@ -962,7 +962,7 @@ async def update_queued_message(
         if swapped and swapped.id != message.id:
             swapped.position = message.position
         message.position = data.position
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(message)
     return message
 
@@ -973,7 +973,7 @@ async def delete_queued_message(message_id: str, db: AsyncSession = Depends(get_
     if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Queued message not found")
     await db.delete(message)
-    await db.commit()
+    await commit_uow(db)
 
 
 @router.post("/queue/{message_id}/send", response_model=AgentRunRead, status_code=202)
@@ -1006,6 +1006,8 @@ async def send_queued_message(message_id: str, db: AsyncSession = Depends(get_db
         run = await dispatch_queued_message(db, message, owner_id=settings.DEFAULT_OWNER_ID)
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await commit_uow(db)
+    await db.refresh(run)
     _start_runtime(run.id)
     return run
 

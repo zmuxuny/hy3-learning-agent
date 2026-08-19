@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Awaitable, Callable
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.core.config import settings
 from app.core.time import coerce_legacy_utc, utc_now
+from app.db.uow import (
+    DatabaseBusyError,
+    commit as commit_uow,
+    flush as flush_uow,
+    run_short_transaction,
+)
 from app.models import ChatMessage, Memory, Plan, Session, SessionSummary, Stage
 from app.retrieval import get_embedding_provider
 from app.retrieval.bm25 import BM25
@@ -18,6 +25,16 @@ from app.retrieval.text import tokenize_terms
 
 
 LAYER_WEIGHT = {"semantic": 4.0, "long_term": 4.0, "episodic": 2.5, "short_term": 2.0, "working": 1.0}
+_SESSION_WRITE_ACTIVITY_KEY = "h2_session_write_activity"
+
+
+def _has_pending_session_writes(db: AsyncSession) -> bool:
+    return bool(
+        db.new
+        or db.dirty
+        or db.deleted
+        or db.sync_session.info.get(_SESSION_WRITE_ACTIVITY_KEY)
+    )
 
 
 def search_terms(text: str) -> set[str]:
@@ -67,7 +84,15 @@ class MemoryManager:
         query: str,
         limit: int = 20,
     ) -> tuple[list[Memory], list[dict[str, Any]]]:
+        if self.db.in_nested_transaction():
+            raise RuntimeError("memory retrieval cannot coordinate inside a SAVEPOINT")
         now = utc_now()
+        query_terms = tokenize_terms(query)
+        provider = get_embedding_provider()
+        if provider is not None and query_terms and _has_pending_session_writes(self.db):
+            raise RuntimeError(
+                "memory retrieval requires a clean session before an embedding wait"
+            )
         result = await self.db.execute(
             select(Memory).where(Memory.owner_id == owner_id, Memory.status == "confirmed")
         )
@@ -86,9 +111,16 @@ class MemoryManager:
         if not candidates:
             return [], []
 
-        query_terms = tokenize_terms(query)
-        provider = get_embedding_provider()
-        query_embedding = provider.embed(query) if (provider is not None and query_terms) else None
+        if provider is not None and query_terms:
+            # Candidate loading opened a read transaction. Release the
+            # snapshot before a local/remote embedding provider can block.
+            # The entry guard above guarantees this cannot commit caller work.
+            await commit_uow(self.db)
+        query_embedding = (
+            await asyncio.to_thread(provider.embed, query)
+            if provider is not None and query_terms
+            else None
+        )
 
         documents = [tokenize_terms(memory.content) for memory in candidates]
         bm25 = BM25()
@@ -99,7 +131,7 @@ class MemoryManager:
         for memory in candidates:
             memory_embedding = memory.embedding
             if memory_embedding is None and provider is not None and query_terms:
-                memory_embedding = provider.embed(memory.content)
+                memory_embedding = await asyncio.to_thread(provider.embed, memory.content)
             vector_scores.append(
                 embedding_similarity(query_embedding, memory_embedding) if query_embedding else 0.0
             )
@@ -139,11 +171,40 @@ class MemoryManager:
             reverse=True,
         )
         ranked = scored[:limit]
-        for _, memory, _ in ranked:
-            memory.last_accessed_at = now
-            memory.access_count = (memory.access_count or 0) + 1
-        await self.db.flush()
-        return [item[1] for item in ranked], [item[2] for item in ranked]
+        ranked_memories = [item[1] for item in ranked]
+        if ranked_memories and self.db.bind is not None:
+            memory_ids = [memory.id for memory in ranked_memories]
+            access_sessions = async_sessionmaker(
+                self.db.bind,
+                class_=AsyncSession,
+                expire_on_commit=False,
+            )
+
+            async def record_access(short_db: AsyncSession) -> None:
+                await short_db.execute(
+                    update(Memory)
+                    .where(Memory.id.in_(memory_ids))
+                    .values(
+                        last_accessed_at=now,
+                        access_count=Memory.access_count + 1,
+                    )
+                )
+
+            try:
+                await run_short_transaction(access_sessions, record_access)
+            except DatabaseBusyError:
+                # Access telemetry is not a domain fact and must never make a
+                # read unavailable. A later retrieval can update it again.
+                pass
+            else:
+                for memory in ranked_memories:
+                    set_committed_value(memory, "last_accessed_at", now)
+                    set_committed_value(
+                        memory,
+                        "access_count",
+                        (memory.access_count or 0) + 1,
+                    )
+        return ranked_memories, [item[2] for item in ranked]
 
     async def propose(
         self,
@@ -198,7 +259,7 @@ class MemoryManager:
                 existing.confidence = max(existing.confidence, confidence)
                 existing.last_reinforced_at = now
                 existing.updated_at = now
-                await self.db.flush()
+                await flush_uow(self.db)
                 return existing, True
 
         if supersedes_id is not None:
@@ -224,7 +285,7 @@ class MemoryManager:
             supersedes_id=supersedes_id,
         )
         self.db.add(memory)
-        await self.db.flush()
+        await flush_uow(self.db)
         return memory, False
 
     async def confirm(self, owner_id: str, memory_id: int) -> Memory:
@@ -235,7 +296,7 @@ class MemoryManager:
             now = utc_now()
             memory.last_reinforced_at = now
             memory.updated_at = now
-            await self.db.flush()
+            await flush_uow(self.db)
             return memory
         if memory.status != "proposed":
             raise ValueError("Only proposed memory can be confirmed")
@@ -274,7 +335,7 @@ class MemoryManager:
         memory.archived_reason = ""
         memory.last_reinforced_at = now
         memory.updated_at = now
-        await self.db.flush()
+        await flush_uow(self.db)
         return memory
 
     async def archive(self, owner_id: str, memory_id: int, *, reason: str = "用户归档") -> Memory:
@@ -287,7 +348,7 @@ class MemoryManager:
         memory.status = "archived"
         memory.archived_reason = reason
         memory.updated_at = utc_now()
-        await self.db.flush()
+        await flush_uow(self.db)
         return memory
 
     async def restore(self, owner_id: str, memory_id: int) -> Memory:
@@ -309,76 +370,124 @@ class MemoryManager:
         memory.archived_reason = ""
         memory.expires_at = None
         memory.updated_at = utc_now()
-        await self.db.flush()
+        await flush_uow(self.db)
         return memory
 
-    async def maintain(self, owner_id: str) -> dict[str, int]:
+    async def maintain(
+        self,
+        owner_id: str,
+        *,
+        before_mutation: Callable[[], Awaitable[None]] | None = None,
+    ) -> dict[str, int]:
+        if self.db.in_nested_transaction():
+            raise RuntimeError("memory maintenance cannot coordinate inside a SAVEPOINT")
+        provider = get_embedding_provider()
+        if provider is not None and _has_pending_session_writes(self.db):
+            raise RuntimeError(
+                "memory maintenance requires a clean session before an embedding wait"
+            )
         now = utc_now()
         expired = 0
         archived = 0
         memories = list((await self.db.execute(select(Memory).where(Memory.owner_id == owner_id))).scalars())
+        plans = list((await self.db.execute(
+            select(Plan).where(Plan.owner_id == owner_id).options(selectinload(Plan.stages).selectinload(Stage.tasks))
+        )).scalars().unique())
+
+        # Compute every DB mutation first, but do not apply it until embedding
+        # work has finished.  This keeps provider waits outside a SQLite write
+        # transaction even when a configured provider is remote or slow.
+        status_updates: dict[int, tuple[str, str]] = {}
         for memory in memories:
             if (
                 memory.status == "confirmed"
                 and memory.expires_at
                 and coerce_legacy_utc(memory.expires_at) <= now
             ):
-                memory.archived_from_status = "confirmed"
-                memory.archived_reason = "已到期"
-                memory.status = "expired"
-                memory.updated_at = now
+                status_updates[memory.id] = ("expired", "已到期")
                 expired += 1
             elif (
                 memory.status == "confirmed"
                 and memory.layer in {"short_term", "episodic"}
                 and coerce_legacy_utc(memory.updated_at) < now - timedelta(days=90)
             ):
-                memory.archived_from_status = "confirmed"
-                memory.archived_reason = "短期/情节记忆超过 90 天未更新"
-                memory.status = "archived"
-                memory.updated_at = now
+                status_updates[memory.id] = (
+                    "archived",
+                    "短期/情节记忆超过 90 天未更新",
+                )
                 archived += 1
 
-        plans = list((await self.db.execute(
-            select(Plan).where(Plan.owner_id == owner_id).options(selectinload(Plan.stages).selectinload(Stage.tasks))
-        )).scalars().unique())
         existing_plan_ids = {str(plan.id) for plan in plans}
         for memory in memories:
             if (
                 memory.status == "confirmed"
+                and memory.id not in status_updates
                 and memory.scope == "plan"
                 and memory.scope_id not in existing_plan_ids
             ):
-                memory.archived_from_status = "confirmed"
-                memory.archived_reason = "关联计划已不存在"
-                memory.status = "archived"
-                memory.updated_at = now
+                status_updates[memory.id] = ("archived", "关联计划已不存在")
                 archived += 1
+
+        plan_summaries: dict[int, str] = {}
         for plan in plans:
             tasks = [task for stage in plan.stages for task in stage.tasks]
             completed = [task for task in tasks if task.status == "completed"]
             blocked = [task.title for task in tasks if task.status == "blocked"]
             active = [task.title for task in tasks if task.status == "active"]
             next_pending = next((task.title for task in tasks if task.status == "pending"), "")
-            plan.memory_summary = (
+            plan_summaries[plan.id] = (
                 f"进度 {len(completed)}/{len(tasks)}；"
                 f"当前任务：{'、'.join(active[:3]) or next_pending or '无'}；"
                 f"阻塞：{'、'.join(blocked[:3]) or '无'}；"
                 f"计划版本 {plan.version}。"
             )
 
-        provider = get_embedding_provider()
+        embedding_updates: dict[int, list[float]] = {}
         if provider is not None:
+            # Plans/memories above are immutable inputs to the provider phase;
+            # end their read snapshot before awaiting any embedding work.
+            await commit_uow(self.db)
             for memory in memories:
-                if memory.status == "confirmed" and (
+                effective_status = status_updates.get(
+                    memory.id,
+                    (memory.status, ""),
+                )[0]
+                if effective_status == "confirmed" and (
                     memory.embedding is None or memory.embedding_provider != provider.name
                 ):
-                    memory.embedding = provider.embed(memory.content)
+                    embedding_updates[memory.id] = await asyncio.to_thread(
+                        provider.embed,
+                        memory.content,
+                    )
+
+        if before_mutation is not None:
+            # Registry coordination can acquire the RunEvent serialization
+            # boundary here: all provider waits are complete, while no ORM
+            # mutation or flush has started yet.
+            await before_mutation()
+        for memory in memories:
+            if memory.id in status_updates:
+                status, reason = status_updates[memory.id]
+                memory.archived_from_status = "confirmed"
+                memory.archived_reason = reason
+                memory.status = status
+                memory.updated_at = now
+            if memory.id in embedding_updates:
+                memory.embedding = embedding_updates[memory.id]
+                if provider is not None:  # narrowed above; retained for type checkers
                     memory.embedding_provider = provider.name
-        await self.db.flush()
+        for plan in plans:
+            plan.memory_summary = plan_summaries[plan.id]
+        await flush_uow(self.db)
         return {"expired": expired, "archived": archived, "plans_refreshed": len(plans)}
 
     async def compress_session(self, session: Session, client: Any | None = None) -> bool:
+        if self.db.in_nested_transaction():
+            raise RuntimeError("memory compression cannot coordinate inside a SAVEPOINT")
+        if client is not None and _has_pending_session_writes(self.db):
+            raise RuntimeError(
+                "compress_session requires a clean session before a model wait"
+            )
         result = await self.db.execute(
             select(ChatMessage).where(ChatMessage.session_id == session.id).order_by(ChatMessage.created_at, ChatMessage.id)
         )
@@ -403,6 +512,10 @@ class MemoryManager:
         summary = ""
         method = "model"
         if client is not None:
+            # Transcript collection is read-only and the entry guard proved
+            # there is no caller-owned work. End that snapshot before waiting
+            # for the model; summary mutations begin only after it returns.
+            await commit_uow(self.db)
             try:
                 response = await asyncio.wait_for(
                     client.chat.completions.create(
@@ -437,7 +550,7 @@ class MemoryManager:
         ))
         for message in uncompressed:
             message.message_metadata = {**message.message_metadata, "included_in_summary": True}
-        await self.db.flush()
+        await flush_uow(self.db)
         return True
 
 

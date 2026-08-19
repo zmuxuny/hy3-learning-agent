@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
+from app.db.uow import commit as commit_uow
 from app.models import AgentRun
 from app.runtime.events import emit_event
 from app.runtime.tasks import cancel_tracked_task
@@ -281,7 +282,7 @@ async def cancel_child(child: AgentRun, reason: str = "父 Agent 取消") -> boo
         stored.cancel_requested = True
         stored.status = "cancelled"
         stored.completed_at = datetime.now(timezone.utc)
-        await db.commit()
+        await commit_uow(db)
         cancel_tracked_task(child.id)
         await emit_event(db, child.id, "run.cancelled", reason, {"parent_run_id": child.parent_run_id})
         return True

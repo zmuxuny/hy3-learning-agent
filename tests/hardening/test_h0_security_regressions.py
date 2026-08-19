@@ -670,10 +670,6 @@ def test_h6_config_rejects_newlines_without_changing_the_env_file(tmp_path):
     assert persisted == original, "H6-CONFIG-001: rejected update changed the .env file"
 
 
-@_xfail(
-    "H6-CONFIG-001",
-    "the predictable .env temp filename follows a pre-created symlink",
-)
 def test_h6_config_atomic_temp_file_does_not_follow_symlinks(tmp_path):
     with _fixture_boundary():
         env_path = tmp_path / ".env"

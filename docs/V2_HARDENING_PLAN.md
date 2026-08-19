@@ -142,7 +142,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景已登记独立 contract，但仍为 `pending_rewrite`，不会被当作 41 项已覆盖。
 - 定向套件登记 87 个 open defect ID、113 个 strict-xfail 节点和 20 个 passing gate。实现门禁修复每一项时必须删除对应 xfail，并在矩阵写入修复提交。
 - 最终全量回归为 146 passed、113 xfailed、0 XPASS、0 failed；Python compileall、pip check、前端生产构建与完整/production-only npm audit 均通过。五尺寸 Chrome 使用独立临时数据库和精确合成 Session 令牌，得到 3 个已登记 H7-UI-001 XFAIL，未产生非预期失败或 API 写请求。
-- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1 已于后续阶段关闭，当前下一门禁为 H2。
+- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1、H2 已于后续阶段关闭，当前下一门禁为 H3。
 
 ## 5. H1：迁移、时间与备份基础
 
@@ -181,11 +181,11 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 迁移协议已经切为 `snapshot → dry-run → verified backup → candidate publish → post-publish verify/rollback`，覆盖 writer gap、WAL/rollback journal、new inode、absent target、killpoint、restore safety backup 与 portable `database_identity`。发布、回滚和恢复在交接边界重新校验固定的路径、目录描述符/inode 与内容摘要，晚到篡改时只从已验证的 trusted snapshot 回退，不返回无效 recovery reference。
 - legacy `_write_probe` 只接受“精确名称、精确单列 INTEGER、零行且无 index/trigger/view”的旧启动残留；其他同名或近似 schema 一律以 `unknown_legacy_schema` 失败关闭，规范新库不会保留该表。
 - 已提供 `scripts/data-maintenance.py` / `app.db.maintenance` 的安全维护协议，`reset-data.sh`、`seed-fixture.sh`、`demo-data.sh` 与 `rebuild-evidence.py` 已接入该协议。restore 会在加锁和写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中；source backup 位于安全备份根目录下仍是正常布局。共享 lexical normalization 消除 `.`/`..` 别名但不跟随 symlink，SQLite URI 对空格、`%`、`#`、`?` 等路径字符安全。
-- H1 定向套件共 281 passed：`test_h1_time_contracts.py` 10、`test_h1_migration_protocol.py` 183、`test_h1_maintenance.py` 79、`test_h1_rebuild_coordinator.py` 5、`tests/test_migrations.py` 4。H0 跨阶段回归为 27 passed / 17 strict xfailed；全仓为 441 passed / 98 strict xfailed，0 unexpected failure、0 XPASS。
-- H1 已关闭 13 个缺陷 ID、15 个基线节点；矩阵剩余 74 个 open ID，下一门禁为 H2。M15–M20 继续冻结。
-- 已知限制保留到后续门禁：前端尚无独立自动化 `test` 脚本；legacy naive 时间不会恢复不存在的原始 offset；受控 lease 不能约束绕过 Runtime/maintenance 的外部原始 SQLite writer；外部安装、连续学习闭环和 7 日留存仍待真实用户在 H8 验证。
+- H1 收口历史快照为 281 passed：`test_h1_time_contracts.py` 10、`test_h1_migration_protocol.py` 183、`test_h1_maintenance.py` 79、`test_h1_rebuild_coordinator.py` 5、`tests/test_migrations.py` 4；当时 H0 跨阶段为 27 passed / 17 strict xfailed，全仓为 441 passed / 98 strict xfailed，0 unexpected failure、0 XPASS。该组数字只记录 H1 收口时点，不是当前 H2 结果。
+- H1 关闭 13 个缺陷 ID、15 个基线节点；其收口时矩阵剩余 74 个 open ID、下一门禁为 H2。H2 的当前状态见下一节。
+- H1 收口时前端尚无独立自动化 `test` 脚本；H2 已补 6 个 Node test runner 回归，但 Vitest/Playwright 和 H7/H8 发布门禁仍未完成。legacy naive 时间不会恢复不存在的原始 offset；受控 lease 不能约束绕过 Runtime/maintenance 的外部原始 SQLite writer；外部安装、连续学习闭环和 7 日留存仍待真实用户在 H8 验证。
 
-## 6. H2：事务、幂等与 Outbox
+## 6. H2：事务、幂等与 Outbox（已完成）
 
 目标：消除长写锁和分散提交，为 Runtime 恢复提供原子语义。
 
@@ -214,6 +214,19 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 压力测试无重复 Operation、Evidence、Notification 或外部投递。
 - `database is locked` 不再导致 Run 丢失；无法提交时进入可恢复状态。
 - service/tool handler 不再自行决定事务终点。
+
+### H2 实施记录（2026-08-19，已完成）
+
+- schema revision 2 为 ToolInvocation 增加 canonical request digest、规范参数、effect kind、claim token/version/expiry，为 Artifact/Evidence 增加 request digest，并新增受约束的 `OutboxAction` / `OutboxReceipt`。H1 遗留 running invocation 与无 receipt 的 email/browser queued row 无法重建原始身份，因此一律迁移为 `needs_reconciliation`，不伪造 digest 或自动重放。
+- `app.db.uow` 成为应用事务协调入口；API、Runtime、service 与 tool handler 只 stage/flush，由最外层 coordinator 提交。SQLite 写路径在嵌套 savepoint 前显式建立 physical outer transaction，避免最外层 savepoint release 提前发布半份领域状态。只有 DB-only、可安全重放的 claim/CAS、事件与 receipt 短回调执行有界退避，任意业务 handler 不会因锁竞争被整体重跑。
+- 48 个注册工具完成 `pure_read` 17、`database_write` 21、`external_read` 4、`external_write` 6 的 effect 分类并通过设置契约公开。stable action key 与 canonical request digest 分离；同键同内容返回原结果，同键异内容返回 typed `idempotency_conflict`；claim token/version/expiry 阻止旧执行者提交或覆盖被新 worker 领取的调用。
+- 数据库写工具在一个 UoW 中提交领域对象、Operation、Evidence、LearningEvent、RunEvent 与 ToolInvocation 终态。模型、HTTP、embedding、SMTP、Web Push、子进程和子 Agent await 均移到活动 writer 之外；锁预算耗尽返回 typed `database_busy` 和稳定 retry 元数据，不丢失为不可解释异常。
+- SMTP、Web Push、workspace 文件和子进程采用 durable intent → 独立 dispatcher → receipt 协议。并发 dispatcher 只能有一个 claim；外部已接受而 receipt 未提交时转入 `needs_reconciliation` 并禁止盲重发。workspace effect 额外保存前后 hash，可在 publish 后中断时自动对账；上传、`.env` 与 Context 投影使用原子临时文件、文件/父目录 fsync 和失败清理，其中 `.env` 的 read-modify-write 由跨进程目录锁串行化。
+- Operation undo 使用状态 CAS；并发 exact replay 只应用一次 inverse 和一次审计事件。workspace undo 也先持久化 outbox intent，并以 forward digest 防止覆盖用户后续修改。该事务/文件闭环不等同于 H4 的 Evidence amendment/invalidation 或 Competency 依赖撤销。
+- H2-TXN-001–009 的 10 个原基线节点均删除 strict xfail；request identity 工作提前关闭 H4-EVID-006 的 2 个节点，planning delegate 在 model wait 前保存确定性 child ID、Context/messages 与 checkpoint，提前关闭 H3-RUN-008。H6-CONFIG-001 只提前关闭原子临时文件的 1 个节点，控制字符和复杂值往返 2 个节点仍 strict xfail，所以该 ID 保持 open。
+- 当前矩阵累计关闭 24 个 defect ID、剩余 63 个 open ID。H2 定向为 84 passed，H0 当前为 49 passed / 84 strict xfailed，普通非-hardening 回归为 139 passed；前端 Node 为 6 passed，生产构建通过，完整与 production-only audit 均为 0 vulnerabilities。完整 pytest 的唯一待替换结果记录在 [`STATUS.md`](STATUS.md)，本文件不复制未确认数字。
+- 已知限制：SMTP、Web Push 与子进程的不确定结果只能等待人工或 provider 对账，仅 workspace 可依据本地 hash 自动恢复；Context Markdown 是可重建派生投影，数据库提交后、投影发布前崩溃尚无跨重启 durable recovery；真实 SMTP/VAPID、外部安装、连续学习闭环与 7 日留存均未验证。
+- 下一门禁为 H3。H3 仍需集中 Run 状态机、lease/version CAS、版本化 checkpoint、审批拒绝/current tool/queued Run 恢复、late steer、final reply/ChatMessage/终态原子 finalization，以及 child terminal/父事件、耐久重试和完整预算。H3–H8 全部关闭前继续冻结 M15–M20。
 
 ## 7. H3：耐久 Run、Queue 与子 Agent
 

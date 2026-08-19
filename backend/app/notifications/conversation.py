@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.uow import flush as flush_uow
 from app.models import AgentRun, ChatMessage, Notification, Plan, Session
 from app.services.sessions import link_session_plan
 
@@ -52,7 +53,7 @@ async def resolve_notification_session(
         summary="Agent 主动提醒与学习者后续回复所在的连续对话。",
     )
     db.add(session)
-    await db.flush()
+    await flush_uow(db)
     if plan_id is not None:
         await link_session_plan(
             db,
@@ -122,7 +123,7 @@ async def materialize_notification_message(
     )
     db.add(message)
     session.updated_at = datetime.now(timezone.utc)
-    await db.flush()
+    await flush_uow(db)
     return message
 
 

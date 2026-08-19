@@ -1,11 +1,18 @@
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from weakref import WeakKeyDictionary
 from sqlalchemy import func, select
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.time import canonical_utc
+from app.db.uow import (
+    DEFAULT_RETRY_DELAYS,
+    DatabaseBusyError,
+    commit as commit_uow,
+    rollback as rollback_uow,
+)
 from app.models import RunEvent
 
 
@@ -39,6 +46,29 @@ def _run_event_lock(run_id: str) -> asyncio.Lock:
         locks = {}
         _event_locks[loop] = locks
     return locks.setdefault(run_id, asyncio.Lock())
+
+
+def _event_serialization_lock(run_id: str) -> asyncio.Lock:
+    return (
+        _sqlite_event_write_lock()
+        if settings.DATABASE_URL.startswith("sqlite")
+        else _run_event_lock(run_id)
+    )
+
+
+@asynccontextmanager
+async def serialize_event_write(run_id: str) -> AsyncIterator[None]:
+    """Serialize sequence allocation before any participant takes a writer.
+
+    Database-write tool coordination acquires this context before invoking its
+    flush-only handler and holds it through domain + completion-event commit.
+    Ordinary event append uses the same order, preventing max(sequence)+1
+    races without ever waiting for this lock while already owning SQLite's
+    writer.
+    """
+
+    async with _event_serialization_lock(run_id):
+        yield
 
 
 def publish_stream_event(run_id: str, payload: dict) -> None:
@@ -79,19 +109,18 @@ async def emit_event(
     # once.  The sequence is scoped to a Run, so serialize its max+1 write in
     # this single-process personal server instead of letting a harmless race
     # fail the whole Run with a unique-constraint error.
-    # A few call sites intentionally use emit_event() as the commit boundary
-    # for an already-mutated ORM object. Such a session may already own the
-    # SQLite writer lock, so it must not wait behind a clean event-only writer.
-    # Child/runtime event sessions are clean and take the cross-run lock.
-    has_pending_orm_writes = bool(db.new or db.dirty or db.deleted)
-    lock = (
-        _sqlite_event_write_lock()
-        if settings.DATABASE_URL.startswith("sqlite") and not has_pending_orm_writes
-        else _run_event_lock(run_id)
-    )
-    async with lock:
+    # Event append is a replay-safe short transaction.  It must not silently
+    # become the commit boundary for unrelated caller mutations: a busy retry
+    # rolls the failed append back before rebuilding only the RunEvent row.
+    if db.new or db.dirty or db.deleted:
+        raise RuntimeError(
+            "emit_event requires a clean session; commit the owning Unit of Work first"
+        )
+    async with serialize_event_write(run_id):
         event = None
-        for attempt in range(4):
+        retry_delays = (*DEFAULT_RETRY_DELAYS, None)
+        last_busy: DatabaseBusyError | None = None
+        for attempt, retry_delay in enumerate(retry_delays, start=1):
             try:
                 result = await db.execute(
                     select(func.coalesce(func.max(RunEvent.sequence), 0)).where(RunEvent.run_id == run_id)
@@ -104,17 +133,22 @@ async def emit_event(
                     payload=payload or {},
                 )
                 db.add(event)
-                await db.commit()
+                await commit_uow(db)
                 await db.refresh(event)
                 break
-            except OperationalError as exc:
-                await db.rollback()
-                transient = any(marker in str(exc).lower() for marker in ("locked", "busy"))
-                if not transient or attempt == 3:
-                    raise
-                await asyncio.sleep(0.05 * (2 ** attempt))
+            except DatabaseBusyError as exc:
+                last_busy = exc
+                if retry_delay is None:
+                    raise DatabaseBusyError(
+                        retry_after_ms=int(DEFAULT_RETRY_DELAYS[-1] * 1000),
+                        attempts=attempt,
+                    ) from exc
+                await asyncio.sleep(retry_delay)
+            except BaseException:
+                await rollback_uow(db)
+                raise
         if event is None:  # pragma: no cover - defensive; loop either succeeds or raises
-            raise RuntimeError("Run event was not persisted")
+            raise RuntimeError("Run event was not persisted") from last_busy
     publish_stream_event(run_id, {
         "sequence": event.sequence,
         "type": event.event_type,

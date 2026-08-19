@@ -24,6 +24,7 @@ from app.api.plans import read_plan_resources, set_plan_archived
 from app.api.notifications import archive_read_notifications, read_notifications, set_notification_archived
 from app.api.workspace import upload_workspace_file
 from app.db.database import AsyncSessionLocal
+from app.db.uow import commit as commit_uow
 from app.api.operations import undo_operation
 from app.context.memory import MemoryManager
 from app.models import (
@@ -43,6 +44,7 @@ from app.models import (
     SessionSummary,
     TaskSubmission,
 )
+from app.outbox import dispatch_action
 from app.runtime.agent import AgentRuntime, ToolFailureGuard
 from app.main import reconcile_interrupted_runs
 from app.runtime.scheduler import proactive_scheduler
@@ -413,11 +415,14 @@ async def test_complete_learning_submission_calendar_and_workspace_loop():
         run = AgentRun(owner_id="local", plan_id=plan.id, trigger="user_message", objective="完成学习闭环")
         db.add(run)
         await db.commit()
-        ctx = ToolContext(db=db, owner_id="local", run_id=run.id, trigger="user_message", plan_id=plan.id)
+        plan_id = plan.id
+        task_id = task.id
+        run_id = run.id
+        ctx = ToolContext(db=db, owner_id="local", run_id=run_id, trigger="user_message", plan_id=plan_id)
 
         patched = await execute_tool(
             "plan_patch",
-            json.dumps({"plan_id": plan.id, "weekly_minutes": 420, "reason": "用户增加了本周学习时间"}),
+            json.dumps({"plan_id": plan_id, "weekly_minutes": 420, "reason": "用户增加了本周学习时间"}),
             ctx,
         )
         assert patched["ok"] is True
@@ -429,6 +434,11 @@ async def test_complete_learning_submission_calendar_and_workspace_loop():
             ctx,
         )
         assert written["ok"] is True
+        delivered = await dispatch_action(
+            action_key=written["data"]["outbox_action_key"],
+            session_factory=AsyncSessionLocal,
+        )
+        assert delivered["status"] == "delivered"
         read = await execute_tool("file_read", json.dumps({"path": "demo/answer.py"}), ctx)
         assert read["data"]["content"] == "print(sum(range(5)))"
         executed = await execute_tool(
@@ -442,7 +452,7 @@ async def test_complete_learning_submission_calendar_and_workspace_loop():
         submitted = await execute_tool(
             "submission_create",
             json.dumps({
-                "task_id": task.id,
+                "task_id": task_id,
                 "submission_type": "code",
                 "content": "实现并验证并发抓取器的最小版本",
                 "artifacts": [{"path": "demo/answer.py", "exit_code": 0}],
@@ -469,18 +479,18 @@ async def test_complete_learning_submission_calendar_and_workspace_loop():
                 "title": "异步编程复习",
                 "starts_at": "2030-01-02T19:00:00+08:00",
                 "ends_at": "2030-01-02T19:45:00+08:00",
-                "plan_id": plan.id,
-                "task_id": task.id,
+                "plan_id": plan_id,
+                "task_id": task_id,
             }, ensure_ascii=False),
             ctx,
         )
         assert calendar["ok"] is True
-        listed = await execute_tool("calendar_list", json.dumps({"plan_id": plan.id}), ctx)
+        listed = await execute_tool("calendar_list", json.dumps({"plan_id": plan_id}), ctx)
         assert listed["data"]["events"][0]["title"] == "异步编程复习"
 
         submission = await db.get(TaskSubmission, submitted["data"]["submission_id"])
         assert submission.score == 88
-        refreshed = await plan_service.get_plan(db, "local", plan.id)
+        refreshed = await plan_service.get_plan(db, "local", plan_id)
         assert refreshed.stages[0].tasks[1].status == "completed"
 
 
@@ -701,6 +711,7 @@ async def test_plan_handoff_preserves_provenance_and_context_boundaries():
         assert f"plan:{plan.id}" in global_snapshot.markdown
         assert "relation=discussed" in global_snapshot.markdown
         assert "## Saved learning resources" not in global_snapshot.markdown
+        await commit_uow(db)
 
         plan_snapshot = await ContextAssembler(db).build(
             "local", plan_id=plan.id, session_id=child["id"], objective="继续"
@@ -805,10 +816,10 @@ async def test_email_diagnostics_exercise_smtp_and_imap(monkeypatch):
     monkeypatch.setattr(diagnostics.smtplib, "SMTP_SSL", FakeSMTPSSL)
     monkeypatch.setattr(diagnostics.imaplib, "IMAP4_SSL", FakeIMAP)
 
-    smtp_result = await diagnostics.test_smtp(send_message=True)
+    smtp_result = await diagnostics.test_smtp()
     imap_result = await diagnostics.test_imap()
-    assert smtp_result["message_sent"] is True
-    assert ("send", "learner@example.com") in smtp_calls
+    assert smtp_result["message_sent"] is False
+    assert not any(call[0] == "send" for call in smtp_calls)
     assert imap_result["message_count"] == 7
 
     monkeypatch.setattr(diagnostics.settings, "SMTP_USE_SSL", True)
@@ -1040,6 +1051,7 @@ async def test_planning_intake_requires_readiness_and_proposal_accept_is_idempot
             session_id=session.id,
         )
 
+        ctx.tool_call_id = "learning-loop-intake-collecting"
         collecting = await execute_tool(
             "planning_intake_update",
             json.dumps({
@@ -1061,6 +1073,7 @@ async def test_planning_intake_requires_readiness_and_proposal_accept_is_idempot
         assert collecting["ok"] is True
         assert collecting["data"]["open_questions"][0]["id"] == "weekly_time"
 
+        ctx.tool_call_id = "learning-loop-proposal-blocked"
         blocked = await execute_tool(
             "plan_proposal_create",
             json.dumps({"plan": plan_payload("不能创建").model_dump(mode="json"), "rationale": "信息还不够"}),
@@ -1068,6 +1081,7 @@ async def test_planning_intake_requires_readiness_and_proposal_accept_is_idempot
         )
         assert blocked["ok"] is False
 
+        ctx.tool_call_id = "learning-loop-intake-ready"
         ready = await execute_tool(
             "planning_intake_update",
             json.dumps({
@@ -1085,6 +1099,7 @@ async def test_planning_intake_requires_readiness_and_proposal_accept_is_idempot
             ctx,
         )
         assert ready["data"]["readiness"] == "ready"
+        ctx.tool_call_id = "learning-loop-proposal-ready"
         proposed = await execute_tool(
             "plan_proposal_create",
             json.dumps({

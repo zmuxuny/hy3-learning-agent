@@ -9,8 +9,14 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.core.config import PROJECT_ROOT, settings
+from app.db.uow import flush as flush_uow
 from app.models import Operation
-from app.tools.base import ToolContext, ToolDefinition
+from app.outbox import (
+    enqueue_subprocess,
+    enqueue_workspace_write,
+    prepare_workspace_write,
+)
+from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind
 
 
 WORKSPACE_ROOT = (PROJECT_ROOT / "data" / "workspace").resolve()
@@ -83,23 +89,61 @@ async def file_read(_: ToolContext, args: FileReadArgs) -> dict:
 
 
 async def file_write(ctx: ToolContext, args: FileWriteArgs) -> dict:
+    if not ctx.action_key or not ctx.request_digest or ctx.invocation_id is None:
+        return {
+            "error": "file_write requires a durable invocation claim",
+            "error_code": "missing_invocation_claim",
+        }
+    try:
+        prepared = await prepare_workspace_write(
+            path=args.path,
+            content=args.content,
+            overwrite=args.overwrite,
+        )
+    except FileExistsError as exc:
+        return {"error": str(exc)}
     path = _resolve(args.path)
-    if path.exists() and not args.overwrite:
-        return {"error": "File already exists; set overwrite=true to replace it"}
-    existed = path.exists()
-    previous = path.read_text(encoding="utf-8") if existed else None
-    path.parent.mkdir(parents=True, exist_ok=True)
-    await asyncio.to_thread(path.write_text, args.content, "utf-8")
     relative = str(path.relative_to(WORKSPACE_ROOT))
+    previous = None
+    if prepared.before_exists:
+        try:
+            previous = (prepared.before_content or b"").decode("utf-8")
+        except UnicodeDecodeError:
+            return {"error": "Existing binary files cannot be overwritten as text"}
     operation = Operation(
-        owner_id=ctx.owner_id, run_id=ctx.run_id, tool_name="file.write",
+        owner_id=ctx.owner_id,
+        run_id=ctx.run_id,
+        invocation_id=ctx.invocation_id,
+        tool_name="file.write",
         entity_type="workspace_file", entity_id=relative,
-        forward_patch={"path": relative, "size": path.stat().st_size},
-        inverse_patch={"path": relative, "previous": previous, "delete": not existed},
+        forward_patch={
+            "path": relative,
+            "size": len(args.content.encode("utf-8")),
+            "sha256": prepared.desired_sha256,
+        },
+        inverse_patch={"path": relative, "previous": previous, "delete": not prepared.before_exists},
+        status="pending_delivery",
     )
     ctx.db.add(operation)
-    await ctx.db.commit()
-    return {"path": relative, "size": path.stat().st_size, "operation_id": operation.id, "undo_available": True}
+    await flush_uow(ctx.db)
+    action = await enqueue_workspace_write(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        run_id=ctx.run_id,
+        invocation_id=ctx.invocation_id,
+        operation_id=operation.id,
+        action_key=ctx.action_key,
+        request_digest=ctx.request_digest,
+        prepared=prepared,
+    )
+    return {
+        "path": relative,
+        "size": len(args.content.encode("utf-8")),
+        "operation_id": operation.id,
+        "undo_available": True,
+        "outbox_action_key": action.action_key,
+        "_invocation_status": "pending_delivery",
+    }
 
 
 def _run_code(args: CodeExecuteArgs) -> dict:
@@ -132,20 +176,60 @@ def _run_code(args: CodeExecuteArgs) -> dict:
             "truncated": len(completed.stdout) > limit or len(completed.stderr) > limit,
         }
     except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout or ""
+        stderr = exc.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
+        timeout_message = "Execution timed out"
+        if stderr:
+            stderr = f"{stderr}\n{timeout_message}"
+        else:
+            stderr = timeout_message
+        limit = settings.TOOL_OUTPUT_LIMIT
         return {
-            "error": "Execution timed out",
-            "stdout": (exc.stdout or "")[: settings.TOOL_OUTPUT_LIMIT],
-            "stderr": (exc.stderr or "")[: settings.TOOL_OUTPUT_LIMIT],
+            "exit_code": 124,
+            "stdout": stdout[:limit],
+            "stderr": stderr[:limit],
+            "truncated": len(stdout) > limit or len(stderr) > limit,
+            "timed_out": True,
         }
 
 
-async def code_execute(_: ToolContext, args: CodeExecuteArgs) -> dict:
-    return await asyncio.to_thread(_run_code, args)
+async def code_execute(ctx: ToolContext, args: CodeExecuteArgs) -> dict:
+    if not ctx.action_key or not ctx.request_digest or ctx.invocation_id is None:
+        return {
+            "error": "code_execute requires a durable invocation claim",
+            "error_code": "missing_invocation_claim",
+        }
+    request_payload = args.model_dump(mode="json")
+    action = await enqueue_subprocess(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        run_id=ctx.run_id,
+        invocation_id=ctx.invocation_id,
+        action_key=ctx.action_key,
+        request_digest=ctx.request_digest,
+        arguments=request_payload,
+    )
+    return {
+        # Registry commits this placeholder with the intent, then asks the
+        # targeted dispatcher for the real receipt outside that transaction.
+        "exit_code": -1,
+        "stdout": "",
+        "stderr": "",
+        "truncated": False,
+        "status": "pending_delivery",
+        "outbox_action_key": action.action_key,
+        "_dispatch_outbox_action_key": action.action_key,
+        "_invocation_status": "pending_delivery",
+    }
 
 
 WORKSPACE_TOOLS = [
-    ToolDefinition("file_list", "List files inside the Agent's isolated personal workspace.", FileListArgs, file_list),
-    ToolDefinition("file_read", "Read a UTF-8 text artifact from the isolated personal workspace.", FileReadArgs, file_read),
-    ToolDefinition("file_write", "Create or intentionally overwrite a text artifact in the isolated personal workspace.", FileWriteArgs, file_write, idempotent=True),
-    ToolDefinition("code_execute", "Run short Python or Bash code from the personal Agent workspace with strict time and output limits. The process is bounded but not a security sandbox.", CodeExecuteArgs, code_execute),
+    ToolDefinition("file_list", "List files inside the Agent's isolated personal workspace.", FileListArgs, file_list, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("file_read", "Read a UTF-8 text artifact from the isolated personal workspace.", FileReadArgs, file_read, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("file_write", "Create or intentionally overwrite a text artifact from a durable outbox intent.", FileWriteArgs, file_write, effect_kind=ToolEffectKind.EXTERNAL_WRITE, idempotent=True),
+    ToolDefinition("code_execute", "Queue bounded Python or Bash code for durable execution outside database transactions. The process is bounded but not a security sandbox.", CodeExecuteArgs, code_execute, effect_kind=ToolEffectKind.EXTERNAL_WRITE, idempotent=True),
 ]

@@ -13,12 +13,15 @@ from app.db.migrations import (
 FROZEN_H1_SCHEMA_CHECKSUM = (
     "e7130a9013e7bd4754c3318520d9101f18d18b88c11e8ebbe7c965ead4c5e293"
 )
+FROZEN_H2_SCHEMA_CHECKSUM = (
+    "7f42435d235b1497a358abc4353ff6b52771514a4b252c5ba74acec6e1493de1"
+)
 
 
 def test_current_migration_identity_is_explicit_and_stable() -> None:
-    assert CURRENT_SCHEMA_VERSION == 1
-    assert CURRENT_MIGRATION_NAME == "h1_canonical_schema"
-    assert CANONICAL_SCHEMA_CHECKSUM == FROZEN_H1_SCHEMA_CHECKSUM
+    assert CURRENT_SCHEMA_VERSION == 2
+    assert CURRENT_MIGRATION_NAME == "h2_transaction_outbox"
+    assert CANONICAL_SCHEMA_CHECKSUM == FROZEN_H2_SCHEMA_CHECKSUM
 
 
 def test_migration_registry_is_literal_contiguous_and_unique() -> None:
@@ -29,6 +32,7 @@ def test_migration_registry_is_literal_contiguous_and_unique() -> None:
 
     assert registry_contract == (
         (1, "h1_canonical_schema", FROZEN_H1_SCHEMA_CHECKSUM),
+        (2, "h2_transaction_outbox", FROZEN_H2_SCHEMA_CHECKSUM),
     )
     versions = [revision.version for revision in MIGRATION_REGISTRY]
     names = [revision.name for revision in MIGRATION_REGISTRY]

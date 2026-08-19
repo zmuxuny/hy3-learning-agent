@@ -54,7 +54,13 @@ DOMAIN_DATETIME_COLUMNS = {
     "session_summaries": ("created_at",),
     "chat_message_revisions": ("created_at",),
     "agent_runs": ("started_at", "completed_at", "created_at"),
-    "tool_invocations": ("created_at", "updated_at"),
+    "tool_invocations": (
+        "claimed_at",
+        "claim_expires_at",
+        "completed_at",
+        "created_at",
+        "updated_at",
+    ),
     "run_events": ("created_at",),
     "queued_messages": ("created_at", "updated_at"),
     "run_steer_messages": ("applied_at", "created_at"),
@@ -74,6 +80,14 @@ DOMAIN_DATETIME_COLUMNS = {
         "updated_at",
     ),
     "context_snapshots": ("created_at",),
+    "outbox_actions": (
+        "available_at",
+        "claimed_at",
+        "completed_at",
+        "created_at",
+        "updated_at",
+    ),
+    "outbox_receipts": ("accepted_at", "created_at"),
     "operations": ("created_at", "undone_at"),
     "notifications": ("sent_at", "read_at", "archived_at", "created_at"),
     "push_subscriptions": ("created_at", "updated_at"),
@@ -149,8 +163,8 @@ def test_h1_time_002_all_persisted_datetime_columns_use_utc_datetime() -> None:
     ]
 
     assert actual_domain_columns == DOMAIN_DATETIME_COLUMNS
-    assert len(actual_domain_columns) == 35
-    assert sum(map(len, actual_domain_columns.values())) == 70
+    assert len(actual_domain_columns) == 37
+    assert sum(map(len, actual_domain_columns.values())) == 80
     assert tuple(
         column.name
         for column in Base.metadata.tables["schema_migrations"].columns
@@ -160,7 +174,7 @@ def test_h1_time_002_all_persisted_datetime_columns_use_utc_datetime() -> None:
         isinstance(column.type, UTCDateTime)
         for table in Base.metadata.sorted_tables
         for column in table.columns
-    ) == 71
+    ) == 81
     assert naked_datetime_columns == []
 
 

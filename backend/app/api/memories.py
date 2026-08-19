@@ -6,6 +6,7 @@ from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.core.config import settings
 from app.db.database import get_db
+from app.db.uow import commit as commit_uow
 from app.models import Memory
 from app.schemas import ContextSnapshotRead, MemoryProposalCreate, MemoryRead
 
@@ -31,7 +32,7 @@ async def create_memory_proposal(data: MemoryProposalCreate, db: AsyncSession = 
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(memory)
     return memory
 
@@ -44,7 +45,7 @@ async def confirm_memory(memory_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Memory not found")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(memory)
     return memory
 
@@ -56,7 +57,7 @@ async def delete_memory(memory_id: int, db: AsyncSession = Depends(get_db)):
         memory = await MemoryManager(db).archive(settings.DEFAULT_OWNER_ID, memory_id)
     except LookupError:
         raise HTTPException(status_code=404, detail="Memory not found")
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(memory)
     return memory
 
@@ -69,7 +70,7 @@ async def restore_memory(memory_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Memory not found")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(memory)
     return memory
 
@@ -77,6 +78,6 @@ async def restore_memory(memory_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/snapshots", response_model=ContextSnapshotRead, status_code=201)
 async def create_snapshot(plan_id: int | None = None, db: AsyncSession = Depends(get_db)):
     snapshot = await ContextAssembler(db).build(settings.DEFAULT_OWNER_ID, plan_id=plan_id)
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(snapshot)
     return snapshot

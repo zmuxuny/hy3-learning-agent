@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime, timezone
+from uuid import NAMESPACE_URL, uuid5
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field, field_validator
@@ -11,11 +12,13 @@ from sqlalchemy import select
 from app.context import ContextAssembler
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
+from app.db.uow import commit as commit_uow, flush as flush_uow
 from app.models import AgentRun, PlanProposal, PlanningIntake, RunEvent, Session
 from app.runtime.events import emit_event
+from app.runtime.tasks import start_tracked_task
 from app.schemas import PlanCreate
 from app.services.plans import plan_completeness_issues
-from app.tools.base import EmptyArgs, ToolContext, ToolDefinition
+from app.tools.base import EmptyArgs, ToolContext, ToolDefinition, ToolEffectKind
 
 
 class PlanningFact(BaseModel):
@@ -126,54 +129,242 @@ async def planning_intake_update(ctx: ToolContext, args: PlanningIntakeUpdateArg
     intake.readiness_confidence = args.readiness_confidence
     intake.rationale = args.rationale
     intake.updated_at = datetime.now(timezone.utc)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     return _intake_data(intake)
 
 
-async def _specialist_report(
-    client: AsyncOpenAI,
-    child: AgentRun,
-    assignment: PlanningAssignment,
-    context: str,
-) -> str:
-    # Shared bounded engine: read-only allowlist, own run events, no writes.
-    from app.runtime.subagents import PLANNING_CHILD_ALLOWLIST, run_restricted_child
+def _planning_child_id(action_key: str, assignment_index: int) -> str:
+    return str(uuid5(
+        NAMESPACE_URL,
+        f"learning-travel:planning:{action_key}:{assignment_index}",
+    ))
 
-    return await run_restricted_child(
-        client=client,
-        child=child,
-        objective=f"{assignment.role}: {assignment.objective}",
-        context=context,
-        allowlist=set(PLANNING_CHILD_ALLOWLIST),
-        max_steps=4,
+
+def _own_planning_child(ctx: ToolContext, child: AgentRun | None) -> bool:
+    return bool(
+        child
+        and child.owner_id == ctx.owner_id
+        and child.parent_run_id == ctx.run_id
+        and child.trigger == "subagent"
+        and child.session_id == ctx.session_id
+        and child.plan_id == ctx.plan_id
     )
 
 
-async def _cancel_child_runs(children: list[tuple[str, str]], parent_run_id: str) -> None:
-    """Leave no child Run looking active when the parent tool is cancelled."""
-    async with AsyncSessionLocal() as cleanup_db:
-        now = datetime.now(timezone.utc)
-        for child_id, role in children:
-            child = await cleanup_db.get(AgentRun, child_id)
+class _PlanningDelegateCoordinator:
+    """Own the durable phases around concurrent planning model calls."""
+
+    def __init__(self, ctx: ToolContext) -> None:
+        self.ctx = ctx
+
+    async def persist_children(
+        self,
+        children: list[tuple[AgentRun, PlanningAssignment]],
+    ) -> None:
+        if children:
+            self.ctx.db.add_all(child for child, _ in children)
+            await commit_uow(self.ctx.db)
+            for child, assignment in children:
+                await emit_event(
+                    self.ctx.db,
+                    child.id,
+                    "run.started",
+                    f"{assignment.role} 子 Agent 已开始",
+                    {
+                        "parent_run_id": self.ctx.run_id,
+                        "role": assignment.role,
+                        "action_key": self.ctx.action_key,
+                    },
+                )
+                await emit_event(
+                    self.ctx.db,
+                    self.ctx.run_id,
+                    "subagent.started",
+                    f"已委派给 {assignment.role}",
+                    {
+                        "child_run_id": child.id,
+                        "role": assignment.role,
+                        "objective": assignment.objective,
+                        "action_key": self.ctx.action_key,
+                    },
+                )
+        else:
+            # Existing children were loaded in the caller session. Release its
+            # read transaction before any child waits on the model provider.
+            if self.ctx.db.new or self.ctx.db.dirty or self.ctx.db.deleted:
+                raise RuntimeError("planning child replay requires a clean caller session")
+            await commit_uow(self.ctx.db)
+
+    @staticmethod
+    async def persist_checkpoint(
+        child_id: str,
+        *,
+        action_key: str,
+        assignment_index: int,
+        role: str,
+        objective: str,
+        context: str,
+        runtime_checkpoint: dict,
+    ) -> None:
+        async with AsyncSessionLocal() as checkpoint_db:
+            child = await checkpoint_db.get(AgentRun, child_id)
             if child is None or child.status not in {"queued", "running"}:
-                continue
-            child.status = "cancelled"
-            child.completed_at = now
-            await cleanup_db.commit()
+                return
+            child.checkpoint = {
+                "kind": "subagent",
+                "role": role,
+                "objective": objective,
+                "context": context,
+                "allowlist": sorted(_planning_allowlist()),
+                "max_steps": 4,
+                **runtime_checkpoint,
+                "action_key": action_key,
+                "assignment_index": assignment_index,
+            }
+            await commit_uow(checkpoint_db)
+
+    @staticmethod
+    async def persist_terminal(
+        child_id: str,
+        *,
+        role: str,
+        status: str,
+        report: str,
+    ) -> None:
+        async with AsyncSessionLocal() as terminal_db:
+            child = await terminal_db.get(AgentRun, child_id)
+            if child is None or child.status in {"completed", "failed", "cancelled"}:
+                return
+            child.status = status
+            child.output = report
+            child.checkpoint = None
+            child.completed_at = datetime.now(timezone.utc)
+            parent_run_id = child.parent_run_id
+            await commit_uow(terminal_db)
             await emit_event(
-                cleanup_db,
+                terminal_db,
                 child.id,
-                "run.cancelled",
-                f"{role} 子 Agent 随父运行停止",
-                {"parent_run_id": parent_run_id, "role": role},
+                "run.completed" if status == "completed" else "run.failed",
+                report,
+                {"role": role},
             )
-            await emit_event(
-                cleanup_db,
-                parent_run_id,
-                "subagent.completed",
-                f"{role} 已停止",
-                {"child_run_id": child.id, "role": role, "status": "cancelled", "report": ""},
-            )
+            if parent_run_id:
+                await emit_event(
+                    terminal_db,
+                    parent_run_id,
+                    "subagent.completed",
+                    f"{role} 已返回结论",
+                    {
+                        "child_run_id": child.id,
+                        "role": role,
+                        "status": status,
+                        "report": report,
+                    },
+                )
+
+    @staticmethod
+    async def cancel_children(
+        children: list[tuple[str, str]],
+        parent_run_id: str,
+    ) -> None:
+        """Leave no child Run looking active when the parent tool is cancelled."""
+        async with AsyncSessionLocal() as cleanup_db:
+            now = datetime.now(timezone.utc)
+            for child_id, role in children:
+                child = await cleanup_db.get(AgentRun, child_id)
+                if child is None or child.status not in {"queued", "running"}:
+                    continue
+                child.status = "cancelled"
+                child.checkpoint = None
+                child.completed_at = now
+                await commit_uow(cleanup_db)
+                await emit_event(
+                    cleanup_db,
+                    child.id,
+                    "run.cancelled",
+                    f"{role} 子 Agent 随父运行停止",
+                    {"parent_run_id": parent_run_id, "role": role},
+                )
+                await emit_event(
+                    cleanup_db,
+                    parent_run_id,
+                    "subagent.completed",
+                    f"{role} 已停止",
+                    {
+                        "child_run_id": child.id,
+                        "role": role,
+                        "status": "cancelled",
+                        "report": "",
+                    },
+                )
+
+
+def _planning_allowlist() -> set[str]:
+    from app.runtime.subagents import PLANNING_CHILD_ALLOWLIST
+
+    return set(PLANNING_CHILD_ALLOWLIST)
+
+
+async def _run_planning_child(
+    child_id: str,
+    *,
+    action_key: str,
+    assignment_index: int,
+    assignment: PlanningAssignment,
+    context: str,
+) -> None:
+    """Resume one deterministic child and persist terminal state before return."""
+    from app.runtime.subagents import run_restricted_child
+
+    async with AsyncSessionLocal() as start_db:
+        child = await start_db.get(AgentRun, child_id)
+        if child is None or child.status in {"completed", "failed", "cancelled"}:
+            return
+        checkpoint = dict(child.checkpoint or {})
+        child.status = "running"
+        child.started_at = child.started_at or datetime.now(timezone.utc)
+        await commit_uow(start_db)
+
+    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
+
+    async def save_checkpoint(runtime_checkpoint: dict) -> None:
+        await _PlanningDelegateCoordinator.persist_checkpoint(
+            child_id,
+            action_key=action_key,
+            assignment_index=assignment_index,
+            role=assignment.role,
+            objective=assignment.objective,
+            context=context,
+            runtime_checkpoint=runtime_checkpoint,
+        )
+
+    try:
+        report = await run_restricted_child(
+            client=client,
+            child=child,
+            objective=f"{assignment.role}: {assignment.objective}",
+            context=context,
+            allowlist=_planning_allowlist(),
+            max_steps=4,
+            checkpoint=checkpoint,
+            checkpoint_callback=save_checkpoint,
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        await _PlanningDelegateCoordinator.persist_terminal(
+            child_id,
+            role=assignment.role,
+            status="failed",
+            report=f"子 Agent 调查失败：{type(exc).__name__}",
+        )
+    else:
+        await _PlanningDelegateCoordinator.persist_terminal(
+            child_id,
+            role=assignment.role,
+            status="completed",
+            report=report,
+        )
 
 
 async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dict:
@@ -182,79 +373,129 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
         return {"error": "Planning delegation requires an active Session"}
     if not settings.OPENAI_API_KEY:
         return {"error": "OPENAI_API_KEY is not configured"}
-    snapshot = await ContextAssembler(ctx.db).build(
-        ctx.owner_id,
-        plan_id=ctx.plan_id,
-        session_id=session_id,
-        run_id=ctx.run_id,
-        objective="; ".join(item.objective for item in args.assignments),
-    )
-    child_runs: list[AgentRun] = []
-    for assignment in args.assignments:
-        child = AgentRun(
-            owner_id=ctx.owner_id,
-            session_id=session_id,
+    if not ctx.action_key:
+        return {"error": "planning_delegate requires a durable action key"}
+    child_ids = [
+        _planning_child_id(ctx.action_key, index)
+        for index in range(len(args.assignments))
+    ]
+    existing_children = [
+        await ctx.db.get(AgentRun, child_id)
+        for child_id in child_ids
+    ]
+    existing_count = sum(child is not None for child in existing_children)
+    if existing_count not in {0, len(args.assignments)}:
+        return {
+            "error": "planning delegation has a partial durable child set and requires reconciliation",
+            "error_code": "needs_reconciliation",
+        }
+    snapshot_markdown = ""
+    if existing_count == 0:
+        snapshot = await ContextAssembler(ctx.db).build(
+            ctx.owner_id,
             plan_id=ctx.plan_id,
-            parent_run_id=ctx.run_id,
-            trigger="subagent",
-            objective=f"[{assignment.role}] {assignment.objective}",
-            status="running",
-            model=settings.MODEL_NAME,
-            started_at=datetime.now(timezone.utc),
+            session_id=session_id,
+            run_id=ctx.run_id,
+            objective="; ".join(item.objective for item in args.assignments),
         )
-        ctx.db.add(child)
-        child_runs.append(child)
-    await ctx.db.commit()
-    for child, assignment in zip(child_runs, args.assignments, strict=True):
-        await emit_event(ctx.db, child.id, "run.started", f"{assignment.role} 子 Agent 已开始", {
-            "parent_run_id": ctx.run_id,
-            "role": assignment.role,
-        })
-        await emit_event(ctx.db, ctx.run_id, "subagent.started", f"已委派给 {assignment.role}", {
-            "child_run_id": child.id,
-            "role": assignment.role,
-            "objective": assignment.objective,
-        })
-
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
-    child_refs = [(child.id, assignment.role) for child, assignment in zip(child_runs, args.assignments, strict=True)]
-    try:
-        outcomes = await asyncio.gather(
-            *[
-                _specialist_report(client, child, assignment, snapshot.markdown)
-                for child, assignment in zip(child_runs, args.assignments, strict=True)
-            ],
-            return_exceptions=True,
-        )
-    except asyncio.CancelledError:
-        await asyncio.shield(_cancel_child_runs(child_refs, ctx.run_id))
-        raise
-    reports = []
-    for child, assignment, outcome in zip(child_runs, args.assignments, outcomes, strict=True):
-        if isinstance(outcome, Exception):
-            child.status = "failed"
-            report = f"子 Agent 调查失败：{type(outcome).__name__}"
-            event_type = "run.failed"
+        snapshot_markdown = snapshot.markdown
+    child_runs: list[AgentRun] = []
+    new_children: list[tuple[AgentRun, PlanningAssignment]] = []
+    for index, assignment in enumerate(args.assignments):
+        child_id = child_ids[index]
+        child = existing_children[index]
+        if child is None:
+            child = AgentRun(
+                id=child_id,
+                owner_id=ctx.owner_id,
+                session_id=session_id,
+                plan_id=ctx.plan_id,
+                parent_run_id=ctx.run_id,
+                trigger="subagent",
+                objective=f"[{assignment.role}] {assignment.objective}",
+                status="queued",
+                model=settings.MODEL_NAME,
+                checkpoint={
+                    "kind": "subagent",
+                    "action_key": ctx.action_key,
+                    "assignment_index": index,
+                    "role": assignment.role,
+                    "objective": assignment.objective,
+                    "context": snapshot_markdown,
+                    "allowlist": sorted(_planning_allowlist()),
+                    "max_steps": 4,
+                    "step": 0,
+                    "messages": [],
+                    "pending_tool_calls": [],
+                },
+            )
+            new_children.append((child, assignment))
         else:
-            child.status = "completed"
-            report = outcome
-            event_type = "run.completed"
-        child.output = report
-        child.completed_at = datetime.now(timezone.utc)
-        await ctx.db.commit()
-        await emit_event(ctx.db, child.id, event_type, report, {"role": assignment.role})
-        await emit_event(ctx.db, ctx.run_id, "subagent.completed", f"{assignment.role} 已返回结论", {
-            "child_run_id": child.id,
-            "role": assignment.role,
-            "status": child.status,
-            "report": report,
-        })
+            checkpoint = dict(child.checkpoint or {})
+            if (
+                not _own_planning_child(ctx, child)
+                or child.objective != f"[{assignment.role}] {assignment.objective}"
+                or (
+                    checkpoint
+                    and (
+                        checkpoint.get("action_key") != ctx.action_key
+                        or checkpoint.get("assignment_index") != index
+                    )
+                )
+            ):
+                return {"error": "stable planning child identity conflicts with another action"}
+            if child.status in {"queued", "running"} and not checkpoint.get("context"):
+                return {
+                    "error": "active planning child has no durable context checkpoint",
+                    "error_code": "needs_reconciliation",
+                }
+        child_runs.append(child)
+
+    coordinator = _PlanningDelegateCoordinator(ctx)
+    await coordinator.persist_children(new_children)
+    child_refs = [
+        (child.id, assignment.role)
+        for child, assignment in zip(child_runs, args.assignments, strict=True)
+    ]
+    try:
+        active_tasks = []
+        for index, (child, assignment) in enumerate(
+            zip(child_runs, args.assignments, strict=True)
+        ):
+            if child.status in {"completed", "failed", "cancelled"}:
+                continue
+            checkpoint = dict(child.checkpoint or {})
+            context = str(checkpoint.get("context") or snapshot_markdown)
+            active_tasks.append(start_tracked_task(
+                child.id,
+                _run_planning_child(
+                    child.id,
+                    action_key=ctx.action_key,
+                    assignment_index=index,
+                    assignment=assignment,
+                    context=context,
+                ),
+            ))
+        if active_tasks:
+            await asyncio.gather(*active_tasks)
+    except asyncio.CancelledError:
+        await asyncio.shield(
+            _PlanningDelegateCoordinator.cancel_children(child_refs, ctx.run_id)
+        )
+        raise
+    reports: list[dict] = []
+    for child, assignment in zip(child_runs, args.assignments, strict=True):
+        # The child coordinator committed terminal state in an independent
+        # short UoW. Refresh through this caller only after all model waits.
+        stored = await ctx.db.get(AgentRun, child.id, populate_existing=True)
+        if stored is None:
+            return {"error": "planning child disappeared before join"}
         reports.append({
-            "child_run_id": child.id,
+            "child_run_id": stored.id,
             "role": assignment.role,
             "objective": assignment.objective,
-            "status": child.status,
-            "report": report,
+            "status": stored.status,
+            "report": stored.output or "",
         })
     return {"reports": reports}
 
@@ -314,7 +555,7 @@ async def plan_proposal_create(ctx: ToolContext, args: PlanProposalCreateArgs) -
     proposal.specialist_reports = specialist_reports
     proposal.updated_at = datetime.now(timezone.utc)
     ctx.db.add(proposal)
-    await ctx.db.commit()
+    await flush_uow(ctx.db)
     await ctx.db.refresh(proposal)
     return {
         "proposal_id": proposal.id,
@@ -332,12 +573,14 @@ PLANNING_TOOLS = [
         "Read durable requirement-discovery state for the active planning Session.",
         EmptyArgs,
         planning_intake_get,
+        effect_kind=ToolEffectKind.PURE_READ,
     ),
     ToolDefinition(
         "planning_intake_update",
         "Record confirmed requirements, renderable follow-up questions, and the Agent's evidence-based readiness judgment.",
         PlanningIntakeUpdateArgs,
         planning_intake_update,
+        effect_kind=ToolEffectKind.DATABASE_WRITE,
         idempotent=True,
     ),
     ToolDefinition(
@@ -345,6 +588,7 @@ PLANNING_TOOLS = [
         "Delegate up to three bounded planning investigations to real child Agent runs and join their reports.",
         PlanningDelegateArgs,
         planning_delegate,
+        effect_kind=ToolEffectKind.EXTERNAL_WRITE,
         idempotent=True,
     ),
     ToolDefinition(
@@ -352,6 +596,7 @@ PLANNING_TOOLS = [
         "Create or revise a reviewable plan proposal after the planning intake is ready; does not create the Plan until the user accepts it.",
         PlanProposalCreateArgs,
         plan_proposal_create,
+        effect_kind=ToolEffectKind.DATABASE_WRITE,
         idempotent=True,
     ),
 ]

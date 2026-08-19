@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field
 
 from app.context.memory import MemoryManager
-from app.tools.base import EmptyArgs, ToolContext, ToolDefinition
+from app.db.uow import flush as flush_uow
+from app.tools.base import EmptyArgs, ToolContext, ToolDefinition, ToolEffectKind
 
 
 class MemorySearchArgs(BaseModel):
@@ -32,12 +33,15 @@ async def memory_search(ctx: ToolContext, args: MemorySearchArgs) -> dict:
 
 
 async def memory_maintain(ctx: ToolContext, _: EmptyArgs) -> dict:
-    result = await MemoryManager(ctx.db).maintain(ctx.owner_id)
-    await ctx.db.commit()
+    result = await MemoryManager(ctx.db).maintain(
+        ctx.owner_id,
+        before_mutation=ctx.enter_database_write_phase,
+    )
+    await flush_uow(ctx.db)
     return result
 
 
 MEMORY_TOOLS = [
-    ToolDefinition("memory_search", "Retrieve relevant confirmed memory by scope, layer, recency, confidence, and query overlap.", MemorySearchArgs, memory_search),
-    ToolDefinition("memory_maintain", "Expire stale memory and refresh durable plan summaries without deleting raw events or conversations.", EmptyArgs, memory_maintain, idempotent=True),
+    ToolDefinition("memory_search", "Retrieve relevant confirmed memory by scope, layer, recency, confidence, and query overlap.", MemorySearchArgs, memory_search, effect_kind=ToolEffectKind.EXTERNAL_READ),
+    ToolDefinition("memory_maintain", "Expire stale memory and refresh durable plan summaries without deleting raw events or conversations.", EmptyArgs, memory_maintain, effect_kind=ToolEffectKind.DATABASE_WRITE, idempotent=True, defer_write_guard=True),
 ]

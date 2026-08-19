@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 from datetime import datetime, timezone
 from typing import Any
@@ -9,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.db.uow import flush as flush_uow
 from app.models import PushSubscription
 
 
@@ -29,7 +29,7 @@ class PushService:
         else:
             existing.keys = keys
             existing.updated_at = datetime.now(timezone.utc)
-        await db.commit()
+        await flush_uow(db)
         await db.refresh(existing)
         return existing
 
@@ -40,29 +40,24 @@ class PushService:
                 PushSubscription.endpoint == endpoint,
             )
         )
-        await db.commit()
+        await flush_uow(db)
         return (result.rowcount or 0) > 0
 
+    @staticmethod
+    def build_payload(
+        title: str,
+        body: str,
+        data: dict[str, Any] | None = None,
+    ) -> str:
+        return json.dumps(
+            {"title": title, "body": body, **(data or {})},
+            ensure_ascii=False,
+        )
+
     async def send(self, db: AsyncSession, owner_id: str, title: str, body: str, data: dict[str, Any] | None = None) -> list[PushSubscription]:
-        if not self.configured:
-            return []
-        subscriptions = list((await db.execute(
-            select(PushSubscription).where(PushSubscription.owner_id == owner_id)
-        )).scalars())
-        if not subscriptions:
-            return []
-        payload = json.dumps({"title": title, "body": body, **(data or {})}, ensure_ascii=False)
-        delivered: list[PushSubscription] = []
-        for subscription in subscriptions:
-            try:
-                await asyncio.to_thread(self._send_one, subscription, payload)
-                delivered.append(subscription)
-            except Exception as exc:
-                if getattr(exc, "response", None) is not None and exc.response.status_code in {404, 410}:
-                    await db.delete(subscription)
-        if delivered:
-            await db.commit()
-        return delivered
+        raise RuntimeError(
+            "Direct Web Push delivery is disabled; enqueue one outbox action per subscription."
+        )
 
     def _send_one(self, subscription: PushSubscription, payload: str) -> None:
         from pywebpush import WebPusher

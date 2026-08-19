@@ -84,24 +84,6 @@ H4_EVID_005_FILE = pytest.mark.xfail(
         "snapshotting or hashing the referenced file bytes"
     ),
 )
-H4_EVID_006_OBSERVATION = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H4-EVID-006: the old observation idempotency check silently reuses "
-        "an existing row when the same key carries different content"
-    ),
-)
-H4_EVID_006_ARTIFACT = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H4-EVID-006: the old Artifact idempotency check silently reuses an "
-        "existing row when the same key carries different content"
-    ),
-)
-
-
 def _require_fixture(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
@@ -926,7 +908,6 @@ async def test_h4_evid_005_file_artifact_snapshots_bytes_before_source_changes(
     }
 
 
-@H4_EVID_006_OBSERVATION
 @pytest.mark.asyncio
 async def test_h4_evid_006_observation_same_key_different_content_conflicts(
     isolated_database,
@@ -989,7 +970,6 @@ async def test_h4_evid_006_observation_same_key_different_content_conflicts(
     }
 
 
-@H4_EVID_006_ARTIFACT
 @pytest.mark.asyncio
 async def test_h4_evid_006_artifact_same_key_different_content_conflicts(
     isolated_database,

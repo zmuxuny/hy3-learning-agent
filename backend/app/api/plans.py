@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import get_db
+from app.db.uow import commit as commit_uow
 from app.models import AgentRun, LearningResource, Operation, Plan, QueuedMessage
 from app.schemas import LearningResourceRead, PlanArchiveUpdate, PlanCreate, PlanRead, TaskRead, TaskUpdate
 from app.services import plans as plan_service
@@ -50,7 +51,9 @@ async def create_plan(data: PlanCreate, db: AsyncSession = Depends(get_db)):
             status_code=422,
             detail="A formal plan is incomplete: " + "; ".join(completeness_issues),
         )
-    return await plan_service.create_plan(db, settings.DEFAULT_OWNER_ID, data)
+    plan = await plan_service.create_plan(db, settings.DEFAULT_OWNER_ID, data)
+    await commit_uow(db)
+    return await plan_service.get_plan(db, settings.DEFAULT_OWNER_ID, plan.id)
 
 
 @router.patch("/{plan_id}/archive", response_model=PlanRead)
@@ -106,10 +109,18 @@ async def set_plan_archived(plan_id: int, data: PlanArchiveUpdate, db: AsyncSess
         inverse_patch={"changes": before},
         created_at=datetime.now(timezone.utc),
     ))
-    await db.commit()
+    await commit_uow(db)
     return await plan_service.get_plan(db, settings.DEFAULT_OWNER_ID, plan.id)
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskRead)
 async def update_task(task_id: int, data: TaskUpdate, db: AsyncSession = Depends(get_db)):
-    return await plan_service.update_task(db, settings.DEFAULT_OWNER_ID, task_id, data)
+    task = await plan_service.update_task(
+        db,
+        settings.DEFAULT_OWNER_ID,
+        task_id,
+        data,
+    )
+    await commit_uow(db)
+    await db.refresh(task)
+    return task

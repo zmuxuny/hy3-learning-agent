@@ -1,9 +1,15 @@
-from sqlalchemy import or_, select
+import os
+import tempfile
+from pathlib import Path
+
+from sqlalchemy import event, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session as SyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import PROJECT_ROOT, settings
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
+from app.db.uow import commit as commit_uow, flush as flush_uow
 from app.models import (
     CalendarEvent,
     ChatMessage,
@@ -24,6 +30,92 @@ from app.context.memory import MemoryManager, search_terms
 from app.services.evidence import build_plan_evidence_state
 
 
+_CONTEXT_PROJECTIONS_KEY = "h2_context_projections"
+_CONTEXT_PROJECTION_FAILURES_KEY = "h2_context_projection_failures"
+_SESSION_WRITE_ACTIVITY_KEY = "h2_session_write_activity"
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Publish a derived context projection without exposing a partial file."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    temporary = Path(temporary_name)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        directory = os.open(
+            path.parent,
+            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+        )
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _stage_context_projection(db: AsyncSession, path: Path, content: str) -> None:
+    projections = db.sync_session.info.setdefault(_CONTEXT_PROJECTIONS_KEY, {})
+    projections[str(path)] = content
+
+
+@event.listens_for(SyncSession, "after_commit")
+def _publish_committed_context_projections(session: SyncSession) -> None:
+    """Write only projections whose source ContextSnapshot is durable."""
+
+    if session.in_nested_transaction():
+        # SQLAlchemy emits after_commit for SAVEPOINT release as well.  The
+        # projection and write-activity marker belong to the outer caller UoW.
+        return
+    projections = session.info.pop(_CONTEXT_PROJECTIONS_KEY, {})
+    session.info.pop(_SESSION_WRITE_ACTIVITY_KEY, None)
+    failures: list[str] = []
+    for raw_path, content in projections.items():
+        try:
+            _atomic_write_text(Path(raw_path), content)
+        except OSError as exc:
+            # Markdown files are rebuildable projections; a filesystem error
+            # cannot roll back an already-committed SQLite transaction.  Keep
+            # only the exception type for diagnostics, never context content.
+            failures.append(type(exc).__name__)
+    if failures:
+        session.info[_CONTEXT_PROJECTION_FAILURES_KEY] = failures
+
+
+@event.listens_for(SyncSession, "after_rollback")
+def _discard_rolled_back_context_projections(session: SyncSession) -> None:
+    if session.in_nested_transaction():
+        # A SAVEPOINT rollback does not end or invalidate the outer UoW.
+        return
+    session.info.pop(_CONTEXT_PROJECTIONS_KEY, None)
+    session.info.pop(_SESSION_WRITE_ACTIVITY_KEY, None)
+
+
+@event.listens_for(SyncSession, "before_flush")
+def _track_session_flush(session: SyncSession, *_args) -> None:
+    if session.new or session.dirty or session.deleted:
+        session.info[_SESSION_WRITE_ACTIVITY_KEY] = True
+
+
+@event.listens_for(SyncSession, "do_orm_execute")
+def _track_session_dml(execute_state) -> None:
+    if any(
+        getattr(execute_state, attribute, False)
+        for attribute in ("is_insert", "is_update", "is_delete")
+    ):
+        execute_state.session.info[_SESSION_WRITE_ACTIVITY_KEY] = True
+
+
 class ContextAssembler:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -37,6 +129,27 @@ class ContextAssembler:
         run_id: str | None = None,
         objective: str = "",
     ) -> ContextSnapshot:
+        if self.db.in_nested_transaction():
+            raise RuntimeError(
+                "ContextAssembler cannot stage projections inside a SAVEPOINT"
+            )
+        # Context assembly is a multi-phase coordinator, never an implicit
+        # commit boundary for caller-owned domain work. A read-only transaction
+        # can be released; staged or already-flushed writes must be committed
+        # explicitly by the owning API/runtime/tool coordinator first.
+        if (
+            self.db.new
+            or self.db.dirty
+            or self.db.deleted
+            or self.db.sync_session.info.get(_SESSION_WRITE_ACTIVITY_KEY)
+        ):
+            raise RuntimeError(
+                "ContextAssembler requires a clean session; commit the caller Unit of Work first"
+            )
+        if self.db.in_transaction():
+            # A read-only commit releases the snapshot without expiring ORM
+            # objects (application sessions use expire_on_commit=False).
+            await commit_uow(self.db)
         manifest: list[dict] = []
         generated_at = utc_now()
         sections = ["# Agent Context", f"Generated: {canonical_utc(generated_at)}"]
@@ -56,6 +169,9 @@ class ContextAssembler:
 
         memory_manager = MemoryManager(self.db)
         await memory_manager.maintain(owner_id)
+        # Maintenance is its own short UoW.  In particular, no embedding
+        # provider call below may inherit its writer lock.
+        await commit_uow(self.db)
         relevant_memories, memory_scores = await memory_manager.retrieve_with_scores(
             owner_id,
             plan_id=plan_id,
@@ -63,6 +179,9 @@ class ContextAssembler:
             query=objective,
             limit=24,
         )
+        # Access counters are durable housekeeping, not part of the snapshot
+        # insert. Release that writer before the remaining context reads.
+        await commit_uow(self.db)
         if relevant_memories:
             sections.append("## Confirmed memory")
             for memory, score in zip(relevant_memories, memory_scores, strict=True):
@@ -377,13 +496,12 @@ class ContextAssembler:
             created_at=generated_at,
         )
         self.db.add(snapshot)
-        await self.db.flush()
+        await flush_uow(self.db)
 
         context_root = PROJECT_ROOT / "data" / "context"
         if run_id:
             run_path = context_root / "runs" / f"{run_id}.md"
-            run_path.parent.mkdir(parents=True, exist_ok=True)
-            run_path.write_text(markdown, encoding="utf-8")
+            _stage_context_projection(self.db, run_path, markdown)
 
         # The global/plan files are canonical readable projections. Never let
         # one Session's private transcript leak into that shared projection;
@@ -394,8 +512,5 @@ class ContextAssembler:
             if plan_id is None
             else context_root / "plans" / f"{plan_id}.md"
         )
-        canonical_path.parent.mkdir(parents=True, exist_ok=True)
-        canonical_path.write_text(canonical_markdown, encoding="utf-8")
+        _stage_context_projection(self.db, canonical_path, canonical_markdown)
         return snapshot
-    LearningResource,
-    TaskSubmission,

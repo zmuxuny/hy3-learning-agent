@@ -39,21 +39,35 @@ async def test_evidence_is_idempotent_and_projection_is_deterministic():
             task_id=None,
             payload={"note": "一次自述"},
         )
-        duplicate, duplicate_created = await append_observation(
+        replay, replay_created = await append_observation(
             db,
             owner_id="local",
             source_type="manual",
             source_id="attempt-1",
-            outcome="passed",
+            outcome="submitted",
             idempotency_key="evidence-test:attempt-1",
-            payload={"note": "重试不应覆盖"},
+            plan_id=None,
+            task_id=None,
+            payload={"note": "一次自述"},
         )
+        with pytest.raises(ValueError, match="Evidence idempotency conflict"):
+            await append_observation(
+                db,
+                owner_id="local",
+                source_type="manual",
+                source_id="attempt-1",
+                outcome="passed",
+                idempotency_key="evidence-test:attempt-1",
+                plan_id=None,
+                task_id=None,
+                payload={"note": "重试不应覆盖"},
+            )
         await db.commit()
 
         assert created is True
-        assert duplicate_created is False
-        assert duplicate.id == first.id
-        assert duplicate.outcome == "submitted"
+        assert replay_created is False
+        assert replay.id == first.id
+        assert replay.outcome == "submitted"
 
         records = list((await db.execute(
             select(EvidenceObservation).where(EvidenceObservation.owner_id == "local")

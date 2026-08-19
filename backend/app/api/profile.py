@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import get_db
+from app.db.uow import commit as commit_uow
 from app.models import UserProfile
 from app.schemas import ProfileRead, ProfileUpdate
 from app.services.gamification import evaluate_achievements
@@ -17,7 +18,7 @@ async def read_profile(db: AsyncSession = Depends(get_db)):
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     await evaluate_achievements(db, settings.DEFAULT_OWNER_ID)
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(profile)
     return profile
 
@@ -29,6 +30,6 @@ async def update_profile(data: ProfileUpdate, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=404, detail="Profile not found")
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(profile, field, value)
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(profile)
     return profile

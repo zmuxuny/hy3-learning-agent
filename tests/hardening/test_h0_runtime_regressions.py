@@ -1,7 +1,8 @@
 """H0 failure baselines for durable Runtime invariants.
 
-These tests intentionally describe behavior that the current implementation does
-not provide.  Every case is a strict xfail until its matching H3 repair lands.
+These tests describe reviewed Runtime defects and remain strict xfails until
+their matching repair lands.  H3-RUN-008 closed early because H2 needed a
+durable planning-child intent before model waits; the other H3 gates stay open.
 """
 
 from __future__ import annotations
@@ -589,11 +590,6 @@ async def test_concurrent_recovery_workers_execute_under_one_durable_lease():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-008: planning_delegate creates a parallel child runtime with no durable checkpoint",
-)
 async def test_planning_delegate_child_has_checkpoint_before_model_wait(monkeypatch):
     model_waiting = asyncio.Event()
     release_model = asyncio.Event()

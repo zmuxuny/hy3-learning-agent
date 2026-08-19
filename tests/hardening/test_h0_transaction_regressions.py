@@ -1,8 +1,10 @@
 """H0 failure baselines for the H2 transaction and side-effect gate.
 
-Each test states an invariant that the reviewed implementation violates.  The
-strict xfails are removed one by one when H2 supplies Unit of Work ownership,
-short CAS claims, request-digest conflicts, and a durable outbox.
+Each test states an invariant first captured against the reviewed legacy
+implementation.  H2 now keeps the former failure baselines as ordinary passing
+regressions for Unit of Work ownership, short CAS claims, request-digest
+conflicts, and the durable outbox.  The domain digest portion of H4-EVID-006 was
+closed early by the same request-identity work and is verified separately.
 
 Defect mapping:
 
@@ -41,6 +43,7 @@ from sqlalchemy.ext.asyncio import (
 import app.runtime.agent as agent_runtime_module
 import app.runtime.scheduler as scheduler_module
 import app.runtime.subagents as runtime_subagents
+import app.outbox as outbox_module
 import app.tools.registry as tool_registry
 import app.tools.web as web_tools
 import app.tools.workspace as workspace_tools
@@ -58,6 +61,7 @@ from app.models import (
     UserProfile,
 )
 from app.notifications.service import NotificationService
+from app.outbox import dispatch_once
 from app.runtime.agent import AgentRuntime
 from app.runtime.events import emit_event
 from app.runtime.scheduler import ProactiveScheduler
@@ -82,7 +86,7 @@ class InjectedProcessCrash(BaseException):
 
 
 class HarnessInvariantError(RuntimeError):
-    """A broken test precondition; strict xfail must never hide this failure."""
+    """A broken test precondition, distinct from a protocol assertion."""
 
 
 def _require_harness(condition: bool, message: str) -> None:
@@ -174,14 +178,6 @@ async def _no_next_message(*_args, **_kwargs):
     return None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-001: tool/service code owns commit boundaries and ToolDefinition "
-        "cannot classify pure, database, or external effects"
-    ),
-)
 def test_registered_tools_are_classified_and_handlers_do_not_commit() -> None:
     restricted_roots = [
         PROJECT_ROOT / "backend" / "app" / "tools",
@@ -244,14 +240,6 @@ def test_registered_tools_are_classified_and_handlers_do_not_commit() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-002: ToolInvocation uses SELECT-then-INSERT and flushes outside "
-        "the error boundary instead of using a short CAS claim"
-    ),
-)
 async def test_concurrent_tool_claim_has_one_winner_and_a_typed_loser(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,
@@ -347,14 +335,6 @@ async def test_concurrent_tool_claim_has_one_winner_and_a_typed_loser(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-003: the request body is folded into the invocation key, so one "
-        "stable action key with different content is executed instead of rejected"
-    ),
-)
 async def test_same_action_key_with_a_different_request_is_a_conflict(
     sqlite_factory: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -386,14 +366,6 @@ async def test_same_action_key_with_a_different_request_is_a_conflict(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-004: a write handler commits domain data before the wrapper "
-        "commits the ToolInvocation result"
-    ),
-)
 async def test_commit_failure_never_exposes_domain_data_with_a_running_invocation(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,
@@ -476,14 +448,6 @@ async def test_commit_failure_never_exposes_domain_data_with_a_running_invocatio
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-005: the uncommitted ToolInvocation claim holds SQLite's writer "
-        "lock while an external web provider is awaited"
-    ),
-)
 async def test_external_web_wait_does_not_hold_the_sqlite_writer_lock(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,
@@ -541,14 +505,6 @@ async def test_external_web_wait_does_not_hold_the_sqlite_writer_lock(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-006: final ChatMessage is flushed before the title/compression "
-        "model wait, retaining SQLite's writer lock"
-    ),
-)
 async def test_final_model_wait_does_not_hold_the_sqlite_writer_lock(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,
@@ -629,14 +585,6 @@ async def test_final_model_wait_does_not_hold_the_sqlite_writer_lock(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-006: parent finalization flushes on one session and then tries "
-        "to cancel child runs through another writer session"
-    ),
-)
 async def test_parent_finalization_does_not_self_lock_while_cancelling_a_child(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,
@@ -714,14 +662,6 @@ async def test_parent_finalization_does_not_self_lock_while_cancelling_a_child(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-007: SMTP is called before a durable outbox receipt, so a commit "
-        "failure loses the action record and retry sends the message twice"
-    ),
-)
 async def test_smtp_accept_then_receipt_commit_failure_is_not_replayed(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,
@@ -747,30 +687,41 @@ async def test_smtp_accept_then_receipt_commit_failure_is_not_replayed(
     )
 
     async with sqlite_factory() as first_db:
-        original_commit = first_db.commit
+        enqueue_result = await execute_tool(
+            "notification_send",
+            raw,
+            ToolContext(
+                db=first_db,
+                owner_id=OWNER_ID,
+                run_id=run_id,
+                trigger="user_message",
+                tool_call_id="stable-email-action",
+            ),
+        )
+    _require_harness(
+        enqueue_result.get("ok") is True,
+        f"SMTP intent was not enqueued: {enqueue_result!r}",
+    )
+    _require_harness(
+        delivery_state["send_count"] == 0,
+        "SMTP ran inline before its durable outbox fence",
+    )
 
-        async def fail_receipt_commit() -> None:
-            if delivery_state["accepted"] and not delivery_state["failed_receipt"]:
-                delivery_state["failed_receipt"] = True
-                raise InjectedProcessCrash("H2-TXN-007 killed receipt persistence after SMTP accept")
-            await original_commit()
-
-        monkeypatch.setattr(first_db, "commit", fail_receipt_commit)
-        try:
-            await execute_tool(
-                "notification_send",
-                raw,
-                ToolContext(
-                    db=first_db,
-                    owner_id=OWNER_ID,
-                    run_id=run_id,
-                    trigger="user_message",
-                    tool_call_id="stable-email-action",
-                ),
+    def fail_receipt_commit(_sync_session) -> None:
+        if delivery_state["accepted"] and not delivery_state["failed_receipt"]:
+            delivery_state["failed_receipt"] = True
+            raise InjectedProcessCrash(
+                "H2-TXN-007 killed receipt persistence after SMTP accept"
             )
+
+    event.listen(AsyncSession.sync_session_class, "before_commit", fail_receipt_commit)
+    try:
+        try:
+            await dispatch_once(session_factory=sqlite_factory)
         except InjectedProcessCrash:
             crash_captured = True
-            await first_db.rollback()
+    finally:
+        event.remove(AsyncSession.sync_session_class, "before_commit", fail_receipt_commit)
 
     _require_harness(delivery_state["failed_receipt"], "SMTP receipt kill point was not reached")
     _require_harness(crash_captured, "injected SMTP receipt crash escaped capture")
@@ -812,14 +763,6 @@ async def test_smtp_accept_then_receipt_commit_failure_is_not_replayed(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-008: file_write changes the filesystem before its Operation and "
-        "ToolInvocation can be committed or reconciled"
-    ),
-)
 async def test_file_write_commit_failure_leaves_no_orphan_side_effect(
     sqlite_factory: async_sessionmaker[AsyncSession],
     tmp_path: Path,
@@ -831,47 +774,71 @@ async def test_file_write_commit_failure_leaves_no_orphan_side_effect(
     monkeypatch.setattr(workspace_tools, "WORKSPACE_ROOT", workspace_root)
     target_path = workspace_root / "artifact.txt"
     write_count = 0
-    original_write_text = Path.write_text
+    original_publish = outbox_module.publish_workspace_file
 
-    def counted_write_text(path: Path, *args, **kwargs):
+    async def counted_publish(
+        path: Path,
+        content: str,
+        *,
+        staging_token: str,
+    ) -> None:
         nonlocal write_count
         if path == target_path:
             write_count += 1
-        return original_write_text(path, *args, **kwargs)
+        await original_publish(path, content, staging_token=staging_token)
 
-    monkeypatch.setattr(Path, "write_text", counted_write_text)
+    monkeypatch.setattr(outbox_module, "publish_workspace_file", counted_publish)
     crash_captured = False
     commit_kill_point_seen = False
+    raw = json.dumps(
+        {"path": "artifact.txt", "content": "external side effect", "overwrite": True}
+    )
 
     async with sqlite_factory() as db:
-        original_commit = db.commit
-
-        async def fail_after_file_side_effect() -> None:
-            nonlocal commit_kill_point_seen
-            if target_path.exists() and not commit_kill_point_seen:
-                commit_kill_point_seen = True
-                raise InjectedProcessCrash("H2-TXN-008 killed persistence after file write")
-            await original_commit()
-
-        monkeypatch.setattr(db, "commit", fail_after_file_side_effect)
-        raw = json.dumps(
-            {"path": "artifact.txt", "content": "external side effect", "overwrite": True}
+        enqueue_result = await execute_tool(
+            "file_write",
+            raw,
+            ToolContext(
+                db=db,
+                owner_id=OWNER_ID,
+                run_id=run_id,
+                trigger="user_message",
+                tool_call_id="stable-file-action",
+            ),
         )
-        try:
-            await execute_tool(
-                "file_write",
-                raw,
-                ToolContext(
-                    db=db,
-                    owner_id=OWNER_ID,
-                    run_id=run_id,
-                    trigger="user_message",
-                    tool_call_id="stable-file-action",
-                ),
+    _require_harness(
+        enqueue_result.get("ok") is True,
+        f"file intent was not enqueued: {enqueue_result!r}",
+    )
+    _require_harness(
+        not target_path.exists(),
+        "file_write published inline before its durable outbox fence",
+    )
+
+    def fail_after_file_side_effect(_sync_session) -> None:
+        nonlocal commit_kill_point_seen
+        if target_path.exists() and not commit_kill_point_seen:
+            commit_kill_point_seen = True
+            raise InjectedProcessCrash(
+                "H2-TXN-008 killed persistence after file write"
             )
+
+    event.listen(
+        AsyncSession.sync_session_class,
+        "before_commit",
+        fail_after_file_side_effect,
+    )
+    try:
+        try:
+            await dispatch_once(session_factory=sqlite_factory)
         except InjectedProcessCrash:
             crash_captured = True
-            await db.rollback()
+    finally:
+        event.remove(
+            AsyncSession.sync_session_class,
+            "before_commit",
+            fail_after_file_side_effect,
+        )
 
     _require_harness(commit_kill_point_seen, "file side-effect kill point was not reached")
     _require_harness(crash_captured, "injected file persistence crash escaped capture")
@@ -916,14 +883,6 @@ async def test_file_write_commit_failure_leaves_no_orphan_side_effect(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H2-TXN-009: real SQLite writer contention escapes the tool and heartbeat "
-        "paths instead of leaving typed, retryable durable work"
-    ),
-)
 async def test_main_child_and_heartbeat_survive_real_sqlite_writer_contention(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,

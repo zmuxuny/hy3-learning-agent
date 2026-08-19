@@ -4,10 +4,13 @@ import asyncio
 import imaplib
 import smtplib
 from contextlib import contextmanager
-from email.message import EmailMessage
 from typing import Iterator
 
 from app.core.config import settings
+
+
+SMTP_DIAGNOSTIC_TITLE = "SMTP 配置测试"
+SMTP_DIAGNOSTIC_BODY = "Learning Agent 已将这封测试邮件通过持久化发件队列送出。"
 
 
 def email_configuration() -> dict:
@@ -59,12 +62,27 @@ def email_configuration() -> dict:
     }
 
 
-async def test_smtp(*, send_message: bool = False) -> dict:
+def require_smtp_configuration() -> dict:
     configuration = email_configuration()
     if not configuration["smtp_configured"]:
-        raise ValueError(f"Missing SMTP settings: {', '.join(configuration['smtp_missing'])}")
-    await asyncio.to_thread(_test_smtp_sync, send_message)
-    return {"ok": True, "channel": "smtp", "message_sent": send_message, "recipient": configuration["smtp_to"]}
+        raise ValueError(
+            f"Missing SMTP settings: {', '.join(configuration['smtp_missing'])}"
+        )
+    return configuration
+
+
+async def test_smtp() -> dict:
+    """Test only the SMTP connection; message delivery belongs to the outbox."""
+
+    configuration = require_smtp_configuration()
+    await asyncio.to_thread(_test_smtp_sync)
+    return {
+        "ok": True,
+        "channel": "smtp",
+        "status": "connected",
+        "message_sent": False,
+        "recipient": configuration["smtp_to"],
+    }
 
 
 async def test_imap() -> dict:
@@ -75,16 +93,9 @@ async def test_imap() -> dict:
     return {"ok": True, "channel": "imap", "folder": settings.IMAP_FOLDER, "message_count": mailbox_count}
 
 
-def _test_smtp_sync(send_message: bool) -> None:
+def _test_smtp_sync() -> None:
     with smtp_connection() as server:
         server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-        if send_message:
-            message = EmailMessage()
-            message["Subject"] = "[Learning Agent] SMTP 配置测试"
-            message["From"] = settings.SMTP_FROM or settings.SMTP_USERNAME
-            message["To"] = settings.SMTP_TO
-            message.set_content("Learning Agent 已成功连接 SMTP 并发送这封测试邮件。")
-            server.send_message(message)
 
 
 @contextmanager

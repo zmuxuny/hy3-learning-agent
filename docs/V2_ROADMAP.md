@@ -4,9 +4,9 @@
 目标版本：2.0.0
 当前基线：1.1.1
 
-> 2026-08-19 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1 已关闭迁移、UTC、备份与恢复基础的 13 个缺陷 ID（15 个基线节点），矩阵剩余 74 个 open ID，下一门禁是 H2；M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成完成声明。
+> 2026-08-19 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1 与 H2 已完成，累计关闭 24 个缺陷 ID，矩阵剩余 63 个 open ID，下一门禁是 H3；M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成完成声明。
 
-H1 的当前证据为 281 passed；H0 跨阶段回归为 27 passed / 17 strict xfailed；全仓为 441 passed / 98 strict xfailed。外部安装、连续学习闭环和 7 日留存仍待 H8 真人验证。
+H2 定向回归为 84 passed；当前 H0 跨阶段回归为 49 passed / 84 strict xfailed，普通非 hardening 回归为 139 passed；前端 Node 为 6 passed、生产构建成功、production audit 为 0。完整 pytest 结果及 H1 历史快照见 [`STATUS.md`](STATUS.md)；这些自动化证据不替代真实 SMTP/VAPID、外部安装、连续学习闭环和 7 日留存验证。
 
 ## 1. 版本定义
 
@@ -391,12 +391,12 @@ M13 学习账本
 
 - `LearningEvent` 增加 v2 公共信封字段；新增 `EvidenceObservation` 追加式事实表，包含来源、作用域、Rubric/评价者、评分、提示/迁移等级、因果链和幂等键。
 - 提交创建、提交验收、测验评分和带证据的任务完成已经双写；同一幂等键重试会复用原观察，原观察没有编辑或物理删除路径。
-- `study_state_get` 与当前计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；H1 已关闭 UTC/SQLite 时间往返差异，完整账本和撤销后的 digest 稳定性仍待 H4 修复。
-- 新增独立 `Artifact` 来源表，并在观察中保存 `artifact_id/content_hash`；内容耐久性、文件指纹和幂等冲突语义尚未通过验收。
+- `study_state_get` 与当前计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；H1 已关闭 UTC/SQLite 时间往返差异，H2 已关闭 H4-EVID-006 的结果摘要冲突，完整账本与其余投影语义仍待 H4 修复。
+- 新增独立 `Artifact` 来源表，并在观察中保存 `artifact_id/content_hash`；H2 已固定同 key 异请求/结果摘要冲突语义，Artifact bytes 耐久性和文件指纹仍未通过 H4 验收。
 - `scripts/rebuild-evidence.py` 已提供重建、审计、v1 回填和派生快照命令；H1 已使纯 audit 保持逐字节只读，并要求任何回填/重建写操作先取得协调 lease 和全量验证备份。
 - 新增 41 个网络无关场景名称和报告框架；多数场景尚未构造名称所代表的领域行为和独立断言。
 
-尚未满足 M13 正式标签。H1 已关闭时间 canonicalization 与 audit/备份顺序；v1 回填失效/回滚、undo 后证据继续生效、500 条之后的投影截断、重复成功计权、自由文本 `verified`、Artifact 指纹、幂等冲突和基线场景无独立断言等阻塞项仍须按 H2–H4 修复。
+尚未满足 M13 正式标签。H1 已关闭时间 canonicalization 与 audit/备份顺序，H2 已关闭事务原子性、幂等冲突、结果摘要与 Operation 基础逆向补偿；v1 回填失效/回滚、500 条之后的投影截断、重复成功计权、自由文本 `verified`、Artifact bytes/指纹和基线场景独立断言等阻塞项仍须按 H4 修复。
 
 ### M14：技能图与计划映射
 
@@ -416,7 +416,7 @@ M13 学习账本
 - 已提供 `competency_create`、`competency_link`、`competency_edge`、`competency_graph_get`、`competency_get` 和 `evidence_list` 的第一版工具与顶层输出模型。
 - `prerequisite` 与 `part_of` 关系在写入前执行确定性环检测；同 key 不会根据标题相似度静默合并，重复调用按工具幂等键复用。
 
-尚未通过 M14 验收：审查确认 edge/link 存在跨计划 Guard 缺口，计划级 key 唯一性不符合跨计划分离原则，Evidence 没有依据 `assesses` 映射连接技能，competency 过滤发生在 limit 之后，嵌套输出仍是裸 `list/dict`，图版本和撤销依赖也不完整；前端尚无最小只读视图。统一按硬化计划 H4/H7 修复，完成前不允许技能节点承载 M15 学习状态。
+H2 已证明当前图写入走同一 UoW、SQLite physical outer transaction 与幂等 CAS，不会因外层 savepoint 提前释放而局部提交；但 M14 仍未通过验收：edge/link 存在跨计划 Guard 缺口，计划级 key 唯一性不符合跨计划分离原则，Evidence 没有依据 `assesses` 映射连接技能，competency 过滤发生在 limit 之后，嵌套输出仍是裸 `list/dict`，图版本和语义撤销依赖也不完整；前端尚无最小只读视图。统一按硬化计划 H4/H7 修复，完成前不允许技能节点承载 M15 学习状态。
 
 ### M15：学习者状态与复习引擎
 

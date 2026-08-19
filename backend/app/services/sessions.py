@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.uow import flush as flush_uow
 from app.models import ChatMessage, Session, SessionPlanLink
 
 
@@ -29,7 +30,7 @@ async def link_session_plan(
             source_run_id=source_run_id,
         )
         db.add(link)
-        await db.flush()
+        await flush_uow(db)
     elif source_run_id and link.source_run_id is None:
         link.source_run_id = source_run_id
     return link

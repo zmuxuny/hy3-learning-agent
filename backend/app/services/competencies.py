@@ -10,6 +10,7 @@ from sqlalchemy import select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.db.uow import flush as flush_uow
 from app.models import (
     Competency,
     CompetencyEdge,
@@ -75,7 +76,7 @@ async def create_competency(
         plan_id=plan_id,
     )
     db.add(competency)
-    await db.flush()
+    await flush_uow(db)
     return competency, True
 
 
@@ -134,7 +135,7 @@ async def add_edge(
         relation=relation,
     )
     db.add(edge)
-    await db.flush()
+    await flush_uow(db)
     return edge, True
 
 
@@ -174,7 +175,7 @@ async def link_competency(
                 relation="targets", target_stage=target_stage,
             )
             db.add(existing)
-            await db.flush()
+            await flush_uow(db)
             created = True
         else:
             created = False
@@ -208,7 +209,7 @@ async def link_competency(
                 relation=relation, target_stage=target_stage,
             )
             db.add(existing)
-            await db.flush()
+            await flush_uow(db)
             created = True
         else:
             created = False
@@ -231,7 +232,7 @@ async def link_competency(
             depth=depth, relation="covers",
         )
         db.add(existing)
-        await db.flush()
+        await flush_uow(db)
         created = True
     else:
         created = False

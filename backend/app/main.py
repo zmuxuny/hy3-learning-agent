@@ -1,10 +1,11 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, text
 
@@ -16,7 +17,14 @@ from app.db.database import (
     validate_runtime_database_target,
 )
 from app.db.maintenance import runtime_state_lease
+from app.db.uow import (
+    DatabaseBusyError,
+    commit as commit_uow,
+    flush as flush_uow,
+    rollback as rollback_uow,
+)
 from app.models import AgentRun, Owner, Plan, Session, UserProfile  # noqa: F401 - imports register every mapped entity
+from app.outbox import drain_outbox, recover_interrupted_deliveries
 from app.runtime.agent import AgentRuntime
 from app.runtime.events import emit_event
 from app.runtime.scheduler import proactive_scheduler
@@ -33,7 +41,7 @@ async def ensure_local_owner() -> None:
                 timezone=settings.DEFAULT_TIMEZONE,
             )
             db.add(owner)
-            await db.flush()
+            await flush_uow(db)
         profile = await db.get(UserProfile, settings.DEFAULT_OWNER_ID)
         if profile is None:
             db.add(
@@ -44,7 +52,7 @@ async def ensure_local_owner() -> None:
             )
         elif profile.agent_style == "supervising_coach":
             profile.agent_style = "adaptive_study_partner"
-        await db.commit()
+        await commit_uow(db)
 
 
 async def verify_database_writable() -> None:
@@ -55,9 +63,9 @@ async def verify_database_writable() -> None:
             # transaction without leaving a table, row, or schema revision.
             await db.execute(text("BEGIN IMMEDIATE"))
             await db.execute(text("SELECT 1"))
-            await db.rollback()
+            await rollback_uow(db)
         except Exception as exc:
-            await db.rollback()
+            await rollback_uow(db)
             raise RuntimeError(
                 f"Database is not writable: {type(exc).__name__}"
             ) from exc
@@ -114,7 +122,7 @@ async def reconcile_interrupted_runs() -> list[str]:
                 and run.session_id is not None
             ):
                 failed_sessions.add((run.owner_id, run.session_id))
-        await db.commit()
+        await commit_uow(db)
         for run in interrupted:
             if run.id not in resumable:
                 await emit_event(
@@ -134,6 +142,7 @@ async def reconcile_interrupted_runs() -> list[str]:
                     session_id=session_id,
                 )
                 if next_run is not None:
+                    await commit_uow(db)
                     start_tracked_task(next_run.id, AgentRuntime().run(next_run.id))
         return resumable
 
@@ -165,7 +174,15 @@ async def lifespan(_: FastAPI):
         await create_schema(state_lease_held=True, state_root=PROJECT_ROOT)
         await verify_database_writable()
         await ensure_local_owner()
+        # The exclusive runtime lease proves no live dispatcher owns an old
+        # claim. Recover those crash states before the background worker may
+        # claim new intents; uncertain SMTP/Web Push is never auto-replayed.
+        await recover_interrupted_deliveries(session_factory=AsyncSessionLocal)
         resumable_runs = await reconcile_interrupted_runs()
+        outbox_stop = asyncio.Event()
+        outbox_task = asyncio.create_task(
+            drain_outbox(outbox_stop, session_factory=AsyncSessionLocal)
+        )
         proactive_scheduler.start()
         try:
             for run_id in resumable_runs:
@@ -173,6 +190,10 @@ async def lifespan(_: FastAPI):
             yield
         finally:
             await proactive_scheduler.stop()
+            outbox_stop.set()
+            outbox_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await outbox_task
 
 
 app = FastAPI(
@@ -181,6 +202,17 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(DatabaseBusyError)
+async def database_busy_response(_, exc: DatabaseBusyError) -> JSONResponse:
+    """Expose bounded SQLite contention as a typed retryable API state."""
+
+    return JSONResponse(
+        status_code=503,
+        content=exc.as_result(),
+        headers={"Retry-After": str(max(1, (exc.retry_after_ms + 999) // 1000))},
+    )
 
 app.add_middleware(
     CORSMiddleware,

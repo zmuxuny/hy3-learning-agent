@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import settings
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.database import AsyncSessionLocal
+from app.db.uow import run_short_transaction
 from app.models import AgentRun, LearningEvent, Notification, Plan, ReviewSchedule, Stage, Task, UserProfile
 from app.notifications.email import EmailReplyPoller
 from app.runtime.agent import AgentRuntime
@@ -22,6 +23,7 @@ class ProactiveScheduler:
         self._last_cycle_at: datetime | None = None
         self._next_cycle_at: datetime | None = None
         self._last_decision = "waiting_for_first_cycle"
+        self._trigger_lock = asyncio.Lock()
 
     def start(self) -> None:
         if settings.ENABLE_SCHEDULER and self._loop_task is None:
@@ -44,7 +46,7 @@ class ProactiveScheduler:
         self._run_tasks.clear()
 
     async def trigger_now(self, trigger: str = "heartbeat", *, plan_id: int | None = None, objective: str | None = None) -> AgentRun:
-        async with AsyncSessionLocal() as db:
+        async def create_run(db) -> AgentRun:
             active = await db.execute(
                 select(AgentRun.id).where(
                     AgentRun.owner_id == settings.DEFAULT_OWNER_ID,
@@ -65,8 +67,12 @@ class ProactiveScheduler:
                 plan_id=plan_id,
             )
             db.add(run)
-            await db.commit()
-            await db.refresh(run)
+            return run
+
+        # This is a bounded, DB-only claim.  It is safe to replay after a
+        # SQLite busy rollback and it never wraps model/network work.
+        async with self._trigger_lock:
+            run = await run_short_transaction(AsyncSessionLocal, create_run)
             run_id = run.id
         task = start_tracked_task(run_id, AgentRuntime().run(run_id))
         self._run_tasks.add(task)

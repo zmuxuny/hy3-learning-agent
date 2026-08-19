@@ -27,6 +27,7 @@ from app.db.maintenance import (
     runtime_state_lease,
     verify_backup,
 )
+from app.version import CURRENT_SCHEMA_VERSION
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -63,17 +64,23 @@ def _sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
-def _write_database(path: Path, marker: str) -> None:
+def _write_database(
+    path: Path,
+    marker: str,
+    *,
+    schema_version: int = CURRENT_SCHEMA_VERSION,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(path) as connection:
-        connection.execute("PRAGMA user_version=1")
+        connection.execute(f"PRAGMA user_version={schema_version}")
         connection.execute(
             "CREATE TABLE schema_migrations "
             "(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"
         )
         connection.execute(
             "INSERT INTO schema_migrations(version, applied_at) "
-            "VALUES (1, '2026-08-19T00:00:00.000000Z')"
+            "VALUES (?, '2026-08-19T00:00:00.000000Z')",
+            (schema_version,),
         )
         connection.execute(
             "CREATE TABLE fixture_marker "
@@ -108,10 +115,19 @@ def _clear_managed_state(root: Path) -> None:
                 tree.unlink()
 
 
-def _populate_state(root: Path, marker: str) -> None:
+def _populate_state(
+    root: Path,
+    marker: str,
+    *,
+    schema_version: int = CURRENT_SCHEMA_VERSION,
+) -> None:
     _clear_managed_state(root)
     for index, relative in enumerate(DATABASE_PATHS):
-        _write_database(root / relative, f"{marker}:database:{index}")
+        _write_database(
+            root / relative,
+            f"{marker}:database:{index}",
+            schema_version=schema_version,
+        )
 
     files = {
         "data/context/plans/active.json": f'{{"marker":"{marker}:plan"}}\n',
@@ -1126,18 +1142,18 @@ def test_manifest_integer_types_and_entry_shape_are_strict_before_restore(
     elif mutation == "sqlite-foreign-key-count-bool":
         sqlite_entry["sqlite"]["foreign_key_check_count"] = False
     elif mutation == "sqlite-schema-version-bool":
-        assert sqlite_entry["sqlite"]["schema_version"] == 1
+        assert sqlite_entry["sqlite"]["schema_version"] == CURRENT_SCHEMA_VERSION
         sqlite_entry["sqlite"]["schema_version"] = True
     elif mutation == "sqlite-user-version-bool":
-        assert sqlite_entry["sqlite"]["user_version"] == 1
+        assert sqlite_entry["sqlite"]["user_version"] == CURRENT_SCHEMA_VERSION
         sqlite_entry["sqlite"]["user_version"] = True
     elif mutation == "sqlite-page-size-bool":
         sqlite_entry["sqlite"]["page_size"] = True
     elif mutation == "summary-schema-version-bool":
-        assert database_summary["schema_version"] == 1
+        assert database_summary["schema_version"] == CURRENT_SCHEMA_VERSION
         database_summary["schema_version"] = True
     elif mutation == "summary-user-version-bool":
-        assert database_summary["user_version"] == 1
+        assert database_summary["user_version"] == CURRENT_SCHEMA_VERSION
         database_summary["user_version"] = True
     elif mutation == "missing-source-path":
         file_entry.pop("source_path")
@@ -1172,10 +1188,24 @@ def test_older_backup_supported_version_remains_forward_restorable(
     state_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _populate_state(state_root, "older-schema")
+    older_schema_version = CURRENT_SCHEMA_VERSION - 1
+    monkeypatch.setattr(
+        maintenance_module,
+        "CURRENT_SCHEMA_VERSION",
+        older_schema_version,
+    )
+    _populate_state(
+        state_root,
+        "older-schema",
+        schema_version=older_schema_version,
+    )
     report = backup_state(state_root, "older_schema")
 
-    monkeypatch.setattr(maintenance_module, "CURRENT_SCHEMA_VERSION", 2)
+    monkeypatch.setattr(
+        maintenance_module,
+        "CURRENT_SCHEMA_VERSION",
+        CURRENT_SCHEMA_VERSION,
+    )
     manifest = verify_backup(
         state_root,
         report["backup_id"],
@@ -1188,7 +1218,7 @@ def test_older_backup_supported_version_remains_forward_restorable(
         dry_run=True,
     )
 
-    assert manifest["schema"]["supported_version"] == 1
+    assert manifest["schema"]["supported_version"] == older_schema_version
     assert restored["code"] == "dry_run_ok"
 
 
@@ -1292,7 +1322,7 @@ def test_restore_rejects_hash_valid_but_invalid_sqlite_payload_before_live_mutat
                     "INSERT INTO fixture_child(id, parent_id) VALUES (2, 999999)"
                 )
             else:
-                connection.execute("PRAGMA user_version=2")
+                connection.execute(f"PRAGMA user_version={CURRENT_SCHEMA_VERSION + 1}")
     database_entry["size_bytes"] = payload.stat().st_size
     database_entry["sha256"] = _sha256_bytes(payload.read_bytes())
     _refresh_manifest_payload_digest(manifest)
@@ -1970,9 +2000,18 @@ def test_real_fastapi_lifespan_lease_blocks_cross_process_cli_maintenance(
     async def fake_ensure_local_owner() -> None:
         events.append("ensure_owner")
 
+    async def fake_recover_interrupted_deliveries(*, session_factory: Any) -> dict[str, int]:
+        assert session_factory is main_module.AsyncSessionLocal
+        assert_lifecycle_lease_is_held("recover_outbox")
+        return {"fenced_external": 0, "reconciled_workspace": 0}
+
     async def fake_reconcile_interrupted_runs() -> list[str]:
         events.append("reconcile")
         return []
+
+    async def fake_drain_outbox(stop_event: asyncio.Event, *, session_factory: Any) -> None:
+        assert session_factory is main_module.AsyncSessionLocal
+        await stop_event.wait()
 
     class FakeScheduler:
         def start(self) -> None:
@@ -2001,9 +2040,15 @@ def test_real_fastapi_lifespan_lease_blocks_cross_process_cli_maintenance(
     monkeypatch.setattr(main_module, "ensure_local_owner", fake_ensure_local_owner)
     monkeypatch.setattr(
         main_module,
+        "recover_interrupted_deliveries",
+        fake_recover_interrupted_deliveries,
+    )
+    monkeypatch.setattr(
+        main_module,
         "reconcile_interrupted_runs",
         fake_reconcile_interrupted_runs,
     )
+    monkeypatch.setattr(main_module, "drain_outbox", fake_drain_outbox)
     monkeypatch.setattr(main_module, "proactive_scheduler", FakeScheduler())
 
     command = [
@@ -2030,6 +2075,7 @@ def test_real_fastapi_lifespan_lease_blocks_cross_process_cli_maintenance(
                 "create_schema",
                 "verify_writable",
                 "ensure_owner",
+                "recover_outbox",
                 "reconcile",
                 "scheduler_start",
             ]

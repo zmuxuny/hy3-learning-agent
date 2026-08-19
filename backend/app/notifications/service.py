@@ -1,4 +1,5 @@
-import asyncio
+import hashlib
+import json
 from datetime import datetime, time, timezone
 from email.message import EmailMessage
 from zoneinfo import ZoneInfo
@@ -7,7 +8,9 @@ from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import Notification, Plan, UserProfile
+from app.db.uow import flush as flush_uow
+from app.models import Notification, Plan, PushSubscription, UserProfile
+from app.outbox import enqueue_action
 from app.notifications.conversation import materialize_notification_message, resolve_notification_session
 from app.notifications.diagnostics import smtp_connection
 from app.notifications.push import push_service
@@ -21,13 +24,16 @@ class NotificationService:
         self,
         *,
         owner_id: str,
-        run_id: str,
+        run_id: str | None,
         session_id: str | None,
         trigger: str,
         title: str,
         body: str,
         plan_id: int | None,
         channels: list[str],
+        invocation_id: int | None = None,
+        action_key: str | None = None,
+        request_digest: str | None = None,
     ) -> dict:
         allowed, reason = await self._guard(owner_id, trigger, plan_id)
         if not allowed:
@@ -57,11 +63,13 @@ class NotificationService:
 
         created: list[dict] = []
         created_models: list[Notification] = []
+        queued_actions: list[str] = []
         requested = list(dict.fromkeys(["in_app", *channels]))
         for channel in requested:
             notification = Notification(
                 owner_id=owner_id,
                 run_id=run_id,
+                invocation_id=invocation_id,
                 session_id=session.id,
                 plan_id=plan_id,
                 channel=channel,
@@ -70,40 +78,79 @@ class NotificationService:
                 status="queued",
             )
             self.db.add(notification)
-            await self.db.flush()
+            await flush_uow(self.db)
             created_models.append(notification)
 
             if channel == "in_app":
                 notification.status = "sent"
                 notification.sent_at = datetime.now(timezone.utc)
             elif channel == "browser":
-                delivered = await push_service.send(
-                    self.db,
-                    owner_id,
-                    title,
-                    body,
-                    {
-                        "notification_id": notification.id,
-                        "url": f"/?notification={created_models[0].id}",
-                    },
+                subscriptions = list(
+                    (
+                        await self.db.execute(
+                            select(PushSubscription).where(
+                                PushSubscription.owner_id == owner_id
+                            )
+                        )
+                    ).scalars()
                 )
-                # `sent` means the open page should display the notification;
-                # `pushed` means the Service Worker already delivered it.
-                notification.status = "pushed" if delivered else "sent"
-                notification.sent_at = datetime.now(timezone.utc)
+                if not push_service.configured or not subscriptions:
+                    notification.status = "skipped"
+                else:
+                    base_key, digest = self._delivery_identity(
+                        notification,
+                        action_key=action_key,
+                        request_digest=request_digest,
+                    )
+                    for subscription in subscriptions:
+                        outbox = await enqueue_action(
+                            self.db,
+                            owner_id=owner_id,
+                            run_id=run_id,
+                            invocation_id=invocation_id,
+                            notification_id=notification.id,
+                            action_key=f"{base_key}:webpush:{subscription.id}",
+                            request_digest=digest,
+                            destination="web_push",
+                            payload={
+                                "subscription_id": subscription.id,
+                                "endpoint": subscription.endpoint,
+                                "keys": dict(subscription.keys or {}),
+                                "title": title,
+                                "body": body,
+                                "data": {
+                                    "notification_id": notification.id,
+                                    "url": f"/?notification={created_models[0].id}",
+                                },
+                            },
+                        )
+                        queued_actions.append(outbox.action_key)
             elif channel == "email":
                 if not self._email_configured():
                     notification.status = "skipped"
                 else:
-                    try:
-                        await asyncio.to_thread(self._send_email, notification.reply_token, title, body)
-                        notification.status = "sent"
-                        notification.sent_at = datetime.now(timezone.utc)
-                    except Exception as exc:
-                        notification.status = "failed"
-                        body_preview = str(exc)[:200]
-                        created.append({"id": notification.id, "channel": channel, "status": "failed", "error": body_preview})
-                        continue
+                    base_key, digest = self._delivery_identity(
+                        notification,
+                        action_key=action_key,
+                        request_digest=request_digest,
+                    )
+                    outbox = await enqueue_action(
+                        self.db,
+                        owner_id=owner_id,
+                        run_id=run_id,
+                        invocation_id=invocation_id,
+                        notification_id=notification.id,
+                        action_key=f"{base_key}:smtp",
+                        request_digest=digest,
+                        destination="smtp",
+                        payload={
+                            "reply_token": notification.reply_token,
+                            "title": title,
+                            "body": body,
+                            "route_digest": self._smtp_route_digest(),
+                        },
+                    )
+                    queued_actions.append(outbox.action_key)
             else:
                 notification.status = "skipped"
             created.append({"id": notification.id, "channel": channel, "status": notification.status})
@@ -115,8 +162,38 @@ class NotificationService:
                 notification=primary,
                 notification_ids=[item.id for item in created_models],
             )
-        await self.db.commit()
-        return {"blocked": False, "session_id": session.id, "notifications": created}
+        await flush_uow(self.db)
+        return {
+            "blocked": False,
+            "session_id": session.id,
+            "notifications": created,
+            "outbox_action_keys": queued_actions,
+            **({"_invocation_status": "pending_delivery"} if queued_actions else {}),
+        }
+
+    @staticmethod
+    def _delivery_identity(
+        notification: Notification,
+        *,
+        action_key: str | None,
+        request_digest: str | None,
+    ) -> tuple[str, str]:
+        base_key = action_key or f"notification:{notification.id}"
+        if request_digest:
+            return base_key, request_digest
+        canonical = json.dumps(
+            {
+                "owner_id": notification.owner_id,
+                "run_id": notification.run_id,
+                "channel": notification.channel,
+                "title": notification.title,
+                "body": notification.body,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return base_key, hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     async def _guard(self, owner_id: str, trigger: str, plan_id: int | None) -> tuple[bool, str]:
         if trigger in {"user_message", "email_reply", "manual_heartbeat"}:
@@ -148,7 +225,18 @@ class NotificationService:
         if int(result.scalar_one()) >= daily_limit:
             return False, "daily notification limit"
 
-        cooldown_start = datetime.now(timezone.utc).timestamp() - settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES * 60
+        cooldown_minutes = settings.AGENT_NOTIFICATION_COOLDOWN_MINUTES
+        if profile is not None:
+            configured_cooldown = (profile.preferences or {}).get(
+                "notification_cooldown_minutes"
+            )
+            if (
+                isinstance(configured_cooldown, int)
+                and not isinstance(configured_cooldown, bool)
+                and 0 <= configured_cooldown <= 1440
+            ):
+                cooldown_minutes = configured_cooldown
+        cooldown_start = datetime.now(timezone.utc).timestamp() - cooldown_minutes * 60
         cooldown_dt = datetime.fromtimestamp(cooldown_start, tz=timezone.utc)
         cooldown_query = select(Notification.id).where(
             Notification.owner_id == owner_id,
@@ -164,12 +252,35 @@ class NotificationService:
     def _email_configured(self) -> bool:
         return bool(settings.SMTP_HOST and settings.SMTP_USERNAME and settings.SMTP_PASSWORD and settings.SMTP_TO)
 
+    @staticmethod
+    def _smtp_route_digest() -> str:
+        """Fingerprint non-secret routing identity without persisting credentials."""
+
+        canonical = json.dumps(
+            {
+                "host": settings.SMTP_HOST,
+                "port": settings.SMTP_PORT,
+                "username": settings.SMTP_USERNAME,
+                "from": settings.SMTP_FROM,
+                "to": settings.SMTP_TO,
+                "use_tls": settings.SMTP_USE_TLS,
+                "use_ssl": settings.SMTP_USE_SSL,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
     def _send_email(self, reply_token: str, title: str, body: str) -> None:
         message = EmailMessage()
         message["Subject"] = f"[Learning Agent][LA:{reply_token}] {title}"
         message["From"] = settings.SMTP_FROM or settings.SMTP_USERNAME
         message["To"] = settings.SMTP_TO
         message["Reply-To"] = settings.SMTP_FROM or settings.SMTP_USERNAME
+        # Stable diagnostic identity for provider support/reconciliation.  It
+        # does not claim that SMTP providers deduplicate repeated submissions.
+        message["Message-ID"] = f"<{reply_token}@learning-agent.local>"
         message["X-Learning-Agent-Reply-Token"] = reply_token
         message.set_content(f"{body}\n\n直接回复此邮件即可继续与 Learning Agent 沟通。\nReply token: {reply_token}")
 

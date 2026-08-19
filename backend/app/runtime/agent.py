@@ -11,6 +11,7 @@ from app.context.memory import MemoryManager
 from app.core.config import settings
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.database import AsyncSessionLocal
+from app.db.uow import commit as commit_uow, flush as flush_uow, rollback as rollback_uow
 from app.models import AgentRun, ChatMessage, PlanProposal, RunSteerMessage, Session
 from app.runtime.events import emit_event, publish_stream_event
 from app.runtime.prompt import SYSTEM_PROMPT
@@ -200,7 +201,7 @@ class AgentRuntime:
     async def _start(self, db, run: AgentRun) -> None:
         run.status = "running"
         run.started_at = utc_now()
-        await db.commit()
+        await commit_uow(db)
         await emit_event(db, run.id, "run.started", "Agent run started", {"trigger": run.trigger})
 
         try:
@@ -217,7 +218,7 @@ class AgentRuntime:
                 run_id=run.id,
                 objective=run.objective,
             )
-            await db.commit()
+            await commit_uow(db)
             memory_ids = [
                 item["id"]
                 for item in snapshot.source_manifest
@@ -250,7 +251,7 @@ class AgentRuntime:
                 if existing_user_message is None:
                     db.add(ChatMessage(session_id=session.id, run_id=run.id, role="user", content=run.objective))
                 session.updated_at = utc_now()
-                await db.commit()
+                await commit_uow(db)
 
             messages: list[dict] = [
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -314,7 +315,7 @@ class AgentRuntime:
 
         run.status = "running"
         run.checkpoint = None
-        await db.commit()
+        await commit_uow(db)
         await emit_event(db, run.id, "run.resumed", "从检查点恢复运行", {"approval_decision": approval_decision})
         if approval is not None:
             await emit_event(
@@ -362,7 +363,7 @@ class AgentRuntime:
             run_id=run.id,
             objective=run.objective,
         )
-        await db.commit()
+        await commit_uow(db)
         memory_ids = [
             item["id"]
             for item in snapshot.source_manifest
@@ -420,7 +421,7 @@ class AgentRuntime:
                 if run.cancel_requested:
                     run.status = "cancelled"
                     run.checkpoint = None
-                    await db.commit()
+                    await commit_uow(db)
                     await emit_event(db, run.id, "run.cancelled", "Agent run cancelled")
                     return
 
@@ -433,7 +434,7 @@ class AgentRuntime:
                         budget["stopped_reason"] = reason
                         run.budget_usage = budget
                         final_text = "运行预算已用尽，已安全停止。"
-                        await db.commit()
+                        await commit_uow(db)
                         await emit_event(
                             db,
                             run.id,
@@ -485,7 +486,7 @@ class AgentRuntime:
                     budget["stopped_reason"] = reason
                     run.budget_usage = budget
                     final_text = "运行预算已用尽，已安全停止。"
-                    await db.commit()
+                    await commit_uow(db)
                     await emit_event(
                         db,
                         run.id,
@@ -505,7 +506,7 @@ class AgentRuntime:
                     "cards": run_cards,
                     "context_snapshot_id": context_snapshot_id,
                 }
-                await db.commit()
+                await commit_uow(db)
 
                 await emit_event(
                     db,
@@ -540,18 +541,31 @@ class AgentRuntime:
                             timeout=tool_timeout,
                         )
                 result = failure_guard.observe(call["name"], result)
-                await emit_event(
-                    db,
-                    run.id,
-                    "tool.completed",
-                    f"工具 {call['name']} {'完成' if result['ok'] else '失败'}",
-                    {
-                        "tool_call_id": call["id"],
-                        "name": call["name"],
-                        "arguments": _event_tool_arguments(call["arguments"]),
-                        "result": result,
-                    },
+                data = result.get("data") or {}
+                completion_event_persisted = bool(
+                    result.get("completion_event_persisted")
+                    or data.get("completion_event_persisted")
                 )
+                if completion_event_persisted:
+                    committed_event = result.get("completion_event")
+                    if isinstance(committed_event, dict):
+                        # The registry inserted this exact event in the domain
+                        # UoW. Publish it to local SSE subscribers without a
+                        # second database append.
+                        publish_stream_event(run.id, committed_event)
+                else:
+                    await emit_event(
+                        db,
+                        run.id,
+                        "tool.completed",
+                        f"工具 {call['name']} {'完成' if result['ok'] else '失败'}",
+                        {
+                            "tool_call_id": call["id"],
+                            "name": call["name"],
+                            "arguments": _event_tool_arguments(call["arguments"]),
+                            "result": result,
+                        },
+                    )
                 messages.append(
                     {
                         "role": "tool",
@@ -559,7 +573,6 @@ class AgentRuntime:
                         "content": _compact_tool_message(result),
                     }
                 )
-                data = result.get("data") or {}
                 if result.get("ok") and call["name"] == "planning_intake_update" and data.get("open_questions"):
                     _upsert_card(run_cards, {
                         "kind": "planning_questions",
@@ -584,7 +597,7 @@ class AgentRuntime:
                         "step": step,
                     }
                     run.status = "waiting_approval"
-                    await db.commit()
+                    await commit_uow(db)
                     await emit_event(
                         db,
                         run.id,
@@ -613,42 +626,65 @@ class AgentRuntime:
                     "cards": run_cards,
                     "context_snapshot_id": context_snapshot_id,
                 }
-                await db.commit()
+                await commit_uow(db)
                 if not calls:
                     step += 1
             else:
                 final_text = "本次运行达到最大工具轮次，已安全停止。"
 
-            run.checkpoint = None
-            run.pending_approval = None
             run.output = final_text
             if session and final_text:
                 message_metadata = {"cards": run_cards} if run_cards else {}
-                db.add(ChatMessage(
-                    session_id=session.id,
-                    run_id=run.id,
-                    role="assistant",
-                    content=final_text,
-                    message_metadata=message_metadata,
-                ))
+                final_message = (await db.execute(
+                    select(ChatMessage).where(
+                        ChatMessage.session_id == session.id,
+                        ChatMessage.run_id == run.id,
+                        ChatMessage.role == "assistant",
+                    ).order_by(ChatMessage.id.desc()).limit(1)
+                )).scalars().one_or_none()
+                if final_message is None:
+                    db.add(ChatMessage(
+                        session_id=session.id,
+                        run_id=run.id,
+                        role="assistant",
+                        content=final_text,
+                        message_metadata=message_metadata,
+                    ))
+                else:
+                    final_message.content = final_text
+                    final_message.message_metadata = message_metadata
                 session.updated_at = utc_now()
-                await db.flush()
+            # Make the final assistant turn durable before title/compression
+            # model calls.  A crash can replay finalization without duplicating
+            # the message because it is keyed above by Run + assistant role.
+            await commit_uow(db)
+
+            if session and final_text:
                 await generate_session_title(
                     session,
                     objective=run.objective,
                     answer=final_text,
                     client=self.client,
                 )
+                # Title generation mutates only after its model wait. End that
+                # short UoW before compression performs its own model wait.
+                await commit_uow(db)
                 await MemoryManager(db).compress_session(session, self.client)
+                await commit_uow(db)
+
+            run.checkpoint = None
+            run.pending_approval = None
             run.status = "completed"
             run.completed_at = utc_now()
             final_budget = self._budget(run)
             self._refresh_elapsed(run, final_budget, ended_at=run.completed_at)
             run.budget_usage = final_budget
+            await commit_uow(db)
             from app.runtime.subagents import cancel_children_for_parent
 
+            # Parent finalization has released its writer before child sessions
+            # perform their own cancellation UoWs.
             await cancel_children_for_parent(run.id, "父 Run 已结束")
-            await db.commit()
             if session:
                 await self._start_next_queued_message(run.owner_id, session.id)
             await emit_event(db, run.id, "run.completed", final_text or "Agent run completed")
@@ -657,6 +693,18 @@ class AgentRuntime:
 
     async def _call_model(self, db, run: AgentRun, messages: list[dict], failure_guard: ToolFailureGuard, step: int):
         from app.tools import openai_tools
+
+        if db.in_nested_transaction():
+            raise RuntimeError("model calls cannot coordinate inside a SAVEPOINT")
+        if db.new or db.dirty or db.deleted:
+            raise RuntimeError(
+                "model calls require a clean session; commit the owning Unit of Work first"
+            )
+        if db.in_transaction():
+            # refresh()/steering probes may leave a read snapshot open even
+            # when there was nothing to apply. Never retain it across model
+            # connection, retry, or stream waits.
+            await commit_uow(db)
 
         for attempt in range(settings.AGENT_MODEL_RETRY_ATTEMPTS):
             try:
@@ -783,7 +831,7 @@ class AgentRuntime:
         for steer in pending:
             steer.applied_at = utc_now()
             messages.append({"role": "user", "content": f"[中途转向] {steer.content}"})
-        await db.commit()
+        await commit_uow(db)
         return messages
 
     async def _fail(self, db, run_id: str, exc: Exception) -> None:
@@ -791,6 +839,13 @@ class AgentRuntime:
         owner_id: str | None = None
         session_id: str | None = None
         try:
+            # A failed flush/commit or an exception after staging ORM work can
+            # leave the caller owning SQLite's writer. Release it before the
+            # fresh failure-record session attempts its short UoW.
+            try:
+                await rollback_uow(db)
+            except Exception:
+                pass
             async with AsyncSessionLocal() as failure_db:
                 run = await failure_db.get(AgentRun, run_id)
                 if not run:
@@ -799,7 +854,7 @@ class AgentRuntime:
                 session_id = run.session_id
                 run.status = "failed"
                 run.completed_at = utc_now()
-                await failure_db.commit()
+                await commit_uow(failure_db)
                 if isinstance(exc, AgentModelTimeout):
                     summary = "模型暂时没有响应。本轮已执行的工具结果和会话内容均已保留，可以直接重试。"
                     error_code = "model_timeout"
@@ -839,6 +894,8 @@ class AgentRuntime:
                 owner_id=owner_id,
                 session_id=session_id,
             )
+            if next_run is not None:
+                await commit_uow(queue_db)
         if next_run is not None:
             start_tracked_task(next_run.id, AgentRuntime().run(next_run.id))
         return next_run
@@ -909,7 +966,7 @@ class AgentRuntime:
             title=initial_session_title(run.objective),
         )
         db.add(session)
-        await db.flush()
+        await flush_uow(db)
         run.session_id = session.id
-        await db.commit()
+        await commit_uow(db)
         return session

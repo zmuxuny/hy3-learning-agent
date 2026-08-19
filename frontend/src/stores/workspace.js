@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import api from '../api/client';
+import api from '../api/client.js';
 
 const RUN_EVENTS = [
   'run.started',
@@ -34,6 +34,13 @@ function urlBase64ToUint8Array(base64String) {
   const output = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
   return output;
+}
+
+function createClientActionId() {
+  if (!globalThis.crypto?.randomUUID) {
+    throw new Error('当前浏览器无法生成可靠的请求标识');
+  }
+  return globalThis.crypto.randomUUID();
 }
 
 async function showBrowserNotification(title, body, notificationId = null) {
@@ -78,6 +85,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const currentRun = ref(null);
   const focusPlanId = ref(null);
   const traceOpen = ref(false);
+  let pendingSmtpDiagnosticActionId = null;
   const activeSessionId = ref(null);
   const conversationMessages = ref([]);
   const planningState = ref({ intake: null, proposal: null });
@@ -653,13 +661,30 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function testEmail(channel, sendMessage = false) {
     emailTestResult.value = null;
+    const queuesSmtpMessage = channel === 'smtp' && sendMessage;
     try {
-      const response = await api.post('/settings/email/test', { channel, send_message: sendMessage });
+      if (queuesSmtpMessage && !pendingSmtpDiagnosticActionId) {
+        pendingSmtpDiagnosticActionId = createClientActionId();
+      }
+      const payload = { channel, send_message: sendMessage };
+      if (queuesSmtpMessage) payload.action_id = pendingSmtpDiagnosticActionId;
+      const response = await api.post('/settings/email/test', payload);
+      if (queuesSmtpMessage) pendingSmtpDiagnosticActionId = null;
       emailTestResult.value = response.data;
-      const configuration = await api.get('/settings/email');
-      emailConfiguration.value = configuration.data;
+      try {
+        const configuration = await api.get('/settings/email');
+        emailConfiguration.value = configuration.data;
+      } catch {
+        // The diagnostic POST already returned a durable result.  A secondary
+        // configuration refresh failure must not turn a confirmed enqueue into
+        // an ambiguous request that a user may duplicate.
+      }
       return true;
     } catch (requestError) {
+      const status = requestError.response?.status;
+      if (queuesSmtpMessage && status >= 400 && status < 500) {
+        pendingSmtpDiagnosticActionId = null;
+      }
       emailTestResult.value = { ok: false, error: requestError.response?.data?.detail || requestError.message };
       return false;
     }

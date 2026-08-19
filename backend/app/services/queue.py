@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.uow import flush as flush_uow
 from app.models import AgentRun, ChatMessage, Plan, QueuedMessage, Session
 from app.runtime.session_titles import initial_session_title
 
@@ -53,7 +54,7 @@ async def dispatch_queued_message(
             title=initial_session_title(message.user_content or message.objective),
         )
         db.add(session)
-        await db.flush()
+        await flush_uow(db)
 
     run = AgentRun(
         owner_id=owner_id,
@@ -63,7 +64,7 @@ async def dispatch_queued_message(
         objective=message.objective,
     )
     db.add(run)
-    await db.flush()
+    await flush_uow(db)
     db.add(ChatMessage(
         session_id=session.id,
         run_id=run.id,
@@ -88,8 +89,10 @@ async def dispatch_queued_message(
         )
         .values(position=QueuedMessage.position - 1)
     )
-    await db.commit()
-    await db.refresh(run)
+    # The caller owns the Unit of Work and starts the runtime only after that
+    # commit succeeds.  Keep queue removal, position compaction, user message,
+    # and queued Run creation in the same staged transaction.
+    await flush_uow(db)
     return run
 
 
@@ -110,5 +113,6 @@ async def dispatch_next_queued_message(
     try:
         return await dispatch_queued_message(db, message, owner_id=owner_id)
     except (RuntimeError, ValueError):
-        await db.rollback()
+        # Validation failures happen before this service stages mutations.
+        # Leave rollback/commit ownership with the API/runtime coordinator.
         return None

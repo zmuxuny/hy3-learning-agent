@@ -1,19 +1,37 @@
+import hashlib
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.time import parse_legacy_datetime
 from app.db.database import get_db
-from app.core.config import PROJECT_ROOT
+from app.db.uow import (
+    DatabaseBusyError,
+    commit as commit_uow,
+    flush as flush_uow,
+    is_database_busy,
+    rollback as rollback_uow,
+)
 from app.models import ActivityDay, CalendarEvent, Competency, CompetencyEdge, LearningEvent, LearningResource, Operation, Plan, PlanCompetencyLink, PlanProposal, Quiz, ResourceCompetencyLink, ReviewSchedule, Session, Stage, Task, TaskCompetencyLink, TaskSubmission, UserProfile
+from app.outbox import (
+    enqueue_workspace_delete,
+    enqueue_workspace_write,
+    prepare_workspace_delete,
+    prepare_workspace_write,
+)
 from app.schemas import OperationRead
 from app.services.plans import recompute_plan_state
 
 
 router = APIRouter()
+
+
+_UNDO_REPLAY_STATUSES = {"undo_pending", "undone", "needs_reconciliation"}
 
 
 @router.get("", response_model=list[OperationRead])
@@ -32,12 +50,82 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
     operation = await db.get(Operation, operation_id)
     if not operation or operation.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Operation not found")
+    if operation.status in _UNDO_REPLAY_STATUSES:
+        # The endpoint body is only the stable Operation id. Repeating it must
+        # therefore return the same durable state instead of applying the
+        # inverse twice (or turning a successful retry into a conflict).
+        return operation
     if operation.status != "committed":
         raise HTTPException(status_code=409, detail="Operation is not undoable")
 
     inverse = operation.inverse_patch
+    prepared_workspace_undo = None
+    if operation.entity_type == "workspace_file" and "path" in inverse:
+        # db.get() opened a read transaction. End it before touching the
+        # filesystem so a slow disk cannot stretch a caller-owned DB UoW.
+        await commit_uow(db)
+        try:
+            prepared_workspace_undo = (
+                await prepare_workspace_delete(path=inverse["path"])
+                if inverse.get("delete")
+                else await prepare_workspace_write(
+                    path=inverse["path"],
+                    content=inverse.get("previous", ""),
+                    overwrite=True,
+                )
+            )
+        except (OSError, ValueError) as exc:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Workspace undo cannot be prepared: {type(exc).__name__}",
+            ) from exc
+
+        # A compensation may only replace the exact forward version produced
+        # by this operation. Refuse legacy rows without a digest and refuse to
+        # clobber a later user/tool edit.
+        forward_digest = (
+            operation.forward_patch.get("desired_sha256")
+            or operation.forward_patch.get("sha256")
+        )
+        if not forward_digest:
+            raise HTTPException(
+                status_code=409,
+                detail="Workspace undo requires reconciliation: forward digest is missing",
+            )
+        if prepared_workspace_undo.before_sha256 != forward_digest:
+            raise HTTPException(
+                status_code=409,
+                detail="Workspace undo requires reconciliation: file changed after the operation",
+            )
+
+    # Every inverse, including DB-only ones, is guarded by the same conditional
+    # transition. The winner applies the inverse and records its audit event in
+    # this UoW; a concurrent loser reloads the winner's durable state.
+    try:
+        claim = await db.execute(
+            update(Operation)
+            .where(
+                Operation.id == operation.id,
+                Operation.owner_id == settings.DEFAULT_OWNER_ID,
+                Operation.status == "committed",
+            )
+            .values(status="undo_pending", undone_at=None)
+        )
+    except OperationalError as exc:
+        if not is_database_busy(exc):
+            raise
+        await rollback_uow(db)
+        raise DatabaseBusyError() from exc
+    if claim.rowcount != 1:
+        await rollback_uow(db)
+        current = await db.get(Operation, operation_id)
+        if current is not None and current.status in _UNDO_REPLAY_STATUSES:
+            return current
+        raise HTTPException(status_code=409, detail="Operation is not undoable")
+    operation.status = "undo_pending"
     audit_plan_id: int | None = None
     audit_task_id: int | None = None
+    undo_outbox_action_id: str | None = None
     if operation.entity_type == "task" and "changes" in inverse:
         task = await db.get(Task, int(operation.entity_id))
         if not task:
@@ -124,7 +212,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
         if stage:
             audit_plan_id = stage.plan_id
             await db.delete(stage)
-            await db.flush()
+            await flush_uow(db)
             plan = await db.get(Plan, audit_plan_id)
             if plan:
                 await db.refresh(plan, ["stages"])
@@ -141,7 +229,7 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
             # FK must be null because this compensating event outlives it.
             audit_task_id = None
             await db.delete(task)
-            await db.flush()
+            await flush_uow(db)
             plan = await db.get(Plan, audit_plan_id) if audit_plan_id else None
             if plan:
                 await db.refresh(plan, ["stages"])
@@ -199,15 +287,40 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
                 day.completed_tasks = award["day"]["completed_tasks"]
                 day.passed_quizzes = award["day"]["passed_quizzes"]
     elif operation.entity_type == "workspace_file" and "path" in inverse:
-        workspace_root = (PROJECT_ROOT / "data" / "workspace").resolve()
-        path = (workspace_root / inverse["path"]).resolve()
-        if path != workspace_root and workspace_root not in path.parents:
-            raise HTTPException(status_code=409, detail="Invalid workspace path")
+        if prepared_workspace_undo is None:  # pragma: no cover - guarded above
+            raise HTTPException(status_code=409, detail="Workspace undo was not prepared")
+        request_digest = hashlib.sha256(
+            json.dumps(
+                {"operation_id": operation.id, "inverse": inverse},
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        action_key = f"undo:{operation.id}"
         if inverse.get("delete"):
-            path.unlink(missing_ok=True)
+            action = await enqueue_workspace_delete(
+                db,
+                owner_id=operation.owner_id,
+                run_id=operation.run_id,
+                action_key=action_key,
+                request_digest=request_digest,
+                prepared=prepared_workspace_undo,
+                operation_id=operation.id,
+                operation_status_on_delivery="undone",
+            )
         else:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(inverse.get("previous", ""), encoding="utf-8")
+            action = await enqueue_workspace_write(
+                db,
+                owner_id=operation.owner_id,
+                run_id=operation.run_id,
+                action_key=action_key,
+                request_digest=request_digest,
+                prepared=prepared_workspace_undo,
+                operation_id=operation.id,
+                operation_status_on_delivery="undone",
+            )
+        undo_outbox_action_id = action.id
     elif operation.entity_type == "quiz" and "delete" in inverse:
         quiz = await db.get(Quiz, int(inverse["delete"]))
         if quiz:
@@ -265,22 +378,41 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
     else:
         raise HTTPException(status_code=409, detail="No supported inverse operation")
 
-    operation.status = "undone"
-    operation.undone_at = datetime.now(timezone.utc)
+    workspace_undo_pending = undo_outbox_action_id is not None
+    operation.status = "undo_pending" if workspace_undo_pending else "undone"
+    operation.undone_at = None if workspace_undo_pending else datetime.now(timezone.utc)
     db.add(LearningEvent(
         owner_id=settings.DEFAULT_OWNER_ID,
         plan_id=audit_plan_id,
         task_id=audit_task_id,
         run_id=operation.run_id,
-        event_type="operation.undone",
-        summary=f"Undid {operation.tool_name} on {operation.entity_type}:{operation.entity_id}",
+        event_type=(
+            "operation.undo_requested"
+            if workspace_undo_pending
+            else "operation.undone"
+        ),
+        summary=(
+            f"Requested undo for {operation.tool_name} on {operation.entity_type}:{operation.entity_id}"
+            if workspace_undo_pending
+            else f"Undid {operation.tool_name} on {operation.entity_type}:{operation.entity_id}"
+        ),
         payload={
             "operation_id": operation.id,
             "tool_name": operation.tool_name,
             "entity_type": operation.entity_type,
             "entity_id": operation.entity_id,
+            **(
+                {"outbox_action_id": undo_outbox_action_id}
+                if undo_outbox_action_id
+                else {}
+            ),
         },
+        idempotency_key=(
+            f"operation:{operation.id}:undo_requested"
+            if workspace_undo_pending
+            else f"operation:{operation.id}:undone"
+        ),
     ))
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(operation)
     return operation

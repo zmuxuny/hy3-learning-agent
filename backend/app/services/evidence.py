@@ -15,9 +15,11 @@ from datetime import datetime
 from typing import Any, Iterable
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
+from app.db.uow import ensure_sqlite_write_transaction, flush as flush_uow
 from app.models import Artifact, EvidenceObservation, LearningEvent, Quiz, TaskSubmission
 
 
@@ -30,6 +32,10 @@ def _iso(value: datetime | None) -> str | None:
 
 def _stable_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _request_digest(value: dict[str, Any]) -> str:
+    return hashlib.sha256(_stable_json(value).encode("utf-8")).hexdigest()
 
 
 async def create_artifact(
@@ -50,6 +56,26 @@ async def create_artifact(
 ) -> tuple[Artifact, bool]:
     """Register an immutable source artifact and return a stable reference."""
 
+    raw = content.encode("utf-8") if isinstance(content, str) else content
+    normalized_metadata = metadata or {}
+    hash_input = raw if raw is not None else _stable_json(normalized_metadata or {"source_uri": source_uri}).encode("utf-8")
+    effective_size = size_bytes if size_bytes is not None else len(hash_input)
+    request_digest = _request_digest(
+        {
+            "owner_id": owner_id,
+            "artifact_type": artifact_type,
+            "source_uri": source_uri,
+            "title": title,
+            "content_sha256": hashlib.sha256(raw).hexdigest() if raw is not None else None,
+            "metadata": normalized_metadata,
+            "size_bytes": effective_size,
+            "plan_id": plan_id,
+            "task_id": task_id,
+            "run_id": run_id,
+            "session_id": session_id,
+        }
+    )
+    await ensure_sqlite_write_transaction(db)
     existing = await db.scalar(
         select(Artifact).where(
             Artifact.owner_id == owner_id,
@@ -57,29 +83,51 @@ async def create_artifact(
         )
     )
     if existing is not None:
+        if existing.request_digest != request_digest:
+            raise ValueError(
+                "Artifact idempotency conflict: the key was already used for a different request"
+            )
         return existing, False
-    raw = content.encode("utf-8") if isinstance(content, str) else content
     # File/link-only submissions still need a stable source fingerprint.  In
     # that case hash the canonical metadata (and finally the URI) instead of
     # leaving an unverifiable empty hash in the evidence ledger.
-    hash_input = raw if raw is not None else _stable_json(metadata or {"source_uri": source_uri}).encode("utf-8")
     artifact = Artifact(
         owner_id=owner_id,
         artifact_type=artifact_type,
         source_uri=source_uri,
         title=title,
         content_hash=hashlib.sha256(hash_input).hexdigest(),
-        size_bytes=size_bytes if size_bytes is not None else len(hash_input),
-        artifact_metadata=metadata or {},
+        size_bytes=effective_size,
+        artifact_metadata=normalized_metadata,
         plan_id=plan_id,
         task_id=task_id,
         run_id=run_id,
         session_id=session_id,
         idempotency_key=idempotency_key,
+        request_digest=request_digest,
     )
-    db.add(artifact)
-    await db.flush()
-    return artifact, True
+    try:
+        # Keep the unique insert in its own savepoint. A concurrent exact
+        # winner can be reloaded without rolling back unrelated domain facts
+        # already staged by this caller's larger Unit of Work.
+        async with db.begin_nested():
+            db.add(artifact)
+            await flush_uow(db)
+        return artifact, True
+    except IntegrityError:
+        existing = await db.scalar(
+            select(Artifact).where(
+                Artifact.owner_id == owner_id,
+                Artifact.idempotency_key == idempotency_key,
+            )
+        )
+        if existing is None:
+            raise
+        if existing.request_digest != request_digest:
+            raise ValueError(
+                "Artifact idempotency conflict: the key was already used for a different request"
+            )
+        return existing, False
 
 
 def artifact_ref(artifact: Artifact, *, kind: str | None = None) -> dict[str, Any]:
@@ -125,6 +173,36 @@ async def append_observation(
     interruption; the original fact is returned instead of being duplicated.
     """
 
+    score = None if normalized_score is None else max(0.0, min(1.0, float(normalized_score)))
+    normalized_artifact_refs = artifact_refs or []
+    normalized_occurred_at = canonical_utc(occurred_at) if occurred_at is not None else "auto"
+    request_digest = _request_digest(
+        {
+            "owner_id": owner_id,
+            "source_type": source_type,
+            "source_id": str(source_id),
+            "outcome": outcome,
+            "run_id": run_id,
+            "session_id": session_id,
+            "plan_id": plan_id,
+            "task_id": task_id,
+            "competency_id": competency_id,
+            "competency_key": competency_key,
+            "normalized_score": score,
+            "is_correct": is_correct,
+            "assistance_level": assistance_level,
+            "transfer_level": transfer_level,
+            "rubric_snapshot": rubric_snapshot or {},
+            "evaluator": evaluator or {},
+            "artifact_refs": normalized_artifact_refs,
+            "payload": payload or {},
+            "occurred_at": normalized_occurred_at,
+            "correlation_id": correlation_id,
+            "causation_id": causation_id,
+            "supersedes_id": supersedes_id,
+        }
+    )
+    await ensure_sqlite_write_transaction(db)
     existing = await db.scalar(
         select(EvidenceObservation).where(
             EvidenceObservation.owner_id == owner_id,
@@ -132,10 +210,12 @@ async def append_observation(
         )
     )
     if existing is not None:
+        if existing.request_digest != request_digest:
+            raise ValueError(
+                "Evidence idempotency conflict: the key was already used for a different request"
+            )
         return existing, False
 
-    score = None if normalized_score is None else max(0.0, min(1.0, float(normalized_score)))
-    normalized_artifact_refs = artifact_refs or []
     observation = EvidenceObservation(
         owner_id=owner_id,
         source_type=source_type,
@@ -161,11 +241,28 @@ async def append_observation(
         correlation_id=correlation_id,
         causation_id=causation_id,
         idempotency_key=idempotency_key,
+        request_digest=request_digest,
         supersedes_id=supersedes_id,
     )
-    db.add(observation)
-    await db.flush()
-    return observation, True
+    try:
+        async with db.begin_nested():
+            db.add(observation)
+            await flush_uow(db)
+        return observation, True
+    except IntegrityError:
+        existing = await db.scalar(
+            select(EvidenceObservation).where(
+                EvidenceObservation.owner_id == owner_id,
+                EvidenceObservation.idempotency_key == idempotency_key,
+            )
+        )
+        if existing is None:
+            raise
+        if existing.request_digest != request_digest:
+            raise ValueError(
+                "Evidence idempotency conflict: the key was already used for a different request"
+            )
+        return existing, False
 
 
 def observation_dict(observation: EvidenceObservation) -> dict[str, Any]:
@@ -483,7 +580,7 @@ async def backfill_legacy_observations(
         created += int(was_created)
         skipped += int(not was_created)
 
-    await db.commit()
+    await flush_uow(db)
     return {"created": created, "skipped": skipped}
 
 

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import get_db
+from app.db.uow import commit as commit_uow
 from app.models import Notification
 from app.notifications.push import push_service
 from app.notifications.conversation import open_notification_in_conversation
@@ -27,12 +28,21 @@ async def create_push_subscription(
     data: PushSubscriptionCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    return await push_service.subscribe(db, settings.DEFAULT_OWNER_ID, data.endpoint, data.keys)
+    subscription = await push_service.subscribe(
+        db,
+        settings.DEFAULT_OWNER_ID,
+        data.endpoint,
+        data.keys,
+    )
+    await commit_uow(db)
+    await db.refresh(subscription)
+    return subscription
 
 
 @router.delete("/subscriptions", response_model=dict)
 async def delete_push_subscription(endpoint: str, db: AsyncSession = Depends(get_db)):
     removed = await push_service.unsubscribe(db, settings.DEFAULT_OWNER_ID, endpoint)
+    await commit_uow(db)
     return {"removed": removed}
 
 
@@ -69,7 +79,7 @@ async def archive_read_notifications(db: AsyncSession = Depends(get_db)):
     )).scalars())
     for primary in primaries:
         await _set_delivery_group_archived(db, primary, archived_at)
-    await db.commit()
+    await commit_uow(db)
     return {"archived": len(primaries), "archived_at": archived_at}
 
 
@@ -79,7 +89,7 @@ async def mark_notification_read(notification_id: int, db: AsyncSession = Depend
     if not notification or notification.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Notification not found")
     notification.read_at = datetime.now(timezone.utc)
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(notification)
     return notification
 
@@ -90,7 +100,7 @@ async def open_notification(notification_id: int, db: AsyncSession = Depends(get
     if not notification or notification.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Notification not found")
     session, message, primary = await open_notification_in_conversation(db, notification)
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(notification)
     return {
         "notification": notification,
@@ -114,7 +124,7 @@ async def set_notification_archived(
         notification,
         datetime.now(timezone.utc) if data.archived else None,
     )
-    await db.commit()
+    await commit_uow(db)
     await db.refresh(notification)
     return notification
 

@@ -4,7 +4,7 @@
 
 当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
 
-> 安全与开发状态：当前稳定版本只建议绑定 `127.0.0.1` 在本机使用；尚未提供服务器认证，也不能把有界 `code_execute` 当作安全沙箱。`develop` 的 V2 M13/M14 正在执行[前置硬化计划](docs/V2_HARDENING_PLAN.md)：H1 已修复 13 个缺陷 ID（15 个基线节点），矩阵剩余 74 个 open ID，下一门禁是 H2。M15–M20 继续冻结，当前尚不具备 V2 Alpha 发布条件。
+> 安全与开发状态：当前稳定版本只建议绑定 `127.0.0.1` 在本机使用；尚未提供服务器认证，也不能把有界 `code_execute` 当作安全沙箱。`develop` 的 V2 M13/M14 正在执行[前置硬化计划](docs/V2_HARDENING_PLAN.md)：H1 与 H2 已完成，累计关闭 24 个缺陷 ID，矩阵剩余 63 个 open ID，下一门禁是 H3。M15–M20 继续冻结，当前尚不具备 V2 Alpha 发布条件。
 
 ## Demo
 
@@ -28,8 +28,10 @@ flowchart LR
     R --> C[Context Assembler]
     C --> M[Hy3]
     M --> T[类型化工具]
-    T --> D[(SQLite + Markdown 快照)]
-    T --> N[收件箱 / 浏览器 / 邮件]
+    T --> Q[UoW + 幂等 CAS]
+    Q --> D[(SQLite + Markdown 快照)]
+    T --> O[耐久 Outbox]
+    O --> N[收件箱 / 浏览器 / 邮件]
     R --> E[SSE 运行事件]
     E --> W[Codex 风格工作台]
 ```
@@ -57,7 +59,7 @@ flowchart LR
 - 完整 `Plan → Stage → Task` 计划模型与多计划工作台
 - `AgentRun / RunEvent` 生命周期、SSE 实时轨迹和停止请求
 - Run 检查点与审批暂停/恢复候选；拒绝重启、current tool、queued/no-checkpoint、二次中断和 finalization 仍由 H3-RUN-001–007 阻塞
-- 写工具幂等和 Run 预算候选；同 key 异内容冲突、统一 UoW、外部副作用 outbox 与 child 预算仍由 H2/H3 阻塞
+- 48 个工具按 `pure_read / database_write / external_read / external_write` 分类；H2 已验收同 key 异请求/结果摘要冲突、统一 UoW、SQLite physical outer transaction 和耐久 outbox，Run/child 预算与 finalization 仍由 H3 阻塞
 - Session 列表、原始消息恢复、语义命名、手动改名与多轮连续对话画布
 - Session/计划手动归档与恢复、归档列表，以及全局对话到计划对话的可追溯交接
 - 持久化计划共创：需求充分性判断、结构化提问卡、受限规划子 Agent、可审阅提案与显式采用
@@ -68,15 +70,15 @@ flowchart LR
 - Run 内联上下文检查器：实际来源构成、命中记忆分数、Token 估算和送入模型的 Markdown
 - 单实例全局心跳、提醒 Session/收件箱投影和回复候选；活动 Run target、多渠道事实、IMAP ack 与冷却语义仍由 H5 阻塞
 - 收件箱显示上次判断、下次检查与当前状态，并支持消息归档、恢复和批量归档已读；归档不删除对话中的提醒
-- 默认站内收件箱、Service Worker 浏览器通知、可选 VAPID Web Push、可选 SMTP 发送与 IMAP 回复
+- 默认站内收件箱、Service Worker 浏览器通知、可选 VAPID Web Push、可选 SMTP 发送与 IMAP 回复；外部发送先提交 outbox intent，进程在 provider 响应前后中断时会进入人工/provider 对账而不是盲目重发
 - 简答测验、证据化评分、复习调度、XP 与可撤销操作基础
 - 核心任务证据门槛、真实计划进度和真实学习事件热力图
 - 对话优先的响应式工作台、消息内可收起工作记录、纵向计划时间线，以及热力图、连续天数、XP/等级和规则成就数据等轻游戏化基础
-- “设置”页候选：模型连接、SMTP/IMAP 与主动策略；`.env` 控制字符、原子临时文件和复杂值往返仍由 H6-CONFIG-001 阻塞
+- “设置”页候选：模型连接、SMTP/IMAP 与主动策略；H2 已验收 `.env` 临时文件原子替换，控制字符与复杂值往返仍使 H6-CONFIG-001 保持 open（当前 1 passing / 2 strict xfail）
 - 48 个真实工具：需求澄清、规划分工与提案、通用只读子 Agent、学习位置快照、课程资源搜索/核验/策展、计划修改、提交验收、复习处置、文件、代码、日历、记忆维护和显式技能图映射
 - Web 搜索主源失败时自动降级到 Bing HTML 备选源，结果带 `fallback_used` 标记
 
-当前代码执行是宿主上的有界进程，不是容器级安全沙箱；H6-CODE-001 修复前不得运行不可信代码。子 Run、SQLite 写竞争和恢复只有正常路径候选，H2-TXN-009 与 H3-RUN-008–011 已建立失败基线。
+当前代码执行是宿主上的有界进程，不是容器级安全沙箱；H6-CODE-001 修复前不得运行不可信代码。H2-TXN-009 与 H3-RUN-008 已关闭；H3-RUN-009–011 的 child 终态投影、父事件、重试/预算以及 Runtime finalization 仍是下一门禁债务。
 
 ## 快速开始
 
@@ -117,8 +119,10 @@ Vite 会把 `/api` 代理到 `127.0.0.1:8000`。
 ```bash
 source .venv/bin/activate
 pytest -q
+npm --prefix frontend test
 npm --prefix frontend run build
 npm --prefix frontend audit --omit=dev
+python scripts/check_doc_links.py .
 ```
 
 本地数据管理：
@@ -134,6 +138,8 @@ python3 scripts/data-maintenance.py backup --purpose manual
 
 H1 已把维护协议收敛到 `preflight / backup / verify / restore / recover` 与显式 migration backup verify/restore。它们使用受控 lifecycle lease 和验证过的备份发布流程；但仍不支持绕过 Runtime/maintenance 直接写 SQLite 的外部进程。
 
+H2 已把数据库写入收敛到统一 UoW，并在最外层 SQLite savepoint 前显式开启 physical outer transaction，防止释放最外层 savepoint 时提前提交。数据库变更、幂等状态和 outbox intent 在同一事务落盘；`file_write` 可凭已持久化 hash 自动判断是否安全复用，SMTP、Web Push 和外部 subprocess 的不确定结果则必须人工或向 provider 对账。旧 schema 数据默认 fail-closed，不能假装已经具备 H2 语义。
+
 迁移和恢复会在交接边界复核固定的路径、目录描述符/inode 与内容摘要，只把复验通过的候选库、备份 payload 或工作快照作为 trusted snapshot；目标数据库或安全备份根目录若指向 source backup 本身或其子路径，会在写入前失败关闭。source backup 位于安全备份根目录下仍是正常布局。共享路径规范化会消除 `.`/`..` 别名而不跟随 symlink，并正确编码含空格、`%`、`#`、`?` 的 SQLite 路径。旧 `_write_probe` 也只按精确的空单列表识别，近似或被污染的同名 schema 不会被静默接受。
 
 V2 的学习证据脚本目前仍是实现候选。H1 回归已经证明 `rebuild-evidence --audit` 逐字节只读，任何回填/重建写操作都会先取得协调 lease 并完成全量验证备份；首次真实用户大规模回填、外部安装、连续学习闭环与 7 日留存仍待后续门禁和真人样本，因此以下写命令仍建议先在显式副本或临时根目录验证：
@@ -146,7 +152,7 @@ PYTHONPATH=backend ./.venv/bin/python scripts/evidence-baseline.py
 
 自动化测试使用临时数据库和模拟模型响应，不冒充真实 Hy3 调用。历史 TokenHub/搜索/页面验证只证明当时的正常路径；当前事实以缺陷矩阵逐项状态、仍保留的 strict xfail 和各门禁修复后的 passing 回归为准，不能用历史场景数、截图数或构建通过替代领域验收。
 
-H1 当前验证为 281 passed（时间 10、迁移协议 183、维护 79、Evidence rebuild 协调 5、迁移单元 4）；H0 跨阶段回归为 27 passed / 17 strict xfailed，全仓为 441 passed / 98 strict xfailed。自动化结果不替代 H8 的外部安装、连续使用和 7 日真人留存记录。
+H2 定向回归为 84 passed；当前 H0 跨阶段回归为 49 passed / 84 strict xfailed，普通非 hardening 回归为 139 passed；前端 Node 为 6 passed、生产构建成功、production audit 为 0。完整 pytest 结果与 H1 历史快照见[当前状态](docs/STATUS.md)。自动化测试没有使用真实 SMTP/VAPID 或外部用户样本，也不替代 H8 的外部安装、连续使用和 7 日真人留存记录；Context 目前仍以 Markdown 快照为跨重启投影边界，结构化 Context Pack/源版本重建属于 H5/M17 债务。
 
 ## 数据与安全
 
