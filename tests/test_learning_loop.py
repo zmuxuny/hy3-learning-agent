@@ -369,8 +369,9 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
     assert "The supplied tool schemas are the complete set" in completions.calls[0]["messages"][0]["content"]
     tool_names = {tool["function"]["name"] for tool in completions.calls[0]["tools"]}
     assert "review_resolve" in tool_names
-    assert tool_names == {contract["name"] for contract in tool_contracts()}
     contracts = tool_contracts()
+    contract_names = {contract["name"] for contract in contracts}
+    assert tool_names == contract_names - {"code_execute"}
     assert all(contract["input_schema"] and contract["output_schema"] for contract in contracts)
     assert {
         "profile_get",
@@ -394,7 +395,6 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
         "resource_save",
         "file_read",
         "file_write",
-        "code_execute",
         "calendar_list",
         "calendar_create",
         "planning_intake_get",
@@ -443,21 +443,46 @@ async def test_complete_learning_submission_calendar_and_workspace_loop():
         assert delivered["status"] == "delivered"
         read = await execute_tool("file_read", json.dumps({"path": "demo/answer.py"}), ctx)
         assert read["data"]["content"] == "print(sum(range(5)))"
+        assert read["data"]["external_untrusted"] is True
         executed = await execute_tool(
             "code_execute",
             json.dumps({"language": "python", "code": read["data"]["content"]}),
             ctx,
         )
-        assert executed["data"]["exit_code"] == 0
-        assert executed["data"]["stdout"].strip() == "10"
+        assert executed["ok"] is False
+        assert executed["error_code"] == "code_execution_disabled"
+
+        # Reading workspace content durably taints this run.  Continue the
+        # unrelated learning-domain portion from a fresh trusted root run;
+        # the test must not bypass H6 approval semantics to preserve its old
+        # broad workflow coverage.
+        run.status = "completed"
+        run.phase = "terminal"
+        run.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        continuation = AgentRun(
+            owner_id="local",
+            plan_id=plan_id,
+            trigger="user_message",
+            objective="提交并检查学习证据",
+        )
+        db.add(continuation)
+        await db.commit()
+        ctx = ToolContext(
+            db=db,
+            owner_id="local",
+            run_id=continuation.id,
+            trigger="user_message",
+            plan_id=plan_id,
+        )
 
         submitted = await execute_tool(
             "submission_create",
             json.dumps({
                 "task_id": task_id,
                 "submission_type": "code",
-                "content": "实现并验证并发抓取器的最小版本",
-                "artifacts": [{"path": "demo/answer.py", "exit_code": 0}],
+                "content": "实现并提交并发抓取器的最小版本，等待人工检查",
+                "artifacts": [{"path": "demo/answer.py"}],
             }, ensure_ascii=False),
             ctx,
         )
@@ -467,8 +492,8 @@ async def test_complete_learning_submission_calendar_and_workspace_loop():
             json.dumps({
                 "submission_id": submitted["data"]["submission_id"],
                 "score": 88,
-                "feedback": "代码可以运行，证据满足本阶段要求。",
-                "checks": [{"name": "python execution", "passed": True, "stdout": "10"}],
+                "feedback": "人工检查确认结构和解释满足本阶段要求。",
+                "checks": [{"name": "manual review", "passed": True}],
             }, ensure_ascii=False),
             ctx,
         )
@@ -871,27 +896,39 @@ async def test_email_diagnostics_exercise_smtp_and_imap(monkeypatch):
 @pytest.mark.asyncio
 async def test_redirect_targets_are_validated_on_every_hop(monkeypatch):
     import httpx
+    import socket
     import app.search.security as security
 
-    checked = []
+    requests = []
 
-    async def validate(url):
-        checked.append(url)
-        if "127.0.0.1" in url:
-            raise ValueError("Private or reserved network targets are not allowed")
+    def public_dns(_host, port):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
+
+    class PeerStream:
+        def get_extra_info(self, name):
+            if name in {"server_addr", "peername"}:
+                return ("93.184.216.34", 443)
+            return None
 
     async def handler(request):
-        return httpx.Response(302, headers={"location": "http://127.0.0.1/private"}, request=request)
+        requests.append(request)
+        return httpx.Response(
+            302,
+            headers={"location": "http://127.0.0.1/private"},
+            request=request,
+            extensions={"network_stream": PeerStream()},
+        )
 
-    monkeypatch.setattr(security, "validate_public_url", validate)
+    monkeypatch.setattr(security.socket, "getaddrinfo", public_dns)
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        with pytest.raises(ValueError, match="Private or reserved"):
+        with pytest.raises(ValueError, match="Non-public"):
             await fetch_with_safe_redirects(client, "https://example.com/start")
-    assert checked == ["https://example.com/start", "http://127.0.0.1/private"]
+    assert len(requests) == 1
+    assert requests[0].url.host == "93.184.216.34"
 
 
 @pytest.mark.asyncio
-async def test_fake_ip_dns_is_allowed_only_for_domain_names(monkeypatch):
+async def test_non_global_synthetic_dns_is_rejected_for_domains_and_literals(monkeypatch):
     import socket
     import app.search.security as security
 
@@ -899,18 +936,18 @@ async def test_fake_ip_dns_is_allowed_only_for_domain_names(monkeypatch):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.4.11", port))]
 
     monkeypatch.setattr(security.socket, "getaddrinfo", fake_getaddrinfo)
-    await security.validate_public_url("https://html.duckduckgo.com/html/")
-
-    with pytest.raises(ValueError, match="IP literals"):
+    with pytest.raises(ValueError, match="Non-public"):
+        await security.validate_public_url("https://html.duckduckgo.com/html/")
+    with pytest.raises(ValueError, match="Non-public"):
         await security.validate_public_url("https://198.18.4.11/")
 
     def fake_ipv6_getaddrinfo(host, port):
         return [(socket.AF_INET6, socket.SOCK_STREAM, 6, "", ("2001::c085:4dbd", port, 0, 0))]
 
     monkeypatch.setattr(security.socket, "getaddrinfo", fake_ipv6_getaddrinfo)
-    await security.validate_public_url("https://html.duckduckgo.com/html/")
-
-    with pytest.raises(ValueError, match="IP literals"):
+    with pytest.raises(ValueError, match="Non-public"):
+        await security.validate_public_url("https://html.duckduckgo.com/html/")
+    with pytest.raises(ValueError, match="Non-public"):
         await security.validate_public_url("https://[2001::c085:4dbd]/")
 
 
@@ -938,7 +975,12 @@ async def test_duckduckgo_provider_filters_ads_and_deduplicates(monkeypatch):
 
     async def fetch(client, url, *, params=None):
         request = httpx.Request("GET", url, params=params)
-        return httpx.Response(200, text=html, request=request), 0
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html; charset=utf-8"},
+            text=html,
+            request=request,
+        ), 0
 
     monkeypatch.setattr(providers, "fetch_with_safe_redirects", fetch)
     results = await DuckDuckGoSearchProvider().search("asyncio", 5)

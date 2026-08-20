@@ -646,7 +646,7 @@ async def _operation_http_action(
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app),
-            base_url="http://h4.test",
+            base_url="http://127.0.0.1",
         ) as client:
             response = await client.post(
                 f"/api/v1/operations/{operation_id}/{action}"

@@ -23,6 +23,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.redaction import redact_data
 from app.core.time import utc_now
 from app.db.database import AsyncSessionLocal
 
@@ -628,7 +629,7 @@ async def _dispatch_claimed(
         "status": outcome.action_status,
         "action_key": action.action_key,
         "delivered": outcome.action_status == "delivered",
-        "data": outcome.response,
+        "data": redact_data(outcome.response),
     }
 
 
@@ -710,7 +711,7 @@ async def _current_action_result(
                 "status": "delivered",
                 "action_key": action_key,
                 "delivered": True,
-                "data": dict(receipt.response or {}),
+                "data": redact_data(dict(receipt.response or {})),
                 "replayed": True,
             }
         if action.status == "cancelled":
@@ -719,7 +720,11 @@ async def _current_action_result(
                 "action_key": action_key,
                 "delivered": False,
                 "retryable": False,
-                "data": dict(receipt.response or {}) if receipt is not None else {},
+                "data": (
+                    redact_data(dict(receipt.response or {}))
+                    if receipt is not None
+                    else {}
+                ),
             }
         if action.status == "retry_pending":
             return {
@@ -916,8 +921,24 @@ async def _deliver_smtp(action: ClaimedAction) -> DeliveryOutcome:
 
 
 async def _deliver_subprocess(action: ClaimedAction) -> DeliveryOutcome:
+    from app.core.execution_policy import (
+        CODE_EXECUTION_ERROR_CODE,
+        current_code_execution_policy,
+    )
     from app.tools.workspace import CodeExecuteArgs, _run_code
 
+    policy = current_code_execution_policy()
+    if not policy.available:
+        return DeliveryOutcome(
+            status="reconciled",
+            action_status="cancelled",
+            response={
+                "transport": "subprocess",
+                "error_code": CODE_EXECUTION_ERROR_CODE,
+                "reason_code": policy.reason_code,
+                "policy_version": policy.policy_version,
+            },
+        )
     arguments = CodeExecuteArgs.model_validate(action.payload.get("arguments") or {})
     result = await asyncio.to_thread(_run_code, arguments)
     return DeliveryOutcome(response=result)
@@ -1122,6 +1143,8 @@ async def _store_receipt(
     from app.db.uow import run_short_transaction
     from app.models import LearningEvent, PushSubscription, ToolInvocation
 
+    safe_response = redact_data(outcome.response)
+
     async def persist(db: AsyncSession) -> None:
         row = await db.get(OutboxAction, action.id)
         if row is None:
@@ -1144,7 +1167,7 @@ async def _store_receipt(
                 action_key=row.action_key,
                 status=outcome.status,
                 provider_id=outcome.provider_id,
-                response=outcome.response,
+                response=safe_response,
                 accepted_at=utc_now(),
             )
             db.add(receipt)
@@ -1152,7 +1175,7 @@ async def _store_receipt(
             receipt.action_key != row.action_key
             or receipt.status != outcome.status
             or receipt.provider_id != outcome.provider_id
-            or dict(receipt.response or {}) != dict(outcome.response or {})
+            or dict(receipt.response or {}) != dict(safe_response or {})
         ):
             raise OutboxConflictError("outbox receipt conflicts with claimed outcome")
 
@@ -1244,11 +1267,15 @@ async def _store_receipt(
                     {"queued", "retry_pending"}
                 ):
                     invocation.status = "pending_delivery"
+                elif row.destination == "subprocess" and sibling_states == {"cancelled"}:
+                    invocation.status = "cancelled"
+                    invocation.completed_at = utc_now()
+                    invocation.result_payload = safe_response
                 else:
                     invocation.status = "committed"
                     invocation.completed_at = utc_now()
                     if row.destination == "subprocess":
-                        invocation.result_payload = outcome.response
+                        invocation.result_payload = safe_response
                 invocation.version += 1
                 invocation.updated_at = utc_now()
 

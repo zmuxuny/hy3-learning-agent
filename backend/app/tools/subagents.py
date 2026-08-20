@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.context import ContextAssembler
 from app.core.config import settings
+from app.core.trust import project_child_result_authority
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow
 from app.models import AgentRun
@@ -257,12 +258,17 @@ async def subagent_status(ctx: ToolContext, args: SubagentIdArgs) -> dict:
     child = await ctx.db.get(AgentRun, args.run_id)
     if not _own_child(ctx, child):
         return {"error": "Sub-agent run not found"}
-    return {
-        "run_id": child.id,
-        "status": child.status,
-        "objective": child.objective,
-        "output": child.output,
-    }
+    return await project_child_result_authority(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        child_run_id=child.id,
+        payload={
+            "run_id": child.id,
+            "status": child.status,
+            "objective": child.objective,
+            "output": child.output,
+        },
+    )
 
 
 async def subagent_join(ctx: ToolContext, args: SubagentJoinArgs) -> dict:
@@ -274,12 +280,17 @@ async def subagent_join(ctx: ToolContext, args: SubagentJoinArgs) -> dict:
     await _SubagentToolCoordinator(ctx).release_replay_read()
     terminal = await wait_for_child(child_id, args.timeout_seconds)
     timed_out = terminal.status not in {"completed", "failed", "cancelled"}
-    return {
-        "run_id": terminal.id,
-        "status": terminal.status,
-        "output": terminal.output or "",
-        "timed_out": timed_out,
-    }
+    return await project_child_result_authority(
+        ctx.db,
+        owner_id=ctx.owner_id,
+        child_run_id=terminal.id,
+        payload={
+            "run_id": terminal.id,
+            "status": terminal.status,
+            "output": terminal.output or "",
+            "timed_out": timed_out,
+        },
+    )
 
 
 async def subagent_cancel(ctx: ToolContext, args: SubagentIdArgs) -> dict:
@@ -316,7 +327,8 @@ SUBAGENT_TOOLS = [
         "Check the status and output of a child sub-agent owned by this run.",
         SubagentIdArgs,
         subagent_status,
-        effect_kind=ToolEffectKind.PURE_READ,
+        effect_kind=ToolEffectKind.EXTERNAL_READ,
+        idempotent=True,
     ),
     ToolDefinition(
         "subagent_join",

@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,6 +13,12 @@ from sqlalchemy import select, text
 
 from app.api.api import api_router
 from app.core.config import PROJECT_ROOT, prepare_runtime_directories, settings
+from app.core.deployment import (
+    AUTH_CSRF_COOKIE,
+    AUTH_SESSION_COOKIE,
+    DeploymentBoundaryMiddleware,
+)
+from app.core.redaction import install_redaction_filter, redact_validation_errors
 from app.db.database import (
     AsyncSessionLocal,
     create_schema,
@@ -32,6 +41,10 @@ from app.runtime.state import (
 )
 from app.runtime.scheduler import proactive_scheduler
 from app.runtime.tasks import start_tracked_task
+
+
+install_redaction_filter(logging.getLogger())
+deployment_policy = settings.deployment_policy
 
 
 async def ensure_local_owner() -> None:
@@ -184,6 +197,16 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(RequestValidationError)
+async def request_validation_response(_, exc: RequestValidationError) -> JSONResponse:
+    """Never reflect configured credentials through FastAPI's 422 payload."""
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": jsonable_encoder(redact_validation_errors(exc.errors()))},
+    )
+
+
 @app.exception_handler(DatabaseBusyError)
 async def database_busy_response(_, exc: DatabaseBusyError) -> JSONResponse:
     """Expose bounded SQLite contention as a typed retryable API state."""
@@ -196,11 +219,71 @@ async def database_busy_response(_, exc: DatabaseBusyError) -> JSONResponse:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=list(deployment_policy.cors_origins),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
+app.add_middleware(DeploymentBoundaryMiddleware, policy=deployment_policy)
+
+
+@app.post(f"{settings.API_V1_STR}/auth/session", include_in_schema=False)
+async def create_authenticated_session(request: Request) -> JSONResponse:
+    """Exchange the configured server bearer token for a short browser session."""
+
+    if not deployment_policy.authentication_enabled:
+        return JSONResponse({"detail": "not found"}, status_code=404)
+    if not deployment_policy.authenticate_bearer(request.headers.get("authorization")):
+        return JSONResponse(
+            {"detail": "authentication required"},
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    session_token, csrf_token, expires_at = deployment_policy.issue_session()
+    response = JSONResponse(
+        {"authenticated": True, "csrf_token": csrf_token, "expires_at": expires_at}
+    )
+    response.set_cookie(
+        AUTH_SESSION_COOKIE,
+        session_token,
+        max_age=deployment_policy.session_ttl_seconds,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="strict",
+    )
+    response.set_cookie(
+        AUTH_CSRF_COOKIE,
+        csrf_token,
+        max_age=deployment_policy.session_ttl_seconds,
+        path="/",
+        secure=True,
+        httponly=False,
+        samesite="strict",
+    )
+    return response
+
+
+@app.delete(f"{settings.API_V1_STR}/auth/session", include_in_schema=False)
+async def delete_authenticated_session() -> JSONResponse:
+    response = JSONResponse({"authenticated": False})
+    response.delete_cookie(
+        AUTH_SESSION_COOKIE,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="strict",
+    )
+    response.delete_cookie(
+        AUTH_CSRF_COOKIE,
+        path="/",
+        secure=True,
+        httponly=False,
+        samesite="strict",
+    )
+    return response
+
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 

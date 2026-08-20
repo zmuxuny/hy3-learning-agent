@@ -1,6 +1,6 @@
 # 开发路线图
 
-> 状态口径（2026-08-20）：M0–M12 的勾选是对应历史版本“代码路径/正常路径曾完成”的记录，不是当前 `develop` 的完整硬化或发布验收。H1–H5 已通过新的硬化实现和回归，累计关闭 70 个缺陷 ID、剩余 17 个 open ID，下一门禁是 H6；当前事实以 [`STATUS.md`](STATUS.md) 和 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准，历史勾选不能关闭仍在 H6–H8 登记的缺陷。
+> 状态口径（2026-08-20）：M0–M12 的勾选是对应历史版本“代码路径/正常路径曾完成”的记录，不是当前 `develop` 的完整硬化或发布验收。H1–H6 已通过新的硬化实现和回归，累计关闭 77 个缺陷 ID、剩余 10 个 open ID，下一门禁是 H7；当前事实以 [`STATUS.md`](STATUS.md) 和 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准，历史勾选不能关闭仍在 H7/H8 登记的缺陷。
 
 ## 项目管理规则
 
@@ -118,11 +118,11 @@
 
 > 2026-08-18 复审说明：下列勾选表示对应第一版代码和正常路径曾完成，不表示崩溃恢复、事务一致性和长期产品不变量已经通过。复审重新打开的问题统一迁移到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)，不得继续用本节的历史勾选作为发布证据。
 
-其中数据迁移与备份恢复已由 H1 重新验收，事务、幂等、outbox、Operation 基础逆向补偿与 planning delegate checkpoint 已由 H2 重新验收；Run 的其余恢复/finalization 与 child 预算仍由 H3 重新验收，配置写入与脱敏由 H6-CONFIG-001/H6-REDACT-001 重新验收，发布工程由 H8 重新验收。下列“恢复”“不回传”等文字仅记录当时目标和正常路径候选。
+其中数据迁移与备份恢复已由 H1 重新验收，事务、幂等、outbox、Operation 基础逆向补偿与 planning delegate checkpoint 已由 H2 重新验收；Run 的恢复/finalization 与 child 预算已由 H3 重新验收，配置写入与脱敏已由 H6-CONFIG-001/H6-REDACT-001 重新验收，发布工程仍待 H8 重新验收。下列“恢复”“不回传”等文字仅记录当时目标和正常路径候选。
 
 1. [x] **混合语义检索**：建立 Embedding Provider 接口和本地向量表；关键词/BM25、向量相似度、作用域、置信度与时间衰减分别产出分数，再使用可解释的加权融合或 RRF。用固定问题集验证召回率、跨计划隔离和无 Embedding 时的关键词回退。
 2. [x] **可恢复 Run 状态机**：为模型轮次、待执行工具、审批请求和上下文版本保存 Checkpoint；实现 `waiting_approval → queued → running`，启动时扫描并恢复未完成 Run。
-3. [x] **幂等与预算**：每个工具调用持久化 `idempotency_key`、输入哈希和提交状态；写工具重复调用返回原结果。H2 已用请求/结果摘要 CAS、统一 UoW 和 physical outer transaction 重新验收写入幂等；Run/child 的 Token、工具时间、网络次数、费用预算与 finalization 仍由 H3 门禁验收。
+3. [x] **幂等与预算**：每个工具调用持久化 `idempotency_key`、输入哈希和提交状态；写工具重复调用返回原结果。H2 已用请求/结果摘要 CAS、统一 UoW 和 physical outer transaction 重新验收写入幂等；Run/child 的 Token、工具时间、网络次数、费用预算与 finalization 已由 H3 门禁验收。
 4. [x] **浏览器后台通知**：注册 Service Worker、Notification/Push 订阅和离线点击路由；本地部署先支持页面关闭但服务仍运行时的系统通知，不能把电脑关机描述成可提醒。
 5. [x] **通用受限子 Agent**：在现有规划专用子 Run 基础上实现 spawn/status/join/cancel、工具白名单和结构化 Artifact；子 Agent 只接收最小上下文，默认只读，写操作回到主 Agent 审批与提交。
 6. [x] **邮件/通知设置页**：凭据写入本机 `.env`（0600 权限、原子替换，不宣称加密 Vault），提供免打扰/频率策略、连接测试与删除凭据；设置 API 永不回传秘密。
@@ -182,7 +182,7 @@
 - [x] 历史正常路径：提醒 Session 投影、收件箱聚合和候选冷却。H5 已用 Intervention、InboundMailJob 与 ProactiveDecision 关闭复审缺口。
 - [x] 历史正常路径：计划完成、提交/测验终态和撤销。H2-TXN-004 与 H4-EVID-002–004、H4-COMP-006 均已关闭。
 - [x] 历史正常路径：Context scope、消息编辑与摘要。H5 已用 typed provenance、generation fence、完整分块与 snapshot blocks 关闭 H5-CTX-001–012。
-- [x] 历史正常路径：子 Agent、SQLite、设置与移动导航。H2-TXN-009 与 H3-RUN-008–011 已关闭；H6-CONFIG-001、H6-REDACT-001、H7-UI-001 仍 open。
+- [x] 历史正常路径：子 Agent、SQLite、设置与移动导航。H2-TXN-009、H3-RUN-008–011、H6-CONFIG-001 与 H6-REDACT-001 已关闭；H7-UI-001 仍 open。
 - [x] 历史验证记录：126 项 pytest、生产构建和 23 状态浏览器回归曾通过；H0-COV-001 已由 H4 的 41 baseline + 41 mutant 关闭，但 H7-UI-001 仍证明历史数量不能作为当前冷启动浏览器正确性证据。
 
 ## 第二大版本：Learning Agent 2.0

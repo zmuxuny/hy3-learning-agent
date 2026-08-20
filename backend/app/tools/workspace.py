@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import subprocess
 from pathlib import Path
 from typing import Literal
@@ -9,6 +8,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.core.config import PROJECT_ROOT, settings
+from app.core.execution_policy import (
+    code_execution_rejection,
+    current_code_execution_policy,
+    minimal_subprocess_environment,
+)
+from app.core.trust import mark_external_untrusted_result
 from app.db.uow import flush as flush_uow
 from app.models import Operation
 from app.outbox import (
@@ -67,7 +72,11 @@ async def file_list(_: ToolContext, args: FileListArgs) -> dict:
             "kind": "directory" if path.is_dir() else "file",
             "size": stat.st_size if path.is_file() else None,
         })
-    return {"workspace": str(WORKSPACE_ROOT), "entries": entries, "truncated": len(entries) >= args.limit}
+    return mark_external_untrusted_result({
+        "workspace": str(WORKSPACE_ROOT),
+        "entries": entries,
+        "truncated": len(entries) >= args.limit,
+    })
 
 
 async def file_read(_: ToolContext, args: FileReadArgs) -> dict:
@@ -80,12 +89,12 @@ async def file_read(_: ToolContext, args: FileReadArgs) -> dict:
     if b"\x00" in raw[:4096]:
         return {"error": "Binary files cannot be read as text"}
     content = raw.decode("utf-8", errors="replace")
-    return {
+    return mark_external_untrusted_result({
         "path": str(path.relative_to(WORKSPACE_ROOT)),
         "content": content[: args.max_chars],
         "truncated": len(content) > args.max_chars,
         "size": len(raw),
-    }
+    })
 
 
 async def file_write(ctx: ToolContext, args: FileWriteArgs) -> dict:
@@ -147,7 +156,11 @@ async def file_write(ctx: ToolContext, args: FileWriteArgs) -> dict:
 
 
 def _run_code(args: CodeExecuteArgs) -> dict:
-    command = ["python", "-I", "-c", args.code] if args.language == "python" else ["bash", "--noprofile", "--norc", "-c", args.code]
+    command = (
+        ["/usr/bin/python3", "-I", "-c", args.code]
+        if args.language == "python"
+        else ["/bin/bash", "--noprofile", "--norc", "-c", args.code]
+    )
     command = [
         "/usr/bin/prlimit",
         f"--cpu={args.timeout_seconds + 1}",
@@ -157,7 +170,7 @@ def _run_code(args: CodeExecuteArgs) -> dict:
         "--",
         *command,
     ]
-    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LANG": "C.UTF-8", "PYTHONIOENCODING": "utf-8"}
+    env = minimal_subprocess_environment()
     try:
         completed = subprocess.run(
             command,
@@ -198,6 +211,10 @@ def _run_code(args: CodeExecuteArgs) -> dict:
 
 
 async def code_execute(ctx: ToolContext, args: CodeExecuteArgs) -> dict:
+    if not current_code_execution_policy().available:
+        rejection = code_execution_rejection()
+        rejection.pop("ok", None)
+        return rejection
     if not ctx.action_key or not ctx.request_digest or ctx.invocation_id is None:
         return {
             "error": "code_execute requires a durable invocation claim",
@@ -228,8 +245,8 @@ async def code_execute(ctx: ToolContext, args: CodeExecuteArgs) -> dict:
 
 
 WORKSPACE_TOOLS = [
-    ToolDefinition("file_list", "List files inside the Agent's isolated personal workspace.", FileListArgs, file_list, effect_kind=ToolEffectKind.PURE_READ),
-    ToolDefinition("file_read", "Read a UTF-8 text artifact from the isolated personal workspace.", FileReadArgs, file_read, effect_kind=ToolEffectKind.PURE_READ),
+    ToolDefinition("file_list", "List files inside the Agent's isolated personal workspace.", FileListArgs, file_list, effect_kind=ToolEffectKind.EXTERNAL_READ, idempotent=True),
+    ToolDefinition("file_read", "Read a UTF-8 text artifact from the isolated personal workspace.", FileReadArgs, file_read, effect_kind=ToolEffectKind.EXTERNAL_READ, idempotent=True),
     ToolDefinition("file_write", "Create or intentionally overwrite a text artifact from a durable outbox intent.", FileWriteArgs, file_write, effect_kind=ToolEffectKind.EXTERNAL_WRITE, idempotent=True),
     ToolDefinition("code_execute", "Queue bounded Python or Bash code for durable execution outside database transactions. The process is bounded but not a security sandbox.", CodeExecuteArgs, code_execute, effect_kind=ToolEffectKind.EXTERNAL_WRITE, idempotent=True),
 ]

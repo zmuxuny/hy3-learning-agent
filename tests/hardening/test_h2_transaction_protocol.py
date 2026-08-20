@@ -44,6 +44,7 @@ import app.runtime.scheduler as scheduler_module
 import app.runtime.subagents as runtime_subagents
 import app.outbox as outbox_module
 import app.context.memory as memory_context_module
+import app.core.execution_policy as execution_policy
 import app.tools.registry as tool_registry
 import app.tools.subagents as subagent_tools
 import app.tools.web as web_tools
@@ -89,6 +90,39 @@ VALID_EFFECT_KINDS = {
     "external_read",
     "external_write",
 }
+
+
+def _enable_test_code_execution_provider(monkeypatch) -> None:
+    """Install an explicit fake capability for subprocess wait tests only."""
+
+    policy = execution_policy.CodeExecutionPolicy(
+        deployment_mode="local",
+        available=True,
+        provider_id="test-only-fake-provider",
+        policy_version="test-only-code-provider-v1",
+        reason_code="TEST_ONLY_PROVIDER",
+    )
+
+    def current_policy(**_kwargs):
+        return policy
+
+    monkeypatch.setattr(
+        execution_policy,
+        "current_code_execution_policy",
+        current_policy,
+    )
+    monkeypatch.setattr(
+        tool_registry,
+        "current_code_execution_policy",
+        current_policy,
+    )
+    monkeypatch.setattr(
+        workspace_tools,
+        "current_code_execution_policy",
+        current_policy,
+    )
+
+
 ALLOWED_TRANSACTION_CALLS = {
     # H1's synchronous file migration/maintenance internals own sqlite3
     # connections.  They are intentionally separate from application UoWs.
@@ -114,6 +148,9 @@ ALLOWED_FILE_FLUSH_CALLS = {
     ("backend/app/core/envfile.py", "_atomic_replace", "stream"),
     ("backend/app/db/maintenance.py", "_write_exclusive", "handle"),
     ("backend/app/outbox.py", "_atomic_replace_text", "stream"),
+    # zlib's decompressor flushes a bounded in-memory codec buffer; it has no
+    # database transaction ownership despite sharing AsyncSession's method name.
+    ("backend/app/search/security.py", "_read_bounded_body", "decoder"),
     ("scripts/rebuild-evidence.py", "_write_json", "stream"),
 }
 ALLOWED_UOW_ALIAS_CALLS = {
@@ -2248,6 +2285,7 @@ async def test_subprocess_wait_never_holds_sqlite_writer(
     monkeypatch,
 ) -> None:
     # The subprocess body is replaced by a thread gate; no command is spawned.
+    _enable_test_code_execution_provider(monkeypatch)
     subprocess_entered = asyncio.Event()
     subprocess_release = threading.Event()
     event_loop = asyncio.get_running_loop()

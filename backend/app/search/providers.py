@@ -5,8 +5,14 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import httpx
 
-from app.core.config import settings
-from app.search.security import fetch_with_safe_redirects
+from app.search.security import (
+    fetch_with_safe_redirects,
+    normalized_media_type,
+    secure_http_client,
+)
+
+
+_SEARCH_HTML_MEDIA_TYPES = frozenset({"application/xhtml+xml", "text/html"})
 
 
 @dataclass(frozen=True)
@@ -65,8 +71,9 @@ class DuckDuckGoSearchProvider(SearchProvider):
 
     async def search(self, query: str, limit: int) -> list[SearchResult]:
         headers = {"User-Agent": "Mozilla/5.0 LearningAgent/0.4"}
-        async with httpx.AsyncClient(timeout=settings.WEB_SEARCH_TIMEOUT_SECONDS, headers=headers) as client:
+        async with secure_http_client(headers=headers) as client:
             response, _ = await fetch_with_safe_redirects(client, self.endpoint, params={"q": query})
+        _require_search_html(response)
         parser = _DuckDuckGoParser()
         parser.feed(response.text)
         unique: list[SearchResult] = []
@@ -125,8 +132,9 @@ class BingSearchProvider(SearchProvider):
 
     async def search(self, query: str, limit: int) -> list[SearchResult]:
         headers = {"User-Agent": "Mozilla/5.0 LearningAgent/0.5"}
-        async with httpx.AsyncClient(timeout=settings.WEB_SEARCH_TIMEOUT_SECONDS, headers=headers) as client:
+        async with secure_http_client(headers=headers) as client:
             response, _ = await fetch_with_safe_redirects(client, self.endpoint, params={"q": query})
+        _require_search_html(response)
         parser = _BingParser()
         parser.feed(response.text)
         unique: list[SearchResult] = []
@@ -150,3 +158,9 @@ def get_search_provider(name: str) -> SearchProvider:
     if provider is None:
         raise ValueError(f"Unsupported search provider: {name}")
     return provider()
+
+
+def _require_search_html(response: httpx.Response) -> None:
+    media_type = normalized_media_type(response)
+    if media_type not in _SEARCH_HTML_MEDIA_TYPES:
+        raise ValueError(f"Search provider returned unsupported content type: {media_type}")

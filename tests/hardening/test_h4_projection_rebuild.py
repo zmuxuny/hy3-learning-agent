@@ -212,7 +212,7 @@ async def _http_projection(
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app),
-            base_url="http://h4.test",
+            base_url="http://127.0.0.1",
         ) as client:
             response = await client.get(f"/api/v1/plans/{plan_id}/evidence")
     finally:

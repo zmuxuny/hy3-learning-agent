@@ -885,7 +885,7 @@ async def test_confirm_replay_after_reopen_is_an_exact_noop() -> None:
 async def test_http_memory_proposal_rejects_forged_source_and_normalizes_user_source() -> None:
     async with AsyncClient(
         transport=ASGITransport(app=app),
-        base_url="http://h5.test",
+        base_url="http://127.0.0.1",
     ) as client:
         forged = await client.post(
             "/api/v1/memories/proposals",
@@ -936,7 +936,7 @@ async def test_concurrent_http_archive_and_restore_have_one_lifecycle_winner() -
     async def request(method: str, path: str) -> tuple[int, dict]:
         async with AsyncClient(
             transport=ASGITransport(app=app),
-            base_url="http://h5.test",
+            base_url="http://127.0.0.1",
         ) as client:
             response = await client.request(method, path)
             return response.status_code, response.json()

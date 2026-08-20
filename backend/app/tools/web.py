@@ -3,7 +3,6 @@ from html.parser import HTMLParser
 from typing import Literal
 from urllib.parse import urlparse
 
-import httpx
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -11,7 +10,7 @@ from app.core.config import settings
 from app.db.uow import flush as flush_uow
 from app.models import LearningEvent, LearningResource, Operation, Plan
 from app.search import fetch_with_safe_redirects, get_search_provider
-from app.search.security import validate_public_url
+from app.search.security import normalized_media_type, secure_http_client, validate_public_url
 from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
 
 
@@ -95,6 +94,7 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
     for result in results:
         row = result.as_dict()
         row.update(_catalog_metadata(result.url, result.title))
+        row["external_untrusted"] = True
         result_rows.append(row)
     return {
         "provider": provider.name,
@@ -102,6 +102,7 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
         "results": result_rows,
         "saved_resource_ids": [],
         "fallback_used": fallback_used,
+        "external_untrusted": True,
     }
 
 
@@ -190,10 +191,18 @@ async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
 
 async def web_open(_: ToolContext, args: WebOpenArgs) -> dict:
     headers = {"User-Agent": "Mozilla/5.0 LearningAgent/0.4"}
-    async with httpx.AsyncClient(timeout=settings.WEB_SEARCH_TIMEOUT_SECONDS, headers=headers) as client:
+    async with secure_http_client(headers=headers) as client:
         response, redirect_count = await fetch_with_safe_redirects(client, args.url)
-    content_type = response.headers.get("content-type", "")
-    if not any(kind in content_type for kind in ("text/", "json", "xml")):
+    content_type = normalized_media_type(response)
+    allowed_content_types = {
+        "application/json",
+        "application/xhtml+xml",
+        "application/xml",
+        "text/html",
+        "text/plain",
+        "text/xml",
+    }
+    if content_type not in allowed_content_types:
         return {"error": f"Unsupported content type: {content_type}"}
     parser = _TextParser()
     parser.feed(response.text)
@@ -204,6 +213,7 @@ async def web_open(_: ToolContext, args: WebOpenArgs) -> dict:
         "content": text[: args.max_chars],
         "truncated": len(text) > args.max_chars,
         "redirect_count": redirect_count,
+        "external_untrusted": True,
     }
 
 

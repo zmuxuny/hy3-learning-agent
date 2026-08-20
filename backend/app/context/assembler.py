@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as SyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import PROJECT_ROOT, settings
+from app.core.redaction import redact_data, redact_text
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.uow import commit as commit_uow, flush as flush_uow
 from app.models import (
@@ -334,20 +335,28 @@ class ContextAssembler:
             source_plan_id: int | None = None,
             source_session_id: str | None = None,
         ) -> None:
-            source_type = str(source.get("type") or block_type)
-            source_id = _manifest_source_id(source)
+            raw_source_id = _manifest_source_id(source)
+            safe_source = redact_data(source)
+            source_type = str(safe_source.get("type") or block_type)
+            source_id = _manifest_source_id(safe_source)
             block_id = f"{source_type}:{source_id}:v{source_version}:{block_type}"
+            # ``source_digest`` is an irreversible identity of the canonical
+            # source fact and must stay stable for provenance invalidation.
+            # _ContextBlock derives its separate ``block_digest`` and token
+            # count from the redacted text that is actually persisted.
             blocks.append(
                 _ContextBlock(
                     block_id=block_id,
                     block_type=block_type,
                     section=section,
-                    text=text,
-                    source=source,
+                    text=redact_text(text),
+                    source=safe_source,
                     priority=priority,
                     ordinal=len(blocks),
                     source_node_kind=source_node_kind,
-                    source_node_key=str(source_node_key if source_node_key is not None else source_id),
+                    source_node_key=str(
+                        source_node_key if source_node_key is not None else raw_source_id
+                    ),
                     source_version=max(1, int(source_version)),
                     source_digest=source_digest,
                     source_plan_id=source_plan_id,

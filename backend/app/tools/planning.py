@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.context import ContextAssembler
 from app.core.config import settings
 from app.core.prompt_envelope import estimate_context_message_tokens
+from app.core.trust import mark_external_untrusted_result, project_child_result_authority
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow, flush as flush_uow
 from app.models import AgentRun, PlanProposal, PlanningIntake, RunEvent, Session
@@ -391,20 +392,31 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
         )
         raise
     reports: list[dict] = []
+    external_untrusted = False
     for child, assignment in zip(child_runs, args.assignments, strict=True):
         # The child coordinator committed terminal state in an independent
         # short UoW. Refresh through this caller only after all model waits.
         stored = await ctx.db.get(AgentRun, child.id, populate_existing=True)
         if stored is None:
             return {"error": "planning child disappeared before join"}
-        reports.append({
-            "child_run_id": stored.id,
-            "role": assignment.role,
-            "objective": assignment.objective,
-            "status": stored.status,
-            "report": stored.output or "",
-        })
-    return {"reports": reports}
+        report = await project_child_result_authority(
+            ctx.db,
+            owner_id=ctx.owner_id,
+            child_run_id=stored.id,
+            payload={
+                "child_run_id": stored.id,
+                "role": assignment.role,
+                "objective": assignment.objective,
+                "status": stored.status,
+                "report": stored.output or "",
+            },
+        )
+        external_untrusted = external_untrusted or bool(
+            report.get("external_untrusted", False)
+        )
+        reports.append(report)
+    result = {"reports": reports}
+    return mark_external_untrusted_result(result) if external_untrusted else result
 
 
 async def plan_proposal_create(ctx: ToolContext, args: PlanProposalCreateArgs) -> dict:

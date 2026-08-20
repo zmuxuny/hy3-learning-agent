@@ -144,13 +144,13 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H6-AUTH-001 | 默认只允许 loopback；未认证 non-loopback/server 必须 fail closed，并校验 Host；旧实现可直接启动/路由。 | HP10, STATUS | SEC（2 节点） | U | H6 | open · strict xfail / — |
-| H6-CODE-001 | 无真实 sandbox 时 `code_execute` 默认关闭且逐次审批，不能读取宿主或访问网络；旧 `prlimit` 仍拥有宿主权限。 | HP10, STATUS | SEC（4 节点） | U | H6 | open · strict xfail / — |
-| H6-TRUST-001 | Web/File/Email 内容必须标成 untrusted，且不能成为隐式写授权；旧外部内容进入模型后可触发持久写。 | HP10 | SEC（3 节点） | U | H6 | open · strict xfail / — |
-| H6-WEB-001 | fetch 必须拒绝所有 non-global 地址、防 DNS rebinding、限制 wire/decompressed bytes、精确校验 Content-Type；旧边界均可绕过。 | HP10 | SEC（5 节点） | U | H6 | open · strict xfail / — |
-| H6-ENV-001 | 子进程 allowlist 中的 `PATH` 必须是固定可信值，解释器不得按父 PATH 解析；旧实现把父 PATH 原样带入并可被劫持。 | HP10 | SEC | U | H6 | open · strict xfail / — |
-| H6-CONFIG-001 | `.env` 更新必须拒绝控制字符、使用安全原子临时文件并可无损往返复杂值；旧实现可注入/跟随 symlink/损坏值。H2 已关闭“可预测临时文件跟随预置 symlink”节点，但控制字符与复杂值往返仍未修复。 | HP10 | SEC（1 passing / 2 strict xfail）, H2FILE | U | H6 | open · partial passing / H2 部分硬化 |
-| H6-REDACT-001 | tool trace、模型观察、RunEvent、Context、诊断错误必须统一脱敏；旧多条路径原样持久化合成 secret。 | HP10 | SEC（4 节点） | U | H6 | open · strict xfail / — |
+| H6-AUTH-001 | 默认只允许 loopback；未认证 non-loopback/server 必须 fail closed，并校验 Host；旧实现可直接启动/路由。 | HP10, STATUS | SEC（2 节点） | U | H6 | fixed · passing / H6 阶段 |
+| H6-CODE-001 | 无真实 sandbox 时 `code_execute` 默认关闭且逐次审批，不能读取宿主或访问网络；旧 `prlimit` 仍拥有宿主权限。 | HP10, STATUS | SEC（4 节点） | U | H6 | fixed · passing / H6 阶段 |
+| H6-TRUST-001 | Web/File/Email 内容必须标成 untrusted，且不能成为隐式写授权；旧外部内容进入模型后可触发持久写。 | HP10 | SEC（3 节点） | U | H6 | fixed · passing / H6 阶段 |
+| H6-WEB-001 | fetch 必须拒绝所有 non-global 地址、防 DNS rebinding、限制 wire/decompressed bytes、精确校验 Content-Type；旧边界均可绕过。 | HP10 | SEC（5 节点） | U | H6 | fixed · passing / H6 阶段 |
+| H6-ENV-001 | 子进程 allowlist 中的 `PATH` 必须是固定可信值，解释器不得按父 PATH 解析；旧实现把父 PATH 原样带入并可被劫持。 | HP10 | SEC | U | H6 | fixed · passing / H6 阶段 |
+| H6-CONFIG-001 | `.env` 更新必须拒绝控制字符、使用安全原子临时文件并可无损往返复杂值；旧实现可注入/跟随 symlink/损坏值。H2 先关闭了原子临时文件节点，H6 完成控制字符、复杂值、权限与目标类型协议。 | HP10 | SEC（3 passing）, H2FILE | U | H6 | fixed · passing / H2→H6 阶段 |
+| H6-REDACT-001 | tool trace、模型观察、RunEvent、Context、诊断错误必须统一脱敏；旧多条路径原样持久化合成 secret。 | HP10 | SEC（4 节点） | U | H6 | fixed · passing / H6 阶段 |
 
 ## H7：前端状态与浏览器契约
 
@@ -180,6 +180,13 @@
 
 ## 验收记录
 
+### H6 当前结果（2026-08-20）
+
+- H6-AUTH-001、CODE-001、TRUST-001、WEB-001、ENV-001、CONFIG-001 与 REDACT-001 均已删除原 strict xfail 并固定通过；H6 新关闭 7 个 ID，矩阵累计关闭 77 个 defect ID、剩余 10 个 open ID。下一门禁为 H7，M15–M20 继续冻结。
+- local 模式在启动参数与 ASGI scope 两层限制 loopback；server 模式缺少强 bearer token、精确 HTTPS public origin 或一致 CORS 时加载失败。全部 `/api/v1` 由 Host、Bearer/签名会话和 Cookie 写请求 CSRF Guard 保护。
+- 没有真实 sandbox Provider，所以 `code_execute` 在模型 surface、直接工具调用和旧 subprocess outbox 恢复边界均失败关闭。Web/File/Email 来源形成耐久 untrusted authority；写操作只接受同 Run、invocation、request digest 与 live claim 的已消费审批。
+- Web 每跳解析并固定公有地址，保留 Host/SNI、复核 peer，并独立限制 wire/decoded bytes、总 deadline、encoding 与 exact MIME。配置写入和统一脱敏覆盖对应门禁；完整命令与结果见 [`STATUS.md`](STATUS.md)。未调用公网、真实秘密或真实邮箱。
+
 ### H5 当前结果（2026-08-20）
 
 - H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002 与 H5-PRO-001–003 均已删除原 strict xfail 并固定通过；H5 新关闭 20 个 ID，矩阵累计关闭 70 个 defect ID、剩余 17 个 open ID。下一门禁为 H6，M15–M20 继续冻结。
@@ -200,14 +207,14 @@
 - H3-RUN-001–011 均已删除原 strict xfail 并固定通过；H3 新关闭 10 个 ID（H3-RUN-008 已在 H2 提前关闭），矩阵累计关闭 34 个 defect ID、剩余 53 个 open ID。下一门禁为 H4，M15–M20 继续冻结。
 - H3 定向套件为 40 passed，覆盖 revision 3、真实进程 SIGKILL、双进程 claim、SQLite 锁、审批、原子 finalization/queue successor、late steer、父子投影、耐久 retry、共享预算、tool/model wait 分类、多工具副作用 replay 和固定种子 100 轮语义恢复。
 - 真实 Hy3 临时库演示在同一 Run 上执行两次 SIGKILL 和三次 claim，最终只有一条 assistant message 与一个 completed event；未输出模型正文、秘密或用户数据。前端状态契约为 9 passed，生产构建通过，npm audit 为 0 vulnerabilities。
-- H3 收口时 H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成；H4/H5 现已关闭，当前结果见上方记录与 [`STATUS.md`](STATUS.md)。
+- H3 收口时 H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成；H4–H6 现已关闭，当前结果见上方记录与 [`STATUS.md`](STATUS.md)。
 
 ### H2 当前结果（2026-08-19）
 
-- H2-TXN-001–009 的 9 个 ID、10 个原基线节点均已删除 xfail 并固定通过；同一 request identity 工作提前关闭 H4-EVID-006 的 2 个节点，planning delegate checkpoint 提前关闭 H3-RUN-008 的 1 个节点。H6-CONFIG-001 有 1 个节点提前通过但仍有 2 个 strict xfail，因此该 ID 不关闭。
+- H2-TXN-001–009 的 9 个 ID、10 个原基线节点均已删除 xfail 并固定通过；同一 request identity 工作提前关闭 H4-EVID-006 的 2 个节点，planning delegate checkpoint 提前关闭 H3-RUN-008 的 1 个节点。H2 当时让 H6-CONFIG-001 的 1 个节点提前通过；剩余 2 个 strict xfail 现已由 H6 删除。
 - H2 收口时累计关闭 24 个 defect ID、剩余 63 个 open ID；H0 当时为 49 passed、84 strict xfailed，0 XPASS、0 unexpected failure。当前状态以上方 H3 记录为准。
 - H2 定向套件为 84 passed，包含新增的 4 个 physical outer transaction/savepoint 与 nested transaction guard 节点，覆盖 TXN/H2TXN/H2MIG/H2OUT/H2UNDO/H2PROC/H2FILE/H2MEM；普通非-hardening 回归为 139 passed。前端 Node 为 6 passed，生产构建通过，完整与 production-only audit 均为 0 vulnerabilities；DOC 与本地相对链接检查通过。
-- H2 不把外部副作用的不确定状态伪装成成功：SMTP/Web Push/subprocess 等待人工或 provider 对账，仅 workspace effect 可按 hash 自动恢复。真实 SMTP/VAPID 和外部用户验收尚未执行；完整 pytest 的待确认结果只在 `STATUS.md` 保留一个占位符。
+- H2 不把外部副作用的不确定状态伪装成成功：SMTP/Web Push/subprocess 等待人工或 provider 对账，仅 workspace effect 可按 hash 自动恢复。真实 SMTP/VAPID 和外部用户验收尚未执行；H2 当时及后续里程碑的完整 pytest 结果均在 `STATUS.md` 保留历史记录。
 
 ### H1 收口记录（2026-08-19）
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -20,6 +21,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import settings
+from app.core.redaction import redact_data, redact_text
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.uow import (
     DatabaseBusyError,
@@ -44,6 +46,7 @@ from app.runtime.checkpoints import (
     CHECKPOINT_SCHEMA_VERSION,
     make_checkpoint,
     normalize_checkpoint,
+    sanitize_checkpoint,
 )
 from app.runtime.interventions import finalize_run_intervention
 from app.runtime.events import publish_stream_event, stage_event
@@ -188,6 +191,7 @@ async def claim_run(
         run.state_version = int(run.state_version or 1) + 1
         if checkpoint is not None:
             checkpoint["state_version"] = run.state_version
+            checkpoint = sanitize_checkpoint(checkpoint)
             run.checkpoint = checkpoint
             run.checkpoint_schema_version = CHECKPOINT_SCHEMA_VERSION
         return RunLease(
@@ -335,6 +339,7 @@ async def persist_checkpoint(
     )
     canonical["phase"] = phase
     canonical["state_version"] = new_version
+    canonical = sanitize_checkpoint(canonical)
     result = await db.execute(
         update(AgentRun)
         .where(*_leased_predicate(lease))
@@ -386,9 +391,16 @@ async def pause_for_approval(
     await ensure_sqlite_write_transaction(db)
     tool_call_id = str(tool_call["id"])
     tool_name = str(tool_call["name"])
+    safe_remaining_tool_calls = redact_data(list(remaining_tool_calls))
+    safe_reason = redact_text(reason)
+    run = await db.get(AgentRun, lease.run_id)
+    if run is None:
+        await rollback_uow(db)
+        raise RunStateError("run disappeared before approval pause")
     invocation = (await db.execute(
         select(ToolInvocation).where(
             ToolInvocation.run_id == lease.run_id,
+            ToolInvocation.owner_id == run.owner_id,
             or_(
                 ToolInvocation.tool_call_id == tool_call_id,
                 (
@@ -399,17 +411,40 @@ async def pause_for_approval(
             ),
         ).order_by(ToolInvocation.id.desc()).limit(1)
     )).scalars().one_or_none()
+    if invocation is None:
+        await rollback_uow(db)
+        raise RunStateError("approval_invocation_missing")
     if invocation is not None and invocation.tool_call_id is None:
         invocation.tool_call_id = tool_call_id
+    if (
+        invocation.tool_call_id != tool_call_id
+        or invocation.tool_name != tool_name
+        or not isinstance(invocation.canonical_args, dict)
+        or invocation.status != "pending_approval"
+    ):
+        await rollback_uow(db)
+        raise RunStateError("approval_invocation_identity_conflict")
+    canonical_arguments = json.dumps(
+        invocation.canonical_args,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    approval_projection = {
+        "id": tool_call_id,
+        "name": tool_name,
+        "arguments": canonical_arguments,
+    }
+    safe_tool_call = redact_data(approval_projection)
+    if safe_tool_call != approval_projection:
+        await rollback_uow(db)
+        raise RunStateError("approval_projection_redacted")
     approval_id = str(uuid5(
         NAMESPACE_URL,
         f"learning-travel:approval:{lease.run_id}:{tool_call_id}",
     ))
     approval = await db.get(RunApproval, approval_id)
     if approval is None:
-        run = await db.get(AgentRun, lease.run_id)
-        if run is None:  # pragma: no cover - protected by the lease predicate below
-            raise RunStateError("run disappeared before approval pause")
         approval = RunApproval(
             id=approval_id,
             owner_id=run.owner_id,
@@ -417,22 +452,34 @@ async def pause_for_approval(
             invocation_id=invocation.id if invocation is not None else None,
             tool_call_id=tool_call_id,
             tool_name=tool_name,
-            tool_call=dict(tool_call),
-            remaining_tool_calls=list(remaining_tool_calls),
-            reason=reason,
+            tool_call=safe_tool_call,
+            remaining_tool_calls=safe_remaining_tool_calls,
+            reason=safe_reason,
         )
         db.add(approval)
+    elif (
+        approval.owner_id != run.owner_id
+        or approval.run_id != run.id
+        or approval.invocation_id != invocation.id
+        or approval.tool_call_id != tool_call_id
+        or approval.tool_name != tool_name
+        or approval.tool_call != safe_tool_call
+    ):
+        await rollback_uow(db)
+        raise RunStateError("approval_projection_conflict")
     pending = {
         "approval_id": approval_id,
-        "tool_call": dict(tool_call),
-        "remaining_tool_calls": list(remaining_tool_calls),
-        "reason": reason,
+        "tool_call": safe_tool_call,
+        "remaining_tool_calls": safe_remaining_tool_calls,
+        "reason": safe_reason,
         "step": int(checkpoint.get("step") or 0),
     }
     canonical = normalize_checkpoint(checkpoint) or checkpoint
     new_version = lease.version + 1
     canonical["phase"] = "waiting_approval"
     canonical["state_version"] = new_version
+    canonical = sanitize_checkpoint(canonical)
+    pending = redact_data(pending)
     result = await db.execute(
         update(AgentRun)
         .where(*_leased_predicate(lease))
@@ -499,15 +546,17 @@ async def decide_approval(
     if run.status != "waiting_approval":
         raise RunStateError("approval_decision_in_progress")
     now = utc_now()
+    safe_note = redact_text(note) if note is not None else None
+    safe_answer = redact_text(answer) if answer is not None else None
     approval.decision = decision
-    approval.note = note
-    approval.answer = answer
+    approval.note = safe_note
+    approval.answer = safe_answer
     approval.decided_at = now
     pending = dict(run.pending_approval)
     pending.update({
         "decision": decision,
-        "note": note,
-        "answer": answer,
+        "note": safe_note,
+        "answer": safe_answer,
         "decided_at": canonical_utc(now),
     })
     if decision != "approve" and approval.invocation_id is not None:
@@ -518,8 +567,8 @@ async def decide_approval(
         invocation.result_payload = {
             "error": "用户拒绝了该操作",
             "approval": decision,
-            "note": note,
-            "answer": answer,
+            "note": safe_note,
+            "answer": safe_answer,
         }
         invocation.claim_token = None
         invocation.claimed_at = None
@@ -540,8 +589,8 @@ async def decide_approval(
             "approval_id": approval.id,
             "decision": decision,
             "tool_name": approval.tool_name,
-            "note": note,
-            "answered": bool(answer),
+            "note": safe_note,
+            "answered": bool(safe_answer),
         },
         event_key=f"approval:{approval.tool_call_id}:resolved",
     )
@@ -593,6 +642,7 @@ async def consume_pending_steers(
         canonical["messages"] = messages
         canonical["phase"] = "awaiting_model"
         canonical["state_version"] = new_version
+        canonical = sanitize_checkpoint(canonical)
         run.checkpoint = canonical
         run.checkpoint_schema_version = CHECKPOINT_SCHEMA_VERSION
         run.phase = "awaiting_model"
@@ -654,6 +704,7 @@ async def prepare_finalization(
             canonical["state_version"] = new_version
             run.phase = "finalizing"
             action = "finalize"
+        canonical = sanitize_checkpoint(canonical)
         run.checkpoint = canonical
         run.checkpoint_schema_version = CHECKPOINT_SCHEMA_VERSION
         run.budget_usage = dict(canonical.get("budget_usage") or {})
@@ -1004,6 +1055,7 @@ async def schedule_retry(
         checkpoint["retry_count"] = run.retry_count
         checkpoint["retry_not_before"] = canonical_utc(available_at)
         checkpoint["state_version"] = int(run.state_version or 1) + 1
+        checkpoint = sanitize_checkpoint(checkpoint)
         run.status = "retry_wait"
         run.phase = "retry_wait"
         run.available_at = available_at
@@ -1425,8 +1477,6 @@ async def reconcile_run_after_restart(
         # it because startup has no separate delayed-task scheduler.
         run.status = "queued"
         run.phase = (checkpoint or {}).get("phase") or "not_started"
-        run.checkpoint = checkpoint
-        run.checkpoint_schema_version = CHECKPOINT_SCHEMA_VERSION if checkpoint else None
         run.lease_token = None
         run.lease_owner = None
         run.lease_acquired_at = None
@@ -1435,6 +1485,9 @@ async def reconcile_run_after_restart(
         run.state_version = int(run.state_version or 1) + 1
         if checkpoint is not None:
             checkpoint["state_version"] = run.state_version
+            checkpoint = sanitize_checkpoint(checkpoint)
+        run.checkpoint = checkpoint
+        run.checkpoint_schema_version = CHECKPOINT_SCHEMA_VERSION if checkpoint else None
         run.updated_at = utc_now()
         return True, published
 

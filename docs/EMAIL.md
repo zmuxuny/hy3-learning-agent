@@ -1,8 +1,8 @@
 # 邮箱配置与验收
 
-> 状态说明（2026-08-18）：SMTP/IMAP 是正常路径候选，H5-INT/MAIL 与 H6-CONFIG/REDACT 尚未修复。修复前不得把本页当作邮件线程耐久、配置原子性或全链路脱敏保证，也不得用正式邮箱做自动化验收。
+> 状态说明（2026-08-20）：H5 已验收 Intervention/邮件回复身份、durable inbound job 与 commit-before-Seen，H6 已验收配置原子性、外部邮件 authority 和诊断脱敏。自动化仍未调用真实邮箱，供应商连接与连续使用必须由用户自行验证。
 
-Learning Agent 使用 SMTP 发送提醒，使用 IMAP 读取用户对提醒邮件的回复。邮箱密码的配置源是项目根目录 `.env`；设置接口的正常响应不回传密码，但统一错误/事件/Context 脱敏仍待 H6-REDACT-001 验收。
+Learning Agent 使用 SMTP 发送提醒，使用 IMAP 读取用户对提醒邮件的回复。邮箱密码的配置源是项目根目录 `.env`；设置接口不回传密码，错误、事件、Context、checkpoint 与日志使用统一配置凭据脱敏。邮件正文仍是外部不可信输入，不能自行授权计划写入。
 
 ## 先回答：一定要配置 Agent 邮箱 A 吗？
 
@@ -53,7 +53,7 @@ IMAP_FOLDER=INBOX
 
 修改后重启 `./scripts/start.sh`。打开“收件箱”，邮箱通信卡片应从“等待配置”变成“已配置”。
 
-也可以直接打开侧栏“设置 → 邮件与回复”填写以上字段。旧实现会尝试以 0600 权限更新 `.env`，但 H6-CONFIG-001 已证明控制字符、固定临时文件 symlink 和复杂值往返不安全；H6 修复前应人工编辑并保护 `.env`，不能宣称设置页原子安全保存。页面提供连接测试与删除入口；正常设置响应不返回密码，错误路径脱敏仍待验收。保存后需要重启服务生效。
+也可以直接打开侧栏“设置 → 邮件与回复”填写以上字段。保存协议先验证全部 key/value，拒绝控制字符、symlink 和非普通文件，再在目录锁内写入随机 0600 临时文件、fsync 并原子替换；复杂引号、反斜杠和字面 `${...}` 可无损往返。页面提供连接测试与删除入口，响应和诊断错误不回传凭据。保存后需要重启服务生效。
 
 ## 3. 真实连接测试
 
@@ -61,7 +61,7 @@ IMAP_FOLDER=INBOX
 - “测试回复邮箱”：登录 IMAP，以只读方式打开 `IMAP_FOLDER`。
 - 也可以使用 `POST /api/v1/settings/email/test`，请求体为 `{"channel":"smtp","send_message":true}` 或 `{"channel":"imap"}`。
 
-完成连接测试后，可在受控本机用 `notification_send` 的 `email` 渠道验证正常路径。提醒、邮件令牌和回复回 Session 的代码路径已经存在；但活动 Run reply target、多渠道唯一 Intervention、归档计划回执与 IMAP commit-before-Seen 仍由 H5-INT-001–003、H5-MAIL-001/002 阻塞，当前不能保证两种入口在中断/并发下共享同一耐久线程。
+完成连接测试后，可在受控环境用 `notification_send` 的 `email` 渠道验证正常路径。一次逻辑 Intervention 只有一条 canonical message；各渠道 Notification 只是 delivery。IMAP 使用 `BODY.PEEK[]`，先提交唯一 UID/UIDVALIDITY inbound job，再取得 ACK lease 标 Seen；归档计划会生成只读答复或明确失败回执。自动化以 fake provider 和真实进程中断验证该协议，不代表你的供应商账户已经可用。
 
 ## 4. 当前机器状态
 
@@ -71,4 +71,4 @@ IMAP_FOLDER=INBOX
 
 - `.env` 已被 Git 忽略，不要把凭据写入 README、截图、提交记录或前端代码。
 - 建议为 Learning Agent 使用单独邮箱或独立应用密码。
-- 本地服务停止时，邮件回复不会被轮询；旧实现重启后会继续扫描未读候选，但 `(RFC822)` 可能在耐久 reply job 前置 Seen（H5-MAIL-002），因此尚不能保证中断恢复不丢回复。
+- 本地服务停止时，邮件回复不会被轮询；重启后会按 durable job/UID 身份继续处理。provider 已接受但本地 receipt 未提交的外部不确定结果仍会停止自动重放并要求对账。

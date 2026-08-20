@@ -142,7 +142,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景在 H0 只登记独立 contract，H4 已把它们逐项改为 production reducer/audit baseline 与 mutant 门禁。
 - 定向套件登记 87 个 open defect ID、113 个 strict-xfail 节点和 20 个 passing gate。实现门禁修复每一项时必须删除对应 xfail，并在矩阵写入修复提交。
 - 最终全量回归为 146 passed、113 xfailed、0 XPASS、0 failed；Python compileall、pip check、前端生产构建与完整/production-only npm audit 均通过。五尺寸 Chrome 使用独立临时数据库和精确合成 Session 令牌，得到 3 个已登记 H7-UI-001 XFAIL，未产生非预期失败或 API 写请求。
-- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H5 已于后续阶段关闭，当前下一门禁为 H6。
+- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H6 已于后续阶段关闭，当前下一门禁为 H7。
 
 ## 5. H1：迁移、时间与备份基础
 
@@ -223,7 +223,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 数据库写工具在一个 UoW 中提交领域对象、Operation、Evidence、LearningEvent、RunEvent 与 ToolInvocation 终态。模型、HTTP、embedding、SMTP、Web Push、子进程和子 Agent await 均移到活动 writer 之外；锁预算耗尽返回 typed `database_busy` 和稳定 retry 元数据，不丢失为不可解释异常。
 - SMTP、Web Push、workspace 文件和子进程采用 durable intent → 独立 dispatcher → receipt 协议。并发 dispatcher 只能有一个 claim；外部已接受而 receipt 未提交时转入 `needs_reconciliation` 并禁止盲重发。workspace effect 额外保存前后 hash，可在 publish 后中断时自动对账；上传、`.env` 与 Context 投影使用原子临时文件、文件/父目录 fsync 和失败清理，其中 `.env` 的 read-modify-write 由跨进程目录锁串行化。
 - Operation undo 使用状态 CAS；并发 exact replay 只应用一次 inverse 和一次审计事件。workspace undo 也先持久化 outbox intent，并以 forward digest 防止覆盖用户后续修改。该事务/文件闭环不等同于 H4 的 Evidence amendment/invalidation 或 Competency 依赖撤销。
-- H2-TXN-001–009 的 10 个原基线节点均删除 strict xfail；request identity 工作提前关闭 H4-EVID-006 的 2 个节点，planning delegate 在 model wait 前保存确定性 child ID、Context/messages 与 checkpoint，提前关闭 H3-RUN-008。H6-CONFIG-001 只提前关闭原子临时文件的 1 个节点，控制字符和复杂值往返 2 个节点仍 strict xfail，所以该 ID 保持 open。
+- H2-TXN-001–009 的 10 个原基线节点均删除 strict xfail；request identity 工作提前关闭 H4-EVID-006 的 2 个节点，planning delegate 在 model wait 前保存确定性 child ID、Context/messages 与 checkpoint，提前关闭 H3-RUN-008。H2 当时只提前关闭 H6-CONFIG-001 的原子临时文件节点；控制字符与复杂值的两个节点现已由 H6 关闭。
 - H2 收口时矩阵累计关闭 24 个 defect ID、剩余 63 个 open ID。H2 定向为 84 passed，H0 当时为 49 passed / 84 strict xfailed，普通非-hardening 回归为 139 passed；前端 Node 为 6 passed，生产构建通过，完整与 production-only audit 均为 0 vulnerabilities。当前数字见 H3 记录与 [`STATUS.md`](STATUS.md)。
 - 已知限制：SMTP、Web Push 与子进程的不确定结果只能等待人工或 provider 对账，仅 workspace 可依据本地 hash 自动恢复；Context Markdown 是可重建派生投影，数据库提交后、投影发布前崩溃尚无跨重启 durable recovery；真实 SMTP/VAPID、外部安装、连续学习闭环与 7 日留存均未验证。
 - H2 收口时下一门禁为 H3；该门禁现已完成，当前状态见下一节。H4–H8 全部关闭前继续冻结 M15–M20。
@@ -270,7 +270,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 主/子 Run 共享 model/tool/network/elapsed/token/cost 预算、耐久有界 retry 和只读 child Guard。child finalizing checkpoint 冻结报告，父终态取消覆盖所有非终态 child，child 终态与父 `subagent.completed` 在同一事务投影或可幂等修复。
 - 真实进程故障覆盖 claim/checkpoint/finalizing、同一 Run 连续三次中断、双进程 claim、SQLite busy 与 frozen-H2 migration publish；固定种子 100 轮逐轮比较无故障 baseline、恢复运行与手写语义 oracle。另有两工具测试在第二个数据库副作用已提交、Run checkpoint 尚未推进时中断，恢复后只保留两份领域事实与两个 completion。
 - H3 定向为 40 passed；前端状态契约为 9 passed，生产构建和 npm audit 通过。真实 Hy3 临时库演示完成两次 SIGKILL、三次 claim，最终只有一条 assistant message 与一个 completed event，正文和凭据未输出。完整结果只在 [`STATUS.md`](STATUS.md) 维护。
-- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4/H5 已完成，H6–H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H6。
+- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4–H6 已完成，H7/H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H7。
 
 ## 8. H4：Evidence 与 Competency 事实层
 
@@ -368,7 +368,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 一次逻辑 Intervention 拥有唯一 canonical message 与 reply token，多渠道 Notification 只是 delivery。reply target 与 read-only execution mode 耐久贯穿 Queue、Run、Message 和 child；Run 终态与 Intervention outcome 同一 UoW 收口。IMAP 使用 `BODY.PEEK[]`，先持久化唯一 UID/UIDVALIDITY inbound job，再以 lease/CAS ack Seen；归档计划回复产生可见只读回执和 SMTP outbox。
 - 心跳候选与终态 ProactiveDecision 分离；success 才消耗长期冷却，quiet hours 保存精确 `next_eligible_at`，model/runtime/Guard 失败使用短退避。Scheduler 的学习活动只读取有效 Evidence `occurred_at`，不再用晚写入或已失效事件刷新活动。
 - H5/H0 Context/Intervention 联合为 120 passed；revision 1–5 migration bridge 为 48 passed，H5 migration 7 个和 runtime 9 个真实 SIGKILL 节点通过。最终完整 pytest 为 941 passed / 30 strict xfailed / 0 failed，前端 9 tests、生产构建、compileall、依赖审计、数据库完整性和文档链接均通过；精确命令与限制见 [`STATUS.md`](STATUS.md)。
-- H5 新关闭 20 个 defect ID，累计关闭 70 个、剩余 17 个。没有真实 SMTP/IMAP/VAPID 账户验收；外部安装、连续使用与 7 日留存仍待真实用户验证。M15–M20 继续冻结，下一门禁为 H6。
+- H5 新关闭 20 个 defect ID，累计关闭 70 个、剩余 17 个。H6 现已继续关闭 7 个，累计关闭 77 个、剩余 10 个。没有真实 SMTP/IMAP/VAPID 账户验收；外部安装、连续使用与 7 日留存仍待真实用户验证。M15–M20 继续冻结，下一门禁为 H7。
 
 ## 10. H6：安全运行边界
 
@@ -393,6 +393,15 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 路径逃逸、符号链接、秘密读取、网络逃逸和提示注入测试为零通过漏洞。
 - SSRF、重定向到私网、大响应和解压炸弹测试通过。
 - 安全能力缺失时高风险工具不可调用。
+
+### 当前收口（2026-08-20）
+
+- local/server deployment policy、Host/CORS/Bearer/签名 Cookie/CSRF 与启动失败关闭已接入统一 ASGI 边界；静态 shell 不含用户事实，全部 `/api/v1` 均受保护。
+- 当前构建没有 sandbox Provider，`code_execute` 不进入模型 surface，直接调用与历史 outbox receipt 也再次检查并取消；内部 runner 使用绝对解释器与固定最小环境，但不被描述或暴露为 sandbox。
+- Web/File/Email 形成耐久 `external_untrusted` authority；外部来源后的写操作必须绑定精确 durable approval，结构损坏不可被 boolean approval 覆盖。配置凭据和脱敏占位符不能进入工具 invocation。
+- Web fetch 在发送前固定验证过的 public IP，保留逻辑 Host/SNI、复核真实 peer，每跳重做；wire/decoded bytes、gzip、总 deadline 和 exact MIME 分别受限。
+- `.env` 全量预校验、0600 原子写、复杂值 round-trip，以及事件/Context/checkpoint/诊断/日志统一脱敏均已落地。新增 [`../SECURITY.md`](../SECURITY.md) 记录真实支持边界。
+- 7 个 H6 defect ID 的原 strict xfail 均已删除，累计关闭 77 个、剩余 10 个；下一门禁为 H7。真实外部账户、外部安装、连续使用和 7 日留存仍待真人验证。
 
 ## 11. H7：前端状态架构与 V2 最小闭环
 

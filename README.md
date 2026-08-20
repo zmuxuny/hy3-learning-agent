@@ -4,7 +4,7 @@
 
 当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
 
-> 安全与开发状态：当前稳定版本只建议绑定 `127.0.0.1` 在本机使用；尚未提供服务器认证，也不能把有界 `code_execute` 当作安全沙箱。`develop` 的 V2 M13/M14 正在执行[前置硬化计划](docs/V2_HARDENING_PLAN.md)：H1 与 H2 已完成，累计关闭 24 个缺陷 ID，矩阵剩余 63 个 open ID，下一门禁是 H3。M15–M20 继续冻结，当前尚不具备 V2 Alpha 发布条件。
+> 安全与开发状态：`develop` 已完成 H1–H6，累计关闭 77 个缺陷 ID，矩阵剩余 10 个 open ID，下一门禁是 H7。默认 `local` 模式只接受 loopback；高级 `server` 模式在缺少认证或精确 HTTPS Origin 时拒绝启动。仓库不提供真实代码沙箱，因此 `code_execute` 默认不可用。M15–M20 继续冻结，H7/H8 与真人验收完成前仍不具备 V2 Alpha 发布条件。详见[安全边界](SECURITY.md)和[前置硬化计划](docs/V2_HARDENING_PLAN.md)。
 
 ## Demo
 
@@ -54,31 +54,31 @@ flowchart LR
 
 ## 已实现的正常路径候选
 
-以下条目说明界面或代码路径已经存在，不代表崩溃恢复、并发、迁移、长期 Context 和安全不变量已经验收：
+以下条目说明当前能力范围。H1–H6 已分别验收迁移、事务、Runtime、Evidence、长期 Context/提醒线程与应用安全边界；H7/H8 的完整前端和发布门禁仍未完成：
 
 - 完整 `Plan → Stage → Task` 计划模型与多计划工作台
 - `AgentRun / RunEvent` 生命周期、SSE 实时轨迹和停止请求
-- Run 检查点与审批暂停/恢复候选；拒绝重启、current tool、queued/no-checkpoint、二次中断和 finalization 仍由 H3-RUN-001–007 阻塞
-- 48 个工具按 `pure_read / database_write / external_read / external_write` 分类；H2 已验收同 key 异请求/结果摘要冲突、统一 UoW、SQLite physical outer transaction 和耐久 outbox，Run/child 预算与 finalization 仍由 H3 阻塞
+- Run 检查点、审批暂停/恢复、Queue successor、finalization、重试与父子投影均由统一 lease/state machine 强制并通过 H3 故障恢复门禁
+- 48 个已安装工具契约按 `pure_read / database_write / external_read / external_write` 分类；默认模型 surface 为 47 个，缺少真实 sandbox Provider 时不会暴露 `code_execute`
 - Session 列表、原始消息恢复、语义命名、手动改名与多轮连续对话画布
 - Session/计划手动归档与恢复、归档列表，以及全局对话到计划对话的可追溯交接
 - 持久化计划共创：需求充分性判断、结构化提问卡、受限规划子 Agent、可审阅提案与显式采用
 - 用户消息复制与非破坏式编辑；旧版本、旧 Run 和工具操作保留，当前 Session 从修订处重新运行
 - Hy3 多轮 Function Calling，以及 TokenHub 交错式思考字段回填
-- 全局/计划/Session 分层记忆、来源/置信度、候选确认、纠正替代链、归档和 Markdown 快照候选；跨计划隔离与恢复 expiry 未验收
-- 长会话压缩、摘要版本和混合检索候选；coverage、预算、阈值/层级配额和编辑失效仍由 H5-CTX 阻塞
+- 全局/计划/Session 分层记忆、版本化来源、候选确认、纠正替代链、归档/恢复与可重建 Markdown 投影；跨计划隔离、expiry 与来源失效已通过 H5
+- 长会话压缩、摘要版本、连续 coverage、完整 PromptEnvelope 预算、相关性阈值/层级配额与编辑来源闭包已通过 H5
 - Run 内联上下文检查器：实际来源构成、命中记忆分数、Token 估算和送入模型的 Markdown
-- 单实例全局心跳、提醒 Session/收件箱投影和回复候选；活动 Run target、多渠道事实、IMAP ack 与冷却语义仍由 H5 阻塞
+- 单实例全局心跳、ProactiveDecision、唯一 Intervention/canonical message、活动 Run reply target、多渠道 delivery 与 IMAP durable ack 已通过 H5
 - 收件箱显示上次判断、下次检查与当前状态，并支持消息归档、恢复和批量归档已读；归档不删除对话中的提醒
 - 默认站内收件箱、Service Worker 浏览器通知、可选 VAPID Web Push、可选 SMTP 发送与 IMAP 回复；外部发送先提交 outbox intent，进程在 provider 响应前后中断时会进入人工/provider 对账而不是盲目重发
 - 简答测验、证据化评分、复习调度、XP 与可撤销操作基础
 - 核心任务证据门槛、真实计划进度和真实学习事件热力图
 - 对话优先的响应式工作台、消息内可收起工作记录、纵向计划时间线，以及热力图、连续天数、XP/等级和规则成就数据等轻游戏化基础
-- “设置”页候选：模型连接、SMTP/IMAP 与主动策略；H2 已验收 `.env` 临时文件原子替换，控制字符与复杂值往返仍使 H6-CONFIG-001 保持 open（当前 1 passing / 2 strict xfail）
-- 48 个真实工具：需求澄清、规划分工与提案、通用只读子 Agent、学习位置快照、课程资源搜索/核验/策展、计划修改、提交验收、复习处置、文件、代码、日历、记忆维护和显式技能图映射
-- Web 搜索主源失败时自动降级到 Bing HTML 备选源，结果带 `fallback_used` 标记
+- “设置”页提供模型连接、SMTP/IMAP 与主动策略；`.env` 更新会预校验全部字段、拒绝控制字符/非普通文件，并以 0600 原子发布且复杂值可无损往返
+- 48 个已安装工具契约：需求澄清、规划分工与提案、通用只读子 Agent、学习位置快照、课程资源搜索/核验/策展、计划修改、提交验收、复习处置、文件、代码、日历、记忆维护和显式技能图映射；当前模型 surface 为 47 个，`code_execute` 因无可信 sandbox Provider 而不可用
+- Web 搜索主源失败时自动降级到 Bing HTML 备选源；每跳固定公有 IP 并复核 peer，wire/解压大小、总时间和精确 MIME 均受限，所有结果标记为外部不可信
 
-当前代码执行是宿主上的有界进程，不是容器级安全沙箱；H6-CODE-001 修复前不得运行不可信代码。H2-TXN-009 与 H3-RUN-008 已关闭；H3-RUN-009–011 的 child 终态投影、父事件、重试/预算以及 Runtime finalization 仍是下一门禁债务。
+当前构建没有 capability-attested sandbox Provider，`code_execute` 在模型、直接调用和旧 outbox 恢复边界均失败关闭。仓库内保留的有界宿主 runner 只是内部兼容原语，不是可启用的安全沙箱。
 
 ## 快速开始
 
@@ -112,6 +112,8 @@ npm run dev
 
 Vite 会把 `/api` 代理到 `127.0.0.1:8000`。
 
+如需高级个人服务器模式，先完整阅读 [SECURITY.md](SECURITY.md)。必须设置 `DEPLOYMENT_MODE=server`、至少 32 字节的 `SERVER_AUTH_TOKEN`、精确 `https://` 的 `SERVER_PUBLIC_ORIGIN`，并令 `CORS_ORIGINS` 与之完全一致；缺少任一项都会失败关闭。当前浏览器登录产品化仍属于 H7/H8，不能把本机模式经端口转发直接暴露到公网。
+
 站内提醒完全不需要邮箱：应用运行时，前端每 15 秒同步后台通知并在页面内弹出新提醒。只有希望离开应用后仍收到邮件或直接回复邮件时，才需要在 `.env` 配置 SMTP/IMAP 凭据；独立 Agent 邮箱是推荐方案而不是硬性要求，完整选择、字段和测试方法见 [邮箱配置](docs/EMAIL.md)。
 
 ## 验证
@@ -142,7 +144,7 @@ H2 已把数据库写入收敛到统一 UoW，并在最外层 SQLite savepoint �
 
 迁移和恢复会在交接边界复核固定的路径、目录描述符/inode 与内容摘要，只把复验通过的候选库、备份 payload 或工作快照作为 trusted snapshot；目标数据库或安全备份根目录若指向 source backup 本身或其子路径，会在写入前失败关闭。source backup 位于安全备份根目录下仍是正常布局。共享路径规范化会消除 `.`/`..` 别名而不跟随 symlink，并正确编码含空格、`%`、`#`、`?` 的 SQLite 路径。旧 `_write_probe` 也只按精确的空单列表识别，近似或被污染的同名 schema 不会被静默接受。
 
-V2 的学习证据脚本目前仍是实现候选。H1 回归已经证明 `rebuild-evidence --audit` 逐字节只读，任何回填/重建写操作都会先取得协调 lease 并完成全量验证备份；首次真实用户大规模回填、外部安装、连续学习闭环与 7 日留存仍待后续门禁和真人样本，因此以下写命令仍建议先在显式副本或临时根目录验证：
+V2 学习证据账本、完整 reducer 和 Artifact/Competency 关联已通过 H4。H1 回归证明 `rebuild-evidence --audit` 逐字节只读，任何回填/重建写操作都会先取得协调 lease 并完成全量验证备份；首次真实用户大规模回填、外部安装、连续学习闭环与 7 日留存仍待后续门禁和真人样本，因此以下写命令仍建议先在显式副本或临时根目录验证：
 
 ```bash
 ./.venv/bin/python scripts/rebuild-evidence.py --audit
@@ -152,16 +154,16 @@ PYTHONPATH=backend ./.venv/bin/python scripts/evidence-baseline.py
 
 自动化测试使用临时数据库和模拟模型响应，不冒充真实 Hy3 调用。历史 TokenHub/搜索/页面验证只证明当时的正常路径；当前事实以缺陷矩阵逐项状态、仍保留的 strict xfail 和各门禁修复后的 passing 回归为准，不能用历史场景数、截图数或构建通过替代领域验收。
 
-H2 定向回归为 84 passed；当前 H0 跨阶段回归为 49 passed / 84 strict xfailed，普通非 hardening 回归为 139 passed；前端 Node 为 6 passed、生产构建成功、production audit 为 0。完整 pytest 结果与 H1 历史快照见[当前状态](docs/STATUS.md)。自动化测试没有使用真实 SMTP/VAPID 或外部用户样本，也不替代 H8 的外部安装、连续使用和 7 日真人留存记录；Context 目前仍以 Markdown 快照为跨重启投影边界，结构化 Context Pack/源版本重建属于 H5/M17 债务。
+各门禁的完整命令、精确测试数量和历史快照只在[当前状态](docs/STATUS.md)维护。自动化安全测试使用合成凭据、临时数据库、mock DNS/HTTP 和假 provider，不调用真实 SMTP/IMAP、公网或模型，也不替代 H8 的外部安装、连续使用和 7 日真人留存记录。
 
 ## 数据与安全
 
 - SQLite 默认位于 `data/learning_companion.db`，上下文快照位于 `data/context/`，两者都被 Git 忽略。
 - Agent 文件工作区位于 `data/workspace/`；文件工具拒绝路径穿越。
-- SMTP 密码和 TokenHub Key 的配置源是本地 `.env`；H6-REDACT-001 修复前，工具轨迹、事件、Context 和错误路径尚不能保证统一脱敏，因此不得把真实秘密放入对话或工具参数。
+- SMTP/IMAP、TokenHub、server auth 与 VAPID 凭据来自本地 `.env`；事件、Context、checkpoint、日志和诊断错误统一脱敏，含配置凭据或脱敏占位符的工具参数在耐久 claim 前拒绝。仍不要把真实秘密放入对话、Artifact 或 Issue。
 - 浏览器通知只有在用户授予权限后显示；VAPID Web Push 需要在 `.env` 配置密钥，电脑关机或浏览器完全退出时无法唤醒。
 - 本地服务或电脑停止时无法主动提醒。
-- 代码执行有工作目录、环境、时间与输出上限，但不应运行来源不可信的代码。
+- 当前没有真实 sandbox Provider，代码执行能力保持关闭；不要通过内部 runner 绕过该边界。
 
 ## 项目文档
 
@@ -171,6 +173,7 @@ H2 定向回归为 84 passed；当前 H0 跨阶段回归为 49 passed / 84 stric
 - [架构与上下文](docs/ARCHITECTURE.md)
 - [Harness 完整性标准](docs/HARNESS.md)
 - [工具与权限协议](docs/TOOL_PROTOCOL.md)
+- [安全与部署边界](SECURITY.md)
 - [邮箱配置与收发](docs/EMAIL.md)
 - [路线图](docs/ROADMAP.md)
 - [Learning Agent 2.0 路线图](docs/V2_ROADMAP.md)

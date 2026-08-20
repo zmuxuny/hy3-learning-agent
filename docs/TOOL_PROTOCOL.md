@@ -1,10 +1,10 @@
 # Agent 工具与运行协议
 
-> 状态说明（2026-08-20）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算；H4 已验收 Evidence/Competency 领域作用域、事实语义与严格嵌套 Schema。Context/提醒线程和应用部署边界仍有阻塞缺陷，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
+> 状态说明（2026-08-20）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算；H4 已验收 Evidence/Competency 领域作用域、事实语义与严格嵌套 Schema；H5/H6 已验收 Context、Intervention、邮件回复、信任传播与应用部署边界。当前剩余 H7 前端投影和 H8 发布工程，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
 
 ## 设计原则
 
-工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。当前实现为工具注册输入/输出 Schema 与 H2 effect kind，并通过 `GET /api/v1/settings/tools` 暴露；Evidence/Competency 已使用具名嵌套模型并在每层拒绝 extra fields。高层流程由 Hy3 规划；H2/H3 已统一工具事务与 Run 状态机，各触发源仍须完成 H5 的 Intervention 语义，才能称为共享同一长期上下文。
+工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。当前实现为工具注册输入/输出 Schema 与 H2 effect kind，并通过 `GET /api/v1/settings/tools` 暴露；Evidence/Competency 已使用具名嵌套模型并在每层拒绝 extra fields。高层流程由 Hy3 规划；H2/H3 已统一工具事务与 Run 状态机，H5/H6 已统一触发来源、Intervention、耐久信任与后端权限边界。
 
 ## 48 个已注册工具
 
@@ -14,9 +14,9 @@ H2 固定四类执行协议：
 
 | `effect_kind` | 当前数量 | 执行协议 |
 | --- | ---: | --- |
-| `pure_read` | 17 | 只读取调用者快照；不创建含糊写意图 |
+| `pure_read` | 14 | 只读取调用者快照；不创建含糊写意图 |
 | `database_write` | 21 | 短 CAS claim 后，在一个 UoW 原子提交领域状态、Operation/Evidence/Event 与 invocation 结果 |
-| `external_read` | 4 | provider/HTTP/embedding 等等待不持有 SQLite writer；结果再以短事务归档 |
+| `external_read` | 7 | provider/HTTP/embedding/child report 等等待不持有 SQLite writer；结果再以短事务归档 |
 | `external_write` | 6 | 先提交 durable outbox intent，再由独立 dispatcher 执行 SMTP/Web Push/workspace/subprocess 并写 receipt |
 
 SQLite 写协调器会在嵌套 savepoint 前显式建立 physical outer transaction，防止 release 最外层 savepoint 时提前提交。仅 claim/CAS、事件和 receipt 等 DB-only 可重放短回调使用有界退避；整个工具 handler 不会因 `database is locked` 被盲目重跑。
@@ -72,10 +72,10 @@ SQLite 写协调器会在嵌套 savepoint 前显式建立 physical outer transac
 
 | 工具 | 作用 |
 | --- | --- |
-| `web_search` / `web_open` | 通过可替换 Provider（DuckDuckGo 主源 + Bing 备选源）搜索公开资料；主源失败/超时/空结果时自动降级并带 `fallback_used` 标记；逐跳校验重定向并核验正文 |
+| `web_search` / `web_open` | 通过可替换 Provider（DuckDuckGo 主源 + Bing 备选源）搜索公开资料；主源失败/超时/空结果时自动降级并带 `fallback_used`；逐跳固定 public IP、保留 Host/SNI、复核 peer，并限制 wire/decoded bytes、总时限和精确 MIME；结果均为 `external_untrusted` |
 | `resource_save` | 把核验过的具体课程、教程、实验或参考资料保存到计划；记录来源、难度、语言、摘要和适配理由，并支持撤销 |
-| `file_list` / `file_read` / `file_write` | 读取工作区；写入先持久化 outbox intent，再以原子替换、fsync、hash receipt 发布 |
-| `code_execute` | 通过 durable subprocess intent 运行有超时和输出上限的 Python/Bash；不是安全容器 |
+| `file_list` / `file_read` / `file_write` | 读取工作区时产生耐久 `external_untrusted` 结果；写入先持久化 outbox intent，再以原子替换、fsync、hash receipt 发布 |
+| `code_execute` | 已安装契约但当前不可用：没有 capability-attested sandbox Provider 时不进入模型 surface，直接调用和旧 subprocess outbox 也失败关闭；内部 host runner 不是安全容器 |
 | `calendar_list` / `calendar_create` / `calendar_patch` | 读取、创建和调整个人学习日历 |
 
 ### V2 技能图与证据
@@ -94,7 +94,7 @@ SQLite 写协调器会在嵌套 savepoint 前显式建立 physical outer transac
 | --- | --- |
 | `notification_send` | 原子写入连续 Session/站内收件箱，并为可选浏览器或 SMTP 渠道分别建立 outbox action；返回 `session_id` 供追溯 |
 
-SMTP/IMAP 回复令牌和站内深链已有正常路径候选。活动 Run target、多渠道唯一 Intervention、归档计划回执和 IMAP durable ack 仍由 H5-INT-001–003、H5-MAIL-001/002 阻塞，不能保证中断/并发时不会形成错线程或丢回复。
+SMTP/IMAP 回复令牌和站内深链已由 H5 统一为 durable Intervention 协议：活动 Run target、多渠道唯一 canonical message、归档计划只读回执与 IMAP UID/UIDVALIDITY ack 均通过并发、重启和 SIGKILL 门禁。H7 仍需把这些权威状态完整投影到前端并做真实浏览器对账。
 
 ## 统一结果与运行事件
 
@@ -130,7 +130,7 @@ run.started → context.built → assistant.status
 
 ## 权限与撤销
 
-- 目标上 `plan_id` 必须由后端强制且不依赖 Prompt；Competency edge/link 已由 H4 从数据库解析真实 scope，Context discussed-link 泄漏仍由 H5-CTX-001 阻塞。
+- 目标上 `plan_id` 必须由后端强制且不依赖 Prompt；Competency edge/link 已由 H4 从数据库解析真实 scope，Context link 的计划隔离已由 H5 验收。
 - Session 内的计划创建只能写提案；提案采用 API 幂等地物化正式计划，未采用时数据库中不存在对应 Plan。
 - `spawn/status/join/cancel` 与执行层只读白名单已接入统一 durable child 状态机；终态父事件、重试和预算对应的 H3-RUN-008–011 均已关闭。
 - 核心任务的目标门槛是可验证 Evidence；H4 eligibility Guard 已限制自由文本/self-report/checkbox 的阶段上限，并保证一次 submission/quiz/task 行为只有一份 primary observation。

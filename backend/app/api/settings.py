@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.envfile import clear_env_keys, update_env_file
 from app.core.config import settings
+from app.core.redaction import redact_text
 from app.db.database import get_db
 from app.db.uow import DatabaseBusyError, commit as commit_uow
 from app.models import Memory, Notification, Plan, Session, UserProfile
@@ -241,9 +242,10 @@ async def test_email_configuration(
     except DatabaseBusyError:
         raise
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail=redact_text(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"{data.channel.upper()} test failed: {type(exc).__name__}: {exc}") from exc
+        detail = f"{data.channel.upper()} test failed: {type(exc).__name__}: {exc}"
+        raise HTTPException(status_code=502, detail=redact_text(detail)) from exc
 
 
 @router.put("/email", response_model=dict)

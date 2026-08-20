@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import errno
 import gzip
+import ipaddress
 import json
 import runpy
 import socket
@@ -35,14 +36,6 @@ from app.tools.web import WebOpenArgs, web_open
 
 
 SENTINEL = "H0_SYNTHETIC_SENTINEL_71d6f8"
-
-
-def _xfail(defect_id: str, old_failure: str):
-    return pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason=f"{defect_id}: {old_failure}",
-    )
 
 
 @contextmanager
@@ -100,10 +93,6 @@ def _require_fixture(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
-@_xfail(
-    "H6-AUTH-001",
-    "backend/run.py accepts an unauthenticated non-loopback bind",
-)
 def test_h6_auth_default_is_loopback_and_unauthenticated_public_bind_fails_closed(monkeypatch):
     project_root = Path(__file__).resolve().parents[2]
     captured: list[dict] = []
@@ -129,10 +118,6 @@ def test_h6_auth_default_is_loopback_and_unauthenticated_public_bind_fails_close
     assert len(captured) == 1, "H6-AUTH-001: rejected bind still started the server"
 
 
-@_xfail(
-    "H6-AUTH-001",
-    "the ASGI app has no trusted-host boundary before routing",
-)
 def test_h6_auth_rejects_untrusted_host_header_before_api_routing():
     from app.main import app
 
@@ -144,20 +129,12 @@ def test_h6_auth_rejects_untrusted_host_header_before_api_routing():
     assert response.status_code == 400, "H6-AUTH-001: untrusted Host reached API routing"
 
 
-@_xfail(
-    "H6-CODE-001",
-    "code_execute is exposed to the model by default without a sandbox provider",
-)
 def test_h6_code_execute_is_disabled_in_the_default_tool_surface():
     with _fixture_boundary():
         names = {tool["function"]["name"] for tool in openai_tools()}
     assert "code_execute" not in names, "H6-CODE-001: code_execute is enabled by default"
 
 
-@_xfail(
-    "H6-CODE-001",
-    "code_execute runs without a per-invocation approval guard",
-)
 @pytest.mark.asyncio
 async def test_h6_code_execute_without_approval_has_no_side_effect(tmp_path, monkeypatch):
     with _fixture_boundary():
@@ -199,10 +176,6 @@ async def test_h6_code_execute_without_approval_has_no_side_effect(tmp_path, mon
     assert approval_blocked, "H6-CODE-001: unapproved code invocation was not rejected"
 
 
-@_xfail(
-    "H6-CODE-001",
-    "the prlimit wrapper can read host files outside the Agent workspace",
-)
 @pytest.mark.asyncio
 async def test_h6_code_execute_cannot_read_a_synthetic_host_secret(tmp_path, monkeypatch):
     with _fixture_boundary():
@@ -256,10 +229,6 @@ async def test_h6_code_execute_cannot_read_a_synthetic_host_secret(tmp_path, mon
     assert host_read_blocked, "H6-CODE-001: host file read was not denied"
 
 
-@_xfail(
-    "H6-CODE-001",
-    "the prlimit wrapper has unrestricted loopback network access",
-)
 @pytest.mark.asyncio
 async def test_h6_code_execute_cannot_reach_a_loopback_service(tmp_path, monkeypatch):
     reached = asyncio.Event()
@@ -332,10 +301,6 @@ async def test_h6_code_execute_cannot_reach_a_loopback_service(tmp_path, monkeyp
     assert network_blocked, "H6-CODE-001: approved code retained loopback network access"
 
 
-@_xfail(
-    "H6-TRUST-001",
-    "web_open returns model-visible external content without an external_untrusted marker",
-)
 @pytest.mark.asyncio
 async def test_h6_trust_web_content_is_marked_external_untrusted(monkeypatch):
     with _fixture_boundary():
@@ -372,10 +337,6 @@ async def test_h6_trust_web_content_is_marked_external_untrusted(monkeypatch):
     )
 
 
-@_xfail(
-    "H6-TRUST-001",
-    "file_read returns file content without an external_untrusted marker",
-)
 @pytest.mark.asyncio
 async def test_h6_trust_file_content_is_marked_external_untrusted(tmp_path, monkeypatch):
     with _fixture_boundary():
@@ -405,10 +366,6 @@ async def test_h6_trust_file_content_is_marked_external_untrusted(tmp_path, monk
     )
 
 
-@_xfail(
-    "H6-TRUST-001",
-    "email_reply is treated as implicit authority for a persistent plan write",
-)
 @pytest.mark.asyncio
 async def test_h6_trust_email_content_is_not_implicit_write_authority():
     payload = {
@@ -448,10 +405,6 @@ async def test_h6_trust_email_content_is_not_implicit_write_authority():
     assert approval_blocked, "H6-TRUST-001: email-derived write did not require approval"
 
 
-@_xfail(
-    "H6-WEB-001",
-    "the DNS guard checks selected flags instead of rejecting every non-global target",
-)
 @pytest.mark.parametrize(
     "dns_cases",
     [
@@ -511,10 +464,16 @@ class _SyntheticPeerStream:
         return None
 
 
-class _RebindingClient:
-    async def get(self, url, *, params=None, follow_redirects=False):
-        del params, follow_redirects
-        request = httpx.Request("GET", url)
+@pytest.mark.asyncio
+async def test_h6_web_rejects_dns_rebinding_peer_mismatch(monkeypatch):
+    rejected = False
+    requests: list[httpx.Request] = []
+
+    def public_result(_host, port):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
         return httpx.Response(
             200,
             headers={"content-type": "text/plain"},
@@ -523,29 +482,28 @@ class _RebindingClient:
             extensions={"network_stream": _SyntheticPeerStream()},
         )
 
-
-@_xfail(
-    "H6-WEB-001",
-    "the validated DNS address is not pinned or compared with the connected peer",
-)
-@pytest.mark.asyncio
-async def test_h6_web_rejects_dns_rebinding_peer_mismatch(monkeypatch):
-    rejected = False
-
-    def public_result(_host, port):
-        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
-
     with _fixture_boundary():
         monkeypatch.setattr(web_security.socket, "getaddrinfo", public_result)
-        try:
-            await web_security.fetch_with_safe_redirects(
-                _RebindingClient(),
-                "http://rebind.invalid/",
-            )
-        except ValueError:
-            rejected = True
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            try:
+                await web_security.fetch_with_safe_redirects(
+                    client,
+                    "http://rebind.invalid/",
+                )
+            except ValueError:
+                rejected = True
 
     assert rejected, "H6-WEB-001: connected peer was not checked against validated DNS"
+    assert len(requests) == 1, "H6-WEB-001: rebinding fixture did not issue exactly one request"
+    assert requests[0].url.host == "93.184.216.34", (
+        "H6-WEB-001: request was not pinned to the validated numeric address"
+    )
+    assert requests[0].headers.get("host") == "rebind.invalid", (
+        "H6-WEB-001: pinned request lost the logical Host authority"
+    )
+    assert requests[0].extensions.get("sni_hostname") == "rebind.invalid", (
+        "H6-WEB-001: pinned request lost the logical TLS SNI identity"
+    )
 
 
 @pytest.mark.parametrize(
@@ -555,10 +513,6 @@ async def test_h6_web_rejects_dns_rebinding_peer_mismatch(monkeypatch):
         pytest.param("gzip", gzip.compress(b"A" * 8192), id="decompressed-size"),
     ],
 )
-@_xfail(
-    "H6-WEB-001",
-    "web responses are fully buffered and decompressed without byte ceilings",
-)
 @pytest.mark.asyncio
 async def test_h6_web_enforces_wire_and_decompressed_size_limits(
     monkeypatch,
@@ -567,19 +521,36 @@ async def test_h6_web_enforces_wire_and_decompressed_size_limits(
 ):
     rejected = False
 
-    async def allow_fixture_url(_url):
-        return None
+    async def allow_fixture_url(url):
+        return web_security.ResolvedTarget(
+            logical_url=url,
+            hostname="fixture.invalid",
+            authority="fixture.invalid",
+            addresses=(ipaddress.ip_address("93.184.216.34"),),
+        )
 
     async def handler(request):
         headers = {"content-type": "text/plain"}
         if encoding == "gzip":
             headers["content-encoding"] = "gzip"
-        return httpx.Response(200, headers=headers, content=body, request=request)
+        return httpx.Response(
+            200,
+            headers=headers,
+            content=body,
+            request=request,
+            extensions={
+                "network_stream": type(
+                    "FixturePeer",
+                    (),
+                    {"get_extra_info": lambda self, name: ("93.184.216.34", 443)},
+                )()
+            },
+        )
 
     with _fixture_boundary():
         monkeypatch.setattr(web_security, "validate_public_url", allow_fixture_url)
-        monkeypatch.setitem(settings.__dict__, "WEB_MAX_RESPONSE_BYTES", 1024)
-        monkeypatch.setitem(settings.__dict__, "WEB_MAX_DECOMPRESSED_BYTES", 2048)
+        monkeypatch.setattr(settings, "WEB_MAX_WIRE_BYTES", 1024)
+        monkeypatch.setattr(settings, "WEB_MAX_DECODED_BYTES", 2048)
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             try:
                 await web_security.fetch_with_safe_redirects(client, "https://fixture.invalid/")
@@ -590,10 +561,6 @@ async def test_h6_web_enforces_wire_and_decompressed_size_limits(
     assert rejected, f"H6-WEB-001: {limit_kind} response size limit was not enforced"
 
 
-@_xfail(
-    "H6-WEB-001",
-    "web_open uses substring matching and accepts application/notjson",
-)
 @pytest.mark.asyncio
 async def test_h6_web_uses_an_exact_content_type_allowlist(monkeypatch):
     with _fixture_boundary():
@@ -613,10 +580,6 @@ async def test_h6_web_uses_an_exact_content_type_allowlist(monkeypatch):
     assert "error" in result, "H6-WEB-001: non-allowlisted content type was parsed"
 
 
-@_xfail(
-    "H6-ENV-001",
-    "the allowlisted PATH is copied from the parent and the interpreter is resolved through it",
-)
 def test_h6_env_parent_path_cannot_replace_the_code_interpreter(tmp_path, monkeypatch):
     with _fixture_boundary():
         workspace = tmp_path / "workspace"
@@ -646,10 +609,6 @@ def test_h6_env_parent_path_cannot_replace_the_code_interpreter(tmp_path, monkey
     )
 
 
-@_xfail(
-    "H6-CONFIG-001",
-    ".env values accept newlines that inject additional assignments",
-)
 def test_h6_config_rejects_newlines_without_changing_the_env_file(tmp_path):
     rejected = False
     with _fixture_boundary():
@@ -693,10 +652,6 @@ def test_h6_config_atomic_temp_file_does_not_follow_symlinks(tmp_path):
     assert not env_is_symlink, "H6-CONFIG-001: .env update replaced the target with a symlink"
 
 
-@_xfail(
-    "H6-CONFIG-001",
-    ".env values are written without quoting and do not round-trip safely",
-)
 def test_h6_config_complex_values_round_trip_exactly(tmp_path):
     with _fixture_boundary():
         env_path = tmp_path / ".env"
@@ -706,10 +661,6 @@ def test_h6_config_complex_values_round_trip_exactly(tmp_path):
     assert parsed_value == value, "H6-CONFIG-001: complex .env value did not round-trip"
 
 
-@_xfail(
-    "H6-REDACT-001",
-    "Run tool arguments and model observations have no unified secret redaction",
-)
 def test_h6_redact_tool_trace_and_model_observation(monkeypatch):
     with _fixture_boundary():
         monkeypatch.setattr(settings, "OPENAI_API_KEY", SENTINEL)
@@ -725,10 +676,6 @@ def test_h6_redact_tool_trace_and_model_observation(monkeypatch):
     assert SENTINEL not in observation, "H6-REDACT-001: model observation exposed a secret"
 
 
-@_xfail(
-    "H6-REDACT-001",
-    "RunEvent payloads persist configured secret values verbatim",
-)
 @pytest.mark.asyncio
 async def test_h6_redact_run_event_payload_before_persistence(monkeypatch):
     with _fixture_boundary():
@@ -753,10 +700,6 @@ async def test_h6_redact_run_event_payload_before_persistence(monkeypatch):
     ), "H6-REDACT-001: persisted RunEvent payload exposed a secret"
 
 
-@_xfail(
-    "H6-REDACT-001",
-    "ContextSnapshot source manifests and Markdown projections persist configured secrets verbatim",
-)
 @pytest.mark.asyncio
 async def test_h6_redact_context_snapshot_manifest_and_markdown(tmp_path, monkeypatch):
     with _fixture_boundary():
@@ -809,10 +752,6 @@ async def test_h6_redact_context_snapshot_manifest_and_markdown(tmp_path, monkey
     )
 
 
-@_xfail(
-    "H6-REDACT-001",
-    "settings diagnostic error responses echo exception text without redaction",
-)
 @pytest.mark.asyncio
 async def test_h6_redact_settings_diagnostic_errors(monkeypatch):
     captured: HTTPException | None = None
@@ -822,6 +761,9 @@ async def test_h6_redact_settings_diagnostic_errors(monkeypatch):
         raise RuntimeError(f"synthetic provider error: {SENTINEL}")
 
     with _fixture_boundary():
+        # The redaction boundary is driven by configured credential values;
+        # do not rely on a test-only sentinel-name heuristic.
+        monkeypatch.setattr(settings, "OPENAI_API_KEY", SENTINEL)
         monkeypatch.setattr(settings_api, "test_smtp", fail_smtp)
         try:
             await settings_api.test_email_configuration(

@@ -10,6 +10,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.time import UTCInstant, canonical_utc, utc_now
+from app.core.execution_policy import (
+    code_execution_rejection,
+    current_code_execution_policy,
+)
+from app.core.redaction import (
+    REDACTED,
+    configured_secret_values,
+    redact_data,
+    redact_event_fields,
+    redact_text,
+)
+from app.core.trust import (
+    EXTERNAL_CONTENT_TOOL_NAMES,
+    authorize_side_effect,
+    mark_external_untrusted_result,
+)
 from app.db.uow import (
     DatabaseBusyError,
     commit as commit_uow,
@@ -838,6 +854,32 @@ def _canonical_request(
     return args, canonical_args, hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
+def _forbidden_secret_material(
+    raw_arguments: str,
+    canonical_args: dict[str, Any],
+    *,
+    tool_call_id: str | None,
+) -> str | None:
+    """Reject credentials and redaction placeholders before durable claim."""
+
+    canonical_text = json.dumps(
+        canonical_args,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    candidates = (raw_arguments, canonical_text, tool_call_id or "")
+    if any(REDACTED in candidate for candidate in candidates):
+        return "REDACTED_SECRET_REPLAY_FORBIDDEN"
+    if any(
+        secret in candidate
+        for secret in configured_secret_values()
+        for candidate in candidates
+    ):
+        return "CONFIGURED_SECRET_IN_TOOL_ARGUMENTS"
+    return None
+
+
 def _busy_result(exc: DatabaseBusyError) -> dict[str, Any]:
     result = exc.as_result()
     result.setdefault("ok", False)
@@ -874,7 +916,7 @@ async def _existing_result(
     if invocation.status == "committed":
         result: dict[str, Any] = {
             "ok": True,
-            "data": dict(invocation.result_payload or {}),
+            "data": redact_data(dict(invocation.result_payload or {})),
             "replayed": True,
             "status": "committed",
         }
@@ -919,7 +961,10 @@ async def _existing_result(
     if invocation.status in {"failed", "cancelled", "rejected"}:
         return {
             "ok": False,
-            "error": str((invocation.result_payload or {}).get("error") or "The invocation failed."),
+            "error": redact_text(
+                (invocation.result_payload or {}).get("error")
+                or "The invocation failed."
+            ),
             "error_code": (
                 "approval_rejected"
                 if invocation.status == "rejected"
@@ -955,14 +1000,14 @@ async def _linked_outbox_result(
     if statuses.intersection({"queued", "retry_pending"}):
         return True, {
             "ok": True,
-            "data": dict(invocation.result_payload or {}),
+            "data": redact_data(dict(invocation.result_payload or {})),
             "replayed": True,
             "status": "pending_delivery",
         }
     if statuses == {"delivered"}:
         return True, {
             "ok": True,
-            "data": dict(invocation.result_payload or {}),
+            "data": redact_data(dict(invocation.result_payload or {})),
             "replayed": True,
             "status": "committed",
         }
@@ -1227,6 +1272,7 @@ async def _persist_invocation_failure(
     ctx: ToolContext,
     error: str,
 ) -> bool:
+    safe_error = redact_text(error)
     await rollback_uow(ctx.db)
     result = await ctx.db.execute(
         update(ToolInvocation)
@@ -1238,7 +1284,7 @@ async def _persist_invocation_failure(
         )
         .values(
             status="failed",
-            result_payload={"error": error},
+            result_payload={"error": safe_error},
             claim_token=None,
             completed_at=utc_now(),
             version=ToolInvocation.version + 1,
@@ -1271,7 +1317,7 @@ async def _transition_owned_invocation(
         )
         .values(
             status=status,
-            result_payload=result_payload,
+            result_payload=redact_data(result_payload),
             claim_token=None,
             claimed_at=None,
             claim_expires_at=None,
@@ -1391,18 +1437,22 @@ async def _append_atomic_completion(
         )
         or 0
     ) + 1
-    event = RunEvent(
-        run_id=ctx.run_id,
-        sequence=next_sequence,
-        event_type="tool.completed",
-        event_key=f"tool:{ctx.tool_call_id}:completed" if ctx.tool_call_id else None,
-        summary=f"工具 {name} 完成",
-        payload={
+    event_summary, event_payload = redact_event_fields(
+        f"工具 {name} 完成",
+        {
             "tool_call_id": ctx.tool_call_id,
             "name": name,
             "result": {"ok": True, "data": data},
             "invocation_id": invocation_id,
         },
+    )
+    event = RunEvent(
+        run_id=ctx.run_id,
+        sequence=next_sequence,
+        event_type="tool.completed",
+        event_key=f"tool:{ctx.tool_call_id}:completed" if ctx.tool_call_id else None,
+        summary=event_summary,
+        payload=event_payload,
     )
     ctx.db.add(event)
     invocation = await _transition_owned_invocation(
@@ -1443,13 +1493,32 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
             "error_code": "unknown_tool",
             "retryable": False,
         }
+    # Capability availability is checked before argument handling or durable
+    # invocation claim creation.  Keep this pre-execution policy seam distinct
+    # from the external-untrusted authorization guard that H6-TRUST wires next.
+    if name == "code_execute" and not current_code_execution_policy().available:
+        return code_execution_rejection()
     try:
         args, canonical_args, request_digest = _canonical_request(tool, raw_arguments)
     except Exception as exc:
+        error = redact_text(f"{type(exc).__name__}: {exc}")
         return {
             "ok": False,
-            "error": f"{type(exc).__name__}: {exc}",
+            "error": error,
             "error_code": "invalid_arguments",
+            "retryable": False,
+        }
+    secret_reason = _forbidden_secret_material(
+        raw_arguments,
+        canonical_args,
+        tool_call_id=ctx.tool_call_id,
+    )
+    if secret_reason is not None:
+        return {
+            "ok": False,
+            "error": "Tool arguments cannot contain configured credentials or redacted placeholders.",
+            "error_code": "secret_material_forbidden",
+            "reason_code": secret_reason,
             "retryable": False,
         }
     if ctx.execution_mode == "read_only" and tool.effect_kind not in {
@@ -1543,6 +1612,82 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
         # released above before any external wait.
         invocation = None
 
+    if tool.effect_kind in {
+        ToolEffectKind.DATABASE_WRITE,
+        ToolEffectKind.EXTERNAL_WRITE,
+    }:
+        if (
+            invocation_id is None
+            or claim_token is None
+            or claim_version is None
+        ):  # pragma: no cover - every write effect is claimed above
+            raise RuntimeError("write-effect authority guard requires a durable invocation")
+        authority = await authorize_side_effect(
+            ctx.db,
+            owner_id=ctx.owner_id,
+            run_id=ctx.run_id,
+            tool_call_id=ctx.tool_call_id,
+            tool_name=name,
+            effect_kind=tool.effect_kind.value,
+            request_digest=request_digest,
+            canonical_args=canonical_args,
+            invocation_id=invocation_id,
+            claim_token=claim_token,
+            claim_version=claim_version,
+        )
+        if not authority.allowed:
+            if not authority.requires_approval:
+                error = "The durable authority chain is invalid for this side effect."
+                persisted = await _persist_invocation_failure(
+                    invocation_id,
+                    claim_token,
+                    claim_version,
+                    ctx,
+                    error,
+                )
+                if not persisted:
+                    return await _durable_claim_loss_result(
+                        invocation_id=invocation_id,
+                        request_digest=request_digest,
+                        ctx=ctx,
+                    )
+                return {
+                    "ok": False,
+                    "error": error,
+                    "error_code": "authority_invalid",
+                    "reason_code": authority.reason_code,
+                    "retryable": False,
+                }
+            approval_data = {
+                "approval_required": True,
+                "blocking": True,
+                "reason": (
+                    "External untrusted content cannot authorize this side effect "
+                    "without approval of the exact request."
+                ),
+                "reason_code": authority.reason_code,
+                "external_untrusted": authority.external_untrusted,
+                "source_run_ids": list(authority.source_run_ids),
+            }
+            await _transition_owned_invocation(
+                invocation_id=invocation_id,
+                claim_token=claim_token,
+                claim_version=claim_version,
+                status="pending_approval",
+                result_payload=approval_data,
+                ctx=ctx,
+            )
+            await commit_uow(ctx.db)
+            return {
+                "ok": True,
+                "data": approval_data,
+                "status": "pending_approval",
+                "invocation_id": invocation_id,
+            }
+        # Authority inspection is read-only. Release that snapshot before a
+        # handler enters its write UoW or stages an external outbox intent.
+        await _release_claim_read(ctx)
+
     event_guard = (
         serialize_event_write(ctx.run_id)
         if tool.effect_kind == ToolEffectKind.DATABASE_WRITE
@@ -1564,6 +1709,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
         data = await tool.handler(ctx, args)
         if "error" in data:
             error_code = str(data.get("error_code") or "tool_error")
+            safe_error = redact_text(str(data["error"]))
             if (
                 invocation_id is not None
                 and claim_token is not None
@@ -1575,7 +1721,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
                         claim_token=claim_token,
                         claim_version=claim_version,
                         status="needs_reconciliation",
-                        result_payload={"error": str(data["error"])},
+                        result_payload={"error": safe_error},
                         ctx=ctx,
                     )
                     await commit_uow(ctx.db)
@@ -1585,7 +1731,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
                         claim_token,
                         claim_version,
                         ctx,
-                        str(data["error"]),
+                        safe_error,
                     )
                     if not persisted:
                         return await _durable_claim_loss_result(
@@ -1595,7 +1741,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
                         )
             return {
                 "ok": False,
-                "error": str(data["error"]),
+                "error": safe_error,
                 "error_code": error_code,
                 **(
                     {"status": "needs_reconciliation", "uncertain_outcome": True}
@@ -1604,6 +1750,8 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
                 ),
                 "retryable": bool(data.get("retryable", False)),
             }
+        if name in EXTERNAL_CONTENT_TOOL_NAMES:
+            data = mark_external_untrusted_result(data)
         if data.get("approval_required"):
             # Proposal-style tools still expose and validate their full success
             # contract. Minimal guard-only approval responses intentionally do
@@ -1612,6 +1760,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
                 data = tool.output_model.model_validate(data).model_dump(mode="json")
             except Exception:
                 pass
+            data = redact_data(data)
             if (
                 invocation_id is not None
                 and claim_token is not None
@@ -1645,6 +1794,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
             ):
                 raise RuntimeError("only a claimed external-write tool may dispatch an outbox action")
             placeholder = tool.output_model.model_validate(data).model_dump(mode="json")
+            placeholder = redact_data(placeholder)
             await _transition_owned_invocation(
                 invocation_id=invocation_id,
                 claim_token=claim_token,
@@ -1689,6 +1839,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
             delivered_data = tool.output_model.model_validate(
                 dispatch_result.get("data") or {}
             ).model_dump(mode="json")
+            delivered_data = redact_data(delivered_data)
             return {
                 "ok": True,
                 "data": delivered_data,
@@ -1696,6 +1847,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
             }
 
         data = tool.output_model.model_validate(data).model_dump(mode="json")
+        data = redact_data(data)
         if invocation_id is not None:
             if claim_token is None or claim_version is None:
                 raise InvocationClaimLostError("claimed invocation has no ownership token")
@@ -1779,6 +1931,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
             await rollback_uow(ctx.db)
         return _busy_result(exc)
     except Exception as exc:
+        safe_error = redact_text(f"{type(exc).__name__}: {exc}")
         if (
             invocation_id is not None
             and claim_token is not None
@@ -1790,7 +1943,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
                     claim_token,
                     claim_version,
                     ctx,
-                    f"{type(exc).__name__}: {exc}",
+                    safe_error,
                 )
                 if not persisted:
                     return await _durable_claim_loss_result(
@@ -1804,7 +1957,7 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
             await rollback_uow(ctx.db)
         return {
             "ok": False,
-            "error": f"{type(exc).__name__}: {exc}",
+            "error": safe_error,
             "error_code": "tool_execution_failed",
             "retryable": False,
         }
@@ -1815,7 +1968,12 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
 
 
 def openai_tools() -> list[dict]:
-    return [tool.openai_schema() for tool in TOOLS]
+    policy = current_code_execution_policy()
+    return [
+        tool.openai_schema()
+        for tool in TOOLS
+        if tool.name != "code_execute" or policy.available
+    ]
 
 
 def tool_contracts() -> list[dict]:

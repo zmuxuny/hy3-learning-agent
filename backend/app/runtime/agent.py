@@ -10,6 +10,7 @@ from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.context.provenance import canonical_digest
 from app.core.config import settings
+from app.core.redaction import redact_data, redact_text
 from app.core.time import canonical_utc, utc_now
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow, flush as flush_uow, rollback as rollback_uow
@@ -143,6 +144,7 @@ def tool_timeout_seconds(call: dict) -> float:
 def _compact_tool_message(result: dict) -> str:
     """Keep model observations bounded without changing the persisted trace payload."""
     limit = settings.AGENT_TOOL_MESSAGE_CHAR_LIMIT
+    safe_result = redact_data(result)
 
     def compact(value):
         if isinstance(value, str):
@@ -153,11 +155,11 @@ def _compact_tool_message(result: dict) -> str:
             return {str(key): compact(item) for key, item in value.items()}
         return value
 
-    payload = json.dumps(compact(result), ensure_ascii=False, default=_json_default)
+    payload = json.dumps(compact(safe_result), ensure_ascii=False, default=_json_default)
     if len(payload) <= limit:
         return payload
     return json.dumps(
-        {"ok": result.get("ok", False), "truncated": True, "observation": payload[:limit]},
+        {"ok": safe_result.get("ok", False), "truncated": True, "observation": payload[:limit]},
         ensure_ascii=False,
     )
 
@@ -176,7 +178,8 @@ def _event_tool_arguments(raw_arguments: str) -> dict:
     try:
         value = json.loads(raw_arguments or "{}")
     except json.JSONDecodeError:
-        return {"raw": (raw_arguments or "")[:2000]}
+        return {"raw": redact_text(raw_arguments or "")[:2000]}
+    value = redact_data(value)
     encoded = json.dumps(value, ensure_ascii=False)
     if len(encoded) > 6000:
         return {"preview": encoded[:6000], "truncated": True}

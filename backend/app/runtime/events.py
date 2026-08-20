@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.redaction import install_redaction_filter, redact_data, redact_event_fields
 from app.core.time import canonical_utc
 from app.db.uow import (
     DEFAULT_RETRY_DELAYS,
@@ -24,6 +25,11 @@ _event_locks: WeakKeyDictionary = WeakKeyDictionary()
 # single database writer. Keep the wider lock SQLite-only; server databases can
 # continue writing unrelated runs concurrently.
 _sqlite_event_write_locks: WeakKeyDictionary = WeakKeyDictionary()
+
+# Logging configuration may add or replace handlers after this module loads.
+# The installed LogRecordFactory therefore provides the primary process-wide
+# boundary; logger/handler filters remain a second line of defense.
+install_redaction_filter()
 
 
 def _sqlite_event_write_lock() -> asyncio.Lock:
@@ -74,12 +80,13 @@ async def serialize_event_write(run_id: str) -> AsyncIterator[None]:
 
 def publish_stream_event(run_id: str, payload: dict) -> None:
     """Push a realtime event to this process's SSE subscribers without persisting it."""
+    safe_payload = redact_data(payload)
     queues = _subscribers.get(run_id)
     if not queues:
         return
     for queue in list(queues):
         try:
-            queue.put_nowait(payload)
+            queue.put_nowait(safe_payload)
         except asyncio.QueueFull:
             pass
 
@@ -115,6 +122,7 @@ async def emit_event(
     # Event append is a replay-safe short transaction.  It must not silently
     # become the commit boundary for unrelated caller mutations: a busy retry
     # rolls the failed append back before rebuilding only the RunEvent row.
+    safe_summary, safe_payload = redact_event_fields(summary, payload)
     if db.new or db.dirty or db.deleted:
         raise RuntimeError(
             "emit_event requires a clean session; commit the owning Unit of Work first"
@@ -144,8 +152,8 @@ async def emit_event(
                     sequence=int(result.scalar_one()) + 1,
                     event_type=event_type,
                     event_key=event_key,
-                    summary=summary,
-                    payload=payload or {},
+                    summary=safe_summary,
+                    payload=safe_payload,
                 )
                 db.add(event)
                 await commit_uow(db)
@@ -191,6 +199,7 @@ async def stage_event(
     SQLite writer (or an equivalent database transaction lock).
     """
 
+    safe_summary, safe_payload = redact_event_fields(summary, payload)
     if event_key is not None:
         existing = (await db.execute(
             select(RunEvent).where(
@@ -213,8 +222,8 @@ async def stage_event(
         sequence=next_sequence,
         event_type=event_type,
         event_key=event_key,
-        summary=summary,
-        payload=payload or {},
+        summary=safe_summary,
+        payload=safe_payload,
     )
     db.add(event)
     await flush_uow(db)

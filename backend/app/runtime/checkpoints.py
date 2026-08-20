@@ -4,8 +4,19 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.redaction import redact_data
+
 
 CHECKPOINT_SCHEMA_VERSION = 1
+
+
+def sanitize_checkpoint(value: dict[str, Any]) -> dict[str, Any]:
+    """Recursively redact a checkpoint immediately before persistence."""
+
+    sanitized = redact_data(value)
+    if not isinstance(sanitized, dict):  # pragma: no cover - dict input is preserved
+        raise TypeError("checkpoint redaction must preserve the object envelope")
+    return sanitized
 
 
 def normalize_checkpoint(
@@ -55,7 +66,7 @@ def normalize_checkpoint(
     ):
         if key in source:
             checkpoint[key] = source[key]
-    return checkpoint
+    return sanitize_checkpoint(checkpoint)
 
 
 def make_checkpoint(
@@ -91,7 +102,7 @@ def make_checkpoint(
     if identity:
         checkpoint.update(identity)
     checkpoint.update(extra)
-    return checkpoint
+    return sanitize_checkpoint(checkpoint)
 
 
 def pending_calls(checkpoint: dict[str, Any] | None) -> list[dict[str, Any]]:

@@ -1,7 +1,15 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
+from app.core.redaction import redact_data
 from app.core.time import UTCInstant
 
 
@@ -321,6 +329,15 @@ class AgentRunRead(APIModel):
     started_at: UTCInstant | None
     completed_at: UTCInstant | None
     created_at: UTCInstant
+
+    @field_serializer("pending_approval")
+    def serialize_pending_approval(
+        self,
+        value: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        """Redact the client projection without rewriting durable approval facts."""
+
+        return redact_data(value) if value is not None else None
 
 
 class RunApprovalRequest(BaseModel):

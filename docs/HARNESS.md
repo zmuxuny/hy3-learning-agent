@@ -1,12 +1,12 @@
 # Personal Learning Harness
 
-> 状态说明（2026-08-20）：本文描述产品目标，并区分已经验收的 H1–H5 边界与后续正常路径候选。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency 与 Context/Memory/Intervention 已完成，累计关闭 70 个缺陷 ID；矩阵剩余 17 个 open ID，下一门禁为 H6，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)；H6 完成前仍只建议受控 loopback 使用。
+> 状态说明（2026-08-20）：本文描述产品目标，并区分已经验收的 H1–H6 边界与后续门禁。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention 与应用安全边界已完成，累计关闭 77 个缺陷 ID；矩阵剩余 10 个 open ID，下一门禁为 H7，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
 
 ## 产品边界
 
-Learning Agent 的产品目标是个人本地部署或经过认证的个人服务器长期运行，不做账号、组织、租户或云端多用户平台。当前服务器认证尚未实现（H6-AUTH-001），所以现有版本只能绑定 loopback；`owner_id=local` 只是本地数据的稳定命名空间，不是认证机制。
+Learning Agent 的产品目标是个人本地部署或经过认证的个人服务器长期运行，不做账号、组织、租户或云端多用户平台。local 默认且只接受 loopback；高级 server 模式保护全部 API，但浏览器登录产品化与安装仍待 H7/H8。`owner_id=local` 只是本地数据的稳定命名空间，不是认证机制。
 
-Harness 的目标由四层共同实现：System Prompt 定义工作方式，ContextAssembler 选择证据，Function Calling Schema 声明可执行能力，后端 Guard 强制焦点、路径、时间和通知边界。H2 已验收统一 UoW、请求身份、effect 分类和外部副作用围栏，H4 已验收 Evidence/Competency scope 与 eligibility，H5 已验收 Context/Intervention 来源、身份与恢复；H6 的应用部署权限仍有缺口，不能用 Prompt 或页面行为代替后端约束。
+Harness 的目标由四层共同实现：System Prompt 定义工作方式，ContextAssembler 选择证据，Function Calling Schema 声明可执行能力，后端 Guard 强制焦点、路径、时间和通知边界。H2 已验收统一 UoW、请求身份、effect 分类和外部副作用围栏，H4 已验收 Evidence/Competency scope 与 eligibility，H5 已验收 Context/Intervention 来源、身份与恢复，H6 已验收部署认证、外部来源 authority 与能力可用性；不能用 Prompt 或页面行为代替这些后端约束。
 
 ## 当前正常路径演示闭环（非耐久保证）
 
@@ -30,7 +30,7 @@ Harness 的目标由四层共同实现：System Prompt 定义工作方式，Cont
 - `backend/app/runtime/agent.py`：多轮 Function Calling、结果回填、耐久 retry、取消、SSE 事件和 Session 压缩。模型/压缩/child cancel 等等待不持有 writer；模型/工具前提交版本化 checkpoint，最终消息/output/终态/Queue successor 原子收口。
 - `backend/app/runtime/state.py`：统一主/子 Run 的 claim、lease heartbeat、checkpoint、审批、steer、retry、finalize、cancel 与 restart reconcile；无法证明的旧状态进入 `needs_reconciliation`。
 - `backend/app/runtime/tasks.py`：按 `run_id` 跟踪当前进程内的主 Run、心跳和子 Run，使停止操作取消真实协程；stable wake key 避免审批 task 收尾窗口丢唤醒或重复启动。
-- `backend/app/tools/registry.py`：向 Hy3 注入工具 Schema 并校验成功结果；48 个工具公开并执行 `effect_kind`，以 stable action key、canonical request digest、CAS claim token/version 和 typed retry/conflict 强制幂等。Evidence/Competency 输入输出使用具名严格嵌套模型，并在每层拒绝额外字段。
+- `backend/app/tools/registry.py`：维护 48 个已安装工具契约并按 policy 生成模型 surface；当前无 sandbox Provider，因此默认只暴露 47 个。registry 校验成功结果、执行 `effect_kind` 与 external-untrusted authority，以 stable action key、canonical request digest、CAS claim token/version 和 typed retry/conflict 强制幂等。Evidence/Competency 输入输出使用具名严格嵌套模型，并在每层拒绝额外字段。
 - `backend/app/runtime/scheduler.py`：先用确定性规则发现到期复习、24 小时内任务和长期停滞，再为有价值的候选启动 Hy3。
 
 ## 分层上下文与记忆
@@ -53,9 +53,9 @@ Harness 的目标由四层共同实现：System Prompt 定义工作方式，Cont
 
 - 计划焦点 Run 不能读取或修改其他计划的私有数据；Competency edge/link、Evidence association 与 Context provenance 均从数据库解析真实作用域，不能依赖 Prompt 或 relation 标签授权。
 - 文件工具只能访问 `data/workspace/`；路径穿越会被拒绝。
-- Python/Bash 运行有工作目录、环境、时间和输出限制，但当前是**有界进程，不是安全容器**，只适合个人可信代码。
-- Web 请求已有初步 HTTP(S)/地址限制，但 DNS rebinding、实际 peer、响应大小和 Content-Type 边界尚未关闭（H6-WEB-001）。
-- Web 搜索通过可替换的 Provider 接口执行；旧实现会在 URL 层重新检查重定向，但没有 pin/复核实际连接 peer，也缺 wire/decompressed size 与精确 Content-Type 边界（H6-WEB-001），不能据此宣称 SSRF 边界完整。
+- 当前构建没有真实 sandbox Provider，Python/Bash `code_execute` 不进入模型 surface，直接调用与旧 outbox 恢复也失败关闭。内部有界 runner 使用绝对解释器和固定最小环境，但不是支持的安全容器能力。
+- Web 请求每跳固定已验证的公有地址，保留 Host/SNI 并复核 peer；wire/decompressed bytes、总 deadline、encoding 与精确 Content-Type 分别受限。
+- Web 搜索通过可替换的 Provider 接口执行；搜索和文件读取都标记 `external_untrusted`，其内容不能直接授权数据库写、外部通知或高风险能力。
 - 站内通知是默认渠道，邮箱与 VAPID Web Push 是可选增强。H2 让 SMTP/Web Push delivery 先落 outbox；H5 让所有 delivery 引用唯一 Intervention/canonical message，并使活动 Run target、IMAP ack 与失败冷却耐久可恢复。
 - 计划、任务、策展资源、测验、日历和文件写入生成 `Operation` 与逆向 Patch。H2 已使 Operation undo 使用 CAS，workspace undo 通过 durable outbox 与 forward hash 防止覆盖后续用户修改；H4 进一步让 Evidence undo 追加控制事实，并以 graph dependency/revision 和 `RESTRICT` FK 防止静默级联。
 - 用户消息编辑保存带版本/hash 的 Revision，沿 verified provenance closure 失效下游 Run、Memory、Summary、Snapshot 与 handoff，并用 generation fence 让并发 Context/压缩提交失败；无法证明的 legacy 来源保守失效而不猜测。
@@ -72,4 +72,4 @@ H4 增加 revision 4 与 Evidence/Competency 事实协议：Evidence、Artifact 
 
 当前版本已经形成真实可运行的个人学习 Harness 原型：计划、资源、执行、证据、检查、记忆和主动提醒均有正常路径能力；SMTP/IMAP 代码、连续 Session 路由和诊断接口已经存在，真实供应商收发仍依赖本机邮箱凭据。它不是通用操作系统 Agent，也不宣称拥有容器级代码隔离、任意宿主目录权限或多节点分布式调度能力。
 
-截至 2026-08-20，H1–H5 已完成，累计关闭 70 个 defect ID；H4 的 41 条 baseline/41 个 mutant、10k Evidence 投影与 H5 的 10k 消息、Context 来源图、Intervention/mail、备份恢复和故障注入均已通过。应用部署边界、移动导航和发布工程仍按 H6–H8 修复；没有真实 SMTP/IMAP/VAPID 验证，外部安装、连续使用和 7 日留存必须由真人记录验收。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。
+截至 2026-08-20，H1–H6 已完成，累计关闭 77 个 defect ID；H4 的 41 条 baseline/41 个 mutant、10k Evidence 投影，H5 的 10k 消息、Context 来源图、Intervention/mail，以及 H6 的部署/外部信任/Web/配置/脱敏协议均已通过。移动导航和发布工程仍按 H7/H8 修复；没有真实 SMTP/IMAP/VAPID 验证，外部安装、连续使用和 7 日留存必须由真人记录验收。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。

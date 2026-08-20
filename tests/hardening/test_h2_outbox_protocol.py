@@ -7,7 +7,9 @@ import threading
 import pytest
 from sqlalchemy import select
 
+import app.core.execution_policy as execution_policy
 import app.outbox as outbox
+import app.tools.registry as tool_registry
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
 from app.db.uow import rollback as rollback_uow
@@ -31,6 +33,37 @@ from app.outbox import (
 )
 from app.tools import ToolContext, execute_tool
 import app.tools.workspace as workspace_tools
+
+
+def _enable_test_code_execution_provider(monkeypatch) -> None:
+    """Install an explicit fake capability for subprocess protocol tests only."""
+
+    policy = execution_policy.CodeExecutionPolicy(
+        deployment_mode="local",
+        available=True,
+        provider_id="test-only-fake-provider",
+        policy_version="test-only-code-provider-v1",
+        reason_code="TEST_ONLY_PROVIDER",
+    )
+
+    def current_policy(**_kwargs):
+        return policy
+
+    monkeypatch.setattr(
+        execution_policy,
+        "current_code_execution_policy",
+        current_policy,
+    )
+    monkeypatch.setattr(
+        tool_registry,
+        "current_code_execution_policy",
+        current_policy,
+    )
+    monkeypatch.setattr(
+        workspace_tools,
+        "current_code_execution_policy",
+        current_policy,
+    )
 
 
 async def _create_run() -> str:
@@ -296,6 +329,7 @@ async def test_revoked_push_subscription_is_cancelled_without_delivery(monkeypat
 
 @pytest.mark.asyncio
 async def test_targeted_subprocess_dispatch_reuses_terminal_receipt(monkeypatch):
+    _enable_test_code_execution_provider(monkeypatch)
     run_id = await _create_run()
     calls = 0
 
@@ -444,6 +478,7 @@ async def test_startup_fences_interrupted_transport_without_resend(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_targeted_dispatch_waits_for_active_worker_receipt(monkeypatch):
+    _enable_test_code_execution_provider(monkeypatch)
     run_id = await _create_run()
     entered = threading.Event()
     release = threading.Event()

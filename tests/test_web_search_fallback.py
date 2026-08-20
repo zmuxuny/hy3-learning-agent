@@ -117,7 +117,12 @@ async def test_bing_provider_parses_results_and_skips_ads(monkeypatch):
 
     async def fake_fetch(client, url, *, params=None):
         request = httpx.Request("GET", url, params=params)
-        return httpx.Response(200, text=html, request=request), 0
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html; charset=utf-8"},
+            text=html,
+            request=request,
+        ), 0
 
     monkeypatch.setattr(providers, "fetch_with_safe_redirects", fake_fetch)
     results = await BingSearchProvider().search("asyncio", 5)

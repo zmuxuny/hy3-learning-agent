@@ -1,9 +1,11 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.deployment import DeploymentPolicy
 from app.version import APPLICATION_VERSION
 
 
@@ -22,6 +24,11 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEFAULT_OWNER_ID: str = "local"
     DEFAULT_TIMEZONE: str = "Asia/Shanghai"
+
+    DEPLOYMENT_MODE: Literal["local", "server"] = "local"
+    SERVER_AUTH_TOKEN: SecretStr = SecretStr("")
+    SERVER_PUBLIC_ORIGIN: str = ""
+    SERVER_SESSION_TTL_SECONDS: int = Field(default=28_800, ge=300, le=86_400)
 
     DATABASE_URL: str = f"sqlite+aiosqlite:///{PROJECT_ROOT / 'data' / 'learning_companion.db'}"
 
@@ -83,19 +90,37 @@ class Settings(BaseSettings):
     VAPID_PRIVATE_KEY: str = ""
     VAPID_SUBJECT: str = "mailto:learner@example.com"
 
-    WEB_SEARCH_TIMEOUT_SECONDS: int = Field(default=12, ge=3, le=60)
     WEB_SEARCH_PROVIDER: str = "duckduckgo"
     WEB_SEARCH_FALLBACK_PROVIDER: str = "bing"
     WEB_MAX_REDIRECTS: int = Field(default=5, ge=0, le=10)
-    WEB_ALLOW_SYNTHETIC_DNS: bool = True
+    WEB_MAX_WIRE_BYTES: int = Field(default=2_000_000, ge=1_024, le=50_000_000)
+    WEB_MAX_DECODED_BYTES: int = Field(default=4_000_000, ge=1_024, le=100_000_000)
+    WEB_TOTAL_DEADLINE_SECONDS: int = Field(default=20, ge=1, le=120)
     TOOL_EXECUTION_TIMEOUT_SECONDS: int = Field(default=10, ge=1, le=60)
     TOOL_OUTPUT_LIMIT: int = Field(default=12000, ge=1000, le=100000)
+    CODE_SANDBOX_PROVIDER: str = Field(
+        default="none",
+        min_length=1,
+        max_length=80,
+        pattern=r"^[a-z][a-z0-9_-]*$",
+    )
 
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    @model_validator(mode="after")
+    def validate_runtime_boundary(self) -> "Settings":
+        if self.WEB_MAX_DECODED_BYTES < self.WEB_MAX_WIRE_BYTES:
+            raise ValueError("WEB_MAX_DECODED_BYTES must be at least WEB_MAX_WIRE_BYTES")
+        DeploymentPolicy.from_settings(self)
+        return self
+
+    @property
+    def deployment_policy(self) -> DeploymentPolicy:
+        return DeploymentPolicy.from_settings(self)
+
     @property
     def cors_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        return list(self.deployment_policy.cors_origins)
 
 
 @lru_cache

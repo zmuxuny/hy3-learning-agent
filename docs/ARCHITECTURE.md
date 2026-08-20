@@ -1,6 +1,6 @@
 # 主动 Agent 与上下文架构
 
-> 状态说明（2026-08-20）：本文描述目标架构，并明确 develop 上已经验收的边界。H1–H5 已完成迁移/UTC/备份、事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency 与 Context/Memory/Intervention；累计关闭 70 个缺陷 ID，矩阵剩余 17 个 open ID，下一门禁为 H6，M15–M20 继续冻结。应用部署边界、完整前端与发布工程仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-20）：本文描述目标架构，并明确 develop 上已经验收的边界。H1–H6 已完成迁移/UTC/备份、事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention 与应用安全边界；累计关闭 77 个缺陷 ID，矩阵剩余 10 个 open ID，下一门禁为 H7，M15–M20 继续冻结。完整前端与发布工程仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
 
 阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断全部门禁已经满足。H0 建立的失败基线会在对应门禁修复后删除 xfail；当前边界为：
 
@@ -8,7 +8,8 @@
 - Runtime：H3-RUN-001–011 已关闭；主/子 Run 统一使用版本化 checkpoint、lease/version fence、审批事实、耐久 retry/预算和原子终态/Queue/父投影。
 - Evidence / Competency：H1-TIME-001/002 与 H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002 已关闭；完整账本、追加式控制事实、Artifact snapshot、scope-aware graph 与严格工具 Schema 已验收。
 - Context / Intervention：H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002、H5-PRO-001–003 已关闭；来源图、generation fence、typed blocks、逻辑 Intervention、mail job 与 ProactiveDecision 已验收。
-- 安全与 UI：H6-*、H7-UI-001–006。当前只允许受控 loopback Demo，不能作为无认证服务器或不可信代码沙箱。
+- 安全：H6-AUTH/CODE/TRUST/WEB/ENV/CONFIG/REDACT 均已关闭；local 默认 loopback，server API 必须认证，外部来源不能自行获得写权限，没有 sandbox Provider 时 `code_execute` 不可用。
+- UI：H7-UI-001–006 仍 open；浏览器登录体验、移动导航和发布资产尚未验收。
 
 ## 1. 总体架构
 
@@ -203,7 +204,9 @@ run.cancelled
 
 工具运行还维护每个 Run 独立的失败熔断器：同一工具连续失败两次后，本轮不再把该工具暴露给 Hy3，避免网络或依赖故障耗尽全部工具轮次；其他能力仍可继续使用，下一次 Run 会重新尝试。
 
-目标契约：Web 工具对初始 URL、每次重定向和实际连接 peer 执行 SSRF 校验，并限制 wire/decompressed bytes 与精确 Content-Type。旧实现未 pin/复核 peer，接受部分 non-global 地址且无响应上限（H6-WEB-001）；修复前不能把当前校验描述为完整安全边界。
+Web 工具对初始 URL 和每次重定向先解析全部地址并拒绝任一 non-global 结果，再用选定数值 IP 发包、保留逻辑 Host/TLS SNI 并复核实际连接 peer。响应按 raw stream 独立限制 wire/decoded bytes，只接受 identity/gzip、总 deadline 和精确 MIME allowlist；搜索 Provider 在解析前进一步要求精确 HTML MIME。Web/File 返回会写入耐久 `external_untrusted` marker，后续写操作不能把模型看到的内容当作授权。
+
+部署边界由 `DeploymentPolicy + DeploymentBoundaryMiddleware` 强制。local 模式的启动参数与 ASGI server scope 都必须是 loopback；server 模式需要强 bearer token、精确 HTTPS public origin 和一致 CORS。全部 `/api/v1` 需要 bearer 或签名会话，Cookie 写请求还需 Origin 与双提交 CSRF。高风险能力是否可用由 `execution_policy` 决定，而不是由 System Prompt 或前端隐藏；当前没有 sandbox Provider，因此 `code_execute` 在模型、registry 和 outbox 三层关闭。统一 redaction 在 RunEvent、checkpoint/审批投影、模型观察、Context/磁盘投影、诊断错误和日志边界执行。
 
 学习资源采用两阶段协议：`web_search / web_open` 负责发现与正文核验，`resource_save` 才把 Agent 明确选择的课程、教程、实验、学习路径或参考资料写入计划。保存项包含平台、类型、难度、语言、核验摘要和适配理由，并生成可撤销 `Operation`；原始搜索结果不等同于课程资源。
 
