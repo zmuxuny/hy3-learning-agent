@@ -9,9 +9,24 @@ from app.db.database import get_db
 from app.db.uow import commit as commit_uow
 from app.models import AgentRun, LearningResource, Operation, Plan, QueuedMessage
 from app.runtime.state import NONTERMINAL_RUN_STATUSES
-from app.schemas import LearningResourceRead, PlanArchiveUpdate, PlanCreate, PlanRead, TaskRead, TaskUpdate
+from app.schemas import (
+    CompetencyGraphOutput,
+    EvidenceListOutput,
+    LearningResourceRead,
+    PlanArchiveUpdate,
+    PlanCreate,
+    PlanRead,
+    TaskRead,
+    TaskUpdate,
+)
 from app.services import plans as plan_service
-from app.services.evidence import build_plan_evidence_state
+from app.services.competencies import graph_for_plan
+from app.services.competency_protocol import graph_revision
+from app.services.evidence import (
+    build_plan_evidence_state,
+    list_observations,
+    observation_dict,
+)
 
 
 router = APIRouter()
@@ -47,6 +62,36 @@ async def read_plan_evidence(plan_id: int, db: AsyncSession = Depends(get_db)):
     if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Plan not found")
     return await build_plan_evidence_state(db, settings.DEFAULT_OWNER_ID, plan_id)
+
+
+@router.get("/{plan_id}/competencies", response_model=CompetencyGraphOutput)
+async def read_plan_competencies(plan_id: int, db: AsyncSession = Depends(get_db)):
+    plan = await db.get(Plan, plan_id)
+    if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    graph = await graph_for_plan(db, settings.DEFAULT_OWNER_ID, plan_id)
+    graph["revision"] = await graph_revision(db, settings.DEFAULT_OWNER_ID)
+    return graph
+
+
+@router.get("/{plan_id}/evidence-observations", response_model=EvidenceListOutput)
+async def read_plan_evidence_observations(
+    plan_id: int,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+):
+    plan = await db.get(Plan, plan_id)
+    if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    if limit < 1 or limit > 200:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 200")
+    observations = await list_observations(
+        db,
+        settings.DEFAULT_OWNER_ID,
+        plan_id=plan_id,
+        limit=limit,
+    )
+    return {"observations": [observation_dict(item) for item in observations]}
 
 
 @router.get("/{plan_id}", response_model=PlanRead)

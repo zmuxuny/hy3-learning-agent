@@ -26,7 +26,7 @@ a trusted TLS-terminating proxy must therefore forward the original scheme.
 The static application shell is public, but it contains no user data;
 all data requests remain authenticated. The current frontend does not yet
 provide a polished server login screen, so server deployment remains an
-advanced setup until the H7/H8 product and release gates are complete.
+advanced setup until the H8 product and release gate is complete.
 
 Never expose local mode through port forwarding or a reverse proxy. In server
 mode, terminate TLS at a trusted proxy, preserve the exact public Host header,

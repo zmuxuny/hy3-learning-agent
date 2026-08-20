@@ -13,10 +13,21 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { useRoute, useRouter } from 'vue-router';
+import { useInboxStore } from '../stores/inbox.js';
+import { usePlanStore } from '../stores/plan.js';
+import { useSessionStore } from '../stores/session.js';
+import { useSettingsStore } from '../stores/settings.js';
+import { useShellStore } from '../stores/shell.js';
 import { isRunBlocking, isRunStreamable } from '../runState.js';
 
-const store = useWorkspaceStore();
+const route = useRoute();
+const router = useRouter();
+const inbox = useInboxStore();
+const planStore = usePlanStore();
+const sessionStore = useSessionStore();
+const settings = useSettingsStore();
+const shell = useShellStore();
 const editingSessionId = ref(null);
 const sessionTitle = ref('');
 const sessionTitleInput = ref(null);
@@ -25,14 +36,14 @@ const searchOpen = ref(false);
 const searchQuery = ref('');
 const searchInput = ref(null);
 const displayedSessions = computed(() => (
-  (showArchivedSessions.value ? store.archivedSessions : store.sessions).filter((session) => (
+  (showArchivedSessions.value ? sessionStore.archivedSessions : sessionStore.sessions).filter((session) => (
     !searchQuery.value.trim()
     || `${session.title} ${sessionMeta(session)}`.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
   ))
 ));
 const unreadBySession = computed(() => {
   const counts = {};
-  for (const item of store.notifications) {
+  for (const item of inbox.notifications) {
     if (item.session_id && !item.read_at) {
       counts[item.session_id] = (counts[item.session_id] || 0) + 1;
     }
@@ -43,10 +54,11 @@ const navigation = [
   { id: 'plans', label: '学习计划', icon: MapIcon },
   { id: 'inbox', label: '收件箱', icon: BellIcon },
   { id: 'memory', label: '学习记忆', icon: CircleStackIcon },
+  { id: 'settings', label: '设置', icon: CogIcon },
 ];
 
 const heartbeatLabel = computed(() => {
-  const status = store.schedulerStatus;
+  const status = settings.schedulerStatus;
   if (!status?.enabled) return '后台检查已关闭';
   if (status.paused) return '后台主动检查已暂停';
   if (status.active) return '正在主动检查学习状态';
@@ -56,7 +68,7 @@ const heartbeatLabel = computed(() => {
 });
 
 function sessionMeta(session) {
-  const plan = [...store.plans, ...store.archivedPlans].find((item) => item.id === session.plan_id);
+  const plan = planStore.allPlans.find((item) => item.id === session.plan_id);
   if (plan) return plan.title;
   return session.message_count > 1 ? `${session.message_count} 条消息` : '全局对话';
 }
@@ -75,7 +87,7 @@ async function beginRename(session) {
 
 async function saveRename(session) {
   const title = sessionTitle.value.trim();
-  if (title && title !== session.title) await store.renameSession(session.id, title);
+  if (title && title !== session.title) await sessionStore.renameSession(session.id, title);
   editingSessionId.value = null;
 }
 
@@ -98,25 +110,25 @@ async function toggleSearch() {
 <template>
   <aside class="sidebar">
     <div class="sidebar-heading">
-      <button class="brand" title="返回学习对话" @click="store.openView('home')">
+      <button class="brand" title="返回学习对话" @click="router.push({ name: 'home' })">
         <strong>Learning Agent</strong>
       </button>
       <button :class="['sidebar-utility', { active: searchOpen }]" title="搜索对话" @click="toggleSearch"><MagnifyingGlassIcon /></button>
-      <button class="sidebar-utility" title="打开学习收件箱" @click="store.openView('inbox')"><BellIcon /></button>
+      <button class="sidebar-utility" title="打开学习收件箱" @click="router.push({ name: 'inbox' })"><BellIcon /></button>
     </div>
     <label v-if="searchOpen" class="sidebar-search">
       <MagnifyingGlassIcon />
       <input ref="searchInput" v-model="searchQuery" placeholder="搜索对话" @keydown.esc="toggleSearch" />
     </label>
 
-    <button class="new-run" @click="store.startNewConversation">
+    <button class="new-run" @click="shell.startNewConversation">
       <PencilSquareIcon /> 新对话
     </button>
 
     <nav class="nav-list">
       <button
-        :class="['nav-item', 'mobile-conversation-nav', { active: store.activeView === 'home' }]"
-        @click="store.openView('home')"
+        :class="['nav-item', 'mobile-conversation-nav', { active: ['home', 'session'].includes(route.name) }]"
+        @click="router.push({ name: 'home' })"
       >
         <ChatBubbleLeftRightIcon />
         <span>对话</span>
@@ -124,27 +136,27 @@ async function toggleSearch() {
       <button
         v-for="item in navigation"
         :key="item.id"
-        :class="['nav-item', { active: store.activeView === item.id }]"
-        @click="store.openView(item.id)"
+        :class="['nav-item', { active: route.name === item.id || (item.id === 'plans' && ['plan', 'archives'].includes(route.name)) || (item.id === 'inbox' && route.name === 'inbox-intervention') }]"
+        @click="router.push({ name: item.id })"
       >
         <component :is="item.icon" />
         <span>{{ item.label }}</span>
-        <em v-if="item.id === 'inbox' && store.unreadCount">{{ store.unreadCount }}</em>
+        <em v-if="item.id === 'inbox' && inbox.unreadCount">{{ inbox.unreadCount }}</em>
       </button>
     </nav>
 
-    <section class="sidebar-group" v-if="store.activePlans.length">
+    <section class="sidebar-group" v-if="planStore.activePlans.length">
       <div class="section-title">置顶计划</div>
       <div
-        v-for="plan in store.activePlans.slice(0, 3)"
+        v-for="plan in planStore.activePlans.slice(0, 3)"
         :key="plan.id"
         class="side-plan-row"
       >
-        <button class="side-row" @click="store.selectPlan(plan.id)">
+        <button class="side-row" @click="shell.selectPlan(plan.id)">
           <MapIcon />
           <span><strong>{{ plan.title }}</strong><small>{{ Math.round(plan.progress * 100) }}% 完成</small></span>
         </button>
-        <button class="side-plan-archive" title="归档计划" @click="store.setPlanArchived(plan.id, true)">
+        <button class="side-plan-archive" title="归档计划" @click="shell.setPlanArchived(plan.id, true)">
           <ArchiveBoxArrowDownIcon />
         </button>
       </div>
@@ -154,17 +166,17 @@ async function toggleSearch() {
       <div class="section-title session-section-title">
         <span>{{ showArchivedSessions ? '已归档对话' : '对话' }}</span>
         <button @click="showArchivedSessions = !showArchivedSessions">
-          {{ showArchivedSessions ? '返回' : `归档 ${store.archivedSessions.length || ''}` }}
+          {{ showArchivedSessions ? '返回' : `归档 ${sessionStore.archivedSessions.length || ''}` }}
         </button>
       </div>
       <div
         v-for="session in displayedSessions"
         :key="session.id"
-        :class="['session-row', { active: store.activeSessionId === session.id }]"
+        :class="['session-row', { active: sessionStore.activeSessionId === session.id }]"
         role="button"
         tabindex="0"
-        @click="store.selectSession(session)"
-        @keydown.enter="store.selectSession(session)"
+        @click="shell.selectSession(session)"
+        @keydown.enter="shell.selectSession(session)"
       >
         <ChatBubbleLeftRightIcon class="session-icon" />
         <form
@@ -205,7 +217,7 @@ async function toggleSearch() {
           <button v-if="!session.archived_at" title="重命名对话" @click="beginRename(session)"><PencilIcon /></button>
           <button
             :title="session.archived_at ? '恢复对话' : '归档对话'"
-            @click="store.setSessionArchived(session.id, !session.archived_at)"
+            @click="shell.setSessionArchived(session.id, !session.archived_at)"
           >
             <component :is="session.archived_at ? ArrowUturnLeftIcon : ArchiveBoxArrowDownIcon" />
           </button>
@@ -217,14 +229,14 @@ async function toggleSearch() {
     </section>
 
     <div class="sidebar-footer">
-      <button class="agent-status" @click="store.triggerHeartbeat">
+      <button class="agent-status" @click="shell.triggerHeartbeat">
         <span class="agent-status-icon"><BoltIcon /></span>
         <span><strong>检查学习进度</strong><small>{{ heartbeatLabel }}</small></span>
         <i></i>
       </button>
-      <button class="profile-card" v-if="store.profile" @click="store.openView('settings')">
-        <div class="avatar">{{ store.profile.level }}</div>
-        <span><strong>个人设置</strong><small>Lv.{{ store.profile.level }} · {{ store.profile.xp }} XP</small></span>
+      <button class="profile-card" v-if="settings.profile" @click="router.push({ name: 'settings' })">
+        <div class="avatar">{{ settings.profile.level }}</div>
+        <span><strong>个人设置</strong><small>Lv.{{ settings.profile.level }} · {{ settings.profile.xp }} XP</small></span>
         <CogIcon />
       </button>
     </div>

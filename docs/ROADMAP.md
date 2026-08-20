@@ -1,6 +1,6 @@
 # 开发路线图
 
-> 状态口径（2026-08-20）：M0–M12 的勾选是对应历史版本“代码路径/正常路径曾完成”的记录，不是当前 `develop` 的完整硬化或发布验收。H1–H6 已通过新的硬化实现和回归，累计关闭 77 个缺陷 ID、剩余 10 个 open ID，下一门禁是 H7；当前事实以 [`STATUS.md`](STATUS.md) 和 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准，历史勾选不能关闭仍在 H7/H8 登记的缺陷。
+> 状态口径（2026-08-21）：M0–M12 的勾选是对应历史版本“代码路径/正常路径曾完成”的记录，不是当前 `develop` 的完整硬化或发布验收。H1–H7 已通过新的硬化实现和回归，累计关闭 83 个缺陷 ID、剩余 4 个 open ID，下一门禁是 H8；当前事实以 [`STATUS.md`](STATUS.md) 和 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准，历史勾选不能关闭仍在 H8 登记的缺陷。
 
 ## 项目管理规则
 
@@ -177,13 +177,13 @@
 
 > 本节是 v1.1.1 发布时的实现记录。2026-08-18 复审已经发现其中若干长期运行假设不成立；对应项目必须在 H0 中重新建立失败基线，不能只凭历史勾选关闭。
 
-- [x] 历史正常路径：Session、Plan、Run、Proposal 与 Notification 生命周期。H3-RUN-001–007 和 H5-MAIL-001 已关闭；H7-UI-003 仍 open。
-- [x] 历史正常路径：连续 Session 队列与来源元数据。H3-RUN-004/006/007 和 H5-INT-001 已关闭；H7-UI-004/005 仍 open。
+- [x] 历史正常路径：Session、Plan、Run、Proposal 与 Notification 生命周期。H3-RUN-001–007、H5-MAIL-001 与 H7-UI-003 已关闭。
+- [x] 历史正常路径：连续 Session 队列与来源元数据。H3-RUN-004/006/007、H5-INT-001 与 H7-UI-004/005 已关闭。
 - [x] 历史正常路径：提醒 Session 投影、收件箱聚合和候选冷却。H5 已用 Intervention、InboundMailJob 与 ProactiveDecision 关闭复审缺口。
 - [x] 历史正常路径：计划完成、提交/测验终态和撤销。H2-TXN-004 与 H4-EVID-002–004、H4-COMP-006 均已关闭。
 - [x] 历史正常路径：Context scope、消息编辑与摘要。H5 已用 typed provenance、generation fence、完整分块与 snapshot blocks 关闭 H5-CTX-001–012。
-- [x] 历史正常路径：子 Agent、SQLite、设置与移动导航。H2-TXN-009、H3-RUN-008–011、H6-CONFIG-001 与 H6-REDACT-001 已关闭；H7-UI-001 仍 open。
-- [x] 历史验证记录：126 项 pytest、生产构建和 23 状态浏览器回归曾通过；H0-COV-001 已由 H4 的 41 baseline + 41 mutant 关闭，但 H7-UI-001 仍证明历史数量不能作为当前冷启动浏览器正确性证据。
+- [x] 历史正常路径：子 Agent、SQLite、设置与移动导航。H2-TXN-009、H3-RUN-008–011、H6-CONFIG-001/H6-REDACT-001 与 H7-UI-001 已关闭。
+- [x] 历史验证记录：旧 126 项 pytest、生产构建和 23 状态浏览器回归仅是历史证据；H4 已用 41 baseline + 41 mutant 关闭 H0-COV-001，H7 又用独立临时库和首次导航前设 viewport 的五宽 Chrome 门禁重新验收前端。
 
 ## 第二大版本：Learning Agent 2.0
 

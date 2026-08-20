@@ -198,6 +198,7 @@ class MemoryProposalCreate(BaseModel):
 
 class NotificationRead(APIModel):
     id: int
+    intervention_id: str | None
     run_id: str | None
     session_id: str | None
     plan_id: int | None

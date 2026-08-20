@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import {
   BellIcon,
   CheckCircleIcon,
@@ -10,9 +10,9 @@ import {
   TrashIcon,
   XCircleIcon,
 } from '@heroicons/vue/24/outline';
-import { useWorkspaceStore } from '../stores/workspace';
+import { useSettingsStore } from '../stores/settings.js';
 
-const store = useWorkspaceStore();
+const settings = useSettingsStore();
 const saving = ref('');
 const feedback = ref('');
 const feedbackError = ref(false);
@@ -27,14 +27,15 @@ const email = reactive({
 const policy = reactive({ quiet_start: '23:00', quiet_end: '08:00', daily_limit: 3, cooldown_minutes: 180, paused: false });
 const followup = ref('steer');
 
-onMounted(() => {
-  const app = store.appSettings;
+function syncAppSettings(app) {
   if (app) {
     model.base_url = app.base_url || '';
     model.model = app.model || '';
     model.temperature = app.temperature ?? 0.9;
   }
-  const emailConfig = store.emailConfiguration;
+}
+
+function syncEmailConfiguration(emailConfig) {
   if (emailConfig) {
     email.smtp_host = emailConfig.smtp_host || '';
     email.smtp_port = emailConfig.smtp_port || 587;
@@ -48,18 +49,28 @@ onMounted(() => {
     email.imap_folder = emailConfig.imap_folder || 'INBOX';
     email.enable_email_reply_polling = emailConfig.reply_polling_enabled ?? false;
   }
-  const profile = store.profile;
+}
+
+function syncProfile(profile) {
   if (profile) {
     policy.quiet_start = profile.quiet_hours?.start || '23:00';
     policy.quiet_end = profile.quiet_hours?.end || '08:00';
     policy.daily_limit = profile.daily_notification_limit ?? 3;
   }
-  if (store.schedulerStatus) {
-    policy.cooldown_minutes = app?.notification_cooldown_minutes ?? 180;
-    policy.paused = Boolean(store.schedulerStatus.paused);
+}
+
+function syncScheduler(status) {
+  if (status) {
+    policy.cooldown_minutes = settings.appSettings?.notification_cooldown_minutes ?? 180;
+    policy.paused = Boolean(status.paused);
   }
-  followup.value = store.followUpBehavior || 'steer';
-});
+}
+
+watch(() => settings.appSettings, syncAppSettings, { immediate: true });
+watch(() => settings.emailConfiguration, syncEmailConfiguration, { immediate: true });
+watch(() => settings.profile, syncProfile, { immediate: true });
+watch(() => settings.schedulerStatus, syncScheduler, { immediate: true });
+watch(() => settings.followUpBehavior, (value) => { followup.value = value || 'steer'; }, { immediate: true });
 
 async function run(label, action) {
   saving.value = label;
@@ -84,14 +95,14 @@ function saveModel() {
       temperature: Number(model.temperature),
     };
     if (model.api_key.trim()) payload.api_key = model.api_key.trim();
-    await store.updateModelSettings(payload);
+    await settings.updateModelSettings(payload);
     model.api_key = '';
   });
 }
 
 function saveFollowup() {
   return run('followup', async () => {
-    await store.setFollowUpBehavior(followup.value);
+    await settings.setFollowUpBehavior(followup.value);
   });
 }
 
@@ -110,25 +121,29 @@ function saveEmail() {
     for (const field of ['smtp_username', 'smtp_password', 'smtp_from', 'smtp_to', 'imap_username', 'imap_password']) {
       if (String(email[field] || '').trim()) payload[field] = String(email[field]).trim();
     }
-    await store.updateEmailSettings(payload);
+    await settings.updateEmailSettings(payload);
     email.smtp_password = '';
     email.imap_password = '';
   });
 }
 
 function deleteEmailCredentials() {
-  return run('email-delete', () => store.deleteEmailCredentials());
+  return run('email-delete', () => settings.deleteEmailCredentials());
 }
 
 function savePolicy() {
   return run('policy', async () => {
-    await store.updateNotificationPolicy({
+    await settings.updateNotificationPolicy({
       quiet_hours: { start: policy.quiet_start, end: policy.quiet_end },
       daily_notification_limit: Number(policy.daily_limit),
       cooldown_minutes: Number(policy.cooldown_minutes),
     });
-    await store.setProactivePaused(policy.paused);
-    await store.loadWorkspace();
+    await settings.setProactivePaused(policy.paused);
+    await Promise.allSettled([
+      settings.loadProfile(),
+      settings.loadSchedulerStatus(),
+      settings.loadAppSettings(),
+    ]);
   });
 }
 </script>
@@ -161,9 +176,9 @@ function savePolicy() {
         </div>
       </div>
       <p class="settings-note">
-        数据库文件：{{ store.appSettings?.database_file || '未知' }}；当前数据量：计划 {{ store.appSettings?.data_counts?.plans ?? '-' }} ·
-        会话 {{ store.appSettings?.data_counts?.sessions ?? '-' }} · 站内消息 {{ store.appSettings?.data_counts?.notifications ?? '-' }} ·
-        确认记忆 {{ store.appSettings?.data_counts?.memories ?? '-' }}。清空数据请先停止服务，再运行 <code>./scripts/reset-data.sh</code>。
+        数据库文件：{{ settings.appSettings?.database_file || '未知' }}；当前数据量：计划 {{ settings.appSettings?.data_counts?.plans ?? '-' }} ·
+        会话 {{ settings.appSettings?.data_counts?.sessions ?? '-' }} · 站内消息 {{ settings.appSettings?.data_counts?.notifications ?? '-' }} ·
+        确认记忆 {{ settings.appSettings?.data_counts?.memories ?? '-' }}。清空数据请先停止服务，再运行 <code>./scripts/reset-data.sh</code>。
       </p>
     </section>
 
@@ -193,23 +208,23 @@ function savePolicy() {
       <header>
         <div class="settings-icon"><EnvelopeIcon /></div>
         <div><small>EMAIL</small><h2>邮件与回复</h2></div>
-        <em :class="{ ready: store.emailConfiguration?.smtp_configured && store.emailConfiguration?.imap_configured }">
-          {{ store.emailConfiguration?.smtp_configured && store.emailConfiguration?.imap_configured ? '已配置' : '等待配置' }}
+        <em :class="{ ready: settings.emailConfiguration?.smtp_configured && settings.emailConfiguration?.imap_configured }">
+          {{ settings.emailConfiguration?.smtp_configured && settings.emailConfiguration?.imap_configured ? '已配置' : '等待配置' }}
         </em>
       </header>
       <div class="settings-form settings-grid">
         <label class="settings-field"><span>SMTP 主机</span><input v-model="email.smtp_host" placeholder="smtp.qq.com" /></label>
         <label class="settings-field"><span>SMTP 端口</span><input v-model.number="email.smtp_port" type="number" /></label>
-        <label class="settings-field"><span>SMTP 账号（Agent 邮箱）</span><input v-model="email.smtp_username" :placeholder="store.emailConfiguration?.smtp_username || '留空则不修改'" /></label>
+        <label class="settings-field"><span>SMTP 账号（Agent 邮箱）</span><input v-model="email.smtp_username" :placeholder="settings.emailConfiguration?.smtp_username || '留空则不修改'" /></label>
         <label class="settings-field"><span>SMTP 授权码</span><input v-model="email.smtp_password" type="password" placeholder="留空则不修改" /></label>
-        <label class="settings-field"><span>发件人地址</span><input v-model="email.smtp_from" :placeholder="store.emailConfiguration?.smtp_from || '留空则不修改'" /></label>
-        <label class="settings-field"><span>收件人地址（你的邮箱）</span><input v-model="email.smtp_to" :placeholder="store.emailConfiguration?.smtp_to || '留空则不修改'" /></label>
+        <label class="settings-field"><span>发件人地址</span><input v-model="email.smtp_from" :placeholder="settings.emailConfiguration?.smtp_from || '留空则不修改'" /></label>
+        <label class="settings-field"><span>收件人地址（你的邮箱）</span><input v-model="email.smtp_to" :placeholder="settings.emailConfiguration?.smtp_to || '留空则不修改'" /></label>
         <label class="settings-field settings-check"><input v-model="email.smtp_use_tls" type="checkbox" /> STARTTLS（587）</label>
         <label class="settings-field settings-check"><input v-model="email.smtp_use_ssl" type="checkbox" /> SSL（465）</label>
         <label class="settings-field settings-check"><input v-model="email.enable_email_reply_polling" type="checkbox" /> 启用邮件回复轮询</label>
         <label class="settings-field"><span>IMAP 主机</span><input v-model="email.imap_host" placeholder="imap.qq.com" /></label>
         <label class="settings-field"><span>IMAP 端口</span><input v-model.number="email.imap_port" type="number" /></label>
-        <label class="settings-field"><span>IMAP 账号</span><input v-model="email.imap_username" :placeholder="store.emailConfiguration?.imap_username || '留空则不修改'" /></label>
+        <label class="settings-field"><span>IMAP 账号</span><input v-model="email.imap_username" :placeholder="settings.emailConfiguration?.imap_username || '留空则不修改'" /></label>
         <label class="settings-field"><span>IMAP 授权码</span><input v-model="email.imap_password" type="password" placeholder="留空则不修改" /></label>
         <label class="settings-field"><span>IMAP 文件夹</span><input v-model="email.imap_folder" /></label>
       </div>
@@ -217,8 +232,8 @@ function savePolicy() {
         <button class="primary-button" :disabled="saving === 'email'" @click="saveEmail">
           {{ saving === 'email' ? '保存中…' : '保存邮箱设置' }}
         </button>
-        <button class="secondary-button" @click="store.testEmail('smtp', true)">发送测试邮件</button>
-        <button class="secondary-button" @click="store.testEmail('imap')">测试回复邮箱</button>
+        <button class="secondary-button" @click="settings.testEmail('smtp', true)">发送测试邮件</button>
+        <button class="secondary-button" @click="settings.testEmail('imap')">测试回复邮箱</button>
         <button class="secondary-button danger" :disabled="saving === 'email-delete'" @click="deleteEmailCredentials"><TrashIcon /> 删除凭据</button>
       </div>
       <p class="settings-note">建议使用独立 Agent 邮箱 A 向你的日常邮箱 B 发送；`.env` 以 0600 权限保存。</p>

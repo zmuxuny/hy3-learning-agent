@@ -83,19 +83,7 @@ def redact_text(value: object, *, secrets: tuple[str, ...] | None = None) -> str
 
     text = str(value)
     secret_values = configured_secret_values() if secrets is None else secrets
-    literal_secrets = tuple(
-        sorted({secret for secret in secret_values if secret}, key=len, reverse=True)
-    )
-    if literal_secrets:
-        # Configured credentials are authoritative regardless of length. A
-        # short value can still be embedded in a provider error, validation
-        # payload, or receipt; retaining any literal occurrence would violate
-        # the redaction boundary. The possible loss of diagnostic text is the
-        # deliberate fail-closed tradeoff for an explicitly configured secret.
-        literal_pattern = re.compile(
-            "|".join(re.escape(secret) for secret in literal_secrets)
-        )
-        text = literal_pattern.sub(REDACTED, text)
+    text = _redact_configured_literals(text, secret_values)
     text = _QUOTED_SECRET_ASSIGNMENT.sub(
         lambda match: f"{match.group(1)}{REDACTED}{match.group(3)}",
         text,
@@ -108,6 +96,26 @@ def redact_text(value: object, *, secrets: tuple[str, ...] | None = None) -> str
         lambda match: f"{match.group(1)}{match.group(2)}{REDACTED}",
         text,
     )
+
+
+def _redact_configured_literals(value: object, secrets: tuple[str, ...]) -> str:
+    """Redact configured literals without rewriting logging placeholders."""
+
+    text = str(value)
+    literal_secrets = tuple(
+        sorted({secret for secret in secrets if secret}, key=len, reverse=True)
+    )
+    if literal_secrets:
+        # Configured credentials are authoritative regardless of length. A
+        # short value can still be embedded in a provider error, validation
+        # payload, or receipt; retaining any literal occurrence would violate
+        # the redaction boundary. The possible loss of diagnostic text is the
+        # deliberate fail-closed tradeoff for an explicitly configured secret.
+        literal_pattern = re.compile(
+            "|".join(re.escape(secret) for secret in literal_secrets)
+        )
+        text = literal_pattern.sub(REDACTED, text)
+    return text
 
 
 def redact_data(value: Any, *, secrets: tuple[str, ...] | None = None) -> Any:
@@ -182,15 +190,18 @@ class SecretRedactionFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         secrets = configured_secret_values()
-        # Render %-style arguments once before changing the record. Redacting
-        # the format template and arguments independently can remove a
-        # placeholder and make the logging formatter raise TypeError.
-        try:
-            rendered = record.getMessage()
-        except Exception:
-            rendered = f"{record.msg} {record.args}"
-        record.msg = redact_text(rendered, secrets=secrets)
-        record.args = ()
+        # Preserve the logging call's format template and argument shape.
+        # Uvicorn's access formatter consumes the five positional arguments
+        # directly instead of calling ``record.getMessage()``; eagerly
+        # rendering and clearing them breaks every access log entry. Dynamic
+        # values live in ``args`` and are recursively redacted. A template can
+        # only contain static text plus %-placeholders, so redact configured
+        # literal values without treating placeholders as credential values.
+        if record.args:
+            record.msg = _redact_configured_literals(record.msg, secrets)
+            record.args = redact_data(record.args, secrets=secrets)
+        else:
+            record.msg = redact_text(record.msg, secrets=secrets)
         if record.exc_info:
             formatted = logging.Formatter().formatException(record.exc_info)
             record.exc_info = None

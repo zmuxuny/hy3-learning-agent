@@ -19,28 +19,92 @@ import {
   SparklesIcon,
   PaperClipIcon,
 } from '@heroicons/vue/24/outline';
-import { computed, ref } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { usePlanStore } from '../stores/plan.js';
+import { useRunStore } from '../stores/run.js';
+import { useShellStore } from '../stores/shell.js';
 import AgentComposer from './AgentComposer.vue';
 import RunTraceButton from './RunTraceButton.vue';
 
-const store = useWorkspaceStore();
-const showArchivedPlans = ref(false);
-const displayedPlans = computed(() => (showArchivedPlans.value ? store.archivedPlans : store.plans));
+const route = useRoute();
+const router = useRouter();
+const planStore = usePlanStore();
+const runStore = useRunStore();
+const shell = useShellStore();
+const showArchivedPlans = computed({
+  get: () => route.name === 'archives',
+  set: (archived) => router.push({ name: archived ? 'archives' : 'plans' }),
+});
+const displayedPlans = computed(() => (showArchivedPlans.value ? planStore.archivedPlans : planStore.plans));
 const taskIds = computed(() => new Set(
-  store.currentPlan?.stages.flatMap((stage) => stage.tasks.map((task) => String(task.id))) || [],
+  planStore.currentPlan?.stages.flatMap((stage) => stage.tasks.map((task) => String(task.id))) || [],
 ));
-const planOperations = computed(() => store.operations.filter((operation) => (
-  (operation.entity_type === 'plan' && operation.entity_id === String(store.currentPlan?.id))
+const planOperations = computed(() => runStore.operations.filter((operation) => (
+  (operation.entity_type === 'plan' && operation.entity_id === String(planStore.currentPlan?.id))
   || (operation.entity_type === 'task' && taskIds.value.has(operation.entity_id))
 )));
 const currentTask = computed(() => {
-  const tasks = store.currentPlan?.stages.flatMap((stage) => stage.tasks) || [];
+  const tasks = planStore.currentPlan?.stages.flatMap((stage) => stage.tasks) || [];
   return tasks.find((task) => task.status === 'active')
     || tasks.find((task) => task.status === 'blocked')
     || tasks.find((task) => task.status === 'pending')
     || null;
 });
+const competencyById = computed(() => new Map(
+  (planStore.competencyGraph?.competencies || []).map((item) => [Number(item.id), item]),
+));
+const competencyRows = computed(() => (planStore.competencyGraph?.competencies || []).map((item) => {
+  const links = (planStore.competencyGraph?.task_links || []).filter(
+    (link) => Number(link.competency_id) === Number(item.id),
+  );
+  const evidence = planStore.evidenceObservations.filter((observation) => (
+    observation.fact_kind === 'observation'
+    && observation.competency_refs?.some((reference) => Number(reference.competency_id) === Number(item.id))
+  ));
+  return { ...item, links, evidence };
+}));
+const evidenceTimeline = computed(() => planStore.evidenceObservations.slice(0, 12));
+
+function taskCompetencyLinks(taskId) {
+  return (planStore.competencyGraph?.task_links || []).filter(
+    (link) => Number(link.task_id) === Number(taskId),
+  );
+}
+
+function competencyTitle(competencyId) {
+  return competencyById.value.get(Number(competencyId))?.title || `技能 ${competencyId}`;
+}
+
+function relationLabel(relation) {
+  return relation === 'assesses' ? '证明' : relation === 'teaches' ? '训练' : relation;
+}
+
+function evidenceStageLabel(stage) {
+  return {
+    unknown: '尚不足以判断',
+    exposed: '已接触',
+    practicing: '练习中',
+    demonstrated: '已证明',
+    retained: '已保持',
+  }[stage] || stage;
+}
+
+function evidenceSourceLabel(sourceType) {
+  return {
+    submission_checked: '成果验收',
+    quiz_graded: '考核评分',
+    task_evidence: '任务证据',
+    self_report: '学习者自述',
+    email_reply: '邮件回复',
+  }[sourceType] || sourceType;
+}
+
+function taskTitle(taskId) {
+  return planStore.currentPlan?.stages
+    .flatMap((stage) => stage.tasks)
+    .find((task) => Number(task.id) === Number(taskId))?.title || '计划级证据';
+}
 
 function tasksFor(plan) {
   return plan.stages.flatMap((stage) => stage.tasks);
@@ -52,7 +116,7 @@ function completedTasks(plan) {
 
 function operationCount(plan) {
   const ids = new Set(tasksFor(plan).map((task) => String(task.id)));
-  return store.operations.filter((operation) => (
+  return runStore.operations.filter((operation) => (
     (operation.entity_type === 'plan' && operation.entity_id === String(plan.id))
     || (operation.entity_type === 'task' && ids.has(operation.entity_id))
   )).length;
@@ -89,34 +153,34 @@ function stageProgress(stage) {
 }
 
 function wasTouchedByAgent(task) {
-  return store.operations.some((operation) => operation.entity_type === 'task' && operation.entity_id === String(task.id));
+  return runStore.operations.some((operation) => operation.entity_type === 'task' && operation.entity_id === String(task.id));
 }
 
 function askAgentAboutTask(task) {
-  store.startRun(
+  shell.startRun(
     `请检查任务 ${task.id}「${task.title}」的当前状态、证据要求和截止时间。先读取计划，再告诉我今天如何推进；如需调整，只执行低风险且可撤销的修改。`,
-    store.currentPlan.id,
+    planStore.currentPlan.id,
   );
 }
 
 function submitTaskToAgent(task) {
-  store.startRun(
+  shell.startRun(
     `我要提交任务 ${task.id}「${task.title}」的学习成果。请先读取任务要求，询问我需要提交的文字、文件路径、代码或链接；收到后使用 submission_create 保存证据，必要时读取文件或运行代码，再用 submission_check 给出验收结果。`,
-    store.currentPlan.id,
+    planStore.currentPlan.id,
   );
 }
 
 function teachNextStep() {
-  store.startRun(
+  shell.startRun(
     '请作为我的学习导师带我完成当前计划的下一步。先读取完整计划、最近提交与学习事件、到期复习和已保存资源，准确判断我进行到哪里；只选择一个最合适的当前任务，解释为什么现在做它，然后讲清必要概念并给我一个小练习。等我回答或提交证据后再继续，不要一次性倾倒整门课程。',
-    store.currentPlan.id,
+    planStore.currentPlan.id,
   );
 }
 
 function findPlanResources() {
-  store.startRun(
+  shell.startRun(
     '请为当前计划补充真正可学习的具体资源，而不是只列 API 文档。先读取计划和当前进度，再分别搜索：一门结构化课程或课程主页、一个中文或低门槛教程、一个带练习的实验/项目资源，以及必要时的一份权威参考。可以考虑 Coursera、edX、Hugging Face Learn、Kaggle Learn、CS DIY、Stanford 课程（如主题匹配时的 CS336）、freeCodeCamp、菜鸟教程等，但要按我的目标筛选。逐个 web_open 核验后，用 resource_save 保存类型、难度、语言、内容摘要和推荐理由；不要保存搜索结果页。',
-    store.currentPlan.id,
+    planStore.currentPlan.id,
   );
 }
 
@@ -125,20 +189,20 @@ function resourceTypeLabel(value) {
 }
 
 function checkCurrentPlan() {
-  store.startRun(
+  shell.startRun(
     '请主动检查当前计划现在是否有逾期、阻塞、待复习或需要提醒的事项。先读取真实状态；如果没有需要干预的内容，直接说明无需动作。',
-    store.currentPlan.id,
+    planStore.currentPlan.id,
   );
 }
 
 function createPlanWithAgent() {
-  store.startNewConversation();
-  store.startRun('我想制定一份新的学习计划。请先了解我真正想达到什么结果；把已确认的信息和最关键的待确认问题记录成需求卡片，不要现在就创建正式计划。信息充分后，你可以把资源调研、课程结构和考核审查分给规划子 Agent，最后给我一份可讨论、可确认的计划提案。');
+  shell.startNewConversation();
+  shell.startRun('我想制定一份新的学习计划。请先了解我真正想达到什么结果；把已确认的信息和最关键的待确认问题记录成需求卡片，不要现在就创建正式计划。信息充分后，你可以把资源调研、课程结构和考核审查分给规划子 Agent，最后给我一份可讨论、可确认的计划提案。');
 }
 </script>
 
 <template>
-  <section v-if="store.planScreen === 'list'" class="view plan-index-view">
+  <section v-if="route.name !== 'plan'" class="view plan-index-view">
     <header class="view-header plan-index-header">
       <div>
         <span class="eyebrow">PLANS · PROGRESS · EVIDENCE</span>
@@ -154,15 +218,15 @@ function createPlanWithAgent() {
     <div class="plan-index-content">
       <div class="plan-index-toolbar">
         <div class="plan-filter-tabs">
-          <button :class="{ active: !showArchivedPlans }" @click="showArchivedPlans = false">当前计划 <span>{{ store.plans.length }}</span></button>
-          <button :class="{ active: showArchivedPlans }" @click="showArchivedPlans = true">已归档 <span>{{ store.archivedPlans.length }}</span></button>
+          <button :class="{ active: !showArchivedPlans }" @click="showArchivedPlans = false">当前计划 <span>{{ planStore.plans.length }}</span></button>
+          <button :class="{ active: showArchivedPlans }" @click="showArchivedPlans = true">已归档 <span>{{ planStore.archivedPlans.length }}</span></button>
         </div>
         <small>按最近更新排序</small>
       </div>
 
       <div v-if="displayedPlans.length" class="plan-list">
         <article v-for="plan in displayedPlans" :key="plan.id" :class="['plan-list-card', { archived: plan.status === 'archived' }]">
-          <button class="plan-list-open" @click="store.selectPlan(plan.id)">
+          <button class="plan-list-open" @click="shell.selectPlan(plan.id)">
             <div class="plan-list-main">
               <header>
                 <span :class="['plan-list-status', plan.status]"><i></i>{{ statusLabel(plan.status) }}</span>
@@ -186,7 +250,7 @@ function createPlanWithAgent() {
           <button
             class="plan-lifecycle-button"
             :title="plan.status === 'archived' ? '恢复计划' : '归档计划'"
-            @click="store.setPlanArchived(plan.id, plan.status !== 'archived')"
+            @click="shell.setPlanArchived(plan.id, plan.status !== 'archived')"
           >
             <component :is="plan.status === 'archived' ? ArrowUturnLeftIcon : ArchiveBoxArrowDownIcon" />
             {{ plan.status === 'archived' ? '恢复' : '归档' }}
@@ -197,23 +261,22 @@ function createPlanWithAgent() {
       <div v-else class="plan-list-empty panel">
         <MapIcon />
         <h2>{{ showArchivedPlans ? '还没有归档计划' : '还没有学习计划' }}</h2>
-        <p>{{ showArchivedPlans ? '归档后的计划会保留任务、证据和记忆，并出现在这里。' : '让 Agent 先了解你的目标和约束，再创建第一份完整计划。' }}</p>
         <button v-if="!showArchivedPlans" class="primary-button" @click="createPlanWithAgent"><PlusIcon /> 用 Agent 创建</button>
       </div>
     </div>
   </section>
 
   <section v-else class="view has-composer">
-    <header v-if="store.currentPlan" class="plan-detail-toolbar">
-      <button class="back-button icon-back" aria-label="返回所有计划" @click="store.openPlanList"><ArrowLeftIcon /></button>
-      <h1>{{ store.currentPlan.title }}</h1>
+    <header v-if="planStore.currentPlan" class="plan-detail-toolbar">
+      <button class="back-button icon-back" aria-label="返回所有计划" @click="router.push({ name: 'plans' })"><ArrowLeftIcon /></button>
+      <h1>{{ planStore.currentPlan.title }}</h1>
       <div class="plan-detail-actions">
         <button
           class="secondary-button"
-          @click="store.setPlanArchived(store.currentPlan.id, store.currentPlan.status !== 'archived')"
+          @click="shell.setPlanArchived(planStore.currentPlan.id, planStore.currentPlan.status !== 'archived')"
         >
-          <component :is="store.currentPlan.status === 'archived' ? ArrowUturnLeftIcon : ArchiveBoxArrowDownIcon" />
-          {{ store.currentPlan.status === 'archived' ? '恢复计划' : '归档计划' }}
+          <component :is="planStore.currentPlan.status === 'archived' ? ArrowUturnLeftIcon : ArchiveBoxArrowDownIcon" />
+          {{ planStore.currentPlan.status === 'archived' ? '恢复计划' : '归档计划' }}
         </button>
         <RunTraceButton />
       </div>
@@ -221,27 +284,27 @@ function createPlanWithAgent() {
 
     <div class="plan-detail-layout">
       <section class="plan-workspace">
-        <main v-if="store.currentPlan" class="plan-detail">
+        <main v-if="planStore.currentPlan" class="plan-detail">
           <article class="plan-hero">
             <div class="plan-hero-main">
-              <p>{{ store.currentPlan.goal }}</p>
+              <p>{{ planStore.currentPlan.goal }}</p>
               <div class="plan-meta-grid">
-                <div><CalendarDaysIcon /><span><small>最终期限</small><strong>{{ formatDate(store.currentPlan.deadline, true) }}</strong></span></div>
-                <div><ClockIcon /><span><small>每周投入</small><strong>{{ store.currentPlan.weekly_minutes }} 分钟</strong></span></div>
-                <div><MapIcon /><span><small>计划结构</small><strong>{{ store.currentPlan.stages.length }} 阶段 · {{ taskIds.size }} 任务</strong></span></div>
+                <div><CalendarDaysIcon /><span><small>最终期限</small><strong>{{ formatDate(planStore.currentPlan.deadline, true) }}</strong></span></div>
+                <div><ClockIcon /><span><small>每周投入</small><strong>{{ planStore.currentPlan.weekly_minutes }} 分钟</strong></span></div>
+                <div><MapIcon /><span><small>计划结构</small><strong>{{ planStore.currentPlan.stages.length }} 阶段 · {{ taskIds.size }} 任务</strong></span></div>
                 <div><AdjustmentsHorizontalIcon /><span><small>Agent 操作</small><strong>{{ planOperations.length }} 条可审计记录</strong></span></div>
               </div>
             </div>
             <div class="plan-progress-block">
-              <div class="plan-score" :style="{ '--progress': `${Math.round(store.currentPlan.progress * 360)}deg` }">
-                <span><strong>{{ Math.round(store.currentPlan.progress * 100) }}%</strong><small>整体进度</small></span>
+              <div class="plan-score" :style="{ '--progress': `${Math.round(planStore.currentPlan.progress * 360)}deg` }">
+                <span><strong>{{ Math.round(planStore.currentPlan.progress * 100) }}%</strong><small>整体进度</small></span>
               </div>
-              <div class="plan-output"><DocumentCheckIcon /><span><small>期望产出</small><strong>{{ store.currentPlan.expected_outcome || '等待补充' }}</strong></span></div>
+              <div class="plan-output"><DocumentCheckIcon /><span><small>期望产出</small><strong>{{ planStore.currentPlan.expected_outcome || '等待补充' }}</strong></span></div>
             </div>
           </article>
 
           <div class="plan-action-row">
-            <span><i></i><strong>当前一步</strong>{{ currentTask?.title || '计划已完成' }} · 版本 {{ store.currentPlan.version }}</span>
+            <span><i></i><strong>当前一步</strong>{{ currentTask?.title || '计划已完成' }} · 版本 {{ planStore.currentPlan.version }}</span>
             <div>
               <button class="secondary-button" @click="checkCurrentPlan"><BoltIcon /> 检查提醒</button>
               <button class="primary-button" @click="teachNextStep"><SparklesIcon /> 教我下一步</button>
@@ -257,9 +320,9 @@ function createPlanWithAgent() {
               </div>
               <button class="secondary-button" @click="findPlanResources"><BookOpenIcon /> 补充资源</button>
             </header>
-            <div v-if="store.planResources.length" class="resource-list">
+            <div v-if="planStore.planResources.length" class="resource-list">
               <a
-                v-for="resource in store.planResources"
+                v-for="resource in planStore.planResources"
                 :key="resource.id"
                 :href="resource.url"
                 target="_blank"
@@ -287,8 +350,64 @@ function createPlanWithAgent() {
             </div>
           </section>
 
+          <section class="learning-map-section" aria-labelledby="learning-map-title">
+            <header>
+              <div>
+                <small>SKILLS · EVIDENCE · SOURCES</small>
+                <h2 id="learning-map-title">学习依据</h2>
+                <p>只展示计划已明确映射的技能和不可变证据，不把完成进度推断成掌握度。</p>
+              </div>
+              <span class="readonly-badge">只读 · 图版本 {{ planStore.competencyGraph?.revision ?? 0 }}</span>
+            </header>
+
+            <div v-if="competencyRows.length" class="competency-map-list">
+              <article v-for="competency in competencyRows" :key="competency.id" class="competency-map-row">
+                <div>
+                  <small>{{ competency.scope === 'global' ? '跨计划技能' : '当前计划技能' }}</small>
+                  <strong>{{ competency.title }}</strong>
+                  <p>{{ competency.description || '该技能由任务映射和证据事实共同解释。' }}</p>
+                </div>
+                <div class="competency-map-relations">
+                  <span
+                    v-for="link in competency.links"
+                    :key="link.id"
+                    :class="[`relation-${link.relation}`]"
+                  >{{ relationLabel(link.relation) }} · {{ taskTitle(link.task_id) }}</span>
+                  <span v-if="!competency.links.length">尚未映射任务</span>
+                </div>
+                <div class="competency-evidence-count">
+                  <strong>{{ competency.evidence.length }}</strong>
+                  <small>条关联证据</small>
+                </div>
+              </article>
+            </div>
+            <p v-else class="learning-map-empty">当前计划尚未建立技能映射；Agent 不会根据相似标题自动合并或猜测。</p>
+
+            <div class="evidence-ledger">
+              <div class="evidence-ledger-heading">
+                <h3>最近 Evidence</h3>
+                <span>{{ planStore.evidenceObservations.length }} 条事实</span>
+              </div>
+              <article v-for="observation in evidenceTimeline" :key="observation.id" class="evidence-row">
+                <time :datetime="observation.occurred_at">{{ formatUpdated(observation.occurred_at) }}</time>
+                <div>
+                  <strong>{{ taskTitle(observation.task_id) }}</strong>
+                  <p>{{ evidenceSourceLabel(observation.source_type) }} · {{ observation.outcome }}</p>
+                  <span v-if="observation.competency_refs?.length" class="evidence-competencies">
+                    {{ observation.competency_refs.map((reference) => competencyTitle(reference.competency_id)).join(' · ') }}
+                  </span>
+                </div>
+                <div class="evidence-stage">
+                  <strong>{{ evidenceStageLabel(observation.eligibility_stage) }}</strong>
+                  <small>{{ observation.counts_as_success ? '计入成功证据' : observation.eligibility_reason }}</small>
+                </div>
+              </article>
+              <p v-if="!evidenceTimeline.length" class="learning-map-empty">完成学习并提交成果后，来源、时间和适用技能会显示在这里。</p>
+            </div>
+          </section>
+
           <div class="plan-timeline">
-            <article v-for="stage in store.currentPlan.stages" :key="stage.id" :class="['timeline-stage', stage.status]">
+            <article v-for="stage in planStore.currentPlan.stages" :key="stage.id" :class="['timeline-stage', stage.status]">
               <div class="timeline-rail"><span>{{ stage.position + 1 }}</span><i></i></div>
               <section class="timeline-stage-body">
                 <header class="timeline-stage-header">
@@ -314,6 +433,13 @@ function createPlanWithAgent() {
                         <span :class="['task-status', task.status]"><i></i>{{ task.id === currentTask?.id && task.status === 'pending' ? '当前建议' : statusLabel(task.status) }}</span>
                       </header>
                       <p>{{ task.description || '等待 Agent 补充任务说明。' }}</p>
+                      <div v-if="taskCompetencyLinks(task.id).length" class="task-learning-relations">
+                        <span
+                          v-for="link in taskCompetencyLinks(task.id)"
+                          :key="link.id"
+                          :class="[`relation-${link.relation}`]"
+                        >{{ relationLabel(link.relation) }} · {{ competencyTitle(link.competency_id) }}</span>
+                      </div>
                       <div class="timeline-task-meta">
                         <div class="task-facts">
                           <span><ClockIcon />{{ task.estimated_minutes }} 分钟</span>

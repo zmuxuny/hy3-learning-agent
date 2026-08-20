@@ -104,6 +104,7 @@ async def open_notification(notification_id: int, db: AsyncSession = Depends(get
     await db.refresh(notification)
     return {
         "notification": notification,
+        "intervention_id": primary.intervention_id,
         "session_id": session.id,
         "plan_id": primary.plan_id,
         "message_id": message.id,

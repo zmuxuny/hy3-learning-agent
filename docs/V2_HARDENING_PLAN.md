@@ -142,7 +142,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景在 H0 只登记独立 contract，H4 已把它们逐项改为 production reducer/audit baseline 与 mutant 门禁。
 - 定向套件登记 87 个 open defect ID、113 个 strict-xfail 节点和 20 个 passing gate。实现门禁修复每一项时必须删除对应 xfail，并在矩阵写入修复提交。
 - 最终全量回归为 146 passed、113 xfailed、0 XPASS、0 failed；Python compileall、pip check、前端生产构建与完整/production-only npm audit 均通过。五尺寸 Chrome 使用独立临时数据库和精确合成 Session 令牌，得到 3 个已登记 H7-UI-001 XFAIL，未产生非预期失败或 API 写请求。
-- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H6 已于后续阶段关闭，当前下一门禁为 H7。
+- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H7 已于后续阶段关闭，当前下一门禁为 H8。
 
 ## 5. H1：迁移、时间与备份基础
 
@@ -183,7 +183,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 已提供 `scripts/data-maintenance.py` / `app.db.maintenance` 的安全维护协议，`reset-data.sh`、`seed-fixture.sh`、`demo-data.sh` 与 `rebuild-evidence.py` 已接入该协议。restore 会在加锁和写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中；source backup 位于安全备份根目录下仍是正常布局。共享 lexical normalization 消除 `.`/`..` 别名但不跟随 symlink，SQLite URI 对空格、`%`、`#`、`?` 等路径字符安全。
 - H1 收口历史快照为 281 passed：`test_h1_time_contracts.py` 10、`test_h1_migration_protocol.py` 183、`test_h1_maintenance.py` 79、`test_h1_rebuild_coordinator.py` 5、`tests/test_migrations.py` 4；当时 H0 跨阶段为 27 passed / 17 strict xfailed，全仓为 441 passed / 98 strict xfailed，0 unexpected failure、0 XPASS。该组数字只记录 H1 收口时点，不是当前 H2 结果。
 - H1 关闭 13 个缺陷 ID、15 个基线节点；其收口时矩阵剩余 74 个 open ID、下一门禁为 H2。H2 的当前状态见下一节。
-- H1 收口时前端尚无独立自动化 `test` 脚本；H2 已补 6 个 Node test runner 回归，但 Vitest/Playwright 和 H7/H8 发布门禁仍未完成。legacy naive 时间不会恢复不存在的原始 offset；受控 lease 不能约束绕过 Runtime/maintenance 的外部原始 SQLite writer；外部安装、连续学习闭环和 7 日留存仍待真实用户在 H8 验证。
+- H1 收口时前端尚无独立自动化 `test` 脚本；H2 后续补了 Node contract，H7 又补齐 Vitest 与 system-Chromium Playwright 前端门禁。H8 的完整发布 gate 尚未完成。legacy naive 时间不会恢复不存在的原始 offset；受控 lease 不能约束绕过 Runtime/maintenance 的外部原始 SQLite writer；外部安装、连续学习闭环和 7 日留存仍待真实用户在 H8 验证。
 
 ## 6. H2：事务、幂等与 Outbox（已完成）
 
@@ -270,7 +270,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 主/子 Run 共享 model/tool/network/elapsed/token/cost 预算、耐久有界 retry 和只读 child Guard。child finalizing checkpoint 冻结报告，父终态取消覆盖所有非终态 child，child 终态与父 `subagent.completed` 在同一事务投影或可幂等修复。
 - 真实进程故障覆盖 claim/checkpoint/finalizing、同一 Run 连续三次中断、双进程 claim、SQLite busy 与 frozen-H2 migration publish；固定种子 100 轮逐轮比较无故障 baseline、恢复运行与手写语义 oracle。另有两工具测试在第二个数据库副作用已提交、Run checkpoint 尚未推进时中断，恢复后只保留两份领域事实与两个 completion。
 - H3 定向为 40 passed；前端状态契约为 9 passed，生产构建和 npm audit 通过。真实 Hy3 临时库演示完成两次 SIGKILL、三次 claim，最终只有一条 assistant message 与一个 completed event，正文和凭据未输出。完整结果只在 [`STATUS.md`](STATUS.md) 维护。
-- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4–H6 已完成，H7/H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H7。
+- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4–H7 已完成；H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H8。
 
 ## 8. H4：Evidence 与 Competency 事实层
 
@@ -368,7 +368,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 一次逻辑 Intervention 拥有唯一 canonical message 与 reply token，多渠道 Notification 只是 delivery。reply target 与 read-only execution mode 耐久贯穿 Queue、Run、Message 和 child；Run 终态与 Intervention outcome 同一 UoW 收口。IMAP 使用 `BODY.PEEK[]`，先持久化唯一 UID/UIDVALIDITY inbound job，再以 lease/CAS ack Seen；归档计划回复产生可见只读回执和 SMTP outbox。
 - 心跳候选与终态 ProactiveDecision 分离；success 才消耗长期冷却，quiet hours 保存精确 `next_eligible_at`，model/runtime/Guard 失败使用短退避。Scheduler 的学习活动只读取有效 Evidence `occurred_at`，不再用晚写入或已失效事件刷新活动。
 - H5/H0 Context/Intervention 联合为 120 passed；revision 1–5 migration bridge 为 48 passed，H5 migration 7 个和 runtime 9 个真实 SIGKILL 节点通过。最终完整 pytest 为 941 passed / 30 strict xfailed / 0 failed，前端 9 tests、生产构建、compileall、依赖审计、数据库完整性和文档链接均通过；精确命令与限制见 [`STATUS.md`](STATUS.md)。
-- H5 新关闭 20 个 defect ID，累计关闭 70 个、剩余 17 个。H6 现已继续关闭 7 个，累计关闭 77 个、剩余 10 个。没有真实 SMTP/IMAP/VAPID 账户验收；外部安装、连续使用与 7 日留存仍待真实用户验证。M15–M20 继续冻结，下一门禁为 H7。
+- H5 新关闭 20 个 defect ID，累计关闭 70 个、剩余 17 个。H6/H7 后续再关闭 13 个，当前累计关闭 83 个、剩余 4 个。没有真实 SMTP/IMAP/VAPID 账户验收；外部安装、连续使用与 7 日留存仍待真实用户验证。M15–M20 继续冻结，下一门禁为 H8。
 
 ## 10. H6：安全运行边界
 
@@ -401,7 +401,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - Web/File/Email 形成耐久 `external_untrusted` authority；外部来源后的写操作必须绑定精确 durable approval，结构损坏不可被 boolean approval 覆盖。配置凭据和脱敏占位符不能进入工具 invocation。
 - Web fetch 在发送前固定验证过的 public IP，保留逻辑 Host/SNI、复核真实 peer，每跳重做；wire/decoded bytes、gzip、总 deadline 和 exact MIME 分别受限。
 - `.env` 全量预校验、0600 原子写、复杂值 round-trip，以及事件/Context/checkpoint/诊断/日志统一脱敏均已落地。新增 [`../SECURITY.md`](../SECURITY.md) 记录真实支持边界。
-- 7 个 H6 defect ID 的原 strict xfail 均已删除，累计关闭 77 个、剩余 10 个；下一门禁为 H7。真实外部账户、外部安装、连续使用和 7 日留存仍待真人验证。
+- 7 个 H6 defect ID 的原 strict xfail 均已删除；H6 收口时累计关闭 77 个、剩余 10 个，下一门禁为 H7。H7 现已完成；当前累计关闭 83 个、剩余 4 个，下一门禁为 H8。真实外部账户、外部安装、连续使用和 7 日留存仍待真人验证。
 
 ## 11. H7：前端状态架构与 V2 最小闭环
 
@@ -436,6 +436,16 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 浏览器矩阵全部通过，且脚本不通过预先桌面导航掩盖手机入口缺失。
 - V2 对普通用户可回答“现在学到哪里、证据是什么、下一步为什么”。
 - 不新增密集 Dashboard、卡片套卡片或无产品含义的 Codex 文案。
+
+### H7 收口记录（2026-08-21）
+
+- 删除单体 workspace Store，以 session/run/plan/inbox/memory/settings/shell 七个 Pinia 状态域和 9 条 Vue Router 路径替代；core/optional 请求、last-known-good、generation fence、归档 tombstone 与深链回退均有真实组件测试。
+- H7-UI-001–006 的原 strict xfail/expected-failure 已全部删除。实时 steer、SSE→REST 对账、plan focus、Intervention target、optional bootstrap 和审批原生按钮由 32 个 Vitest 节点覆盖；旧 H0 五项改为调用真实 Vue/Pinia/DOM 测试。
+- Message/Run/Artifact/Intervention 的 Markdown、长内容、expandable button、dialog/Escape/focus restore 已统一；CSS 拆为五层并统一断点、focus-visible、reduced-motion、44px 移动目标和 sticky composer 滚动余量。
+- M14 只读学习依据已接 REST 与计划详情，显示 task teaches/assesses、Competency Evidence 覆盖、时间线、来源和 eligibility，不把任务完成度推断成掌握度。
+- 真实 Chrome 使用公开确定性临时 seed；375/768/1280/1440/2560 每项先建新 BrowserContext 并在首次导航前设尺寸。`5 viewports / 43 route checks` 覆盖 8 条冷深链、100 消息、长中英/URL/表格/代码、工具与 child 事件、M14、提醒回复、optional 失败、reduced-motion 和键盘 archive/restore，全部无横溢、加载残留、重复 shell/header 或浏览器错误。
+- H7 最终单次完整 pytest 为 `1048 passed / 4 strict xfailed / 0 failed / 0 XPASS`；4 项预期失败精确属于 H8。前端 Node `9 passed`、Vitest `32 passed`、生产构建和完整/production-only audit 均通过，audit 为 0 vulnerabilities。
+- H7 新关闭 6 个 defect ID，累计关闭 83 个、剩余 4 个；下一门禁为 H8。真实外部安装、连续使用和 7 日留存未由自动化代替，M15–M20 继续冻结。
 
 ## 12. H8：首启、发布工程与真实用户验收
 

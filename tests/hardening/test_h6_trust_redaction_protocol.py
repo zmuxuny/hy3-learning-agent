@@ -11,6 +11,7 @@ import pytest
 from fastapi import HTTPException
 from pydantic import SecretStr
 from sqlalchemy import func, select
+from uvicorn.logging import AccessFormatter
 
 import app.api.settings as settings_api
 from app.context.assembler import ContextAssembler
@@ -95,11 +96,46 @@ def test_logging_factory_covers_child_logger_and_late_handler(monkeypatch):
             logger.exception("provider Authorization: Bearer %s", credential)
     finally:
         logger.removeHandler(handler)
-
     rendered = stream.getvalue()
     assert credential not in rendered
     assert REDACTED in rendered
     assert isinstance(SecretRedactionFilter(), logging.Filter)
+
+
+def test_logging_redaction_preserves_structured_formatter_arguments(monkeypatch):
+    credential = "h7-browser-log-secret"
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", credential)
+    record = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg='%s - "%s %s HTTP/%s" %d',
+        args=("127.0.0.1:4321", "GET", "/api/v1/profile", "1.1", 200),
+        exc_info=None,
+    )
+    redaction_filter = SecretRedactionFilter()
+
+    assert redaction_filter.filter(record)
+    assert len(record.args) == 5
+    assert record.getMessage() == '127.0.0.1:4321 - "GET /api/v1/profile HTTP/1.1" 200'
+    rendered_access = AccessFormatter(
+        '%(client_addr)s - "%(request_line)s" %(status_code)s'
+    ).format(record)
+    assert rendered_access == '127.0.0.1:4321 - "GET /api/v1/profile HTTP/1.1" 200 OK'
+
+    secret_record = logging.LogRecord(
+        name="provider",
+        level=logging.ERROR,
+        pathname=__file__,
+        lineno=2,
+        msg="provider token=%s",
+        args=(credential,),
+        exc_info=None,
+    )
+    assert redaction_filter.filter(secret_record)
+    assert secret_record.args == (REDACTED,)
+    assert credential not in secret_record.getMessage()
 
 
 def test_runtime_tool_trace_and_model_observation_share_recursive_redaction(monkeypatch):

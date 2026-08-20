@@ -1,6 +1,6 @@
 # 主动 Agent 与上下文架构
 
-> 状态说明（2026-08-20）：本文描述目标架构，并明确 develop 上已经验收的边界。H1–H6 已完成迁移/UTC/备份、事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention 与应用安全边界；累计关闭 77 个缺陷 ID，矩阵剩余 10 个 open ID，下一门禁为 H7，M15–M20 继续冻结。完整前端与发布工程仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-21）：本文描述目标架构，并明确 develop 上已经验收的边界。H1–H7 已完成迁移/UTC/备份、事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention、应用安全边界与前端最小闭环；累计关闭 83 个缺陷 ID，矩阵剩余 4 个 open ID，下一门禁为 H8，M15–M20 继续冻结。发布工程仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
 
 阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断全部门禁已经满足。H0 建立的失败基线会在对应门禁修复后删除 xfail；当前边界为：
 
@@ -9,7 +9,7 @@
 - Evidence / Competency：H1-TIME-001/002 与 H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002 已关闭；完整账本、追加式控制事实、Artifact snapshot、scope-aware graph 与严格工具 Schema 已验收。
 - Context / Intervention：H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002、H5-PRO-001–003 已关闭；来源图、generation fence、typed blocks、逻辑 Intervention、mail job 与 ProactiveDecision 已验收。
 - 安全：H6-AUTH/CODE/TRUST/WEB/ENV/CONFIG/REDACT 均已关闭；local 默认 loopback，server API 必须认证，外部来源不能自行获得写权限，没有 sandbox Provider 时 `code_execute` 不可用。
-- UI：H7-UI-001–006 仍 open；浏览器登录体验、移动导航和发布资产尚未验收。
+- UI：H7-UI-001–006 已关闭；分域 Store、正式路由、移动导航、前端事实对账与五宽真实 Chrome 已验收。浏览器登录、首启和发布资产仍属于 H8。
 
 ## 1. 总体架构
 
@@ -81,7 +81,7 @@ H4 已把 V2 Evidence 固定为追加式 fact ledger。提交、验收、测验�
 
 当前实现只装配当前对话需要的近期消息。较早消息通过 `SessionCompressionState` 短 claim 完整分块读取，模型链成功且 source version/generation CAS 仍成立时才生成 `SessionSummary` 并推进连续 coverage；失败、并发冲突或编辑不会推进 cursor。原始消息始终保留，摘要不会自动提升为长期记忆。
 
-每条会话拥有显式焦点，后端校验 Session/Plan scope，`currentPlan` 与 `focusPlanId` 分离，隔离不依赖 UI。ContextAssembler 只把 SessionPlanLink 用于关系和排序；global Session 最多读取紧凑计划索引，不会因 discussed/created/focused link 读取计划私有事实。前端归档后的 stale focus 仍由 H7-UI-003 处理。
+每条会话拥有显式焦点，后端校验 Session/Plan scope，`currentPlan` 与 `focusPlanId` 分离，隔离不依赖 UI。ContextAssembler 只把 SessionPlanLink 用于关系和排序；global Session 最多读取紧凑计划索引，不会因 discussed/created/focused link 读取计划私有事实。前端焦点只从 active 计划派生，归档提交立即清除详情/焦点，迟到 refresh 由 generation fence 与 tombstone 拒绝。
 
 全局 Session 创建计划后不静默改绑；新计划 Session 保存一次性冻结、版本化且可追溯的 `SessionHandoff`。handoff 记录来源事实、内容 hash 与 Context generation，精确重试复用同一事实，来源 Session 后续消息不能改写既有 child。
 
@@ -158,7 +158,7 @@ Hy3 支持长上下文，但系统仍需选择、分层和压缩。长上下文�
 
 每个 proactive Run 在模型前冻结候选 key/kind/payload、Evidence watermark 与 projection digest，终态写入 `ProactiveDecision`。只有 `success_wait/success_intervention` 消耗长期冷却；quiet hours 保存精确 `next_eligible_at`，Guard/model/runtime failure 使用短退避。晚写入的旧 Evidence 与已失效事实不会伪装成近期学习活动。
 
-主动提醒的权威回复位置是 Session。一次逻辑 Intervention 拥有稳定 ID、canonical assistant message 与 reply token，所有 delivery 和回复都引用它；活动 Run 的 Queue、Run 和 ChatMessage 耐久保存 target 与 execution mode。H5 已关闭后端身份与恢复协议；前端显式保留 target 的门禁仍由 H7-UI-004 跟踪。
+主动提醒的权威回复位置是 Session。一次逻辑 Intervention 拥有稳定 ID、canonical assistant message 与 reply token，所有 delivery 和回复都引用它；活动 Run 的 Queue、Run 和 ChatMessage 耐久保存 target 与 execution mode。H5 关闭后端身份与恢复协议，H7 让 list/open/深链、composer、Queue 重载/编辑/重排/dispatch 全程使用顶层 typed target，下一条普通消息不会继承它。
 
 收件箱归档是可恢复生命周期；一个逻辑 Intervention 的多渠道 Notification 只计数和注入一次。同文提醒保持不同 Intervention 身份，打开任一 delivery 会更新同一逻辑组，不再按 run/title/body/thread 猜测合并。
 

@@ -429,16 +429,6 @@ async function checkSettingsEntry(sessionId) {
   if (!opened) throw new ContractFailure('Settings entry did not open the Settings view');
 }
 
-async function recordExpectedFailure(result, id, action) {
-  try {
-    await action();
-    result.expectedFailures.push({ id, status: 'XPASS' });
-  } catch (error) {
-    if (!(error instanceof ContractFailure)) throw error;
-    result.expectedFailures.push({ id, status: 'XFAIL', reason: error.message });
-  }
-}
-
 function assertNoDatabaseWrites(sessionId, viewport) {
   const writes = (requestsBySession.get(sessionId) || []).filter((request) => {
     let url;
@@ -489,7 +479,7 @@ try {
     const result = {
       label: `cold-${viewport.width}`,
       viewport: [viewport.width, viewport.height],
-      expectedFailures: [],
+      checks: [],
     };
 
     result.metrics = await withColdTarget(viewport, async (sessionId) => {
@@ -498,40 +488,24 @@ try {
 
     if (viewport.width === 375 || viewport.width === 768) {
       await withColdTarget(viewport, async (sessionId) => {
-        await recordExpectedFailure(
-          result,
-          `H7-UI-001-session-${viewport.width}`,
-          () => checkSessionSwitch(sessionId),
-        );
+        await checkSessionSwitch(sessionId);
+        result.checks.push({ id: `H7-UI-001-session-${viewport.width}`, status: 'passed' });
       });
     }
     if (viewport.width === 375) {
       await withColdTarget(viewport, async (sessionId) => {
-        await recordExpectedFailure(
-          result,
-          'H7-UI-001-settings-375',
-          () => checkSettingsEntry(sessionId),
-        );
+        await checkSettingsEntry(sessionId);
+        result.checks.push({ id: 'H7-UI-001-settings-375', status: 'passed' });
       });
     }
     report.push(result);
   }
 
-  const unexpectedPasses = report.flatMap((item) => (
-    item.expectedFailures
-      .filter((check) => check.status === 'XPASS')
-      .map((check) => ({ viewport: item.viewport[0], id: check.id }))
-  ));
   await writeFile(
     `${outputDir}/h0-browser-report.json`,
     `${JSON.stringify({ targetOrigin: appUrl.origin, fixtureAttested: true, report }, null, 2)}\n`,
   );
   console.log(JSON.stringify({ report }, null, 2));
-  if (unexpectedPasses.length) {
-    throw new Error(
-      `Strict expected failure unexpectedly passed; remove its XFAIL registration: ${JSON.stringify(unexpectedPasses)}`,
-    );
-  }
 } finally {
   socket.close();
 }

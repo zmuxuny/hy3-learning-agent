@@ -270,6 +270,7 @@ ALLOWED_UOW_ALIAS_CALLS = {
     },
     ("backend/app/runtime/subagents.py", "execute_durable_child", "rollback"),
     ("scripts/h3-runtime-recovery-demo.py", "_seed", "commit"),
+    ("scripts/h7_browser_fixture.py", "seed", "commit"),
     # These are protocol coordinators, not ordinary effect handlers: each
     # releases/finishes a short DB phase before or after external work.
     *{

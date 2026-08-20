@@ -4,7 +4,7 @@
 目标版本：2.0.0
 当前基线：1.1.1
 
-> 2026-08-20 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1–H6 已完成，累计关闭 77 个缺陷 ID，矩阵剩余 10 个 open ID，下一门禁是 H7；M13 的 Evidence 事实层、M14 后端图协议、M17/M18 所需的 Context/Intervention 地基及应用安全边界已通过对应门禁，但 M14 最小前端仍属 H7，learner state/FSRS/自适应动作仍冻结。M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成发布完成声明。
+> 2026-08-21 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1–H7 已完成，累计关闭 83 个缺陷 ID，矩阵剩余 4 个 open ID，下一门禁是 H8；M13 Evidence 事实层、M14 后端图协议与最小只读前端、M17/M18 所需的 Context/Intervention 地基及应用安全边界已通过对应门禁，learner state/FSRS/自适应动作仍冻结。M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成发布完成声明。
 
 H4 场景矩阵为 124 passed，覆盖 41 条 production baseline 与 41 个对应 mutant；H5 又覆盖 10,000 消息、来源图、完整 PromptEnvelope、逻辑 Intervention、IMAP job/ack 与真实进程恢复。完整 pytest、前端结果及历史快照见 [`STATUS.md`](STATUS.md)；这些自动化证据不替代真实 SMTP/IMAP/VAPID、外部安装、连续学习闭环和 7 日留存验证。
 
@@ -396,7 +396,7 @@ M13 学习账本
 - `scripts/rebuild-evidence.py` 已提供重建、审计、v1 回填和派生快照命令；H1 已使纯 audit 保持逐字节只读，并要求任何回填/重建写操作先取得协调 lease 和全量验证备份。
 - 41 个网络无关场景均执行 production adapter/reducer/audit，并由 41 个对应 mutant 独立触发 failure code。
 
-H4 已关闭 M13 事实层的迁移、完整账本、撤销/重做、重复成功、保守 eligibility、Artifact snapshot/指纹和 41 场景独立断言阻塞项。H5 完成长期 Context/Intervention 地基，H6 完成默认本机与个人服务器的失败关闭边界；M13 仍不单独打正式标签，项目保持 2.0.0-alpha.1 暂停发布，必须继续完成 H7/H8 和发布门禁。
+H4 已关闭 M13 事实层的迁移、完整账本、撤销/重做、重复成功、保守 eligibility、Artifact snapshot/指纹和 41 场景独立断言阻塞项。H5 完成长期 Context/Intervention 地基，H6 完成默认本机与个人服务器的失败关闭边界，H7 完成 M14 最小只读学习依据与真实浏览器投影；M13/M14 仍不单独打正式标签，项目保持 2.0.0-alpha.1 暂停发布，必须继续完成 H8 发布门禁。
 
 ### M14：技能图与计划映射
 
@@ -410,13 +410,13 @@ H4 已关闭 M13 事实层的迁移、完整账本、撤销/重做、重复成�
 
 验收：一个计划可解释每项任务训练或证明什么；跨计划相似技能不会静默合并；图修改可审计、可撤销。
 
-#### M14 实现候选清单（H4 后端协议已验收，H7 最小前端待完成）
+#### M14 实现候选清单（H4 后端协议与 H7 最小前端已验收）
 
 - 已新增 `Competency`、`CompetencyEdge`、`PlanCompetencyLink`、`TaskCompetencyLink` 和 `ResourceCompetencyLink` 增量表。
 - 已提供 `competency_create`、`competency_link`、`competency_edge`、`competency_graph_get`、`competency_get` 和 `evidence_list` 的第一版工具与顶层输出模型。
 - `prerequisite` 与 `part_of` 关系在写入前执行确定性环检测；同 key 不会根据标题相似度静默合并，重复调用按工具幂等键复用。
 
-H4 已关闭后端阻塞项：global/plan key 使用 scope-aware partial unique，edge/link 从数据库解析两端真实 owner/plan，Evidence 在同一 UoW 快照 task `assesses` 多技能关联，SQL 在 limit 前过滤，工具使用严格嵌套 Schema；graph revision/mutation/dependency 与 `RESTRICT` FK 使变更可审计且撤销不会静默级联。M14 仍缺 H7 的最小只读视图，因此不声明完整完成；H0–H8 关闭前也不允许技能节点承载 M15 学习状态。
+H4 已关闭后端阻塞项：global/plan key 使用 scope-aware partial unique，edge/link 从数据库解析两端真实 owner/plan，Evidence 在同一 UoW 快照 task `assesses` 多技能关联，SQL 在 limit 前过滤，工具使用严格嵌套 Schema；graph revision/mutation/dependency 与 `RESTRICT` FK 使变更可审计且撤销不会静默级联。H7 已补 task teaches/assesses、技能 Evidence 覆盖、时间线、来源与 eligibility 的最小只读视图。M14 仍是 2.0.0-alpha.1 候选；H0–H8 关闭前不允许技能节点承载 M15 学习状态。
 
 ### M15：学习者状态与复习引擎
 

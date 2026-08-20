@@ -1,11 +1,15 @@
 <script setup>
 import { BellIcon, CheckIcon, ChevronDownIcon, ClipboardIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { useInboxStore } from '../stores/inbox.js';
+import { useRunStore } from '../stores/run.js';
+import { useShellStore } from '../stores/shell.js';
 import { isRunBlocking } from '../runState.js';
 
 const props = defineProps({ message: { type: Object, required: true } });
-const store = useWorkspaceStore();
+const inbox = useInboxStore();
+const runStore = useRunStore();
+const shell = useShellStore();
 const editing = ref(false);
 const draft = ref('');
 const saving = ref(false);
@@ -16,12 +20,12 @@ const planningAnswers = computed(() => (
     ? (props.message.message_metadata.answers || [])
     : null
 ));
-const canEdit = computed(() => !isRunBlocking(store.currentRun?.status));
+const canEdit = computed(() => !isRunBlocking(runStore.currentRun?.status));
 const repliedNotification = computed(() => {
-  const notificationId = props.message.message_metadata?.reply_to_notification_id;
-  if (!notificationId) return null;
-  return [...store.notifications, ...store.archivedNotifications].find((item) => item.id === notificationId)
-    || { id: notificationId, title: `提醒 ${notificationId}` };
+  const interventionId = props.message.reply_to_intervention_id;
+  if (!interventionId) return null;
+  return inbox.allNotifications.find((item) => item.intervention_id === interventionId)
+    || { intervention_id: interventionId, title: `提醒 ${interventionId}` };
 });
 
 async function beginEdit() {
@@ -39,7 +43,7 @@ async function save() {
     return;
   }
   saving.value = true;
-  const succeeded = await store.editMessage(props.message.id, draft.value.trim());
+  const succeeded = await shell.editMessage(props.message.id, draft.value.trim());
   saving.value = false;
   if (succeeded) editing.value = false;
 }

@@ -156,12 +156,12 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H7-UI-001 | 375/768 冷启动必须可见且可操作地切换 Session，375 必须有独立设置入口；旧 CSS 隐藏控件且底栏无设置。 | HP4, HP11, STATUS | BROWSER（3 断言） | U | H7 | open · strict expected failure / — |
-| H7-UI-002 | 实时 steer 的事实顺序必须是原问题→steer→答复；旧 live Run 固定锚在首条 user 后。 | HP11 | UI | U | H7 | open · strict xfail / — |
-| H7-UI-003 | 归档计划必须同时清除 current/focus scope；旧 store 可留下 archived stale focus。 | HP11 | UI | U | H7 | open · strict xfail / — |
-| H7-UI-004 | 提醒 reply target 必须在 active Run queue 中耐久保存且成功后消费；旧前端/API schema 丢失 target。 | HP9, HP11 | UI, INT | U | H5→H7 | open · strict xfail / — |
-| H7-UI-005 | SSE 丢终态/断线后必须有界重连并以 durable REST 对账；旧 `onerror` 空操作使 UI 永久 running。 | HP11 | UI | U | H7 | open · strict xfail / — |
-| H7-UI-006 | 可降级设置/统计请求失败不能清空 core workspace；旧 16 路 `Promise.all` 全有或全无。 | HP11 | UI | U | H7 | open · strict xfail / — |
+| H7-UI-001 | 375/768 冷启动必须可见且可操作地切换 Session，375 必须有独立设置入口；旧 CSS 隐藏控件且底栏无设置。 | HP4, HP11, STATUS | BROWSER（3 断言） | U | H7 | fixed · passing / H7 阶段 |
+| H7-UI-002 | 实时 steer 的事实顺序必须是原问题→steer→答复；旧 live Run 固定锚在首条 user 后。 | HP11 | UI | U | H7 | fixed · passing / H7 阶段 |
+| H7-UI-003 | 归档计划必须同时清除 current/focus scope；旧 store 可留下 archived stale focus。 | HP11 | UI | U | H7 | fixed · passing / H7 阶段 |
+| H7-UI-004 | 提醒 reply target 必须在 active Run queue 中耐久保存且成功后消费；旧前端/API schema 丢失 target。 | HP9, HP11 | UI, INT | U | H5→H7 | fixed · passing / H7 阶段 |
+| H7-UI-005 | SSE 丢终态/断线后必须有界重连并以 durable REST 对账；旧 `onerror` 空操作使 UI 永久 running。 | HP11 | UI | U | H7 | fixed · passing / H7 阶段 |
+| H7-UI-006 | 可降级设置/统计请求失败不能清空 core workspace；旧 16 路 `Promise.all` 全有或全无。 | HP11 | UI | U | H7 | fixed · passing / H7 阶段 |
 
 ## H8：首启与发布工程
 
@@ -180,9 +180,18 @@
 
 ## 验收记录
 
+### H7 当前结果（2026-08-21）
+
+- H7-UI-001–006 均已删除原 strict xfail/expected-failure 并固定通过；H7 新关闭 6 个 ID，矩阵累计关闭 83 个 defect ID、剩余 4 个 open ID。下一门禁为 H8，M15–M20 继续冻结。
+- 前端删除单体 workspace Store，改为 session/run/plan/inbox/memory/settings/shell 分域 Store 与 9 条正式路由。核心首屏和可降级域独立提交，generation fence、last-known-good 与归档 tombstone 阻止迟到响应污染当前状态。
+- durable Intervention ID 在 list/open、深链、composer 与 Queue 重载/编辑/重排/dispatch 中保持顶层 typed identity；steer 以 durable sequence 投影，SSE 断线后单飞读取 Run/events/messages 并按 generation/sequence 对账。
+- 组件层覆盖不可信 Markdown、长链接/表格/代码/嵌套列表、审批原生按钮、可展开事件 button、dialog 焦点锁/Escape/恢复和 M14 只读学习依据；32 个 Vitest 节点与 9 个 Node 契约通过。
+- 真实 Chrome 使用公开确定性临时库，每种尺寸新建 BrowserContext，并在首次导航前设置 375/768/1280/1440/2560 viewport；43 个路由/交互检查、100 条消息、移动 Session/设置、M14、提醒深链、可降级失败、reduced-motion 与键盘归档/恢复均通过。未读取正式数据库、秘密或私人内容。
+- 最终完整 pytest 为 `1048 passed / 4 strict xfailed / 0 failed / 0 XPASS`；4 项预期失败均属于 H8，H7 不再保留 xfail 或 expected-failure。
+
 ### H6 当前结果（2026-08-20）
 
-- H6-AUTH-001、CODE-001、TRUST-001、WEB-001、ENV-001、CONFIG-001 与 REDACT-001 均已删除原 strict xfail 并固定通过；H6 新关闭 7 个 ID，矩阵累计关闭 77 个 defect ID、剩余 10 个 open ID。下一门禁为 H7，M15–M20 继续冻结。
+- H6-AUTH-001、CODE-001、TRUST-001、WEB-001、ENV-001、CONFIG-001 与 REDACT-001 均已删除原 strict xfail 并固定通过；H6 收口时新关闭 7 个 ID，矩阵累计关闭 77 个 defect ID、剩余 10 个 open ID，下一门禁为 H7。H7 现已完成，当前计数见上方 H7 记录。
 - local 模式在启动参数与 ASGI scope 两层限制 loopback；server 模式缺少强 bearer token、精确 HTTPS public origin 或一致 CORS 时加载失败。全部 `/api/v1` 由 Host、Bearer/签名会话和 Cookie 写请求 CSRF Guard 保护。
 - 没有真实 sandbox Provider，所以 `code_execute` 在模型 surface、直接工具调用和旧 subprocess outbox 恢复边界均失败关闭。Web/File/Email 来源形成耐久 untrusted authority；写操作只接受同 Run、invocation、request digest 与 live claim 的已消费审批。
 - Web 每跳解析并固定公有地址，保留 Host/SNI、复核 peer，并独立限制 wire/decoded bytes、总 deadline、encoding 与 exact MIME。配置写入和统一脱敏覆盖对应门禁；完整命令与结果见 [`STATUS.md`](STATUS.md)。未调用公网、真实秘密或真实邮箱。
@@ -207,7 +216,7 @@
 - H3-RUN-001–011 均已删除原 strict xfail 并固定通过；H3 新关闭 10 个 ID（H3-RUN-008 已在 H2 提前关闭），矩阵累计关闭 34 个 defect ID、剩余 53 个 open ID。下一门禁为 H4，M15–M20 继续冻结。
 - H3 定向套件为 40 passed，覆盖 revision 3、真实进程 SIGKILL、双进程 claim、SQLite 锁、审批、原子 finalization/queue successor、late steer、父子投影、耐久 retry、共享预算、tool/model wait 分类、多工具副作用 replay 和固定种子 100 轮语义恢复。
 - 真实 Hy3 临时库演示在同一 Run 上执行两次 SIGKILL 和三次 claim，最终只有一条 assistant message 与一个 completed event；未输出模型正文、秘密或用户数据。前端状态契约为 9 passed，生产构建通过，npm audit 为 0 vulnerabilities。
-- H3 收口时 H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成；H4–H6 现已关闭，当前结果见上方记录与 [`STATUS.md`](STATUS.md)。
+- H3 收口时 H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成；H4–H7 现已关闭，当前结果见上方记录与 [`STATUS.md`](STATUS.md)。
 
 ### H2 当前结果（2026-08-19）
 

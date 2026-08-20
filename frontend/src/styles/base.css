@@ -1,0 +1,26 @@
+* { box-sizing: border-box; }
+
+html, body, #app { width: 100%; min-width: 320px; min-height: 100%; margin: 0; }
+
+body { overflow: hidden; background: white; }
+
+button, textarea, input { font: inherit; }
+
+button { border: 0; color: inherit; cursor: pointer; }
+
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
+
+svg { width: 19px; height: 19px; }
+
+::-webkit-scrollbar { width: 7px; height: 7px; }
+
+::-webkit-scrollbar-track { background: transparent; }
+
+::-webkit-scrollbar-thumb { background: #d3d4cf; border-radius: 8px; }
+
+:where(button, a, input, select, textarea, [role='button']):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+:where(button, input, select, textarea):disabled { cursor: not-allowed; }
+:where(p, li, dd, td, th, code, pre, .agent-markdown, .message-bubble) { overflow-wrap: anywhere; }

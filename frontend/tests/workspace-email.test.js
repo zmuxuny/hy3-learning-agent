@@ -4,7 +4,7 @@ import { afterEach, test } from 'node:test';
 import { createPinia, setActivePinia } from 'pinia';
 
 import api from '../src/api/client.js';
-import { useWorkspaceStore } from '../src/stores/workspace.js';
+import { useSettingsStore } from '../src/stores/settings.js';
 
 const originalGet = api.get;
 const originalPost = api.post;
@@ -16,7 +16,7 @@ afterEach(() => {
 
 test('SMTP diagnostic retries retain one client action id until enqueue is confirmed', async () => {
   setActivePinia(createPinia());
-  const store = useWorkspaceStore();
+  const store = useSettingsStore();
   const requests = [];
   let postAttempt = 0;
 
@@ -46,7 +46,7 @@ test('SMTP diagnostic retries retain one client action id until enqueue is confi
 
 test('a failed settings refresh does not invalidate a confirmed SMTP enqueue', async () => {
   setActivePinia(createPinia());
-  const store = useWorkspaceStore();
+  const store = useSettingsStore();
   const requests = [];
 
   api.post = async (_path, payload) => {

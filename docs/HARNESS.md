@@ -1,10 +1,10 @@
 # Personal Learning Harness
 
-> 状态说明（2026-08-20）：本文描述产品目标，并区分已经验收的 H1–H6 边界与后续门禁。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention 与应用安全边界已完成，累计关闭 77 个缺陷 ID；矩阵剩余 10 个 open ID，下一门禁为 H7，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-21）：本文描述产品目标，并区分已经验收的 H1–H7 边界与后续门禁。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention、应用安全边界与前端最小闭环已完成，累计关闭 83 个缺陷 ID；矩阵剩余 4 个 open ID，下一门禁为 H8，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
 
 ## 产品边界
 
-Learning Agent 的产品目标是个人本地部署或经过认证的个人服务器长期运行，不做账号、组织、租户或云端多用户平台。local 默认且只接受 loopback；高级 server 模式保护全部 API，但浏览器登录产品化与安装仍待 H7/H8。`owner_id=local` 只是本地数据的稳定命名空间，不是认证机制。
+Learning Agent 的产品目标是个人本地部署或经过认证的个人服务器长期运行，不做账号、组织、租户或云端多用户平台。local 默认且只接受 loopback；高级 server 模式保护全部 API，但浏览器登录产品化与安装仍待 H8。`owner_id=local` 只是本地数据的稳定命名空间，不是认证机制。
 
 Harness 的目标由四层共同实现：System Prompt 定义工作方式，ContextAssembler 选择证据，Function Calling Schema 声明可执行能力，后端 Guard 强制焦点、路径、时间和通知边界。H2 已验收统一 UoW、请求身份、effect 分类和外部副作用围栏，H4 已验收 Evidence/Competency scope 与 eligibility，H5 已验收 Context/Intervention 来源、身份与恢复，H6 已验收部署认证、外部来源 authority 与能力可用性；不能用 Prompt 或页面行为代替这些后端约束。
 
@@ -72,4 +72,4 @@ H4 增加 revision 4 与 Evidence/Competency 事实协议：Evidence、Artifact 
 
 当前版本已经形成真实可运行的个人学习 Harness 原型：计划、资源、执行、证据、检查、记忆和主动提醒均有正常路径能力；SMTP/IMAP 代码、连续 Session 路由和诊断接口已经存在，真实供应商收发仍依赖本机邮箱凭据。它不是通用操作系统 Agent，也不宣称拥有容器级代码隔离、任意宿主目录权限或多节点分布式调度能力。
 
-截至 2026-08-20，H1–H6 已完成，累计关闭 77 个 defect ID；H4 的 41 条 baseline/41 个 mutant、10k Evidence 投影，H5 的 10k 消息、Context 来源图、Intervention/mail，以及 H6 的部署/外部信任/Web/配置/脱敏协议均已通过。移动导航和发布工程仍按 H7/H8 修复；没有真实 SMTP/IMAP/VAPID 验证，外部安装、连续使用和 7 日留存必须由真人记录验收。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。
+截至 2026-08-21，H1–H7 已完成，累计关闭 83 个 defect ID；H4 的 41 条 baseline/41 个 mutant、10k Evidence 投影，H5 的 10k 消息与 Context/Intervention，H6 的安全协议，以及 H7 的分域 Store、正式路由、32 个组件交互节点和真实 Chrome 五宽矩阵均已通过。发布工程仍按 H8 修复；没有真实 SMTP/IMAP/VAPID 验证，外部安装、连续使用和 7 日留存必须由真人记录验收。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。

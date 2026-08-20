@@ -13,11 +13,21 @@ import {
   XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { useInboxStore } from '../stores/inbox.js';
+import { usePlanStore } from '../stores/plan.js';
+import { useRunStore } from '../stores/run.js';
+import { useSessionStore } from '../stores/session.js';
+import { useSettingsStore } from '../stores/settings.js';
+import { useShellStore } from '../stores/shell.js';
 import api from '../api/client';
 import { isRunBlocking, isRunSteerable } from '../runState.js';
 
-const store = useWorkspaceStore();
+const inbox = useInboxStore();
+const planStore = usePlanStore();
+const runStore = useRunStore();
+const sessionStore = useSessionStore();
+const settings = useSettingsStore();
+const shell = useShellStore();
 const prompt = ref('');
 const fileInput = ref(null);
 const uploading = ref(false);
@@ -25,31 +35,32 @@ const queueMenuOpen = ref(false);
 const editingQueueId = ref(null);
 const editingDraft = ref('');
 const queueEditInput = ref(null);
-const running = computed(() => isRunBlocking(store.currentRun?.status));
-const waitingApproval = computed(() => store.currentRun?.status === 'waiting_approval');
-const steerable = computed(() => isRunSteerable(store.currentRun?.status));
-const queuedMessages = computed(() => store.queuedMessages.filter(
-  (item) => item.session_id === (store.activeSessionId || null),
+const running = computed(() => isRunBlocking(runStore.currentRun?.status));
+const waitingApproval = computed(() => runStore.currentRun?.status === 'waiting_approval');
+const steerable = computed(() => isRunSteerable(runStore.currentRun?.status));
+const queuedMessages = computed(() => sessionStore.queuedMessages.filter(
+  (item) => item.session_id === (sessionStore.activeSessionId || null),
 ));
-const followUpBehavior = computed(() => store.followUpBehavior);
+const followUpBehavior = computed(() => settings.followUpBehavior);
 const defaultActionLabel = computed(() => (
   steerable.value && followUpBehavior.value === 'steer' ? '转向当前运行' : '排队到下一轮'
 ));
 const contextUsage = computed(() => {
-  const event = [...store.runEvents].reverse().find((item) => item.type === 'context.built');
+  const event = [...runStore.runEvents].reverse().find((item) => item.type === 'context.built');
   if (!event?.payload?.estimated_tokens) return null;
   return {
     tokens: event.payload.estimated_tokens,
-    window: store.appSettings?.model_context_window || 128000,
+    window: settings.appSettings?.model_context_window || 128000,
   };
 });
 const contextLabel = computed(() => (
   contextUsage.value ? `${Math.round(contextUsage.value.tokens / 1000)}k / ${Math.round(contextUsage.value.window / 1000)}k` : ''
 ));
 const archivedContext = computed(() => (
-  Boolean(store.activeSession?.archived_at) || store.focusedPlan?.status === 'archived'
+  Boolean(sessionStore.activeSession?.archived_at)
+  || planStore.allPlans.find((plan) => Number(plan.id) === Number(sessionStore.activeSession?.plan_id))?.status === 'archived'
 ));
-const childContext = computed(() => Boolean(store.currentRun?.parent_run_id));
+const childContext = computed(() => Boolean(runStore.currentRun?.parent_run_id));
 const composerDisabled = computed(() => archivedContext.value || childContext.value);
 
 async function submit() {
@@ -66,12 +77,12 @@ async function submit() {
 async function applyFollowUp(value, mode) {
   queueMenuOpen.value = false;
   if (!value) return;
-  if (mode === 'steer' && store.currentRun?.id) {
-    const steered = await store.steerRun(store.currentRun.id, value);
+  if (mode === 'steer' && runStore.currentRun?.id) {
+    const steered = await runStore.steerRun(runStore.currentRun.id, value);
     if (steered) prompt.value = '';
     return;
   }
-  const queued = await store.enqueueMessage(value);
+  const queued = await shell.enqueueMessage(value);
   if (queued) prompt.value = '';
 }
 
@@ -80,12 +91,12 @@ async function tabAction(event) {
   event.preventDefault();
   const value = prompt.value.trim();
   if (!value) return;
-  const queued = await store.enqueueMessage(value);
+  const queued = await shell.enqueueMessage(value);
   if (queued) prompt.value = '';
 }
 
 async function sendNow(value, mode = 'normal') {
-  const started = await store.startRun(value, undefined, mode === 'interrupt' ? { mode: 'interrupt' } : {});
+  const started = await shell.startRun(value, undefined, mode === 'interrupt' ? { mode: 'interrupt' } : {});
   if (started) prompt.value = '';
 }
 
@@ -97,7 +108,7 @@ async function interruptSend() {
 }
 
 function stopRun() {
-  store.cancelCurrentRun();
+  runStore.cancelCurrentRun();
 }
 
 async function beginQueueEdit(message) {
@@ -111,17 +122,17 @@ async function beginQueueEdit(message) {
 async function saveQueueEdit(message) {
   const value = editingDraft.value.trim();
   if (value && value !== (message.user_content || message.objective)) {
-    await store.updateQueuedMessage(message.id, { objective: value });
+    await sessionStore.updateQueuedMessage(message.id, { objective: value });
   }
   editingQueueId.value = null;
 }
 
 async function sendQueueNow(message) {
-  await store.sendQueuedMessage(message.id);
+  await shell.sendQueuedMessage(message.id);
 }
 
-watch(() => store.activeSessionId, () => {
-  store.loadQueue();
+watch(() => sessionStore.activeSessionId, () => {
+  sessionStore.loadQueue();
 });
 
 async function uploadFile(event) {
@@ -132,7 +143,7 @@ async function uploadFile(event) {
     const response = await api.upload('/workspace/files', file);
     prompt.value = `请读取并检查我上传的学习成果文件 \`${response.data.path}\`。如果当前对话聚焦某个任务，请把它作为 submission_create 的证据；需要时运行代码或测试，再用 submission_check 给出验收结果。`;
   } catch (uploadError) {
-    store.error = uploadError.message;
+    shell.error = uploadError.message;
   } finally {
     uploading.value = false;
     event.target.value = '';
@@ -142,11 +153,11 @@ async function uploadFile(event) {
 async function switchSession(event) {
   const sessionId = event.target.value;
   if (!sessionId) {
-    store.startNewConversation();
+    shell.startNewConversation();
     return;
   }
-  const session = store.sessions.find((item) => item.id === sessionId);
-  if (session) await store.selectSession(session);
+  const session = sessionStore.sessions.find((item) => item.id === sessionId);
+  if (session) await shell.selectSession(session);
 }
 </script>
 
@@ -182,12 +193,12 @@ async function switchSession(event) {
           <button
             title="上移"
             :disabled="index === 0"
-            @click="store.moveQueuedMessage(message.id, -1)"
+            @click="sessionStore.moveQueuedMessage(message.id, -1)"
           ><ChevronUpIcon /></button>
           <button
             title="下移"
             :disabled="index === queuedMessages.length - 1"
-            @click="store.moveQueuedMessage(message.id, 1)"
+            @click="sessionStore.moveQueuedMessage(message.id, 1)"
           ><ChevronDownIcon /></button>
           <button v-if="message.trigger === 'user_message' && editingQueueId !== message.id" title="编辑" @click="beginQueueEdit(message)"><PencilSquareIcon /></button>
           <button v-else title="保存" @click="saveQueueEdit(message)"><XMarkIcon /></button>
@@ -196,17 +207,17 @@ async function switchSession(event) {
             title="立即发送"
             @click="sendQueueNow(message)"
           ><ArrowUpIcon /></button>
-          <button class="queue-delete" title="删除" @click="store.deleteQueuedMessage(message.id)"><TrashIcon /></button>
+          <button class="queue-delete" title="删除" @click="sessionStore.deleteQueuedMessage(message.id)"><TrashIcon /></button>
         </div>
       </div>
     </div>
 
     <div class="composer-shell">
       <input ref="fileInput" class="visually-hidden" type="file" @change="uploadFile" />
-      <div v-if="store.replyTargetNotification" class="composer-reply-target">
+      <div v-if="inbox.replyTargetNotification" class="composer-reply-target">
         <BellIcon />
-        <span><small>回复提醒</small><strong>{{ store.replyTargetNotification.title }}</strong></span>
-        <button title="取消回复提醒" @click="store.replyTargetNotification = null"><XMarkIcon /></button>
+        <span><small>回复提醒</small><strong>{{ inbox.replyTargetNotification.title }}</strong></span>
+        <button title="取消回复提醒" @click="inbox.replyTargetNotification = null"><XMarkIcon /></button>
       </div>
       <textarea
         v-model="prompt"
@@ -219,13 +230,13 @@ async function switchSession(event) {
       <div class="composer-utility-bar">
         <button class="composer-plus" :disabled="running || uploading || composerDisabled" title="上传学习成果" @click="fileInput.click()"><PlusIcon /></button>
         <button
-          v-if="store.focusedPlan"
+          v-if="planStore.focusedPlan"
           class="composer-scope focused"
           title="打开当前学习计划"
-          @click="store.selectPlan(store.focusedPlan.id)"
+          @click="shell.selectPlan(planStore.focusedPlan.id)"
         >
           <MapIcon />
-          <span>{{ store.focusedPlan.title }}</span>
+          <span>{{ planStore.focusedPlan.title }}</span>
         </button>
         <span v-else class="composer-scope composer-scope-static" title="使用学习画像、计划摘要和长期记忆">
           <SparklesIcon />
@@ -265,9 +276,9 @@ async function switchSession(event) {
     </div>
     <label class="mobile-session-switch composer-mobile-switch">
         <span class="visually-hidden">切换对话</span>
-        <select :value="store.activeSessionId || ''" @change="switchSession">
+        <select :value="sessionStore.activeSessionId || ''" @change="switchSession">
           <option value="">＋ 新对话</option>
-          <option v-for="session in store.sessions" :key="session.id" :value="session.id">
+          <option v-for="session in sessionStore.sessions" :key="session.id" :value="session.id">
             {{ session.title }}
           </option>
         </select>

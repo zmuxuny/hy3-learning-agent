@@ -4,7 +4,7 @@
 
 当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
 
-> 安全与开发状态：`develop` 已完成 H1–H6，累计关闭 77 个缺陷 ID，矩阵剩余 10 个 open ID，下一门禁是 H7。默认 `local` 模式只接受 loopback；高级 `server` 模式在缺少认证或精确 HTTPS Origin 时拒绝启动。仓库不提供真实代码沙箱，因此 `code_execute` 默认不可用。M15–M20 继续冻结，H7/H8 与真人验收完成前仍不具备 V2 Alpha 发布条件。详见[安全边界](SECURITY.md)和[前置硬化计划](docs/V2_HARDENING_PLAN.md)。
+> 安全与开发状态：`develop` 已完成 H1–H7，累计关闭 83 个缺陷 ID，矩阵剩余 4 个 open ID，下一门禁是 H8。默认 `local` 模式只接受 loopback；高级 `server` 模式在缺少认证或精确 HTTPS Origin 时拒绝启动。仓库不提供真实代码沙箱，因此 `code_execute` 默认不可用。M15–M20 继续冻结，H8 与真人验收完成前仍不具备 V2 Alpha 发布条件。详见[安全边界](SECURITY.md)和[前置硬化计划](docs/V2_HARDENING_PLAN.md)。
 
 ## Demo
 
@@ -54,7 +54,7 @@ flowchart LR
 
 ## 已实现的正常路径候选
 
-以下条目说明当前能力范围。H1–H6 已分别验收迁移、事务、Runtime、Evidence、长期 Context/提醒线程与应用安全边界；H7/H8 的完整前端和发布门禁仍未完成：
+以下条目说明当前能力范围。H1–H7 已分别验收迁移、事务、Runtime、Evidence、长期 Context/提醒线程、应用安全边界与前端最小闭环；当前只剩 H8 首启、发布和真人门禁：
 
 - 完整 `Plan → Stage → Task` 计划模型与多计划工作台
 - `AgentRun / RunEvent` 生命周期、SSE 实时轨迹和停止请求
@@ -74,6 +74,8 @@ flowchart LR
 - 简答测验、证据化评分、复习调度、XP 与可撤销操作基础
 - 核心任务证据门槛、真实计划进度和真实学习事件热力图
 - 对话优先的响应式工作台、消息内可收起工作记录、纵向计划时间线，以及热力图、连续天数、XP/等级和规则成就数据等轻游戏化基础
+- 正式深链路由与 session/run/plan/inbox/memory/settings 分域状态；核心首屏和可降级请求独立提交，提醒 target、SSE 断线对账、计划归档焦点和实时 steer 顺序均有浏览器/组件回归
+- 计划详情提供只读技能—训练/证明—Evidence 解释；375/768/1280/1440/2560 五种首次导航尺寸已用公开合成临时库完成真实 Chrome 验收
 - “设置”页提供模型连接、SMTP/IMAP 与主动策略；`.env` 更新会预校验全部字段、拒绝控制字符/非普通文件，并以 0600 原子发布且复杂值可无损往返
 - 48 个已安装工具契约：需求澄清、规划分工与提案、通用只读子 Agent、学习位置快照、课程资源搜索/核验/策展、计划修改、提交验收、复习处置、文件、代码、日历、记忆维护和显式技能图映射；当前模型 surface 为 47 个，`code_execute` 因无可信 sandbox Provider 而不可用
 - Web 搜索主源失败时自动降级到 Bing HTML 备选源；每跳固定公有 IP 并复核 peer，wire/解压大小、总时间和精确 MIME 均受限，所有结果标记为外部不可信
@@ -112,7 +114,7 @@ npm run dev
 
 Vite 会把 `/api` 代理到 `127.0.0.1:8000`。
 
-如需高级个人服务器模式，先完整阅读 [SECURITY.md](SECURITY.md)。必须设置 `DEPLOYMENT_MODE=server`、至少 32 字节的 `SERVER_AUTH_TOKEN`、精确 `https://` 的 `SERVER_PUBLIC_ORIGIN`，并令 `CORS_ORIGINS` 与之完全一致；缺少任一项都会失败关闭。当前浏览器登录产品化仍属于 H7/H8，不能把本机模式经端口转发直接暴露到公网。
+如需高级个人服务器模式，先完整阅读 [SECURITY.md](SECURITY.md)。必须设置 `DEPLOYMENT_MODE=server`、至少 32 字节的 `SERVER_AUTH_TOKEN`、精确 `https://` 的 `SERVER_PUBLIC_ORIGIN`，并令 `CORS_ORIGINS` 与之完全一致；缺少任一项都会失败关闭。浏览器登录与安装产品化仍属于 H8，不能把本机模式经端口转发直接暴露到公网。
 
 站内提醒完全不需要邮箱：应用运行时，前端每 15 秒同步后台通知并在页面内弹出新提醒。只有希望离开应用后仍收到邮件或直接回复邮件时，才需要在 `.env` 配置 SMTP/IMAP 凭据；独立 Agent 邮箱是推荐方案而不是硬性要求，完整选择、字段和测试方法见 [邮箱配置](docs/EMAIL.md)。
 

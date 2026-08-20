@@ -1,12 +1,12 @@
 # 产品定义
 
-> 状态说明（2026-08-20）：本文主要定义目标产品契约。H1–H6 已完成，累计关闭 77 个缺陷 ID、剩余 10 个 open ID，下一门禁是 H7；Context/Memory/Intervention 和应用部署边界已验收，完整前端和发布工程仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前不作 V2 Alpha 发布声明。
+> 状态说明（2026-08-21）：本文主要定义目标产品契约。H1–H7 已完成，累计关闭 83 个缺陷 ID、剩余 4 个 open ID，下一门禁是 H8；Context/Memory/Intervention、应用部署边界和前端最小闭环已验收，首启与发布工程仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前不作 V2 Alpha 发布声明。
 
 ## 一句话描述
 
 Learning Agent 是一个会持续维护学习上下文、主动判断是否需要介入，并通过资源、计划、证据检查、提醒和复习帮助用户真正执行计划的个人 AI Harness。
 
-产品只面向个人电脑或个人服务器持续运行，不建设账号、组织和租户系统。单用户服务器仍必须有认证；H6 已提供失败关闭的高级 server 边界，但浏览器登录产品化和发布安装仍由 H7/H8 阻塞。首要场景是编程和技术学习。
+产品只面向个人电脑或个人服务器持续运行，不建设账号、组织和租户系统。单用户服务器仍必须有认证；H6 已提供失败关闭的高级 server 边界，但浏览器登录产品化和发布安装仍由 H8 阻塞。首要场景是编程和技术学习。
 
 ## 核心问题
 
@@ -58,7 +58,7 @@ Hy3 读取经过组装的上下文并自主决策。系统再经过冷却时间�
 
 ## 自主权模型
 
-目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制；H4 已让 Evidence eligibility、Artifact 完整性和 Competency scope/revision/dependency 由架构层强制；H5 已让 Context 来源、预算、Memory 生命周期和 Intervention 身份由后端协议强制；H6 又让部署认证、外部来源 authority、Web fetch 和高风险能力可用性由后端边界强制。H7/H8 仍需完成浏览器登录体验、前端事实对账和可安装发布工程。
+目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制；H4 已让 Evidence eligibility、Artifact 完整性和 Competency scope/revision/dependency 由架构层强制；H5 已让 Context 来源、预算、Memory 生命周期和 Intervention 身份由后端协议强制；H6 又让部署认证、外部来源 authority、Web fetch 和高风险能力可用性由后端边界强制；H7 已完成前端事实对账和真实浏览器矩阵。H8 仍需完成浏览器登录、首启和可安装发布工程。
 
 - **自动执行**：提醒、抽查、安排复习、创建通知、生成临时学习材料。
 - **自动执行且可撤销**：调整任务时间、创建补救任务、重排低风险任务。
@@ -122,11 +122,11 @@ Plan
 
 Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用户消息、后台心跳、任务事件、复习到期和邮件回复进入同一个耐久 Runtime；Agent 自主选择工具，确定性 Guard 强制权限、频率、预算和安全边界。H2 已落实 UoW、幂等 CAS 与 outbox，H3 已落实统一 lease/phase、终态提交和崩溃恢复，H4 已落实 Evidence/Competency 事实约束；这些边界都不能以 Prompt 或正常路径替代。
 
-前端以 Session 为连续对话主画布和侧栏导航单位；这些交互已有正常路径候选。唯一根 Run 与 late steer 已由 H3 作为耐久后端事实恢复；实时事实顺序、SSE 断线对账、归档焦点清理和提醒 target 仍由 H7-UI-002–005 阻塞。
+前端以 Session 为连续对话主画布和侧栏导航单位；正式路由与 session/run/plan/inbox/memory/settings 分域 Store 已落地。唯一根 Run 与 late steer 由 H3 作为耐久后端事实恢复，H7 又关闭实时事实顺序、SSE 断线 REST 对账、归档焦点清理和提醒 target 的前端投影。
 
 用户消息编辑保存带版本/hash 的 Revision，并沿 verified provenance 失效所有下游 Memory/Summary/Snapshot/handoff；同一编辑和 rerun 在中断后幂等恢复。无法证明来源的 legacy 事实只保守失效，不猜测为 verified。
 
-全局对话到计划 Session 的显式承接使用不可变、版本化 handoff；后续源消息不会改写它。Memory restore 保留仍在未来的 expiry。前端归档后的 stale focus 仍由 H7-UI-003 处理。
+全局对话到计划 Session 的显式承接使用不可变、版本化 handoff；后续源消息不会改写它。Memory restore 保留仍在未来的 expiry。H7 让计划焦点只从 active 计划派生，并以 generation fence/tombstone 阻止归档后的迟到响应重新激活旧焦点。
 
 计划页面是 Agent 的可操作环境而不是旁路 CRUD 后台。信息架构分为两层：学习计划首页用完整卡片列出所有目标、进度、期限和 Agent 操作概况；点击卡片后进入单一计划工作区，沿纵向时间线查看阶段、任务、证据、复习和操作痕迹。详情不使用横向 Kanban 方格，也不常驻计划列压缩内容；计划路径和 Agent 输入框共享同一视觉中轴。用户从任务行发起的请求仍回到统一 Runtime，由 Agent 先读取上下文再决定是否使用工具。
 

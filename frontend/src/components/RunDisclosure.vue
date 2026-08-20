@@ -7,7 +7,7 @@ import {
   UserGroupIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { useRunStore } from '../stores/run.js';
 import AgentMessage from './AgentMessage.vue';
 import { isRunBlocking } from '../runState.js';
 
@@ -17,7 +17,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 });
 const emit = defineEmits(['expand']);
-const store = useWorkspaceStore();
+const runStore = useRunStore();
 
 const expanded = ref(false);
 const childExpanded = ref(new Set());
@@ -164,7 +164,7 @@ async function toggleChild(childId) {
     childLoading.value = loading;
     childErrors.value = { ...childErrors.value, [childId]: '' };
     try {
-      const events = await store.fetchChildRunEvents(childId);
+      const events = await runStore.fetchChildRunEvents(childId);
       childDetails.value = { ...childDetails.value, [childId]: events };
     } catch (error) {
       childErrors.value = {
@@ -312,7 +312,7 @@ async function toggleEvent(event) {
     contextLoading.value = loading;
     contextErrors.value = { ...contextErrors.value, [props.run.id]: '' };
     try {
-      const snapshot = await store.fetchRunContext(props.run.id);
+      const snapshot = await runStore.fetchRunContext(props.run.id);
       contextDetails.value = { ...contextDetails.value, [props.run.id]: snapshot };
     } catch (error) {
       contextErrors.value = {
@@ -429,18 +429,19 @@ function eventIcon(event) {
                   :key="childEventKey(agent.id, event)"
                   :class="['run-action-item', { open: childEventExpanded.has(childEventKey(agent.id, event)), error: event.payload?.result?.ok === false || event.type === 'run.failed' }]"
                 >
-                  <button
+                  <component
+                    :is="eventExpandable(event) ? 'button' : 'div'"
                     :class="['run-action-line', { expandable: eventExpandable(event) }]"
-                    type="button"
+                    :type="eventExpandable(event) ? 'button' : undefined"
                     :aria-expanded="eventExpandable(event) ? childEventExpanded.has(childEventKey(agent.id, event)) : undefined"
-                    @click="toggleChildEvent(agent.id, event)"
+                    @click="eventExpandable(event) && toggleChildEvent(agent.id, event)"
                   >
                     <component :is="eventIcon(event)" v-if="eventIcon(event)" />
                     <i v-else class="action-icon-spacer" aria-hidden="true"></i>
                     <span>{{ eventLabel(event) }}</span>
                     <small v-if="event.payload?.result?.budget_exceeded">已达调查上限</small>
                     <ChevronRightIcon v-if="eventExpandable(event)" class="action-chevron" />
-                  </button>
+                  </component>
                   <div v-if="childEventExpanded.has(childEventKey(agent.id, event))" class="run-action-detail">
                     <section v-for="section in detailSections(event)" :key="section.label">
                       <small>{{ section.label }}</small>
@@ -462,18 +463,19 @@ function eventIcon(event) {
           :key="eventKey(event)"
           :class="['run-action-item', { open: eventExpanded.has(eventKey(event)), error: event.payload?.result?.ok === false || event.type === 'run.failed' }]"
         >
-          <button
+          <component
+            :is="eventExpandable(event) ? 'button' : 'div'"
             :class="['run-action-line', { expandable: eventExpandable(event) }]"
-            type="button"
+            :type="eventExpandable(event) ? 'button' : undefined"
             :aria-expanded="eventExpandable(event) ? eventExpanded.has(eventKey(event)) : undefined"
-            @click="toggleEvent(event)"
+            @click="eventExpandable(event) && toggleEvent(event)"
           >
             <component :is="eventIcon(event)" v-if="eventIcon(event)" />
             <i v-else class="action-icon-spacer" aria-hidden="true"></i>
             <span>{{ eventLabel(event) }}</span>
             <small v-if="event.payload?.result?.replayed">已从检查点复用</small>
             <ChevronRightIcon v-if="eventExpandable(event)" class="action-chevron" />
-          </button>
+          </component>
           <div v-if="eventExpanded.has(eventKey(event))" class="run-action-detail">
             <section v-if="event.type === 'context.built'" class="context-inspector">
               <p v-if="contextLoading.has(run.id)" class="context-inspector-state">正在读取不可变上下文快照…</p>

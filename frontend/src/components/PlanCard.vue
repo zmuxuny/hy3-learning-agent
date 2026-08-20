@@ -9,15 +9,17 @@ import {
   LightBulbIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { usePlanStore } from '../stores/plan.js';
+import { useShellStore } from '../stores/shell.js';
 
-const store = useWorkspaceStore();
+const planStore = usePlanStore();
+const shell = useShellStore();
 const props = defineProps({
   plan: { type: Object, required: true },
 });
 const expanded = ref(false);
 const copied = ref(false);
-const plan = computed(() => [...store.plans, ...store.archivedPlans].find(
+const plan = computed(() => planStore.allPlans.find(
   (item) => Number(item.id) === Number(props.plan.id),
 ) || props.plan);
 const stages = computed(() => plan.value?.stages || []);
@@ -52,7 +54,7 @@ async function copyPlan() {
         <button :title="copied ? '已复制' : '复制计划'" @click="copyPlan">
           <CheckIcon v-if="copied" /><ClipboardIcon v-else />
         </button>
-        <button title="打开完整计划" @click="store.selectPlan(plan.id)"><ArrowsPointingOutIcon /></button>
+        <button title="打开完整计划" @click="shell.selectPlan(plan.id)"><ArrowsPointingOutIcon /></button>
       </div>
     </header>
 
@@ -86,8 +88,8 @@ async function copyPlan() {
       <ChevronDownIcon />
     </button>
     <footer class="artifact-footer">
-      <button @click="store.selectPlan(plan.id)">打开计划</button>
-      <button class="artifact-primary-action" @click="store.continueInPlan(plan.id)">在计划中继续 <ArrowRightIcon /></button>
+      <button @click="shell.selectPlan(plan.id)">打开计划</button>
+      <button class="artifact-primary-action" @click="shell.continueInPlan(plan.id)">在计划中继续 <ArrowRightIcon /></button>
     </footer>
   </section>
 </template>

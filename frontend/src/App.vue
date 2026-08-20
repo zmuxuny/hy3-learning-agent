@@ -1,57 +1,50 @@
 <script setup>
 import { BellIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline';
-import { onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, watch } from 'vue';
+import { RouterView, useRoute } from 'vue-router';
 import AgentTrace from './components/AgentTrace.vue';
-import HomeView from './components/HomeView.vue';
-import InboxView from './components/InboxView.vue';
-import MemoryView from './components/MemoryView.vue';
-import PlansView from './components/PlansView.vue';
-import SettingsView from './components/SettingsView.vue';
 import Sidebar from './components/Sidebar.vue';
 import WorkspaceHeader from './components/WorkspaceHeader.vue';
-import { useWorkspaceStore } from './stores/workspace';
+import { useInboxStore } from './stores/inbox.js';
+import { useShellStore } from './stores/shell.js';
+import { useSettingsStore } from './stores/settings.js';
 
-const store = useWorkspaceStore();
+const route = useRoute();
+const inbox = useInboxStore();
+const shell = useShellStore();
+const settings = useSettingsStore();
 onMounted(async () => {
-  await store.loadWorkspace();
-  store.startProactiveSync();
-  const params = new URLSearchParams(window.location.search);
-  const notificationId = Number(params.get('notification'));
-  if (Number.isInteger(notificationId) && notificationId > 0) await store.openNotification(notificationId);
-  else if (params.get('view') === 'inbox') store.openView('inbox');
+  shell.configureRunEvents();
+  await shell.bootstrap();
+  inbox.startProactiveSync(settings.loadSchedulerStatus);
 });
-onBeforeUnmount(() => store.stopProactiveSync());
+watch(() => route.fullPath, () => shell.hydrateRoute(route));
+onBeforeUnmount(() => inbox.stopProactiveSync());
 </script>
 
 <template>
   <div class="app-shell">
     <Sidebar />
     <main class="workspace">
-      <WorkspaceHeader v-if="!store.loading && store.activeView === 'home'" />
-      <div v-if="store.loading" class="page-loader"><span></span><p>正在恢复学习上下文…</p></div>
-      <template v-else>
-        <HomeView v-if="store.activeView === 'home'" />
-        <PlansView v-else-if="store.activeView === 'plans'" />
-        <MemoryView v-else-if="store.activeView === 'memory'" />
-        <InboxView v-else-if="store.activeView === 'inbox'" />
-        <SettingsView v-else-if="store.activeView === 'settings'" />
-      </template>
+      <WorkspaceHeader v-if="!shell.coreLoading && ['home', 'session', 'inbox-intervention'].includes(route.name)" />
+      <div v-if="shell.coreLoading" class="page-loader"><span></span><p>正在恢复学习上下文…</p></div>
+      <RouterView v-else />
     </main>
-    <button v-if="store.traceOpen" class="trace-backdrop" aria-label="关闭运行详情" @click="store.traceOpen = false"></button>
-    <AgentTrace v-if="store.traceOpen" />
-    <aside v-if="store.error" class="app-error-toast" role="alert">
+    <button v-if="shell.traceOpen" class="trace-backdrop" aria-label="关闭运行详情" @click="shell.traceOpen = false"></button>
+    <AgentTrace v-if="shell.traceOpen" />
+    <aside v-if="shell.error" class="app-error-toast" role="alert">
       <ExclamationTriangleIcon />
-      <span>{{ store.error }}</span>
-      <button aria-label="关闭错误提示" @click="store.error = ''"><XMarkIcon /></button>
+      <span>{{ shell.error }}</span>
+      <button aria-label="关闭错误提示" @click="shell.error = ''"><XMarkIcon /></button>
     </aside>
-    <aside v-if="store.proactiveNotice" :class="['proactive-toast', { shifted: store.error }]" aria-live="polite">
+    <aside v-if="inbox.proactiveNotice" :class="['proactive-toast', { shifted: shell.error }]" aria-live="polite">
       <BellIcon />
-      <button class="proactive-toast-copy" @click="store.openNotification(store.proactiveNotice)">
+      <button class="proactive-toast-copy" @click="shell.openNotification(inbox.proactiveNotice)">
         <small>学习进度提醒</small>
-        <strong>{{ store.proactiveNotice.title }}</strong>
-        <span>{{ store.proactiveNotice.body }}</span>
+        <strong>{{ inbox.proactiveNotice.title }}</strong>
+        <span>{{ inbox.proactiveNotice.body }}</span>
       </button>
-      <button class="proactive-toast-close" aria-label="关闭通知" @click="store.dismissProactiveNotice"><XMarkIcon /></button>
+      <button class="proactive-toast-close" aria-label="关闭通知" @click="inbox.dismissProactiveNotice"><XMarkIcon /></button>
     </aside>
   </div>
 </template>

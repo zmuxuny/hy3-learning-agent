@@ -9,17 +9,19 @@ import {
   UserGroupIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { useSessionStore } from '../stores/session.js';
+import { useShellStore } from '../stores/shell.js';
 
 const props = defineProps({
   proposal: { type: Object, default: null },
   readonly: { type: Boolean, default: false },
 });
-const store = useWorkspaceStore();
+const sessionStore = useSessionStore();
+const shell = useShellStore();
 const submitting = ref(false);
 const expanded = ref(true);
 const copied = ref(false);
-const proposal = computed(() => props.proposal || store.planningState.proposal);
+const proposal = computed(() => props.proposal || sessionStore.planningState.proposal);
 const pendingProposal = computed(() => proposal.value?.status === 'pending');
 const stages = computed(() => proposal.value?.plan_payload?.stages || []);
 const taskCount = computed(() => stages.value.reduce((count, stage) => count + (stage.tasks?.length || 0), 0));
@@ -30,17 +32,17 @@ const totalMinutes = computed(() => stages.value.reduce(
 
 async function acceptProposal() {
   submitting.value = true;
-  await store.decidePlanProposal(proposal.value.id, true);
+  await shell.decidePlanProposal(proposal.value.id, true);
   submitting.value = false;
 }
 
 async function reviseProposal() {
-  await store.startRun('我暂时不采用这份计划提案。请保持在当前 Session，先询问我希望调整的关键部分，再更新需求和提案。');
+  await shell.startRun('我暂时不采用这份计划提案。请保持在当前 Session，先询问我希望调整的关键部分，再更新需求和提案。');
 }
 
 async function rejectProposal() {
   submitting.value = true;
-  await store.decidePlanProposal(proposal.value.id, false);
+  await shell.decidePlanProposal(proposal.value.id, false);
   submitting.value = false;
 }
 

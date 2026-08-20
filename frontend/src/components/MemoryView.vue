@@ -10,17 +10,19 @@ import {
   XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { useMemoryStore } from '../stores/memory.js';
+import { useSettingsStore } from '../stores/settings.js';
 import RunTraceButton from './RunTraceButton.vue';
 
-const store = useWorkspaceStore();
+const memoryStore = useMemoryStore();
+const settings = useSettingsStore();
 const search = ref('');
 const memoryTab = ref('active');
 const editingMemoryId = ref(null);
 const correctionText = ref('');
 const submittingCorrection = ref(false);
 const historicalStatuses = new Set(['archived', 'expired', 'superseded']);
-const lifecycleMemories = computed(() => store.memories.filter((memory) => (
+const lifecycleMemories = computed(() => memoryStore.memories.filter((memory) => (
   (memoryTab.value === 'history') === historicalStatuses.has(memory.status)
 )));
 const filteredMemories = computed(() => {
@@ -29,9 +31,9 @@ const filteredMemories = computed(() => {
     `${memory.content} ${memory.scope} ${memory.layer} ${memory.status}`.toLowerCase().includes(query)
   ));
 });
-const confirmedCount = computed(() => store.memories.filter((memory) => memory.status === 'confirmed').length);
-const proposedCount = computed(() => store.memories.filter((memory) => memory.status === 'proposed').length);
-const historyCount = computed(() => store.memories.filter((memory) => historicalStatuses.has(memory.status)).length);
+const confirmedCount = computed(() => memoryStore.memories.filter((memory) => memory.status === 'confirmed').length);
+const proposedCount = computed(() => memoryStore.memories.filter((memory) => memory.status === 'proposed').length);
+const historyCount = computed(() => memoryStore.memories.filter((memory) => historicalStatuses.has(memory.status)).length);
 const scopeCounts = computed(() => ({
   global: lifecycleMemories.value.filter((memory) => memory.scope === 'global').length,
   plan: lifecycleMemories.value.filter((memory) => memory.scope === 'plan').length,
@@ -63,7 +65,7 @@ async function submitCorrection(memory) {
   if (!correctionText.value.trim() || correctionText.value.trim() === memory.content.trim()) return;
   submittingCorrection.value = true;
   try {
-    if (await store.proposeMemoryCorrection(memory.id, correctionText.value)) cancelCorrection();
+    if (await memoryStore.proposeMemoryCorrection(memory.id, correctionText.value)) cancelCorrection();
   } finally {
     submittingCorrection.value = false;
   }
@@ -76,7 +78,7 @@ async function submitCorrection(memory) {
       <div><span class="eyebrow">MEMORY INSPECTOR</span><h1>AI 眼中的我</h1><p>查看 Agent 会带入上下文的认识，并追溯它何时被使用、纠正或归档。</p></div>
       <div class="page-header-actions">
         <RunTraceButton />
-        <span class="memory-count">{{ store.memories.length }} 条记忆</span>
+        <span class="memory-count">{{ memoryStore.memories.length }} 条记忆</span>
       </div>
     </header>
 
@@ -86,10 +88,10 @@ async function submitCorrection(memory) {
         <div class="memory-avatar">AI</div>
         <h2>自主学习 Agent</h2>
         <p>全局认识可跨计划使用；计划与会话记忆保持隔离。纠正旧认识前，需要你确认新的版本。</p>
-        <dl v-if="store.profile">
-          <div><dt>协作方式</dt><dd>{{ store.profile.agent_style }}</dd></div>
-          <div><dt>免打扰</dt><dd>{{ store.profile.quiet_hours.start }}—{{ store.profile.quiet_hours.end }}</dd></div>
-          <div><dt>通知上限</dt><dd>{{ store.profile.daily_notification_limit }}/天</dd></div>
+        <dl v-if="settings.profile">
+          <div><dt>协作方式</dt><dd>{{ settings.profile.agent_style }}</dd></div>
+          <div><dt>免打扰</dt><dd>{{ settings.profile.quiet_hours.start }}—{{ settings.profile.quiet_hours.end }}</dd></div>
+          <div><dt>通知上限</dt><dd>{{ settings.profile.daily_notification_limit }}/天</dd></div>
         </dl>
       </article>
 
@@ -122,10 +124,10 @@ async function submitCorrection(memory) {
             </footer>
           </div>
           <div class="memory-actions">
-            <button v-if="memory.status === 'proposed'" type="button" aria-label="确认长期记忆" title="确认长期记忆" @click="store.confirmMemory(memory.id)"><CheckIcon /></button>
+            <button v-if="memory.status === 'proposed'" type="button" aria-label="确认长期记忆" title="确认长期记忆" @click="memoryStore.confirmMemory(memory.id)"><CheckIcon /></button>
             <button v-if="memory.status === 'confirmed'" type="button" aria-label="纠正这条记忆" title="纠正这条记忆" @click="beginCorrection(memory)"><PencilSquareIcon /></button>
-            <button v-if="['proposed', 'confirmed'].includes(memory.status)" type="button" aria-label="归档记忆" title="归档记忆" @click="store.archiveMemory(memory.id)"><ArchiveBoxIcon /></button>
-            <button v-if="memory.restorable" type="button" aria-label="恢复记忆" title="恢复记忆" @click="store.restoreMemory(memory.id)"><ArrowPathIcon /></button>
+            <button v-if="['proposed', 'confirmed'].includes(memory.status)" type="button" aria-label="归档记忆" title="归档记忆" @click="memoryStore.archiveMemory(memory.id)"><ArchiveBoxIcon /></button>
+            <button v-if="memory.restorable" type="button" aria-label="恢复记忆" title="恢复记忆" @click="memoryStore.restoreMemory(memory.id)"><ArrowPathIcon /></button>
           </div>
         </article>
         <div v-if="!filteredMemories.length" class="panel empty-state"><ClockIcon />{{ search ? '没有匹配的记忆。' : memoryTab === 'history' ? '还没有归档、到期或被替代的记忆。' : 'Agent 尚未提出长期记忆。它不会把临时推断偷偷写入画像。' }}</div>

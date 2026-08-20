@@ -17,14 +17,14 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(payload.title || 'Learning Agent', {
       body: payload.body || '',
       icon: payload.icon,
-      data: { url: payload.url || '/?view=inbox' },
+      data: { url: payload.url || '/inbox' },
     }),
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || '/?view=inbox';
+  const url = event.notification.data?.url || '/inbox';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (const client of windowClients) {

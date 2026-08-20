@@ -1,18 +1,20 @@
 <script setup>
 import { ArrowRightIcon, ChevronDownIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
-import { useWorkspaceStore } from '../stores/workspace';
+import { useSessionStore } from '../stores/session.js';
+import { useShellStore } from '../stores/shell.js';
 
 const props = defineProps({
   intake: { type: Object, default: null },
   readonly: { type: Boolean, default: false },
 });
-const store = useWorkspaceStore();
+const sessionStore = useSessionStore();
+const shell = useShellStore();
 const selections = ref({});
 const customAnswers = ref({});
 const submitting = ref(false);
 const expanded = ref(true);
-const intake = computed(() => props.intake || store.planningState.intake);
+const intake = computed(() => props.intake || sessionStore.planningState.intake);
 
 watch(() => intake.value?.updated_at, () => {
   selections.value = {};
@@ -33,7 +35,7 @@ async function answerQuestions() {
     answer: customAnswers.value[question.id]?.trim() || selections.value[question.id] || '交给 AI 判断',
   }));
   submitting.value = true;
-  await store.submitPlanningAnswers(answers);
+  await shell.submitPlanningAnswers(answers);
   submitting.value = false;
 }
 </script>

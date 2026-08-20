@@ -20,7 +20,7 @@
 - 全局 pytest 数据库已从仓库内固定文件迁到进程独占的系统临时目录；大型迁移、Evidence、并发和故障注入用例进一步使用每用例 `tmp_path`。三类 SQL 夹具均为公开合成数据并由 manifest 固定 hash、schema digest 和行数。
 - 测试现会把 Context、workspace、upload 与配置写入重定向到每用例临时目录，并在 session 前后用不输出内容的单向指纹守卫正式 `.env`、SQLite 与运行目录。保护夹具落地前的基线试跑曾触发旧测试对 Git 忽略的 `data/context` / `data/workspace` 写路径；为避免误删预存数据，H0 没有自动清理或恢复这些歧义文件，后续测试已被禁止再次写入。
 - 原 41 个场景在 H0 已逐项登记独立输入、字面期望、不变量和 mutant；H4 已将其全部标为 `verified`，逐项执行 production reducer/audit，并由 41 个对应 mutant 独立证明回归灵敏度。
-- H0 阶段没有修改生产代码，当时 87 项缺陷全部 open。H1–H6 已累计关闭 77 个 ID、剩余 10 个 open ID；M15–M20 继续冻结，下一实现门禁为 H7。
+- H0 阶段没有修改生产代码，当时 87 项缺陷全部 open。H1–H7 已累计关闭 83 个 ID、剩余 4 个 open ID；M15–M20 继续冻结，下一实现门禁为 H8。
 
 ## H1：迁移、时间与备份基础（已完成）
 
@@ -39,12 +39,12 @@
   - 全量回归为 `441 passed, 98 strict xfailed`，0 unexpected failure、0 XPASS；`python -m compileall backend tests scripts`、`pip check`、前端生产构建、完整与 production-only `npm audit` 以及 `git diff --check` 均通过，npm audit 为 0 vulnerabilities。
 
 - H1 收口时尚未实现：
-  - 当时的 H2–H8 均未完成；H2–H6 现已完成，当前剩余 H7 完整前端状态架构与 H8 首启/发布工程。
+  - 当时的 H2–H8 均未完成；H2–H7 现已完成，当前只剩 H8 首启/发布工程。
 
 - 已知限制：
   - 历史 naive 时间会按 UTC 解释；旧数据若原本丢失本地偏移，H1 不会伪造恢复不存在的时区信息。
   - 迁移与维护协议只支持受控 lifecycle lease；绕过 Runtime/maintenance 直接写 SQLite 的外部进程不在兼容承诺内。
-  - `frontend` 已增加基于 Node test runner 的独立 `test` 脚本并固定 6 个 H2 请求语义回归；Vitest/Playwright、H7 五尺寸真实浏览器与 H8 完整发布门禁仍未补齐。
+  - H1 收口时 `frontend` 仅有基于 Node test runner 的 6 个 H2 请求语义回归；H7 现已补 Vitest/Playwright 与五尺寸真实浏览器，H8 完整发布门禁仍未补齐。
   - 外部用户安装完成率、连续学习闭环和 7 日留存仍是**待真实用户验证**，不能由自动化测试替代。
 
 - H1 收口时的下一门禁为 H2；该门禁现已完成，当前状态以下一节为准。
@@ -66,13 +66,13 @@
   - 全量 pytest：`551 passed, 84 xfailed, 0 failed, 0 XPASS`，耗时 `953.38s (0:15:53)`；唯一 warning 为上游 Starlette `TestClient` 的 `httpx` 弃用提示。
 
 - 尚未实现与已知限制：
-  - H3–H6 已完成；本节收口时登记的 Run、Evidence、Context/Intervention 与应用安全缺口不再是当前阻塞项。H7 完整 UI/浏览器和 H8 发布工程仍未完成。
+  - H3–H7 已完成；本节收口时登记的 Run、Evidence、Context/Intervention、应用安全和前端缺口不再是当前阻塞项。H8 发布工程仍未完成。
   - SMTP、Web Push 与子进程在“外部已接受、receipt 未提交”时只能停止重放并等待人工或 provider 对账；只有 workspace effect 能依据本地 hash 自动恢复，不能把 `needs_reconciliation` 写成 exactly-once 成功。
   - SQLite 是 Context 的事实来源；Markdown 投影使用原子替换，但数据库提交后、投影发布前崩溃尚无跨重启 durable outbox，只能从数据库重建。
   - Evidence amendment/invalidation、完整账本 reducer、Competency scope/revision/undo 已由 H4 验收；`.env` 控制字符与复杂值往返现已由 H6 验收。没有调用真实 SMTP/VAPID，也没有完成外部安装、连续学习闭环或 7 日真人验证。
 
 - 下一门禁：
-  - H2 收口时按固定顺序进入 H3；H3–H6 现已完成，当前进入 H7。H7/H8 全部关闭及真人门槛完成前，不恢复 M15–M20。
+  - H2 收口时按固定顺序进入 H3；H3–H7 现已完成，当前只剩 H8。H8 与真人门槛完成前，不恢复 M15–M20。
 
 ## H3：耐久 Run、Queue 与子 Agent（已完成）
 
@@ -92,7 +92,7 @@
   - 前端 Node `9 passed`、`npm run build` 通过、`npm audit` 为 0 vulnerabilities。最终全量 pytest 为 `605 passed, 74 xfailed, 0 failed, 0 XPASS`，耗时 `1104.08s (0:18:24)`；唯一 warning 为上游 Starlette `TestClient` 的 `httpx` 弃用提示。
 
 - H3 收口时尚未实现：
-  - 当时的 H4–H8 均未完成；H4–H6 现已完成，当前剩余 H7 完整 UI/真实 Chrome 与 H8 首启/Release/真人观察。
+  - 当时的 H4–H8 均未完成；H4–H7 现已完成，当前只剩 H8 首启/Release/真人观察。
 
 - 已知限制：
   - SQLite lease/CAS 是共享单库的执行 fence，不是多节点 scheduler、leader election 或分布式数据库协议；部署仍以单机进程生命周期为边界。
@@ -101,7 +101,7 @@
   - 外部用户安装完成率、连续学习闭环和 7 日留存仍为**待真实用户验证**，不能由本阶段自动化或 Hy3 演示替代。
 
 - 下一门禁：
-  - H3 收口时下一门禁为 H4；H4–H6 现已完成，当前下一门禁为 H7。H7/H8 关闭前不得继续 M15 learner state、FSRS、自适应动作或复杂技能 UI。
+  - H3 收口时下一门禁为 H4；H4–H7 现已完成，当前下一门禁为 H8。H8 关闭前不得继续 M15 learner state、FSRS 或自适应动作。
 
 ## H4：Evidence 与 Competency 事实层（已完成）
 
@@ -123,7 +123,7 @@
   - H4 收口时最终完整 pytest 为 `822 passed, 50 xfailed, 0 failed, 0 XPASS`，耗时 `1470.71s (0:24:30)`；当时 50 个 strict xfail 全部属于 H5–H8 的已登记门禁。唯一 warning 为上游 Starlette `TestClient` 的 `httpx` 弃用提示。
 
 - 尚未实现：
-  - H7 复杂技能只读视图与真实 Chrome 矩阵，H8 首启/Release/真人验收。H5 已完成 Context/Memory/Intervention 后端协议，H6 已完成应用部署边界；H4–H6 仍不恢复 M15–M20。
+  - H4 收口时尚缺 H7 复杂技能只读视图/真实 Chrome 与 H8 首启/Release/真人验收。H5–H7 现均已完成；当前只剩 H8，M15–M20 仍不恢复。
 
 - 已知限制：
   - migration 对不可证明的旧关联选择 fail closed 或保留未关联事实，不伪造历史；`legacy_unavailable` Artifact 不会被当作 durable evidence。
@@ -131,7 +131,7 @@
   - 外部安装、连续学习闭环与 7 日留存仍为**待真实用户验证**。
 
 - 下一门禁：
-  - H6 已完成；当前下一门禁为 H7：前端状态架构与 V2 最小闭环。
+  - H6/H7 已完成；当前下一门禁为 H8：首启、发布工程与真实用户验收。
 
 ## H5：Context、Memory 与 Intervention（已完成）
 
@@ -154,7 +154,7 @@
   - Python compileall、`pip check` 与 `git diff --check` 通过；前端 Node `9 passed`、生产构建通过、`npm audit --audit-level=low` 为 0 vulnerabilities。文档链接测试 `3 passed`，本地相对链接无缺失。
 
 - 尚未实现：
-  - H6 已完成；当前尚未实现 H7 前端状态/真实 Chrome 五尺寸矩阵与 H8 首启、Release、真实用户验收。
+  - H6/H7 已完成；当前尚未实现 H8 首启、Release 与真实用户验收。
   - M17 的完整产品化 ContextPack、M18 学习者状态及 M15–M20 仍冻结；H5 只完成可信来源、预算、连续性与 Intervention 地基。
 
 - 已知限制：
@@ -164,7 +164,7 @@
   - 没有调用真实 SMTP、IMAP 或 VAPID；外部安装、连续使用和 7 日留存仍为**待真实用户验证**，不能由自动化测试替代。
 
 - 下一门禁：
-  - H7：前端状态架构与 V2 最小闭环。H7/H8 关闭前不恢复 M15 learner state、FSRS、自适应动作或复杂技能 UI。
+  - H5 收口时的后续 H6/H7 已完成；当前下一门禁为 H8。H8 关闭前不恢复 M15 learner state、FSRS 或自适应动作。
 
 ## H6：安全运行边界（已完成）
 
@@ -178,7 +178,7 @@
   - 新增根目录 [`SECURITY.md`](../SECURITY.md) 与 `.env.example` 的真实边界；静态应用 shell 不含用户事实，server 模式全部数据 API 均受保护。
 
 - 已验证：
-  - H6 五份协议、脱敏边界与 H0 安全基线联合为 `100 passed in 8.11s`；7 个 H6 defect ID 的 strict xfail 已全部删除，当前全仓只保留 H7/H8 的预期失败。
+  - H6 五份协议、脱敏边界与 H0 安全基线联合为 `100 passed in 8.11s`；7 个 H6 defect ID 的 strict xfail 已全部删除。H6 收口当时全仓只保留 H7/H8 的预期失败；H7 现已关闭，当前只保留 H8 的 4 项预期失败。
   - H2/H3/H5 真实进程恢复为 `19 passed in 123.82s`；覆盖 subprocess、Run/Queue、Intervention、mail ACK 与消息编辑的 commit 前后边界，重启按稳定身份收敛。
   - revision 1–5 migration bridge 为 `48 passed in 399.85s`；包含 H5 的 7 个真实 SIGKILL 点，fresh 与 frozen upgrade 结构一致，迁移合同验证 `integrity_check=ok` 与 0 FK violation。
   - Web/部署/信任/代码相关旧调用面与 Runtime、H2 outbox、H3 state/child、H5 Context/Intervention 的扩大回归分别为 `111 passed in 40.57s` 与 `97 passed in 167.68s`。
@@ -189,7 +189,7 @@
 
 - 尚未实现：
   - 没有真实代码 sandbox Provider，因此代码执行能力保持不可用，而不是降级为宿主 `prlimit`。
-  - server 浏览器登录体验、完整前端事实对账和五尺寸真实 Chrome 属于 H7；release secret scan、安装包与外部部署验收属于 H8。
+  - H6 收口时 server 浏览器登录体验、完整前端事实对账和五尺寸真实 Chrome 仍属 H7；H7 现已关闭前端事实对账/Chrome，浏览器登录、release secret scan、安装包与外部部署验收属于 H8。
   - 没有真实 SMTP/IMAP/VAPID 或公网账户验收；外部安装、连续使用和 7 日留存仍为**待真实用户验证**。
 
 - 已知限制：
@@ -198,7 +198,34 @@
   - redaction 是纵深防御，不会把既有历史数据库自动改写；若凭据在 H6 前可能进入过对话或持久化事实，应由用户轮换凭据并按备份协议处理，而不是让迁移猜测或静默删除历史。
 
 - 下一门禁：
-  - H7：必须使用 frontend-skill 与 frontend-aesthetic-guard，保持当前克制视觉语言，完成状态域/路由/消息投影和 375/768/1280/1440/2560 冷启动真实 Chrome 矩阵。M15–M20 继续冻结。
+  - H6 收口时的下一门禁为 H7；该门禁现已完成，当前状态见下一节。M15–M20 继续冻结。
+
+## H7：前端状态架构与 V2 最小闭环（已完成）
+
+- 已实现：
+  - 删除 1208 行单体 workspace Store，不保留兼容 facade；新增 session、run、plan、inbox、memory、settings、shell 七个 Pinia 状态域和 generation fence/LKG 公共辅助。所有组件只依赖所属事实域。
+  - 新增 Vue Router 与 9 条可恢复路径，覆盖首页、Session、计划列表/详情、Intervention、Memory、Settings 与 Archive；未知或已失效的深链安全回退，不把 route、focus 与已归档计划混为同一事实。
+  - 首屏核心请求和可降级域独立提交；optional reject/hang、迟到旧 generation 和局部 malformed response 不再清空 profile/plan/session 等 last-known-good core state。
+  - 实时 steer 按 durable `steer_id/sequence` 放在最近一条 user 事实之后；SSE 断线会合并 burst、单飞读取 durable Run/events/messages，按 generation/sequence 排序去重，终态停止且旧 Session 响应不能污染新视图。
+  - Intervention ID 在 Notification list/open、深链、composer、Queue reload/edit/reorder/dispatch 中使用顶层 typed 字段；失败保留 target，成功消费后下一条普通消息不会继承。
+  - CSS 拆为 token/base/layout/components/responsive 五层，统一桌面侧栏、平板收缩栏和 375px 五项底栏；补 focus-visible、44px 目标、reduced-motion、长内容边界、dialog/drawer 和计划 composer 滚动余量，没有引入平行设计体系。
+  - Message/Run/Artifact 统一渲染不可信 Markdown、长 URL、表格、代码和嵌套列表；只有可展开 Run event 使用 button。Trace dialog 支持语义化标题、焦点锁、Escape 和焦点恢复。
+  - 计划详情新增 M14 最小只读学习依据：task teaches/assesses、Competency Evidence 覆盖、时间线、来源与 eligibility；明确不把完成进度推断为掌握度。
+
+- 已验证：
+  - 前端 Node 契约 `9 passed`，Vitest 为 `5 files / 32 passed`，0 unhandled error；生产构建成功，完整与 production-only `npm audit` 均为 0 vulnerabilities。
+  - H0 前端五个历史失败节点已改为调用真实 Vue/Pinia/DOM 测试并全部通过；H7 后端/UI 与 H5 Intervention 定向为 `16 passed`。
+  - 真实 Chrome 使用公开确定性 seed、独立临时 SQLite 与临时代码副本；375/768/1280/1440/2560 每次都先创建新的 BrowserContext、在首次 app 导航前设置 viewport。最终 `5 viewports / 43 route checks` 全部通过。
+  - Chrome 门禁覆盖 8 条冷深链、100 消息与中英文/长 URL/表格/代码、工具成功/预期失败/子 Agent 事件、M14、Intervention target、移动 Session/Settings、optional 503、reduced-motion、键盘 archive/restore；全部页面无根级横溢、重复 shell/header、加载残留、console/page/request failure。375px 每页额外断言 5 个底栏目标完整绘制，计划最后任务可滚到 sticky composer 上方。
+  - 浏览器报告只保存 viewport、route label 和通过状态，不保存数据库 ID、标题或正文；没有读取正式 `.env`、用户数据库、私人备份，也没有调用公网、真实模型或外部邮箱。
+  - 最终单次完整 pytest 为 `1048 passed, 4 xfailed, 0 failed, 0 XPASS`，耗时 `1999.71s (0:33:19)`；4 个 strict xfail 精确属于 H8 首启/发布工程。唯一 warning 为上游 Starlette `TestClient` 的 `httpx` 弃用提示。
+
+- 已知限制：
+  - jsdom/FakeEventSource 单元层和本机 system Chromium 门禁不等于所有浏览器、字体、GPU 或真实弱网组合；H8 的发布候选仍需在其受支持平台执行同一浏览器 gate。
+  - server 浏览器登录/首次配置向导、无 Node 发布资产、release builder/CI、外部安装、连续使用和 7 日留存仍属于 H8；本阶段没有自行宣布真实用户验收。
+
+- 下一门禁：
+  - H8：首启、发布工程与真实用户验收。按用户本轮要求，H7 独立提交后停止，不开始 H8；M15–M20 保持冻结。
 
 ## V2 当前实现候选（develop，尚未验收）
 
@@ -207,24 +234,24 @@
 - `study_state_get`、计划 Context、CLI、tool 和 HTTP API 已接入同一个无截断 Evidence projection；全量/增量 digest、撤销和一次行为一份主观察语义已由 H4 验收。
 - `scripts/rebuild-evidence.py` 已提供重建、审计、回填和派生快照命令；H1 已证明纯 audit 不建表、不迁移、不写入，任何回填/重建写操作都会先取得协调 lease 并完成全量验证备份。
 - Artifact 保存 canonical envelope、耐久 bytes snapshot、size、hash 和 scope；H2 request identity 与 H4 完整性审计共同覆盖同键冲突、源文件删除、篡改和不可用 legacy 来源。
-- 当前 41 个场景均有独立 production baseline 与对应 mutant；这证明 H4 事实层回归灵敏度，不替代 H7/H8、M14 前端或真实用户验收。
+- 当前 41 个场景均有独立 production baseline 与对应 mutant；这证明 H4 事实层回归灵敏度，不替代 H8 或真实用户验收。M14 最小只读前端已由 H7 验收。
 
 ## 当前结论
 
-Learning Agent 已形成真实可运行的个人学习 Harness 原型，而不是一次问答式聊天页面。Hy3 在统一 Runtime 中读取分层上下文、调用工具、观察结果并继续决策；H1–H6 已验收迁移、事务、Runtime、Evidence、长期 Context/提醒线程与应用安全边界。完整前端状态与发布工程仍未达到 V2 Alpha 标准。
+Learning Agent 已形成真实可运行的个人学习 Harness 原型，而不是一次问答式聊天页面。Hy3 在统一 Runtime 中读取分层上下文、调用工具、观察结果并继续决策；H1–H7 已验收迁移、事务、Runtime、Evidence、长期 Context/提醒线程、应用安全边界与前端最小闭环。首启、发布工程和真人验收仍未达到 V2 Alpha 标准。
 
 `main` 是可发布分支，`develop` 用于集成下一版本。发布前必须在 `develop` 完成测试、浏览器回归和文档同步，再合并到 `main`；不再保留“main 固定为旧归档快照”的历史约定。
 
 ## 已实现的正常路径能力
 
-以下条目描述可运行能力；H1–H6 已通过对应崩溃恢复、并发、迁移、长期上下文和应用安全门禁，H7/H8 仍未完成：
+以下条目描述可运行能力；H1–H7 已通过对应崩溃恢复、并发、迁移、长期上下文、应用安全和前端门禁，H8 仍未完成：
 
 - 对话式计划制定：需求不充分时由 Agent 生成结构化提问卡；充分后可委派只读子 Agent 调研，汇总成可审阅提案，用户采用后才创建正式计划。
 - 计划执行与调整：Agent 能读取学习位置、计划版本、资源、事件和提交，教学下一步、修改阶段/任务、安排复习和日历；H2 已验收 action identity 与统一 UoW，H4 已验收 Evidence/Competency 作用域 Guard、invalidation 和图依赖撤销。
 - 学习证据与考核：支持文字、文件、代码和链接提交；Agent 可读取文件并按可证明内容/Rubric 验收、评分和安排复习。当前没有 sandbox Provider，不能执行提交中的代码。
 - 主动性：单实例心跳先筛选候选，再启动计划级 Hy3 Run 决定是否干预；终态 ProactiveDecision 区分成功、quiet hours、Guard/model/runtime failure。提醒以唯一 Intervention/canonical message 为身份，多渠道 delivery、活动 Run reply target 与 IMAP ack 已由 H5 验收。
 - Session 管理：对话自动语义命名，支持手动改名、归档、恢复和非破坏式消息编辑。全局 Session 创建计划后通过 `SessionPlanLink + handoff_summary` 显式过渡到新的计划 Session，不静默改绑。
-- Harness 可观察性：每条 Agent 消息内包含可折叠 Run；工具、审批、子 Agent、失败和预算可以逐项展开。H3 已验收主/子 Run 的版本化 checkpoint、lease、耐久 retry、原子终态/父投影和共享预算；H5 已验收提醒线程事实，H7 的 SSE/UI 对账仍待关闭。
+- Harness 可观察性：每条 Agent 消息内包含可折叠 Run；工具、审批、子 Agent、失败和预算可以逐项展开。H3 已验收主/子 Run 的版本化 checkpoint、lease、耐久 retry、原子终态/父投影和共享预算；H5 已验收提醒线程事实，H7 已验收 SSE/UI durable REST 对账与事件排序。
 - 产品状态一致性：同一 Session/计划根 Run 由统一 scope 仲裁，Queue/late steer/审批和终态 successor 已耐久闭环。Evidence 与 graph dependency 已由 H4 验收；H5 又使 reply target、Context 来源图和派生失效成为耐久事实。
 
 ## Context 与 Memory
@@ -244,14 +271,14 @@ Learning Agent 已形成真实可运行的个人学习 Harness 原型，而不�
 - H0 定向：`pytest -q tests/hardening -rxX` 为 20 passed、113 xfailed、0 XPASS、0 failed。节点覆盖拒绝/崩溃/二次恢复、真实 SQLite 锁、重复请求、外部副作用不确定、跨计划隔离、编辑/归档/恢复、安全与前端状态契约。
 - 解除登记验证：`pytest -q tests/hardening --runxfail --tb=no` 为 20 passed、113 failed；113 个登记节点全部在旧实现失败，没有被夹具错误伪装成通过。
 - 全量回归：`pytest -q -rxX` 为 146 passed、113 xfailed、0 XPASS、0 failed；唯一警告是现有 FastAPI TestClient 的 `StarletteDeprecationWarning`。
-- 静态与依赖门禁：Python `compileall`、`pip check`、前端生产构建、完整 `npm audit` 和 `npm audit --omit=dev` 均通过；两次 npm audit 均为 0 vulnerabilities。H2 后已新增 6 个 Node test runner 回归，但仍无独立 Vitest/Playwright 与完整发布 gate，这一缺口由 H7/H8 保持 open。
+- 静态与依赖门禁（H0 历史）：当时 Python `compileall`、`pip check`、前端生产构建、完整 `npm audit` 和 `npm audit --omit=dev` 均通过；两次 npm audit 均为 0 vulnerabilities。H7 现已补 Vitest 与 system-Chromium Playwright 门禁；完整 release gate 仍由 H8 保持 open。
 - 数据库夹具 passing gate 校验 manifest/hash、无个人数据扫描、`integrity_check`、`foreign_key_check`、schema digest 与边界行数；所有物化副本都在 pytest 临时目录。
-- 真实 Chrome 冷启动：使用独立临时 SQLite、临时代码副本和精确双 Session 合成令牌；375、768、1280、1440、2560 各自新 browser context、首次导航前设 viewport。五个尺寸均无根级溢出、加载残留、页面错误或 API 写请求；H7-UI-001 的 375/768 Session 和 375 设置共 3 项 strict expected failure，桌面三尺寸无非预期失败。报告不保存 Session ID/标题，验收后临时目录已移入系统 Trash。
+- 真实 Chrome 冷启动（H0 历史）：当时使用独立临时 SQLite 和精确双 Session 合成令牌，稳定复现 H7-UI-001 的 3 项 expected failure。H7 已用新的公开 seed 和五宽 43 项普通断言取代该失败基线，当前结果见 H7 节。
 - H0 没有调用真实模型、SMTP、IMAP 或公网，也没有用 SQLite 打开、查询、迁移、复制或修改正式用户数据库，没有输出、复制或修改 `.env`/个人数据。应用配置导入仍可能按生产启动方式读取本地 `.env`，但测试会先用合成环境值覆盖外部凭据且不打印内容；保护夹具另在本机计算不输出的单向完整性指纹。
 
 ## 明确边界
 
-- 产品只面向单个 owner；local 模式只接受 loopback，高级 server 模式必须认证且不是多用户账号系统。浏览器登录产品化仍待 H7/H8。
+- 产品只面向单个 owner；local 模式只接受 loopback，高级 server 模式必须认证且不是多用户账号系统。浏览器登录与安装产品化仍待 H8。
 - 当前没有安全 sandbox Provider，`code_execute` 在所有部署模式保持不可用；内部 host runner 不能作为公开能力启用。
 - 当前日历是应用内日历，不宣称与系统/Google/Outlook 双向同步。
 - Service Worker 通知需要浏览器仍在运行；电脑关机或浏览器完全退出时不能被本地服务唤醒。
@@ -259,4 +286,4 @@ Learning Agent 已形成真实可运行的个人学习 Harness 原型，而不�
 - 子 Agent v1 默认只读；业务写操作回到主 Agent，避免多个执行体竞争修改计划和长期记忆。
 - 外部用户安装完成率、连续学习闭环和 7 日留存均为**待真实用户验证**；H0 的合成夹具、自动化测试和 Chrome 冷启动不能替代 H8 的真实样本记录，也不能由 Agent 自行宣布完成。
 
-上述边界不影响受控本机 Demo；H2–H6 已关闭工具事务、幂等、外部副作用围栏、Run 恢复、Evidence/Competency、Context/提醒线程及应用安全协议，但移动导航、首启和发布工程仍会阻塞 V2 Alpha 与对陌生用户公开推广。后续执行以 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 为准，不能在界面或文档中把待修能力写成已完成。
+上述边界不影响受控本机 Demo；H2–H7 已关闭工具事务、幂等、外部副作用围栏、Run 恢复、Evidence/Competency、Context/提醒线程、应用安全与移动前端协议，但首启和发布工程仍会阻塞 V2 Alpha 与对陌生用户公开推广。后续执行以 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 为准，不能在界面或文档中把待修能力写成已完成。

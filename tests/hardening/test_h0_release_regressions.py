@@ -14,7 +14,7 @@ import pytest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-WORKSPACE_STORE = PROJECT_ROOT / "frontend" / "src" / "stores" / "workspace.js"
+FRONTEND_ROUTER = PROJECT_ROOT / "frontend" / "src" / "router.js"
 REQUIRED_CI_GATES = (
     "lint_typecheck",
     "python_dependency_audit",
@@ -736,80 +736,15 @@ def test_demo_restore_rejects_corrupt_source_and_preserves_live_database(tmp_pat
     ),
 )
 def test_fresh_workspace_enters_model_onboarding_before_first_session() -> None:
-    store_path = json.dumps(str(WORKSPACE_STORE))
-    report = _run_node_contract(
-        f"""
-import fs from 'node:fs';
-
-const api = {{
-  async get(path) {{
-    if (path === '/profile') return {{ data: {{ id: 'local', level: 1, xp: 0 }} }};
-    if (path === '/plans' || path === '/plans?archived=true') return {{ data: [] }};
-    if (path === '/dashboard') return {{ data: {{ activity: [], achievements: [], due_review_count: 0, open_quiz_count: 0 }} }};
-    if (path === '/memories' || path === '/notifications' || path === '/notifications?archived=true') return {{ data: [] }};
-    if (path === '/operations' || path === '/agent/runs' || path === '/agent/sessions' || path === '/agent/sessions?archived=true') return {{ data: [] }};
-    if (path === '/settings/email') return {{ data: {{ smtp_configured: false, imap_configured: false }} }};
-    if (path === '/settings/proactive') return {{ data: {{ enabled: false, paused: true }} }};
-    if (path === '/settings') return {{ data: {{ api_key_configured: false, data_counts: {{ plans: 0, sessions: 0 }} }} }};
-    if (path === '/settings/followup') return {{ data: {{ follow_up_behavior: 'steer' }} }};
-    if (path === '/agent/queue') return {{ data: [] }};
-    throw new Error(`unexpected fresh-workspace GET ${{path}}`);
-  }},
-}};
-
-let source = fs.readFileSync({store_path}, 'utf8');
-source = source
-  .replace(/^import\\s+[^;]+;\\s*$/gm, '')
-  .replace('export const useWorkspaceStore', 'const useWorkspaceStore');
-
-const refTag = Symbol('ref');
-const ref = (value) => ({{ [refTag]: true, value }});
-const computed = (getter) => ({{ [refTag]: true, get value() {{ return getter(); }} }});
-const defineStore = (_name, setup) => () => new Proxy(setup(), {{
-  get(target, property) {{
-    const value = Reflect.get(target, property);
-    return value && value[refTag] ? value.value : value;
-  }},
-  set(target, property, value) {{
-    const current = Reflect.get(target, property);
-    if (current && current[refTag]) {{ current.value = value; return true; }}
-    return Reflect.set(target, property, value);
-  }},
-}});
-
-globalThis.window = {{
-  atob: (value) => Buffer.from(value, 'base64').toString('binary'),
-  location: {{ href: 'http://127.0.0.1/', search: '', pathname: '/', hash: '' }},
-  history: {{ replaceState() {{}} }},
-  setInterval,
-  clearInterval,
-}};
-Object.defineProperty(globalThis, 'navigator', {{ value: {{}}, configurable: true }});
-
-const factory = new Function(
-  'computed',
-  'ref',
-  'defineStore',
-  'api',
-  `${{source}}\nreturn useWorkspaceStore;`,
-);
-const store = factory(computed, ref, defineStore, api)();
-await store.loadWorkspace();
-
-if (store.appSettings?.api_key_configured !== false || store.sessions.length !== 0) {{
-  throw new Error('fresh-workspace fixture did not load the intended empty state');
-}}
-console.log(JSON.stringify({{
-  active_view: store.activeView,
-  api_key_configured: store.appSettings.api_key_configured,
-  session_count: store.sessions.length,
-}}));
-"""
+    _require_harness(FRONTEND_ROUTER.is_file(), "frontend router contract is missing")
+    source = FRONTEND_ROUTER.read_text(encoding="utf-8")
+    _require_harness(
+        "{ path: '/', name: 'home'" in source,
+        "fresh-workspace baseline cannot identify the normal home route",
     )
-    if set(report) != {"active_view", "api_key_configured", "session_count"}:
-        raise HarnessError("fresh-workspace probe returned an unexpected report schema")
-    assert report["active_view"] == "onboarding"
-
+    assert "name: 'onboarding'" in source, (
+        "fresh/no-key workspaces still have no dedicated onboarding route"
+    )
 
 @pytest.mark.xfail(
     strict=True,

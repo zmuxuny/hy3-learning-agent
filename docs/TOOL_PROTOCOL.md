@@ -1,6 +1,6 @@
 # Agent 工具与运行协议
 
-> 状态说明（2026-08-20）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算；H4 已验收 Evidence/Competency 领域作用域、事实语义与严格嵌套 Schema；H5/H6 已验收 Context、Intervention、邮件回复、信任传播与应用部署边界。当前剩余 H7 前端投影和 H8 发布工程，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
+> 状态说明（2026-08-21）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算；H4 已验收 Evidence/Competency 领域作用域、事实语义与严格嵌套 Schema；H5/H6 已验收 Context、Intervention、邮件回复、信任传播与应用部署边界；H7 已验收这些事实的前端投影。当前剩余 H8 发布工程，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
 
 ## 设计原则
 
@@ -94,7 +94,7 @@ SQLite 写协调器会在嵌套 savepoint 前显式建立 physical outer transac
 | --- | --- |
 | `notification_send` | 原子写入连续 Session/站内收件箱，并为可选浏览器或 SMTP 渠道分别建立 outbox action；返回 `session_id` 供追溯 |
 
-SMTP/IMAP 回复令牌和站内深链已由 H5 统一为 durable Intervention 协议：活动 Run target、多渠道唯一 canonical message、归档计划只读回执与 IMAP UID/UIDVALIDITY ack 均通过并发、重启和 SIGKILL 门禁。H7 仍需把这些权威状态完整投影到前端并做真实浏览器对账。
+SMTP/IMAP 回复令牌和站内深链已由 H5 统一为 durable Intervention 协议：活动 Run target、多渠道唯一 canonical message、归档计划只读回执与 IMAP UID/UIDVALIDITY ack 均通过并发、重启和 SIGKILL 门禁。H7 已把权威 Intervention ID 投影到 open/list、composer、Queue、重载和深链，并完成真实浏览器对账。
 
 ## 统一结果与运行事件
 
