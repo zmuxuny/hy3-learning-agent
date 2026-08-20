@@ -278,6 +278,21 @@ class ChatMessage(Base):
             sqlite_where=text("message_key IS NOT NULL"),
         ),
         Index("ix_chat_messages_run_role", "run_id", "role"),
+        CheckConstraint("version >= 1", name="ck_chat_message_version"),
+        CheckConstraint(
+            "content_hash = '' OR length(content_hash) = 64",
+            name="ck_chat_message_content_hash",
+        ),
+        CheckConstraint(
+            "validity_state IN ('active', 'superseded')",
+            name="ck_chat_message_validity_state",
+        ),
+        CheckConstraint(
+            "(validity_state = 'active' AND invalidated_at IS NULL) OR "
+            "(validity_state = 'superseded' AND invalidated_at IS NOT NULL "
+            "AND length(invalidation_reason) > 0)",
+            name="ck_chat_message_invalidation",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -286,6 +301,25 @@ class ChatMessage(Base):
     message_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
     role: Mapped[str] = mapped_column(String(32))
     content: Mapped[str] = mapped_column(Text, default="")
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    content_hash: Mapped[str] = mapped_column(String(64), default="", server_default=text("''"))
+    validity_state: Mapped[str] = mapped_column(
+        String(24), default="active", server_default=text("'active'"), index=True
+    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(
+        String(80), default="", server_default=text("''")
+    )
+    reply_to_intervention_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "interventions.id",
+            ondelete="RESTRICT",
+            use_alter=True,
+            name="fk_chat_messages_reply_intervention",
+        ),
+        nullable=True,
+        index=True,
+    )
     message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
@@ -298,6 +332,24 @@ class SessionSummary(Base):
     __tablename__ = "session_summaries"
     __table_args__ = (
         UniqueConstraint("session_id", "version", name="uq_session_summary_version"),
+        CheckConstraint("version >= 1", name="ck_session_summary_version"),
+        CheckConstraint("coverage_count >= 0", name="ck_session_summary_coverage_count"),
+        CheckConstraint(
+            "source_digest = '' OR length(source_digest) = 64",
+            name="ck_session_summary_source_digest",
+        ),
+        CheckConstraint("length(content_hash) = 64", name="ck_session_summary_content_hash"),
+        CheckConstraint(
+            "validity_state IN ('building', 'valid', 'invalid', 'legacy_unverified')",
+            name="ck_session_summary_validity_state",
+        ),
+        CheckConstraint(
+            "(validity_state IN ('building', 'valid', 'legacy_unverified') "
+            "AND invalidated_at IS NULL) OR "
+            "(validity_state = 'invalid' AND invalidated_at IS NOT NULL "
+            "AND length(invalidation_reason) > 0)",
+            name="ck_session_summary_invalidation",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -307,9 +359,30 @@ class SessionSummary(Base):
     )
     version: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
-    covered_through_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    coverage_start_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    covered_through_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    coverage_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     source_message_ids: Mapped[list] = mapped_column(JSON, default=list)
     method: Mapped[str] = mapped_column(String(32), default="model")
+    source_digest: Mapped[str] = mapped_column(String(64), default="", server_default=text("''"))
+    content_hash: Mapped[str] = mapped_column(String(64), default="0" * 64)
+    algorithm_version: Mapped[str] = mapped_column(
+        String(80), default="legacy-unverified", server_default=text("'legacy-unverified'")
+    )
+    validity_state: Mapped[str] = mapped_column(
+        String(24), default="legacy_unverified", server_default=text("'legacy_unverified'"), index=True
+    )
+    provenance_node_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provenance_nodes.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(
+        String(80), default="", server_default=text("''")
+    )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
@@ -317,14 +390,28 @@ class ChatMessageRevision(Base):
     """Immutable audit copy created whenever a visible user message is revised."""
 
     __tablename__ = "chat_message_revisions"
+    __table_args__ = (
+        UniqueConstraint("message_id", "version", name="uq_chat_message_revision_version"),
+        CheckConstraint("version >= 1", name="ck_chat_message_revision_version"),
+        CheckConstraint(
+            "content_hash = '' OR length(content_hash) = 64",
+            name="ck_chat_message_revision_content_hash",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    message_id: Mapped[int] = mapped_column(ForeignKey("chat_messages.id", ondelete="CASCADE"), index=True)
-    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
-    previous_run_id: Mapped[str | None] = mapped_column(
-        ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), index=True
     )
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("sessions.id", ondelete="RESTRICT"), index=True
+    )
+    previous_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     content: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64), default="", server_default=text("''"))
     message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
@@ -385,6 +472,43 @@ class AgentRun(Base):
             "status <> 'waiting_approval' OR pending_approval IS NOT NULL",
             name="ck_agent_run_waiting_approval_projection",
         ),
+        CheckConstraint(
+            "execution_mode IN ('normal', 'read_only')",
+            name="ck_agent_run_execution_mode",
+        ),
+        CheckConstraint(
+            "proactive_candidate_state IN "
+            "('not_applicable', 'captured', 'legacy_unavailable')",
+            name="ck_agent_run_proactive_candidate_state",
+        ),
+        CheckConstraint(
+            "proactive_candidate_digest IS NULL OR "
+            "length(proactive_candidate_digest) = 64",
+            name="ck_agent_run_proactive_candidate_digest",
+        ),
+        CheckConstraint(
+            "proactive_source_projection_digest IS NULL OR "
+            "length(proactive_source_projection_digest) = 64",
+            name="ck_agent_run_proactive_projection_digest",
+        ),
+        CheckConstraint(
+            "(proactive_candidate_state = 'captured' "
+            "AND proactive_candidate_key IS NOT NULL "
+            "AND proactive_candidate_kind IS NOT NULL "
+            "AND json_valid(proactive_candidate_payload) "
+            "AND json_type(proactive_candidate_payload) = 'object' "
+            "AND proactive_candidate_digest IS NOT NULL "
+            "AND proactive_detected_at IS NOT NULL) OR "
+            "(proactive_candidate_state IN ('not_applicable', 'legacy_unavailable') "
+            "AND proactive_candidate_key IS NULL "
+            "AND proactive_candidate_kind IS NULL "
+            "AND json(proactive_candidate_payload)=json('{}') "
+            "AND proactive_candidate_digest IS NULL "
+            "AND proactive_source_watermark IS NULL "
+            "AND proactive_source_projection_digest IS NULL "
+            "AND proactive_detected_at IS NULL)",
+            name="ck_agent_run_proactive_candidate_shape",
+        ),
         Index(
             "uq_agent_runs_active_plan_root",
             "owner_id",
@@ -444,6 +568,31 @@ class AgentRun(Base):
     pending_approval: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     budget_usage: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     output: Mapped[str] = mapped_column(Text, default="")
+    execution_mode: Mapped[str] = mapped_column(
+        String(24), default="normal", server_default=text("'normal'"), index=True
+    )
+    reply_to_intervention_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "interventions.id",
+            ondelete="RESTRICT",
+            use_alter=True,
+            name="fk_agent_runs_reply_intervention",
+        ),
+        nullable=True,
+        index=True,
+    )
+    proactive_candidate_state: Mapped[str] = mapped_column(
+        String(24), default="not_applicable", server_default=text("'not_applicable'"), index=True
+    )
+    proactive_candidate_key: Mapped[str | None] = mapped_column(String(180), nullable=True, index=True)
+    proactive_candidate_kind: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    proactive_candidate_payload: Mapped[dict] = mapped_column(
+        JSON, default=dict, server_default=text("'{}'")
+    )
+    proactive_candidate_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    proactive_source_watermark: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    proactive_source_projection_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    proactive_detected_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     created_plan_id: Mapped[int | None] = mapped_column(
         ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -551,6 +700,10 @@ class QueuedMessage(Base):
     __table_args__ = (
         CheckConstraint("position >= 0", name="ck_queued_message_position"),
         CheckConstraint("version >= 1", name="ck_queued_message_version"),
+        CheckConstraint(
+            "execution_mode IN ('normal', 'read_only')",
+            name="ck_queued_message_execution_mode",
+        ),
         Index(
             "uq_queued_messages_source_steer",
             "source_steer_id",
@@ -598,6 +751,9 @@ class QueuedMessage(Base):
     )
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True)
     trigger: Mapped[str] = mapped_column(String(40), default="user_message")
+    execution_mode: Mapped[str] = mapped_column(
+        String(24), default="normal", server_default=text("'normal'"), index=True
+    )
     objective: Mapped[str] = mapped_column(Text)
     user_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -606,6 +762,9 @@ class QueuedMessage(Base):
     )
     source_message_id: Mapped[int | None] = mapped_column(
         ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True
+    )
+    reply_to_intervention_id: Mapped[str | None] = mapped_column(
+        ForeignKey("interventions.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     position: Mapped[int] = mapped_column(Integer, default=0)
     version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
@@ -1129,6 +1288,40 @@ class EvidenceProjectionState(Base):
 
 class Memory(Base):
     __tablename__ = "memories"
+    __table_args__ = (
+        CheckConstraint("lifecycle_version >= 1", name="ck_memory_lifecycle_version"),
+        CheckConstraint(
+            "(scope = 'global' AND scope_id IS NULL) OR "
+            "(scope IN ('plan', 'session') AND scope_id IS NOT NULL)",
+            name="ck_memory_scope_shape",
+        ),
+        CheckConstraint(
+            "status IN ('proposed', 'confirmed', 'archived', 'expired', 'superseded')",
+            name="ck_memory_status",
+        ),
+        CheckConstraint(
+            "layer IN ('semantic', 'long_term', 'episodic', 'short_term', 'working')",
+            name="ck_memory_layer",
+        ),
+        CheckConstraint(
+            "validity_state IN ('valid', 'review_required', 'invalid', 'legacy_unverified')",
+            name="ck_memory_validity_state",
+        ),
+        CheckConstraint(
+            "content_hash = '' OR length(content_hash) = 64",
+            name="ck_memory_content_hash",
+        ),
+        CheckConstraint(
+            "provenance_digest = '' OR length(provenance_digest) = 64",
+            name="ck_memory_provenance_digest",
+        ),
+        CheckConstraint(
+            "(validity_state IN ('valid', 'legacy_unverified') AND invalidated_at IS NULL) OR "
+            "(validity_state IN ('review_required', 'invalid') "
+            "AND invalidated_at IS NOT NULL AND length(invalidation_reason) > 0)",
+            name="ck_memory_invalidation",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
@@ -1142,11 +1335,14 @@ class Memory(Base):
     status: Mapped[str] = mapped_column(String(32), default="proposed", index=True)
     archived_from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     archived_reason: Mapped[str] = mapped_column(Text, default="")
+    lifecycle_reason_code: Mapped[str] = mapped_column(
+        String(80), default="", server_default=text("''"), index=True
+    )
     supersedes_id: Mapped[int | None] = mapped_column(
-        ForeignKey("memories.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("memories.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     superseded_by_id: Mapped[int | None] = mapped_column(
-        ForeignKey("memories.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("memories.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     last_accessed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     access_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -1154,6 +1350,19 @@ class Memory(Base):
     expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     embedding: Mapped[list | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     embedding_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lifecycle_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    validity_state: Mapped[str] = mapped_column(
+        String(24), default="legacy_unverified", server_default=text("'legacy_unverified'"), index=True
+    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(
+        String(80), default="", server_default=text("''")
+    )
+    content_hash: Mapped[str] = mapped_column(String(64), default="", server_default=text("''"))
+    provenance_digest: Mapped[str] = mapped_column(String(64), default="", server_default=text("''"))
+    provenance_node_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provenance_nodes.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     # Access counters are updated during retrieval and must not refresh semantic
     # freshness. Lifecycle code updates this timestamp explicitly when the fact changes.
@@ -1161,29 +1370,77 @@ class Memory(Base):
 
     @property
     def restorable(self) -> bool:
-        if self.status == "expired":
-            return True
-        if self.status != "archived":
+        if self.validity_state != "valid":
             return False
-        return self.archived_reason not in {
-            "来源消息已被用户修订",
-            "关联计划已不存在",
-            "同一旧认识已有其他纠正被确认",
+        if self.status == "expired":
+            return self.lifecycle_reason_code == "expiry_reached"
+        return self.status == "archived" and self.lifecycle_reason_code in {
+            "manual_archive",
+            "archive_requested",
         }
 
 
 class ContextSnapshot(Base):
     __tablename__ = "context_snapshots"
+    __table_args__ = (
+        CheckConstraint("context_generation >= 0", name="ck_context_snapshot_generation"),
+        CheckConstraint("snapshot_version >= 1", name="ck_context_snapshot_version"),
+        CheckConstraint(
+            "context_digest = '' OR length(context_digest) = 64",
+            name="ck_context_snapshot_digest",
+        ),
+        CheckConstraint(
+            "source_digest = '' OR length(source_digest) = 64",
+            name="ck_context_snapshot_source_digest",
+        ),
+        CheckConstraint(
+            "validity_state IN ('building', 'valid', 'invalid', 'legacy_unverified')",
+            name="ck_context_snapshot_validity_state",
+        ),
+        CheckConstraint(
+            "(validity_state IN ('building', 'valid', 'legacy_unverified') "
+            "AND invalidated_at IS NULL) OR "
+            "(validity_state = 'invalid' AND invalidated_at IS NOT NULL "
+            "AND length(invalidation_reason) > 0)",
+            name="ck_context_snapshot_invalidation",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
-    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="RESTRICT"), nullable=True, index=True)
+    session_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sessions.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     run_id: Mapped[str | None] = mapped_column(
-        ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("agent_runs.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     markdown: Mapped[str] = mapped_column(Text)
     source_manifest: Mapped[list] = mapped_column(JSON, default=list)
+    dropped_source_manifest: Mapped[list] = mapped_column(
+        JSON, default=list, server_default=text("'[]'")
+    )
+    budget_breakdown: Mapped[dict] = mapped_column(
+        JSON, default=dict, server_default=text("'{}'")
+    )
     estimated_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    context_generation: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    snapshot_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    assembler_version: Mapped[str] = mapped_column(
+        String(80), default="legacy-unverified", server_default=text("'legacy-unverified'")
+    )
+    context_digest: Mapped[str] = mapped_column(String(64), default="", server_default=text("''"))
+    source_digest: Mapped[str] = mapped_column(String(64), default="", server_default=text("''"))
+    validity_state: Mapped[str] = mapped_column(
+        String(24), default="legacy_unverified", server_default=text("'legacy_unverified'"), index=True
+    )
+    provenance_node_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provenance_nodes.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(
+        String(80), default="", server_default=text("''")
+    )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 
@@ -1363,6 +1620,27 @@ class OperationDependency(Base):
 
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint("delivery_generation >= 1", name="ck_notification_delivery_generation"),
+        CheckConstraint(
+            "intervention_id IS NULL OR legacy_unlinked = 0",
+            name="ck_notification_intervention_provenance",
+        ),
+        Index(
+            "uq_notifications_intervention_delivery",
+            "intervention_id",
+            "channel",
+            "delivery_generation",
+            unique=True,
+            sqlite_where=text("intervention_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_notifications_legacy_reply_token",
+            "reply_token",
+            unique=True,
+            sqlite_where=text("intervention_id IS NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
@@ -1372,15 +1650,591 @@ class Notification(Base):
     )
     session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
+    intervention_id: Mapped[str | None] = mapped_column(
+        ForeignKey("interventions.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    delivery_generation: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    legacy_unlinked: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
     channel: Mapped[str] = mapped_column(String(32), default="in_app")
     title: Mapped[str] = mapped_column(String(240))
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
-    reply_token: Mapped[str] = mapped_column(String(64), default=uuid_string, unique=True)
+    reply_token: Mapped[str] = mapped_column(String(64), default=uuid_string)
     sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+
+
+class ContextState(Base):
+    """Owner-wide generation fence for semantically consistent Context builds."""
+
+    __tablename__ = "context_states"
+    __table_args__ = (
+        CheckConstraint("generation >= 0", name="ck_context_state_generation"),
+    )
+
+    owner_id: Mapped[str] = mapped_column(
+        ForeignKey("owners.id", ondelete="RESTRICT"), primary_key=True
+    )
+    generation: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
+    )
+
+
+class ProvenanceNode(Base):
+    """Immutable identity and digest for one node in the H5 source graph."""
+
+    __tablename__ = "provenance_nodes"
+    __table_args__ = (
+        UniqueConstraint(
+            "owner_id",
+            "kind",
+            "entity_key",
+            "entity_version",
+            name="uq_provenance_node_entity_version",
+        ),
+        CheckConstraint("entity_version >= 1", name="ck_provenance_node_version"),
+        CheckConstraint("length(content_digest) = 64", name="ck_provenance_node_digest"),
+        CheckConstraint(
+            "kind IN ('message', 'session_summary', 'memory', 'context_snapshot', "
+            "'session_handoff', 'agent_run', 'plan_proposal', 'planning_intake', "
+            "'intervention', 'profile', 'plan_summary', 'evidence_projection', "
+            "'learning_event', 'review_schedule', 'quiz', 'calendar_event', "
+            "'learning_resource', 'task_submission', 'context_config', "
+            "'legacy_notification')",
+            name="ck_provenance_node_kind",
+        ),
+        Index("ix_provenance_nodes_scope", "owner_id", "plan_id", "session_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    plan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("plans.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    session_id: Mapped[str | None] = mapped_column(
+        ForeignKey("sessions.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(40), index=True)
+    entity_key: Mapped[str] = mapped_column(String(160), index=True)
+    entity_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    content_digest: Mapped[str] = mapped_column(String(64))
+    node_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict, server_default=text("'{}'"))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class ProvenanceEdge(Base):
+    """Append-only, normalized source edge shared by H5 durable facts."""
+
+    __tablename__ = "provenance_edges"
+    __table_args__ = (
+        UniqueConstraint(
+            "target_node_id", "relation", "ordinal", name="uq_provenance_edge_ordinal"
+        ),
+        UniqueConstraint(
+            "source_node_id", "target_node_id", "relation", name="uq_provenance_edge_identity"
+        ),
+        CheckConstraint("source_node_id <> target_node_id", name="ck_provenance_edge_distinct"),
+        CheckConstraint("ordinal >= 0", name="ck_provenance_edge_ordinal"),
+        CheckConstraint("token_count IS NULL OR token_count >= 0", name="ck_provenance_edge_tokens"),
+        CheckConstraint(
+            "relation IN ('summary_source', 'summary_base', 'memory_source', 'handoff_source', "
+            "'context_retained', 'context_dropped')",
+            name="ck_provenance_edge_relation",
+        ),
+        CheckConstraint(
+            "disposition IN ('none', 'retained', 'dropped')",
+            name="ck_provenance_edge_disposition",
+        ),
+        CheckConstraint(
+            "(relation = 'context_retained' AND disposition = 'retained' "
+            "AND reason_code = '') OR "
+            "(relation = 'context_dropped' AND disposition = 'dropped' "
+            "AND length(reason_code) > 0) OR "
+            "(relation NOT IN ('context_retained', 'context_dropped') "
+            "AND disposition = 'none' AND reason_code = '')",
+            name="ck_provenance_edge_disposition_shape",
+        ),
+        CheckConstraint(
+            "(relation <> 'summary_source' AND source_bytes IS NULL "
+            "AND read_bytes IS NULL AND chunk_count IS NULL) OR "
+            "(relation = 'summary_source' AND source_bytes IS NOT NULL "
+            "AND read_bytes = source_bytes AND source_bytes >= 0 AND chunk_count >= 1)",
+            name="ck_provenance_edge_summary_read",
+        ),
+        Index("ix_provenance_edges_source", "source_node_id", "relation"),
+        Index("ix_provenance_edges_target", "target_node_id", "relation"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    source_node_id: Mapped[str] = mapped_column(
+        ForeignKey("provenance_nodes.id", ondelete="RESTRICT"), index=True
+    )
+    target_node_id: Mapped[str] = mapped_column(
+        ForeignKey("provenance_nodes.id", ondelete="RESTRICT"), index=True
+    )
+    relation: Mapped[str] = mapped_column(String(32), index=True)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    disposition: Mapped[str] = mapped_column(
+        String(16), default="none", server_default=text("'none'")
+    )
+    reason_code: Mapped[str] = mapped_column(String(80), default="", server_default=text("''"))
+    source_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    read_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    chunk_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    edge_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict, server_default=text("'{}'"))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class SessionCompressionState(Base):
+    """Short claim plus verified coverage cursor for one Session compressor."""
+
+    __tablename__ = "session_compression_states"
+    __table_args__ = (
+        CheckConstraint("generation >= 0", name="ck_session_compression_generation"),
+        CheckConstraint(
+            "covered_through_message_version IS NULL OR covered_through_message_version >= 1",
+            name="ck_session_compression_cursor_version",
+        ),
+        CheckConstraint(
+            "(covered_through_message_id IS NULL AND covered_through_message_version IS NULL) OR "
+            "(covered_through_message_id IS NOT NULL AND covered_through_message_version IS NOT NULL)",
+            name="ck_session_compression_cursor_shape",
+        ),
+        CheckConstraint(
+            "(claim_token IS NULL AND claim_owner IS NULL AND claim_generation IS NULL "
+            "AND claim_start_message_id IS NULL AND claim_end_message_id IS NULL "
+            "AND claim_base_summary_id IS NULL AND claim_source_manifest IS NULL "
+            "AND claim_source_digest IS NULL AND claim_algorithm_version IS NULL "
+            "AND claim_started_at IS NULL AND claim_expires_at IS NULL) OR "
+            "(claim_token IS NOT NULL AND claim_owner IS NOT NULL "
+            "AND claim_generation = generation AND claim_start_message_id IS NOT NULL "
+            "AND claim_end_message_id IS NOT NULL AND claim_source_manifest IS NOT NULL "
+            "AND json_valid(claim_source_manifest) "
+            "AND json_type(claim_source_manifest) = 'array' "
+            "AND length(claim_source_digest) = 64 "
+            "AND claim_algorithm_version IS NOT NULL "
+            "AND claim_started_at IS NOT NULL AND claim_expires_at IS NOT NULL "
+            "AND claim_expires_at > claim_started_at)",
+            name="ck_session_compression_claim_shape",
+        ),
+    )
+
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("sessions.id", ondelete="RESTRICT"), primary_key=True
+    )
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    covered_through_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), nullable=True
+    )
+    covered_through_message_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    generation: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    claim_owner: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    claim_generation: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    claim_start_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), nullable=True
+    )
+    claim_end_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), nullable=True
+    )
+    claim_base_summary_id: Mapped[int | None] = mapped_column(
+        ForeignKey("session_summaries.id", ondelete="RESTRICT"), nullable=True
+    )
+    claim_source_manifest: Mapped[list | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
+    claim_source_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claim_algorithm_version: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    claim_started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    claim_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
+    )
+
+
+class SessionHandoff(Base):
+    """Versioned frozen transition context between two Sessions."""
+
+    __tablename__ = "session_handoffs"
+    __table_args__ = (
+        UniqueConstraint("target_session_id", "version", name="uq_session_handoff_version"),
+        Index(
+            "uq_session_handoffs_active_target",
+            "target_session_id",
+            unique=True,
+            sqlite_where=text("validity_state = 'valid'"),
+        ),
+        CheckConstraint("version >= 1", name="ck_session_handoff_version"),
+        CheckConstraint("source_context_generation >= 0", name="ck_session_handoff_generation"),
+        CheckConstraint("length(content_hash) = 64", name="ck_session_handoff_content_hash"),
+        CheckConstraint(
+            "provenance_state IN ('verified', 'legacy_unverified')",
+            name="ck_session_handoff_provenance_state",
+        ),
+        CheckConstraint(
+            "validity_state IN ('building', 'valid', 'invalid', 'legacy_unverified')",
+            name="ck_session_handoff_validity_state",
+        ),
+        CheckConstraint(
+            "(validity_state IN ('building', 'valid', 'legacy_unverified') "
+            "AND invalidated_at IS NULL) OR "
+            "(validity_state = 'invalid' AND invalidated_at IS NOT NULL "
+            "AND length(invalidation_reason) > 0)",
+            name="ck_session_handoff_invalidation",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    source_session_id: Mapped[str] = mapped_column(
+        ForeignKey("sessions.id", ondelete="RESTRICT"), index=True
+    )
+    target_session_id: Mapped[str] = mapped_column(
+        ForeignKey("sessions.id", ondelete="RESTRICT"), index=True
+    )
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id", ondelete="RESTRICT"), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    content: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    source_context_generation: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    provenance_state: Mapped[str] = mapped_column(
+        String(24), default="verified", server_default=text("'verified'")
+    )
+    validity_state: Mapped[str] = mapped_column(
+        String(24), default="building", server_default=text("'building'"), index=True
+    )
+    provenance_node_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provenance_nodes.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    invalidation_reason: Mapped[str] = mapped_column(
+        String(80), default="", server_default=text("''")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class MemoryLifecycleEvent(Base):
+    """Append-only audit event for one semantic Memory lifecycle transition."""
+
+    __tablename__ = "memory_lifecycle_events"
+    __table_args__ = (
+        UniqueConstraint("memory_id", "version", name="uq_memory_lifecycle_event_version"),
+        CheckConstraint("version >= 1", name="ck_memory_lifecycle_event_version"),
+        CheckConstraint(
+            "request_digest IS NULL OR length(request_digest) = 64",
+            name="ck_memory_lifecycle_event_request_digest",
+        ),
+        CheckConstraint(
+            "event_type IN ('legacy_import', 'proposed', 'confirmed', 'reinforced', "
+            "'review_required', 'invalidated', 'archived', 'restored', 'expired', "
+            "'superseded')",
+            name="ck_memory_lifecycle_event_type",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    memory_id: Mapped[int] = mapped_column(ForeignKey("memories.id", ondelete="RESTRICT"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    event_type: Mapped[str] = mapped_column(String(32), index=True)
+    action_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    request_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(32))
+    from_validity_state: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    to_validity_state: Mapped[str] = mapped_column(String(24))
+    reason_code: Mapped[str] = mapped_column(String(80), default="", server_default=text("''"))
+    expires_at_before: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    expires_at_after: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    source_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="RESTRICT"), nullable=True
+    )
+    source_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class ContextSnapshotBlock(Base):
+    """Exact retained/dropped partition for one ContextSnapshot candidate block."""
+
+    __tablename__ = "context_snapshot_blocks"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id", "disposition", "ordinal", name="uq_context_snapshot_block_ordinal"
+        ),
+        CheckConstraint("ordinal >= 0", name="ck_context_snapshot_block_ordinal"),
+        CheckConstraint("token_count >= 0", name="ck_context_snapshot_block_tokens"),
+        CheckConstraint("priority >= 0", name="ck_context_snapshot_block_priority"),
+        CheckConstraint("length(block_digest) = 64", name="ck_context_snapshot_block_digest"),
+        CheckConstraint(
+            "source_digest = '' OR length(source_digest) = 64",
+            name="ck_context_snapshot_block_source_digest",
+        ),
+        CheckConstraint(
+            "(disposition = 'retained' AND reason_code = '') OR "
+            "(disposition = 'dropped' AND length(reason_code) > 0)",
+            name="ck_context_snapshot_block_disposition",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        ForeignKey("context_snapshots.id", ondelete="RESTRICT"), index=True
+    )
+    source_node_id: Mapped[str] = mapped_column(
+        ForeignKey("provenance_nodes.id", ondelete="RESTRICT"), index=True
+    )
+    disposition: Mapped[str] = mapped_column(String(16), index=True)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    block_type: Mapped[str] = mapped_column(String(40), index=True)
+    source_type: Mapped[str] = mapped_column(String(40), index=True)
+    source_id: Mapped[str] = mapped_column(String(160))
+    source_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    source_digest: Mapped[str] = mapped_column(String(64), default="", server_default=text("''"))
+    block_digest: Mapped[str] = mapped_column(String(64))
+    token_count: Mapped[int] = mapped_column(Integer)
+    priority: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    reason_code: Mapped[str] = mapped_column(String(80), default="", server_default=text("''"))
+    block_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict, server_default=text("'{}'"))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class ProactiveDecision(Base):
+    """Durable terminal interpretation of one proactive Run candidate."""
+
+    __tablename__ = "proactive_decisions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('building', 'terminal')", name="ck_proactive_decision_status"
+        ),
+        CheckConstraint(
+            "outcome IS NULL OR outcome IN ('success_wait', 'success_intervention', "
+            "'deferred_quiet_hours', 'guard_rejected', 'model_failed', "
+            "'runtime_failed', 'cancelled', 'legacy_unverified')",
+            name="ck_proactive_decision_outcome",
+        ),
+        CheckConstraint("length(candidate_digest) = 64", name="ck_proactive_decision_candidate_digest"),
+        CheckConstraint("length(decision_digest) = 64", name="ck_proactive_decision_digest"),
+        CheckConstraint(
+            "source_projection_digest IS NULL OR length(source_projection_digest) = 64",
+            name="ck_proactive_decision_projection_digest",
+        ),
+        CheckConstraint(
+            "policy_digest IS NULL OR length(policy_digest) = 64",
+            name="ck_proactive_decision_policy_digest",
+        ),
+        CheckConstraint(
+            "(status = 'building' AND outcome IS NULL AND decided_at IS NULL) OR "
+            "(status = 'terminal' AND outcome IS NOT NULL AND decided_at IS NOT NULL)",
+            name="ck_proactive_decision_terminal_shape",
+        ),
+        Index("ix_proactive_decisions_candidate", "owner_id", "plan_id", "candidate_key"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    plan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("plans.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    source_run_id: Mapped[str] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="RESTRICT"), unique=True, index=True
+    )
+    source_invocation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tool_invocations.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    candidate_key: Mapped[str] = mapped_column(String(180), index=True)
+    candidate_kind: Mapped[str] = mapped_column(String(40), index=True)
+    candidate_payload: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    candidate_digest: Mapped[str] = mapped_column(String(64))
+    source_watermark: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_projection_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    policy_version: Mapped[str] = mapped_column(String(80))
+    policy_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), default="building", server_default=text("'building'"), index=True
+    )
+    outcome: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    reason_code: Mapped[str] = mapped_column(String(80), default="", server_default=text("''"))
+    next_eligible_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
+    decision_payload: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    decision_digest: Mapped[str] = mapped_column(String(64))
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class Intervention(Base):
+    """One logical proactive interaction, independent of delivery channels."""
+
+    __tablename__ = "interventions"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('building', 'active', 'replied', 'resolved', 'cancelled', "
+            "'legacy_unverified')",
+            name="ck_intervention_state",
+        ),
+        CheckConstraint("length(content_digest) = 64", name="ck_intervention_content_digest"),
+        CheckConstraint(
+            "state IN ('building', 'legacy_unverified') OR canonical_message_id IS NOT NULL",
+            name="ck_intervention_canonical_message",
+        ),
+        CheckConstraint(
+            "(state = 'resolved' AND resolved_at IS NOT NULL AND length(outcome) > 0) OR "
+            "(state <> 'resolved' AND resolved_at IS NULL)",
+            name="ck_intervention_resolved_shape",
+        ),
+        Index(
+            "uq_interventions_source_invocation",
+            "source_invocation_id",
+            unique=True,
+            sqlite_where=text("source_invocation_id IS NOT NULL"),
+        ),
+        Index("ix_interventions_scope", "owner_id", "plan_id", "session_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    proactive_decision_id: Mapped[str | None] = mapped_column(
+        ForeignKey("proactive_decisions.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    source_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    source_invocation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tool_invocations.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    plan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("plans.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("sessions.id", ondelete="RESTRICT"), index=True
+    )
+    canonical_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    provenance_node_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provenance_nodes.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    reply_token: Mapped[str] = mapped_column(String(64), default=uuid_string, unique=True)
+    title: Mapped[str] = mapped_column(String(240))
+    body: Mapped[str] = mapped_column(Text)
+    content_digest: Mapped[str] = mapped_column(String(64))
+    reason_code: Mapped[str] = mapped_column(String(80), default="", server_default=text("''"))
+    state: Mapped[str] = mapped_column(
+        String(24), default="building", server_default=text("'building'"), index=True
+    )
+    outcome: Mapped[str] = mapped_column(String(40), default="", server_default=text("''"), index=True)
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True, index=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class InboundMailJob(Base):
+    """Durable parsed IMAP reply that exists before the Seen acknowledgement."""
+
+    __tablename__ = "inbound_mail_jobs"
+    __table_args__ = (
+        UniqueConstraint(
+            "owner_id", "mailbox_key", "uidvalidity", "uid", name="uq_inbound_mail_uid"
+        ),
+        CheckConstraint("uidvalidity >= 1", name="ck_inbound_mail_uidvalidity"),
+        CheckConstraint("uid >= 1", name="ck_inbound_mail_uid"),
+        CheckConstraint("length(payload_digest) = 64", name="ck_inbound_mail_payload_digest"),
+        CheckConstraint(
+            "state IN ('queued', 'run_started', 'readonly_receipt', 'completed', 'failed')",
+            name="ck_inbound_mail_state",
+        ),
+        CheckConstraint(
+            "execution_mode IN ('normal', 'read_only')",
+            name="ck_inbound_mail_execution_mode",
+        ),
+        CheckConstraint(
+            "ack_state IN ('pending', 'claimed', 'acked', 'failed')",
+            name="ck_inbound_mail_ack_state",
+        ),
+        CheckConstraint("ack_attempt >= 0", name="ck_inbound_mail_ack_attempt"),
+        CheckConstraint(
+            "(ack_state = 'claimed' AND ack_claim_token IS NOT NULL "
+            "AND ack_claim_expires_at IS NOT NULL AND acked_at IS NULL) OR "
+            "(ack_state = 'acked' AND ack_claim_token IS NULL "
+            "AND ack_claim_expires_at IS NULL AND acked_at IS NOT NULL) OR "
+            "(ack_state IN ('pending', 'failed') AND ack_claim_token IS NULL "
+            "AND ack_claim_expires_at IS NULL AND acked_at IS NULL)",
+            name="ck_inbound_mail_ack_shape",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    intervention_id: Mapped[str] = mapped_column(
+        ForeignKey("interventions.id", ondelete="RESTRICT"), index=True
+    )
+    source_notification_id: Mapped[int | None] = mapped_column(
+        ForeignKey("notifications.id", ondelete="RESTRICT"), nullable=True
+    )
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("sessions.id", ondelete="RESTRICT"), index=True
+    )
+    plan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("plans.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    mailbox_key: Mapped[str] = mapped_column(String(160))
+    uidvalidity: Mapped[int] = mapped_column(Integer)
+    uid: Mapped[int] = mapped_column(Integer)
+    subject: Mapped[str] = mapped_column(Text, default="")
+    body: Mapped[str] = mapped_column(Text)
+    payload_digest: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(
+        String(24), default="queued", server_default=text("'queued'"), index=True
+    )
+    execution_mode: Mapped[str] = mapped_column(
+        String(24), default="normal", server_default=text("'normal'"), index=True
+    )
+    outcome: Mapped[str] = mapped_column(String(40), default="", server_default=text("''"))
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    queued_message_id: Mapped[str | None] = mapped_column(
+        ForeignKey("queued_messages.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    chat_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    ack_state: Mapped[str] = mapped_column(
+        String(16), default="pending", server_default=text("'pending'"), index=True
+    )
+    ack_attempt: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    ack_claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    ack_claim_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    acked_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    last_error_code: Mapped[str] = mapped_column(String(80), default="", server_default=text("''"))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
+    )
 
 
 class PushSubscription(Base):

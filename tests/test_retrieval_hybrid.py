@@ -6,33 +6,48 @@ from sqlalchemy import select
 from app.context.memory import MemoryManager, search_terms
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow
-from app.models import Memory
+from app.models import AgentRun, Memory, Plan
 from app.retrieval.bm25 import BM25
 from app.retrieval.simhash import simhash
 from app.retrieval.text import tokenize_terms
 from app.schemas import MemoryRead
 
 
-def _memory(owner_id: str, content: str, *, scope: str = "global", scope_id: str | None = None, layer: str = "semantic", confidence: float = 0.9):
-    return Memory(
-        owner_id=owner_id,
+async def _memory(
+    db,
+    owner_id: str,
+    content: str,
+    *,
+    scope: str = "global",
+    scope_id: str | None = None,
+    layer: str = "semantic",
+    confidence: float = 0.9,
+    expires_at: datetime | None = None,
+) -> Memory:
+    memory, reused = await MemoryManager(db).propose(
+        owner_id,
         scope=scope,
         scope_id=scope_id,
         layer=layer,
         content=content,
+        source_type="user",
         confidence=confidence,
-        status="confirmed",
+        expires_at=expires_at,
     )
+    assert reused is False
+    return await MemoryManager(db).confirm(owner_id, memory.id)
 
 
 @pytest.mark.asyncio
 async def test_hybrid_retrieval_ranks_semantic_overlap_with_breakdown():
     async with AsyncSessionLocal() as db:
-        db.add_all([
-            _memory("local", "用户更喜欢通过编写 Python 异步服务来学习 asyncio 并发与超时处理"),
-            _memory("local", "用户在准备 Django 模板和数据库模型练习"),
-            _memory("local", "用户对前端布局和响应式设计感兴趣"),
-        ])
+        await _memory(
+            db,
+            "local",
+            "用户更喜欢通过编写 Python 异步服务来学习 asyncio 并发与超时处理",
+        )
+        await _memory(db, "local", "用户在准备 Django 模板和数据库模型练习")
+        await _memory(db, "local", "用户对前端布局和响应式设计感兴趣")
         await db.commit()
 
         manager = MemoryManager(db)
@@ -55,6 +70,22 @@ async def test_hybrid_retrieval_ranks_semantic_overlap_with_breakdown():
 @pytest.mark.asyncio
 async def test_memory_proposals_deduplicate_reinforce_and_preserve_correction_lineage():
     async with AsyncSessionLocal() as db:
+        repeat_run = AgentRun(
+            owner_id="local",
+            trigger="user_message",
+            objective="Reinforce a durable preference",
+            status="completed",
+            phase="terminal",
+        )
+        correction_run = AgentRun(
+            owner_id="local",
+            trigger="user_message",
+            objective="Propose a competing correction",
+            status="completed",
+            phase="terminal",
+        )
+        db.add_all([repeat_run, correction_run])
+        await db.flush()
         manager = MemoryManager(db)
         original, reused = await manager.propose(
             "local",
@@ -74,7 +105,7 @@ async def test_memory_proposals_deduplicate_reinforce_and_preserve_correction_li
             layer="semantic",
             content="  用户喜欢通过项目实战学习 Python  ",
             source_type="agent_run",
-            source_id="run-repeat",
+            source_id=repeat_run.id,
             confidence=0.95,
         )
         assert reused is True
@@ -100,7 +131,7 @@ async def test_memory_proposals_deduplicate_reinforce_and_preserve_correction_li
             layer="semantic",
             content="用户只希望阅读 Python 理论，不做项目",
             source_type="agent_run",
-            source_id="stale-correction",
+            source_id=correction_run.id,
             confidence=0.7,
             supersedes_id=original.id,
         )
@@ -123,10 +154,14 @@ async def test_memory_proposals_deduplicate_reinforce_and_preserve_correction_li
 @pytest.mark.asyncio
 async def test_memory_archive_is_recoverable_without_deleting_history():
     async with AsyncSessionLocal() as db:
-        memory = _memory("local", "每周日进行一次学习复盘")
-        expired_memory = _memory("local", "本周临时复习提醒", layer="short_term")
-        expired_memory.expires_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
-        db.add_all([memory, expired_memory])
+        memory = await _memory(db, "local", "每周日进行一次学习复盘")
+        expired_memory = await _memory(
+            db,
+            "local",
+            "本周临时复习提醒",
+            layer="short_term",
+            expires_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        )
         await db.commit()
         manager = MemoryManager(db)
 
@@ -151,9 +186,8 @@ async def test_memory_archive_is_recoverable_without_deleting_history():
 async def test_retrieval_access_tracking_does_not_refresh_fact_freshness():
     async with AsyncSessionLocal() as db:
         semantic_updated_at = datetime(2025, 1, 2, tzinfo=timezone.utc)
-        memory = _memory("local", "用户倾向先理解原理再动手实践")
+        memory = await _memory(db, "local", "用户倾向先理解原理再动手实践")
         memory.updated_at = semantic_updated_at
-        db.add(memory)
         await db.commit()
 
         await MemoryManager(db).retrieve_with_scores(
@@ -170,27 +204,55 @@ async def test_retrieval_access_tracking_does_not_refresh_fact_freshness():
 @pytest.mark.asyncio
 async def test_retrieval_respects_plan_isolation():
     async with AsyncSessionLocal() as db:
-        db.add_all([
-            _memory("local", "asyncio 任务超时与并发抓取器改造", scope="plan", scope_id="11"),
-            _memory("local", "Django 模板继承与数据库模型", scope="plan", scope_id="22"),
-        ])
+        first_plan = Plan(owner_id="local", title="Asyncio isolation")
+        second_plan = Plan(owner_id="local", title="Django isolation")
+        db.add_all([first_plan, second_plan])
+        await db.flush()
+        await _memory(
+            db,
+            "local",
+            "asyncio 任务超时与并发抓取器改造",
+            scope="plan",
+            scope_id=str(first_plan.id),
+        )
+        await _memory(
+            db,
+            "local",
+            "Django 模板继承与数据库模型",
+            scope="plan",
+            scope_id=str(second_plan.id),
+        )
         await db.commit()
 
         manager = MemoryManager(db)
-        plan_a = await manager.retrieve("local", plan_id=11, query="并发抓取器超时")
-        plan_b = await manager.retrieve("local", plan_id=22, query="并发抓取器超时")
+        plan_a = await manager.retrieve(
+            "local", plan_id=first_plan.id, query="并发抓取器超时"
+        )
+        plan_b = await manager.retrieve(
+            "local", plan_id=second_plan.id, query="Django 模板数据库模型"
+        )
 
-        assert [item.scope_id for item in plan_a] == ["11"]
-        assert [item.scope_id for item in plan_b] == ["22"]
+        assert [item.scope_id for item in plan_a] == [str(first_plan.id)]
+        assert [item.scope_id for item in plan_b] == [str(second_plan.id)]
 
 
 @pytest.mark.asyncio
 async def test_retrieval_falls_back_to_bonus_ranking_without_query_terms():
     async with AsyncSessionLocal() as db:
-        db.add_all([
-            _memory("local", "全局长期稳定偏好：编程学习", layer="long_term", confidence=0.95),
-            _memory("local", "短期临时记录", layer="short_term", confidence=0.5),
-        ])
+        await _memory(
+            db,
+            "local",
+            "全局长期稳定偏好：编程学习",
+            layer="long_term",
+            confidence=0.95,
+        )
+        await _memory(
+            db,
+            "local",
+            "短期临时记录",
+            layer="short_term",
+            confidence=0.5,
+        )
         await db.commit()
 
         manager = MemoryManager(db)
@@ -206,8 +268,7 @@ async def test_retrieval_falls_back_to_bonus_ranking_without_query_terms():
 @pytest.mark.asyncio
 async def test_maintain_persists_local_embeddings():
     async with AsyncSessionLocal() as db:
-        memory = _memory("local", "每周末用两小时做一次阶段自测")
-        db.add(memory)
+        memory = await _memory(db, "local", "每周末用两小时做一次阶段自测")
         await db.commit()
         memory_id = memory.id
 

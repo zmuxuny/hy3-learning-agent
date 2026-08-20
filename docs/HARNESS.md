@@ -1,12 +1,12 @@
 # Personal Learning Harness
 
-> 状态说明（2026-08-20）：本文描述产品目标，并区分已经验收的 H1–H4 边界与后续正常路径候选。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child 与 Evidence/Competency 事实层已完成，累计关闭 50 个缺陷 ID；矩阵剩余 37 个 open ID，下一门禁为 H5，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)；H6 完成前仍只建议受控 loopback 使用。
+> 状态说明（2026-08-20）：本文描述产品目标，并区分已经验收的 H1–H5 边界与后续正常路径候选。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency 与 Context/Memory/Intervention 已完成，累计关闭 70 个缺陷 ID；矩阵剩余 17 个 open ID，下一门禁为 H6，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)；H6 完成前仍只建议受控 loopback 使用。
 
 ## 产品边界
 
 Learning Agent 的产品目标是个人本地部署或经过认证的个人服务器长期运行，不做账号、组织、租户或云端多用户平台。当前服务器认证尚未实现（H6-AUTH-001），所以现有版本只能绑定 loopback；`owner_id=local` 只是本地数据的稳定命名空间，不是认证机制。
 
-Harness 的目标由四层共同实现：System Prompt 定义工作方式，ContextAssembler 选择证据，Function Calling Schema 声明可执行能力，后端 Guard 强制焦点、路径、时间和通知边界。H2 已验收统一 UoW、请求身份、effect 分类和外部副作用围栏，H4 已验收 Evidence/Competency scope 与 eligibility；H5、H6 的 Context/Intervention 和应用部署权限仍有缺口，不能用 Prompt 或页面行为代替后端约束。
+Harness 的目标由四层共同实现：System Prompt 定义工作方式，ContextAssembler 选择证据，Function Calling Schema 声明可执行能力，后端 Guard 强制焦点、路径、时间和通知边界。H2 已验收统一 UoW、请求身份、effect 分类和外部副作用围栏，H4 已验收 Evidence/Competency scope 与 eligibility，H5 已验收 Context/Intervention 来源、身份与恢复；H6 的应用部署权限仍有缺口，不能用 Prompt 或页面行为代替后端约束。
 
 ## 当前正常路径演示闭环（非耐久保证）
 
@@ -22,7 +22,7 @@ Harness 的目标由四层共同实现：System Prompt 定义工作方式，Cont
 站内提醒（默认）/邮箱 → 用户回复邮件重新进入同一 Runtime
 ```
 
-这条链路不是后端写死的工作流。Hy3 在每轮观察工具结果后自主选择下一项原子能力，直到完成、需要确认、失败、取消或达到预算。H3 已验收 Run/Queue 恢复；图中的提醒 target、多渠道 Intervention 与 IMAP ack 仍由 H5-INT/MAIL 阻塞。
+这条链路不是后端写死的工作流。Hy3 在每轮观察工具结果后自主选择下一项原子能力，直到完成、需要确认、失败、取消或达到预算。H3 已验收 Run/Queue 恢复；H5 已验收提醒 target、多渠道唯一 Intervention、IMAP durable job/ack 与主动决策冷却。
 
 ## Runtime 契约
 
@@ -38,27 +38,27 @@ Harness 的目标由四层共同实现：System Prompt 定义工作方式，Cont
 | 层 | 内容 | 生命周期 |
 | --- | --- | --- |
 | Working | 当前 Run 的目标、工具观察和临时决策 | Run 完成后只保留事件，不提升为事实 |
-| Conversation | 全量原始消息、版本化 Session 摘要、最近消息窗口、Session 私有记忆 | 目标：只覆盖摘要器真实读取且成功提交的消息；旧实现会遗漏输入或错误推进 coverage（H5-CTX-002–004） |
+| Conversation | 全量原始消息、版本化 Session 摘要、最近消息窗口、Session 私有记忆 | 短 claim 后完整分块读取；只有模型链成功且 source version/generation CAS 成功才推进连续 coverage |
 | Planning | Intake 已确认事实/问题/充分性、提案与规划子 Run 报告 | 绑定 Session；提案显式采用后才成为正式 Plan |
-| Session–Plan relation | 创建、讨论、聚焦关系和跨作用域交接摘要 | 目标：永久保留来源且只在显式转场建立；旧 handoff 可被后续消息改写（H5-CTX-005） |
+| Session–Plan relation | 创建、讨论、聚焦关系和跨作用域交接摘要 | relation 只参与排序/标签；handoff 冻结创建时来源、digest 与 generation，后续消息不改写 |
 | Event ledger | 计划、任务、提交、评分、提醒和邮件回复事件 | 不可变运行事实流 |
 | Evidence ledger (V2 M13) | append-only `EvidenceObservation` fact、Artifact snapshot、Rubric/评价者、来源、技能关联和因果链 | H4 已验收完整账本、amendment/invalidation/reinstatement、完整性审计和全量/增量 digest |
 | Episodic | 某次学习表现、阻塞或干预结果 | 相关性检索；90 天后可归档 |
-| Plan semantic | 计划目标、进度、当前任务和阻塞摘要 | 目标是严格按 `plan_id` 隔离；旧 global discussed link 会泄漏私有块（H5-CTX-001） |
+| Plan semantic | 计划目标、进度、当前任务和阻塞摘要 | 严格按数据库 `plan_id` 与 provenance scope 隔离；global relation 不授予私有读取权限 |
 | Global semantic | 稳定偏好、长期约束和跨计划画像 | Agent 只可提出候选，用户确认后生效 |
 
-检索、归档、Token 预算和 Run 快照均已有正常路径候选，但不是已关闭的不变量。旧 Memory restore 会清空未来 expiry，检索缺阈值/层级配额，预算未覆盖 system/tool/output reserve，manifest 不能区分 retained/dropped，编辑后的 Summary/Snapshot 也没有可靠 stale 标记（H5-CTX-007–011）。SQLite 与 `data/context/*.md` 的投影关系必须在这些门禁修复后再称为可核对事实。
+检索、归档、PromptEnvelope 和 Run 快照已由 H5 固定为后端不变量：Memory 在 RRF 前应用绝对相关性门槛与 scope/layer 配额，恢复保留未来 expiry；Context 按 whole block 选择并记录 retained/dropped、reason、source version/digest 与完整预算。编辑沿 verified provenance 失效派生事实。SQLite 是权威来源，`data/context/*.md` 只是可重建投影。
 
 ## 工具边界
 
-- 目标 Guard 要求计划焦点 Run 不能读取或修改其他计划的私有数据；Competency edge/link 与 Evidence association 已由 H4 从数据库解析真实作用域，Context discussed-link 泄漏仍由 H5-CTX-001 阻塞。
+- 计划焦点 Run 不能读取或修改其他计划的私有数据；Competency edge/link、Evidence association 与 Context provenance 均从数据库解析真实作用域，不能依赖 Prompt 或 relation 标签授权。
 - 文件工具只能访问 `data/workspace/`；路径穿越会被拒绝。
 - Python/Bash 运行有工作目录、环境、时间和输出限制，但当前是**有界进程，不是安全容器**，只适合个人可信代码。
 - Web 请求已有初步 HTTP(S)/地址限制，但 DNS rebinding、实际 peer、响应大小和 Content-Type 边界尚未关闭（H6-WEB-001）。
 - Web 搜索通过可替换的 Provider 接口执行；旧实现会在 URL 层重新检查重定向，但没有 pin/复核实际连接 peer，也缺 wire/decompressed size 与精确 Content-Type 边界（H6-WEB-001），不能据此宣称 SSRF 边界完整。
-- 站内通知是默认渠道，邮箱与 VAPID Web Push 是可选增强。H2 已让 SMTP/Web Push delivery 先落 outbox，并按 action receipt 聚合状态；提醒回同一 Session、多渠道唯一 Intervention、活动 Run target、IMAP ack 和失败冷却仍由 H5 缺陷阻塞。
+- 站内通知是默认渠道，邮箱与 VAPID Web Push 是可选增强。H2 让 SMTP/Web Push delivery 先落 outbox；H5 让所有 delivery 引用唯一 Intervention/canonical message，并使活动 Run target、IMAP ack 与失败冷却耐久可恢复。
 - 计划、任务、策展资源、测验、日历和文件写入生成 `Operation` 与逆向 Patch。H2 已使 Operation undo 使用 CAS，workspace undo 通过 durable outbox 与 forward hash 防止覆盖后续用户修改；H4 进一步让 Evidence undo 追加控制事实，并以 graph dependency/revision 和 `RESTRICT` FK 防止静默级联。
-- 用户消息编辑会保存 Revision 并排除部分旧下游消息；旧实现没有失效全部派生 Memory/Summary/Snapshot/handoff（H5-CTX-006/007），因此不能保证编辑后的 Context 已完全收敛。
+- 用户消息编辑保存带版本/hash 的 Revision，沿 verified provenance closure 失效下游 Run、Memory、Summary、Snapshot 与 handoff，并用 generation fence 让并发 Context/压缩提交失败；无法证明的 legacy 来源保守失效而不猜测。
 
 H1 的数据维护边界已经使用受控 lifecycle lease、固定的路径/目录描述符/inode、内容摘要复验和 trusted snapshot 回退。restore 在写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中；source backup 位于安全备份根目录下仍是正常布局。路径规范化消除 `.`/`..` 别名但不跟随 symlink；legacy `_write_probe` 也只接受精确的空单列旧残留。该协议不能约束绕过 Runtime/maintenance 的原始 SQLite writer。
 
@@ -72,4 +72,4 @@ H4 增加 revision 4 与 Evidence/Competency 事实协议：Evidence、Artifact 
 
 当前版本已经形成真实可运行的个人学习 Harness 原型：计划、资源、执行、证据、检查、记忆和主动提醒均有正常路径能力；SMTP/IMAP 代码、连续 Session 路由和诊断接口已经存在，真实供应商收发仍依赖本机邮箱凭据。它不是通用操作系统 Agent，也不宣称拥有容器级代码隔离、任意宿主目录权限或多节点分布式调度能力。
 
-截至 2026-08-20，H1–H4 已完成，累计关闭 50 个 defect ID；H4 的 41 条 baseline/41 个 mutant、10k 投影、备份恢复和 revision 4 故障注入已通过。Context、提醒线程、移动导航和应用部署边界仍有阻塞问题，统一按硬化计划 H5–H8 修复；没有真实 SMTP/VAPID 验证，外部安装、连续使用和 7 日留存也必须由真人记录验收。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。
+截至 2026-08-20，H1–H5 已完成，累计关闭 70 个 defect ID；H4 的 41 条 baseline/41 个 mutant、10k Evidence 投影与 H5 的 10k 消息、Context 来源图、Intervention/mail、备份恢复和故障注入均已通过。应用部署边界、移动导航和发布工程仍按 H6–H8 修复；没有真实 SMTP/IMAP/VAPID 验证，外部安装、连续使用和 7 日留存必须由真人记录验收。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。

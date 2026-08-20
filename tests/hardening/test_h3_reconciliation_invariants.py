@@ -88,12 +88,13 @@ async def test_email_reply_and_heartbeat_share_one_serialized_root_arbitration(
     poller = EmailReplyPoller()
     monkeypatch.setattr(EmailReplyPoller, "configured", property(lambda _self: True))
     monkeypatch.setattr(poller, "_fetch_unseen", lambda: [{
-        "uid": "race-1",
+        "uid": "1001",
+        "uidvalidity": "1",
         "reply_token": token,
         "subject": "Re: continue",
         "body": "durable email reply",
     }])
-    monkeypatch.setattr(poller, "_mark_seen", lambda _uids: None)
+    monkeypatch.setattr(poller, "_mark_seen", lambda _uidvalidity, _uids: None)
 
     def suppress_runtime_start(_run_id, coroutine):
         coroutine.close()

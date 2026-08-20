@@ -238,6 +238,11 @@ PRAGMA foreign_keys=ON;
 
 
 def downgrade_current_to_frozen_h3(connection: sqlite3.Connection) -> None:
+    # Later schema fixtures must peel their affected objects first so this
+    # revision-3 oracle remains independent from current ORM metadata.
+    from hardening.h5_schema_fixture import FROZEN_H4_CONTEXT_SQL
+
+    connection.executescript(FROZEN_H4_CONTEXT_SQL)
     connection.executescript(FROZEN_H3_EVIDENCE_COMPETENCY_SQL)
 
 

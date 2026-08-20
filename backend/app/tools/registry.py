@@ -21,7 +21,9 @@ from app.models import (
     Achievement,
     ActivityDay,
     AgentRun,
+    Intervention,
     LearningEvent,
+    Notification,
     Operation,
     OutboxAction,
     Plan,
@@ -777,6 +779,7 @@ async def notification_send(ctx: ToolContext, args: NotificationArgs) -> dict:
         invocation_id=ctx.invocation_id,
         action_key=ctx.action_key,
         request_digest=ctx.request_digest,
+        reply_to_intervention_id=ctx.reply_to_intervention_id,
     )
 
 
@@ -1419,6 +1422,18 @@ async def _append_atomic_completion(
     return event
 
 
+def _read_only_forbidden(tool: ToolDefinition, reason: str) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "error": "Read-only continuations cannot execute this effect.",
+        "error_code": "read_only_effect_forbidden",
+        "reason_code": "READ_ONLY_EFFECT_FORBIDDEN",
+        "guard_reason": reason,
+        "effect_kind": tool.effect_kind.value,
+        "retryable": False,
+    }
+
+
 async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
     tool = TOOL_MAP.get(name)
     if not tool:
@@ -1437,6 +1452,36 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
             "error_code": "invalid_arguments",
             "retryable": False,
         }
+    if ctx.execution_mode == "read_only" and tool.effect_kind not in {
+        ToolEffectKind.PURE_READ,
+        ToolEffectKind.EXTERNAL_READ,
+    }:
+        if name != "notification_send":
+            return _read_only_forbidden(tool, "state_changing_tool")
+        if ctx.reply_to_intervention_id is None:
+            return _read_only_forbidden(tool, "missing_reply_intervention")
+        if args.plan_id not in {None, ctx.plan_id}:
+            return _read_only_forbidden(tool, "cross_plan_reply")
+        reply_target = await ctx.db.get(Intervention, ctx.reply_to_intervention_id)
+        if (
+            reply_target is None
+            or reply_target.owner_id != ctx.owner_id
+            or reply_target.plan_id != ctx.plan_id
+            or reply_target.session_id != ctx.session_id
+            or reply_target.state not in {"active", "replied"}
+        ):
+            return _read_only_forbidden(tool, "invalid_reply_intervention")
+        original_channels = set(
+            (
+                await ctx.db.execute(
+                    select(Notification.channel).where(
+                        Notification.intervention_id == reply_target.id
+                    )
+                )
+            ).scalars()
+        )
+        if not set(args.channels) or not set(args.channels).issubset(original_channels):
+            return _read_only_forbidden(tool, "reply_channel_not_original")
 
     invocation: ToolInvocation | None = None
     invocation_id: int | None = None

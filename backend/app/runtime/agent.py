@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.context import ContextAssembler
 from app.context.memory import MemoryManager
+from app.context.provenance import canonical_digest
 from app.core.config import settings
 from app.core.time import canonical_utc, utc_now
 from app.db.database import AsyncSessionLocal
@@ -25,6 +26,7 @@ from app.runtime.budget import (
 from app.runtime.checkpoints import make_checkpoint, normalize_checkpoint
 from app.runtime.events import emit_event, publish_stream_event
 from app.runtime.prompt import SYSTEM_PROMPT
+from app.core.prompt_envelope import ensure_request_fits
 from app.runtime.retry import is_transient_model_error
 from app.runtime.session_titles import generate_session_title, initial_session_title
 from app.runtime.state import (
@@ -47,6 +49,14 @@ from app.runtime.tasks import start_tracked_task
 
 class AgentModelTimeout(RuntimeError):
     pass
+
+
+class AgentModelProviderError(RuntimeError):
+    """A provider call failed after the request passed local preflight."""
+
+    def __init__(self, cause: Exception):
+        self.cause = cause
+        super().__init__(f"model provider failed: {type(cause).__name__}")
 
 
 class _StreamingToolCall:
@@ -313,6 +323,7 @@ class AgentRuntime:
             session_id=session.id if session else None,
             run_id=run.id,
             objective=run.objective,
+            prompt_prefix=f"Trigger: {run.trigger}\nObjective: {run.objective}\n\n",
         )
         await commit_uow(db)
         memory_ids = [
@@ -340,6 +351,11 @@ class AgentRuntime:
                     ChatMessage.message_key == f"run:{run.id}:input",
                 )
             )).scalars().one_or_none()
+            if existing is not None:
+                if not existing.content_hash:
+                    existing.content_hash = canonical_digest(existing.content)
+                if run.reply_to_intervention_id and not existing.reply_to_intervention_id:
+                    existing.reply_to_intervention_id = run.reply_to_intervention_id
             if existing is None:
                 fallback = (await db.execute(
                     select(ChatMessage).where(
@@ -355,9 +371,16 @@ class AgentRuntime:
                         message_key=f"run:{run.id}:input",
                         role="user",
                         content=run.objective,
+                        version=1,
+                        content_hash=canonical_digest(run.objective),
+                        reply_to_intervention_id=run.reply_to_intervention_id,
                     ))
                 else:
                     fallback.message_key = f"run:{run.id}:input"
+                    if not fallback.content_hash:
+                        fallback.content_hash = canonical_digest(fallback.content)
+                    if run.reply_to_intervention_id and not fallback.reply_to_intervention_id:
+                        fallback.reply_to_intervention_id = run.reply_to_intervention_id
             session.updated_at = utc_now()
             await commit_uow(db)
         messages = [
@@ -445,6 +468,7 @@ class AgentRuntime:
             session_id=None,
             run_id=run.id,
             objective=run.objective,
+            prompt_prefix=f"Trigger: {run.trigger}\nObjective: {run.objective}\n\n",
         )
         await commit_uow(db)
         memory_ids = [
@@ -644,6 +668,8 @@ class AgentRuntime:
                                 trigger=run.trigger,
                                 plan_id=run.plan_id,
                                 session_id=session.id if session else None,
+                                execution_mode=run.execution_mode,
+                                reply_to_intervention_id=run.reply_to_intervention_id,
                                 approval_granted=call["id"] in set(
                                     checkpoint.get("granted_tool_call_ids") or []
                                 ),
@@ -783,6 +809,9 @@ class AgentRuntime:
             stored_session = await db.get(Session, session.id)
             if stored_run is None or stored_session is None or not stored_run.output:
                 return
+            # Release the read snapshot before the optional title provider.
+            # The title write is committed only after the external wait ends.
+            await commit_uow(db)
             await generate_session_title(
                 stored_session,
                 objective=stored_run.objective,
@@ -813,10 +842,16 @@ class AgentRuntime:
             for tool in openai_tools()
             if tool["function"]["name"] not in failure_guard.blocked
         ]
+        # The initial Context budget is only one component of a durable Run.
+        # Re-check the exact checkpoint messages and currently exposed schemas
+        # before every provider call because tool observations and steers grow
+        # the envelope over time.
+        ensure_request_fits(messages=messages, tools=model_tools)
         request = {
             "model": settings.MODEL_NAME,
             "messages": messages,
             "temperature": settings.MODEL_TEMPERATURE,
+            "max_tokens": settings.AGENT_OUTPUT_TOKEN_RESERVE,
             "extra_body": {"reasoning_effort": settings.MODEL_REASONING_EFFORT},
         }
         if model_tools:
@@ -846,6 +881,8 @@ class AgentRuntime:
             return response.choices[0].message, getattr(response, "usage", None)
         except TimeoutError as exc:
             raise AgentModelTimeout("模型响应超时") from exc
+        except Exception as exc:
+            raise AgentModelProviderError(exc) from exc
 
     async def _drain_stream(self, stream, run: AgentRun, step: int):
         """Collect an OpenAI-compatible token stream and publish live deltas."""
@@ -923,10 +960,12 @@ class AgentRuntime:
                 pass
             tool_timed_out = isinstance(exc, TimeoutError)
             model_timed_out = isinstance(exc, AgentModelTimeout)
+            model_provider_failed = isinstance(exc, AgentModelProviderError)
+            model_error = exc.cause if model_provider_failed else exc
             transient_model_failure = (
                 not tool_timed_out
                 and not model_timed_out
-                and is_transient_model_error(exc)
+                and is_transient_model_error(model_error)
             )
             if (
                 (model_timed_out or tool_timed_out or transient_model_failure)
@@ -955,9 +994,12 @@ class AgentRuntime:
             elif isinstance(exc, TimeoutError):
                 summary = "某个工具执行超时。本轮状态已安全保留。"
                 error_code = "tool_timeout"
-            elif is_transient_model_error(exc):
+            elif is_transient_model_error(model_error):
                 summary = "模型服务在有界重试后仍不可用，本轮状态已安全保留。"
                 error_code = "model_retry_exhausted"
+            elif model_provider_failed:
+                summary = "模型服务拒绝或无法完成本轮请求，本轮状态已安全保留。"
+                error_code = "model_provider_error"
             elif isinstance(exc, RunStateError):
                 summary = "运行的耐久状态需要人工核对。"
                 error_code = "runtime_state_conflict"

@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.context import ContextAssembler
 from app.core.config import settings
+from app.core.prompt_envelope import estimate_context_message_tokens
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow, flush as flush_uow
 from app.models import AgentRun, PlanProposal, PlanningIntake, RunEvent, Session
@@ -268,12 +269,34 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
         }
     snapshot_markdown = ""
     if existing_count == 0:
+        from app.runtime.subagents import SUBAGENT_SYSTEM_PROMPT, subagent_user_prefix
+        from app.tools.registry import TOOL_MAP
+
+        planning_allowlist = _planning_allowlist()
+        child_schemas = [
+            TOOL_MAP[name].openai_schema()
+            for name in sorted(planning_allowlist)
+        ]
+        child_prefixes = [
+            subagent_user_prefix(f"{item.role}: {item.objective}")
+            for item in args.assignments
+        ]
+        budget_prefix = max(
+            child_prefixes,
+            key=lambda value: estimate_context_message_tokens(
+                system_prompt=SUBAGENT_SYSTEM_PROMPT,
+                user_content=value,
+            ),
+        )
         snapshot = await ContextAssembler(ctx.db).build(
             ctx.owner_id,
             plan_id=ctx.plan_id,
             session_id=session_id,
             run_id=ctx.run_id,
             objective="; ".join(item.objective for item in args.assignments),
+            prompt_system=SUBAGENT_SYSTEM_PROMPT,
+            prompt_tools=child_schemas,
+            prompt_prefix=budget_prefix,
         )
         snapshot_markdown = snapshot.markdown
     child_runs: list[AgentRun] = []
@@ -290,6 +313,8 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
                 parent_run_id=ctx.run_id,
                 trigger="subagent",
                 objective=f"[{assignment.role}] {assignment.objective}",
+                execution_mode=ctx.execution_mode,
+                reply_to_intervention_id=ctx.reply_to_intervention_id,
                 status="queued",
                 model=settings.MODEL_NAME,
                 checkpoint_schema_version=1,
@@ -315,6 +340,8 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
             if (
                 not _own_planning_child(ctx, child)
                 or child.objective != f"[{assignment.role}] {assignment.objective}"
+                or child.execution_mode != ctx.execution_mode
+                or child.reply_to_intervention_id != ctx.reply_to_intervention_id
                 or (
                     checkpoint
                     and (

@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     AGENT_CANDIDATE_COOLDOWN_MINUTES: int = Field(default=180, ge=0, le=10080)
     AGENT_CONTEXT_EVENT_LIMIT: int = Field(default=40, ge=5, le=500)
     AGENT_CONTEXT_TOKEN_BUDGET: int = Field(default=12000, ge=2000, le=100000)
+    AGENT_OUTPUT_TOKEN_RESERVE: int = Field(default=4096, ge=256, le=100000)
+    AGENT_TOOL_RESULT_TOKEN_RESERVE: int = Field(default=2048, ge=256, le=100000)
     AGENT_RECENT_MESSAGE_LIMIT: int = Field(default=16, ge=4, le=100)
     AGENT_SESSION_COMPRESSION_THRESHOLD: int = Field(default=24, ge=8, le=500)
     AGENT_DAILY_NOTIFICATION_LIMIT: int = Field(default=3, ge=0, le=20)

@@ -44,6 +44,9 @@ FROZEN_H3_SCHEMA_CHECKSUM = (
 FROZEN_H4_SCHEMA_CHECKSUM = (
     "851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace"
 )
+FROZEN_H5_SCHEMA_CHECKSUM = (
+    "878d69dc13324434678716be6c4d05bfa77ff80c25e16d157576ec6a5458ec45"
+)
 
 
 FROZEN_H1_CHANGED_SCHEMA_SQL = """
@@ -312,18 +315,18 @@ def test_revision_one_upgrades_to_h2_without_inventing_request_identity(
 
     assert report.applied is True
     assert report.source_kind == "versioned"
-    assert report.version == 4
+    assert report.version == 5
     assert report.source_schema_checksum == FROZEN_H1_SCHEMA_CHECKSUM
-    assert report.target_schema_checksum == FROZEN_H4_SCHEMA_CHECKSUM
+    assert report.target_schema_checksum == FROZEN_H5_SCHEMA_CHECKSUM
     assert report.backup_path is not None
     assert verify_sqlite_database(
         database,
-        expected_schema_checksum=FROZEN_H4_SCHEMA_CHECKSUM,
+        expected_schema_checksum=FROZEN_H5_SCHEMA_CHECKSUM,
     ) == {
         "integrity": ["ok"],
         "foreign_key_violation_count": 0,
-        "user_version": 4,
-        "schema_checksum": FROZEN_H4_SCHEMA_CHECKSUM,
+        "user_version": 5,
+        "schema_checksum": FROZEN_H5_SCHEMA_CHECKSUM,
     }
 
     with sqlite3.connect(database) as connection:

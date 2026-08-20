@@ -9,11 +9,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.uow import flush as flush_uow
-from app.models import Notification, Plan, PushSubscription, UserProfile
+from app.models import AgentRun, Intervention, Notification, Plan, PushSubscription, UserProfile
 from app.outbox import enqueue_action
-from app.notifications.conversation import materialize_notification_message, resolve_notification_session
+from app.notifications.conversation import (
+    materialize_intervention_message,
+    resolve_notification_session,
+)
 from app.notifications.diagnostics import smtp_connection
 from app.notifications.push import push_service
+from app.runtime.proactive import (
+    create_proactive_decision,
+    finalize_proactive_decision,
+    next_quiet_hours_end,
+)
+from app.runtime.interventions import accept_intervention_reply
 
 
 class NotificationService:
@@ -34,22 +43,103 @@ class NotificationService:
         invocation_id: int | None = None,
         action_key: str | None = None,
         request_digest: str | None = None,
+        reply_to_intervention_id: str | None = None,
     ) -> dict:
+        reply_target = None
+        if reply_to_intervention_id is not None:
+            reply_target = await self.db.get(Intervention, reply_to_intervention_id)
+            if reply_target is None or reply_target.owner_id != owner_id:
+                return {
+                    "blocked": True,
+                    "reason": "reply intervention not found",
+                    "session_id": None,
+                    "intervention_id": None,
+                    "canonical_message_id": None,
+                    "reply_to_intervention_id": reply_to_intervention_id,
+                    "notifications": [],
+                }
+            if reply_target.state not in {"active", "replied"}:
+                return {
+                    "blocked": True,
+                    "reason": "reply intervention is not open",
+                    "session_id": None,
+                    "intervention_id": None,
+                    "canonical_message_id": None,
+                    "reply_to_intervention_id": reply_to_intervention_id,
+                    "notifications": [],
+                }
+            if plan_id not in {None, reply_target.plan_id}:
+                return {
+                    "blocked": True,
+                    "reason": "reply intervention plan mismatch",
+                    "session_id": None,
+                    "intervention_id": None,
+                    "canonical_message_id": None,
+                    "reply_to_intervention_id": reply_to_intervention_id,
+                    "notifications": [],
+                }
+            plan_id = reply_target.plan_id
+            if session_id not in {None, reply_target.session_id}:
+                return {
+                    "blocked": True,
+                    "reason": "reply intervention session mismatch",
+                    "session_id": None,
+                    "intervention_id": None,
+                    "canonical_message_id": None,
+                    "reply_to_intervention_id": reply_to_intervention_id,
+                    "notifications": [],
+                }
+            session_id = reply_target.session_id
         allowed, reason = await self._guard(owner_id, trigger, plan_id)
         if not allowed:
-            return {"blocked": True, "reason": reason, "session_id": None, "notifications": []}
+            next_eligible_at = await self._record_blocked_decision(
+                owner_id=owner_id,
+                run_id=run_id,
+                reason=reason,
+                invocation_id=invocation_id,
+            )
+            return {
+                "blocked": True,
+                "reason": reason,
+                "session_id": None,
+                "intervention_id": None,
+                "canonical_message_id": None,
+                "reply_to_intervention_id": reply_to_intervention_id,
+                "notifications": [],
+                "next_eligible_at": (
+                    next_eligible_at.isoformat() if next_eligible_at is not None else None
+                ),
+            }
+        source_run = await self.db.get(AgentRun, run_id) if run_id else None
         if plan_id is not None:
             plan = await self.db.get(Plan, plan_id)
+            archived_read_only_reply = bool(
+                plan is not None
+                and plan.status == "archived"
+                and trigger == "email_reply"
+                and reply_target is not None
+                and source_run is not None
+                and source_run.execution_mode == "read_only"
+            )
             if (
                 not plan
                 or plan.owner_id != owner_id
-                or plan.status == "archived"
+                or (plan.status == "archived" and not archived_read_only_reply)
                 or (trigger not in {"user_message", "email_reply"} and plan.status != "active")
             ):
+                await self._record_blocked_decision(
+                    owner_id=owner_id,
+                    run_id=run_id,
+                    reason="plan no longer active",
+                    invocation_id=invocation_id,
+                )
                 return {
                     "blocked": True,
                     "reason": "plan no longer active",
                     "session_id": None,
+                    "intervention_id": None,
+                    "canonical_message_id": None,
+                    "reply_to_intervention_id": reply_to_intervention_id,
                     "notifications": [],
                 }
 
@@ -60,6 +150,51 @@ class NotificationService:
             plan_id=plan_id,
             source_run_id=run_id,
         )
+        proactive_decision = (
+            await create_proactive_decision(
+                self.db,
+                source_run,
+                source_invocation_id=invocation_id,
+            )
+            if source_run is not None
+            else None
+        )
+
+        content_digest = hashlib.sha256(
+            json.dumps(
+                {"body": body, "title": title},
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        intervention = Intervention(
+            owner_id=owner_id,
+            proactive_decision_id=(
+                proactive_decision.id
+                if proactive_decision is not None and proactive_decision.status == "building"
+                else None
+            ),
+            source_run_id=run_id,
+            source_invocation_id=invocation_id,
+            plan_id=plan_id,
+            session_id=session.id,
+            title=title,
+            body=body,
+            content_digest=content_digest,
+            reason_code=trigger,
+            state="building",
+        )
+        self.db.add(intervention)
+        await flush_uow(self.db)
+        canonical_message = await materialize_intervention_message(
+            self.db,
+            session=session,
+            intervention=intervention,
+        )
+        if reply_target is not None:
+            canonical_message.reply_to_intervention_id = reply_target.id
+            await accept_intervention_reply(self.db, reply_target)
 
         created: list[dict] = []
         created_models: list[Notification] = []
@@ -68,6 +203,8 @@ class NotificationService:
         for channel in requested:
             notification = Notification(
                 owner_id=owner_id,
+                intervention_id=intervention.id,
+                legacy_unlinked=False,
                 run_id=run_id,
                 invocation_id=invocation_id,
                 session_id=session.id,
@@ -75,6 +212,7 @@ class NotificationService:
                 channel=channel,
                 title=title,
                 body=body,
+                reply_token=intervention.reply_token,
                 status="queued",
             )
             self.db.add(notification)
@@ -144,7 +282,7 @@ class NotificationService:
                         request_digest=digest,
                         destination="smtp",
                         payload={
-                            "reply_token": notification.reply_token,
+                            "reply_token": intervention.reply_token,
                             "title": title,
                             "body": body,
                             "route_digest": self._smtp_route_digest(),
@@ -154,18 +292,31 @@ class NotificationService:
             else:
                 notification.status = "skipped"
             created.append({"id": notification.id, "channel": channel, "status": notification.status})
-        if created_models and trigger not in {"user_message", "email_reply"}:
-            primary = next((item for item in created_models if item.channel == "in_app"), created_models[0])
-            await materialize_notification_message(
+        canonical_message.message_metadata = {
+            **(canonical_message.message_metadata or {}),
+            "notification_id": created_models[0].id if created_models else None,
+            "notification_ids": [item.id for item in created_models],
+            "channel": created_models[0].channel if created_models else "in_app",
+        }
+        if proactive_decision is not None and proactive_decision.status == "building":
+            await finalize_proactive_decision(
                 self.db,
-                session=session,
-                notification=primary,
-                notification_ids=[item.id for item in created_models],
+                source_run,
+                outcome="success_intervention",
+                reason_code="notification_sent",
+                decision_payload={
+                    "intervention_id": intervention.id,
+                    "channels": [item.channel for item in created_models],
+                },
+                source_invocation_id=invocation_id,
             )
         await flush_uow(self.db)
         return {
             "blocked": False,
             "session_id": session.id,
+            "intervention_id": intervention.id,
+            "canonical_message_id": canonical_message.id,
+            "reply_to_intervention_id": reply_target.id if reply_target else None,
             "notifications": created,
             "outbox_action_keys": queued_actions,
             **({"_invocation_status": "pending_delivery"} if queued_actions else {}),
@@ -211,7 +362,7 @@ class NotificationService:
         # One intervention can have both in-app and email delivery rows. Count
         # that intervention once rather than consuming the daily limit twice.
         logical_delivery = func.coalesce(
-            Notification.run_id + "\x00" + Notification.title + "\x00" + Notification.body,
+            Notification.intervention_id,
             cast(Notification.id, String),
         )
         result = await self.db.execute(
@@ -248,6 +399,42 @@ class NotificationService:
         if (await self.db.execute(cooldown_query.limit(1))).scalar_one_or_none() is not None:
             return False, "notification cooldown"
         return True, "allowed"
+
+    async def _record_blocked_decision(
+        self,
+        *,
+        owner_id: str,
+        run_id: str | None,
+        reason: str,
+        invocation_id: int | None,
+    ) -> datetime | None:
+        run = await self.db.get(AgentRun, run_id) if run_id else None
+        next_eligible_at = None
+        outcome = "guard_rejected"
+        if reason == "quiet hours":
+            profile = await self.db.get(UserProfile, owner_id)
+            quiet_hours = (
+                profile.quiet_hours
+                if profile is not None
+                else {"start": "23:00", "end": "08:00"}
+            )
+            next_eligible_at = next_quiet_hours_end(
+                datetime.now(timezone.utc),
+                quiet_hours,
+                timezone_name=settings.DEFAULT_TIMEZONE,
+            )
+            outcome = "deferred_quiet_hours"
+        if run is not None:
+            await finalize_proactive_decision(
+                self.db,
+                run,
+                outcome=outcome,
+                reason_code=reason.replace(" ", "_")[:80],
+                next_eligible_at=next_eligible_at,
+                decision_payload={"guard_reason": reason},
+                source_invocation_id=invocation_id,
+            )
+        return next_eligible_at
 
     def _email_configured(self) -> bool:
         return bool(settings.SMTP_HOST and settings.SMTP_USERNAME and settings.SMTP_PASSWORD and settings.SMTP_TO)

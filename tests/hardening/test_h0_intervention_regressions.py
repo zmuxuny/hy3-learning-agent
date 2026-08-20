@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
@@ -8,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.api.agent import enqueue_message
@@ -17,7 +19,11 @@ from app.core.config import settings
 from app.db.database import Base
 from app.models import (
     AgentRun,
+    ChatMessage,
+    InboundMailJob,
+    Intervention,
     Notification,
+    OutboxAction,
     Owner,
     Plan,
     ReviewSchedule,
@@ -93,14 +99,6 @@ async def _due_review_plan(db: AsyncSession) -> Plan:
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-INT-001: active-run reminder replies are stored as ordinary queue/steer "
-        "messages and lose their stable Intervention reply target"
-    ),
-)
 async def test_active_run_intervention_reply_is_queued_with_target(isolated_db):
     db, _ = isolated_db
     plan = Plan(owner_id="local", title="Reply target", goal="Keep the reminder identity")
@@ -116,21 +114,52 @@ async def test_active_run_intervention_reply_is_queued_with_target(isolated_db):
         objective="Long-running turn",
         status="running",
     )
+    db.add(active_run)
+    await db.flush()
+    canonical_body = "Reply to this exact intervention."
+    canonical_message = ChatMessage(
+        session_id=session.id,
+        run_id=active_run.id,
+        role="assistant",
+        content=canonical_body,
+        version=1,
+        content_hash=hashlib.sha256(canonical_body.encode("utf-8")).hexdigest(),
+        message_metadata={"ui_kind": "proactive_notification"},
+    )
+    db.add(canonical_message)
+    await db.flush()
+    intervention = Intervention(
+        owner_id="local",
+        source_run_id=active_run.id,
+        session_id=session.id,
+        plan_id=plan.id,
+        canonical_message_id=canonical_message.id,
+        title="Reminder target",
+        body=canonical_body,
+        content_digest=hashlib.sha256(canonical_body.encode("utf-8")).hexdigest(),
+        reason_code="h5_active_run_reply_fixture",
+        state="active",
+    )
+    db.add(intervention)
+    await db.flush()
     delivery = Notification(
         owner_id="local",
+        intervention_id=intervention.id,
+        legacy_unlinked=False,
         session_id=session.id,
         plan_id=plan.id,
         channel="in_app",
         title="Reminder target",
-        body="Reply to this exact intervention.",
+        body=canonical_body,
+        reply_token=intervention.reply_token,
         status="sent",
         sent_at=datetime.now(timezone.utc),
     )
-    db.add_all([active_run, delivery])
+    db.add(delivery)
     await db.commit()
     await db.refresh(delivery)
 
-    stable_intervention_id = "11111111-1111-4111-8111-111111111111"
+    stable_intervention_id = intervention.id
     payload = QueuedMessageCreate.model_validate(
         {
             "objective": "This answer belongs to the reminder.",
@@ -142,18 +171,10 @@ async def test_active_run_intervention_reply_is_queued_with_target(isolated_db):
     queued = await enqueue_message(payload, db)
 
     assert "reply_to_notification_id" not in queued.message_metadata
-    assert queued.message_metadata.get("reply_to_intervention_id") == stable_intervention_id
+    assert getattr(queued, "reply_to_intervention_id", None) == stable_intervention_id
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-INT-002: plan Context projects delivery rows instead of one authoritative "
-        "Intervention"
-    ),
-)
 async def test_plan_context_counts_one_intervention_across_three_deliveries(
     isolated_db,
     monkeypatch,
@@ -173,23 +194,18 @@ async def test_plan_context_counts_one_intervention_across_three_deliveries(
     await db.flush()
     run.plan_id = plan.id
     marker = "H0-ONE-INTERVENTION-THREE-DELIVERIES"
-    sent_at = datetime.now(timezone.utc)
-    db.add_all(
-        [
-            Notification(
-                owner_id="local",
-                run_id=run.id,
-                plan_id=plan.id,
-                channel=channel,
-                title="One reminder",
-                body=marker,
-                status="sent",
-                sent_at=sent_at,
-            )
-            for channel in ("in_app", "email", "browser")
-        ]
+    result = await NotificationService(db).send(
+        owner_id="local",
+        run_id=run.id,
+        session_id=None,
+        trigger="manual_heartbeat",
+        title="One reminder",
+        body=marker,
+        plan_id=plan.id,
+        channels=["email", "browser"],
     )
     await db.commit()
+    _require_precondition(result.get("blocked") is False, "fixture reminder was blocked")
 
     snapshot = await ContextAssembler(db).build(
         "local",
@@ -203,14 +219,6 @@ async def test_plan_context_counts_one_intervention_across_three_deliveries(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-INT-003: delivery grouping and canonical-message lookup use mutable "
-        "run/title/body heuristics"
-    ),
-)
 async def test_identical_in_app_reminders_are_not_heuristically_merged(isolated_db):
     db, _ = isolated_db
     session = Session(owner_id="local", title="Canonical reminder thread")
@@ -252,15 +260,10 @@ async def test_identical_in_app_reminders_are_not_heuristically_merged(isolated_
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-MAIL-001: an archived-plan email continuation cannot persist an explicit "
-        "read-only answer or failure receipt"
-    ),
-)
-async def test_archived_plan_email_reply_can_emit_read_only_receipt(isolated_db):
+async def test_archived_plan_email_reply_can_emit_read_only_receipt(
+    isolated_db,
+    monkeypatch,
+):
     db, _ = isolated_db
     plan = Plan(
         owner_id="local",
@@ -273,40 +276,133 @@ async def test_archived_plan_email_reply_can_emit_read_only_receipt(isolated_db)
     db.add_all([plan, session])
     await db.flush()
     session.plan_id = plan.id
-    run = AgentRun(
+    canonical_body = "Historical reminder awaiting a reply."
+    canonical_message = ChatMessage(
+        session_id=session.id,
+        role="assistant",
+        content=canonical_body,
+        version=1,
+        content_hash=hashlib.sha256(canonical_body.encode("utf-8")).hexdigest(),
+        message_metadata={"ui_kind": "proactive_notification"},
+    )
+    db.add(canonical_message)
+    await db.flush()
+    intervention = Intervention(
         owner_id="local",
         session_id=session.id,
         plan_id=plan.id,
-        trigger="email_reply",
-        objective="Answer a historical email without mutating the plan",
-        status="running",
+        canonical_message_id=canonical_message.id,
+        title="Archived historical reminder",
+        body=canonical_body,
+        content_digest=hashlib.sha256(canonical_body.encode("utf-8")).hexdigest(),
+        reason_code="h5_archived_mail_fixture",
+        state="active",
     )
-    db.add(run)
+    db.add(intervention)
+    await db.flush()
+    delivery = Notification(
+        owner_id="local",
+        intervention_id=intervention.id,
+        legacy_unlinked=False,
+        session_id=session.id,
+        plan_id=plan.id,
+        channel="email",
+        title=intervention.title,
+        body=intervention.body,
+        reply_token=intervention.reply_token,
+        status="sent",
+        sent_at=datetime.now(timezone.utc),
+    )
+    db.add(delivery)
     await db.commit()
+    frozen_plan = (plan.status, plan.goal, plan.updated_at)
 
-    result = await NotificationService(db).send(
-        owner_id="local",
-        run_id=run.id,
-        session_id=session.id,
-        trigger="email_reply",
-        title="Historical reply receipt",
-        body="The plan is archived; this continuation is read-only.",
-        plan_id=plan.id,
-        channels=["in_app"],
+    poller = EmailReplyPoller()
+    monkeypatch.setattr(EmailReplyPoller, "configured", property(lambda _self: True))
+    monkeypatch.setattr(
+        poller,
+        "_fetch_unseen",
+        lambda: [
+            {
+                "uid": "303",
+                "uidvalidity": "17",
+                "reply_token": intervention.reply_token,
+                "subject": "Re: Archived historical reminder",
+                "body": "Explain the historical result without changing the archived plan.",
+            }
+        ],
     )
+    marked_seen: list[str] = []
+    monkeypatch.setattr(poller, "_mark_seen", lambda _uidvalidity, uids: marked_seen.extend(uids))
 
-    assert result["blocked"] is False
-    assert result["notifications"]
+    await poller.poll(db, "local")
+
+    runs = list(
+        (
+            await db.execute(
+                select(AgentRun).where(
+                    AgentRun.plan_id == plan.id,
+                    AgentRun.trigger == "email_reply",
+                )
+            )
+        ).scalars()
+    )
+    receipts = list(
+        (
+            await db.execute(
+                select(InboundMailJob).where(
+                    InboundMailJob.intervention_id == intervention.id,
+                    InboundMailJob.uid == 303,
+                )
+            )
+        ).scalars()
+    )
+    answer_messages = list(
+        (
+            await db.execute(
+                select(ChatMessage).where(
+                    ChatMessage.session_id == session.id,
+                    ChatMessage.role == "assistant",
+                    ChatMessage.reply_to_intervention_id == intervention.id,
+                )
+            )
+        ).scalars()
+    )
+    receipt_outbox = list(
+        (
+            await db.execute(
+                select(OutboxAction).where(
+                    OutboxAction.notification_id == delivery.id,
+                    OutboxAction.destination == "smtp",
+                )
+            )
+        ).scalars()
+    )
+    await db.refresh(plan)
+
+    explicit_read_only_answer = any(
+        run.execution_mode == "read_only"
+        and (
+            bool((run.output or "").strip())
+            or any(message.run_id == run.id and message.content.strip() for message in answer_messages)
+        )
+        for run in runs
+    )
+    durable_receipt = any(
+        receipt.execution_mode == "read_only"
+        and receipt.state in {"readonly_receipt", "failed"}
+        and bool((receipt.outcome or receipt.last_error_code or "").strip())
+        for receipt in receipts
+    ) and bool(answer_messages) and bool(receipt_outbox)
+
+    _require_precondition(
+        (plan.status, plan.goal, plan.updated_at) == frozen_plan,
+        "archived-plan mail ingress mutated the protected Plan fixture",
+    )
+    _require_precondition(marked_seen == ["303"], "mail ingress did not reach its ACK boundary")
+    assert explicit_read_only_answer or durable_receipt
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-MAIL-002: RFC822 fetch may set Seen before a durable reply job exists, "
-        "including for unrelated unread mail"
-    ),
-)
 def test_imap_fetch_uses_body_peek_without_seen_side_effect(monkeypatch):
     token = "00000000-0000-4000-8000-000000000001"
     message = EmailMessage()
@@ -328,6 +424,10 @@ def test_imap_fetch_uses_body_peek_without_seen_side_effect(monkeypatch):
             return "OK", [b""]
 
         def select(self, _folder):
+            return "OK", [b"1"]
+
+        def response(self, name):
+            _require_precondition(name == "UIDVALIDITY", "unexpected IMAP response query")
             return "OK", [b"1"]
 
         def uid(self, command, *args):
@@ -387,6 +487,7 @@ async def test_imap_seen_only_after_reply_job_commit(isolated_db, monkeypatch):
         lambda: [
             {
                 "uid": "202",
+                "uidvalidity": "1",
                 "reply_token": notification.reply_token,
                 "subject": "Re: Commit before Seen",
                 "body": "Please preserve this reply.",
@@ -394,7 +495,7 @@ async def test_imap_seen_only_after_reply_job_commit(isolated_db, monkeypatch):
         ],
     )
     marked_seen: list[str] = []
-    monkeypatch.setattr(poller, "_mark_seen", lambda uids: marked_seen.extend(uids))
+    monkeypatch.setattr(poller, "_mark_seen", lambda _uidvalidity, uids: marked_seen.extend(uids))
 
     async def fail_commit():
         raise RuntimeError("injected commit failure")
@@ -408,14 +509,6 @@ async def test_imap_seen_only_after_reply_job_commit(isolated_db, monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-PRO-001: failed heartbeat Runs consume the same full candidate cooldown "
-        "as a successful terminal ProactiveDecision"
-    ),
-)
 async def test_failed_heartbeat_does_not_consume_success_cooldown(isolated_db, monkeypatch):
     db, session_factory = isolated_db
     plan = await _due_review_plan(db)
@@ -442,14 +535,6 @@ async def test_failed_heartbeat_does_not_consume_success_cooldown(isolated_db, m
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-PRO-002: quiet-hours rejection neither records the next reachable time nor "
-        "avoids the full success cooldown"
-    ),
-)
 async def test_quiet_hours_rejection_does_not_consume_success_cooldown(
     isolated_db,
     monkeypatch,
@@ -506,14 +591,6 @@ async def test_quiet_hours_rejection_does_not_consume_success_cooldown(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-PRO-003: a deterministic notification Guard rejection is represented only "
-        "by the existence of a heartbeat Run and therefore consumes success cooldown"
-    ),
-)
 async def test_guard_rejection_does_not_consume_success_cooldown(isolated_db, monkeypatch):
     db, session_factory = isolated_db
     plan = await _due_review_plan(db)

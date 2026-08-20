@@ -4,9 +4,9 @@
 目标版本：2.0.0
 当前基线：1.1.1
 
-> 2026-08-20 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1–H4 已完成，累计关闭 50 个缺陷 ID，矩阵剩余 37 个 open ID，下一门禁是 H5；M13 的 Evidence 事实层和 M14 的后端图协议已通过 H4，但 M14 最小前端仍属 H7。M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成发布完成声明。
+> 2026-08-20 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1–H5 已完成，累计关闭 70 个缺陷 ID，矩阵剩余 17 个 open ID，下一门禁是 H6；M13 的 Evidence 事实层、M14 后端图协议及 M17/M18 所需的 Context/Intervention 地基已通过对应门禁，但 M14 最小前端仍属 H7，learner state/FSRS/自适应动作仍冻结。M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成发布完成声明。
 
-H4 场景矩阵为 124 passed，覆盖 41 条 production baseline 与 41 个对应 mutant；0/1/500/501/10,000 投影、revision 4 migration/SIGKILL、关闭重开和备份恢复也已通过。完整 pytest 与前端结果及 H1–H3 历史快照见 [`STATUS.md`](STATUS.md)；这些自动化证据不替代真实 SMTP/VAPID、外部安装、连续学习闭环和 7 日留存验证。
+H4 场景矩阵为 124 passed，覆盖 41 条 production baseline 与 41 个对应 mutant；H5 又覆盖 10,000 消息、来源图、完整 PromptEnvelope、逻辑 Intervention、IMAP job/ack 与真实进程恢复。完整 pytest、前端结果及历史快照见 [`STATUS.md`](STATUS.md)；这些自动化证据不替代真实 SMTP/IMAP/VAPID、外部安装、连续学习闭环和 7 日留存验证。
 
 ## 1. 版本定义
 
@@ -396,7 +396,7 @@ M13 学习账本
 - `scripts/rebuild-evidence.py` 已提供重建、审计、v1 回填和派生快照命令；H1 已使纯 audit 保持逐字节只读，并要求任何回填/重建写操作先取得协调 lease 和全量验证备份。
 - 41 个网络无关场景均执行 production adapter/reducer/audit，并由 41 个对应 mutant 独立触发 failure code。
 
-H4 已关闭 M13 事实层的迁移、完整账本、撤销/重做、重复成功、保守 eligibility、Artifact snapshot/指纹和 41 场景独立断言阻塞项。M13 仍不单独打正式标签：项目保持 2.0.0-alpha.1 暂停发布，必须继续完成 H5–H8 和发布门禁。
+H4 已关闭 M13 事实层的迁移、完整账本、撤销/重做、重复成功、保守 eligibility、Artifact snapshot/指纹和 41 场景独立断言阻塞项。H5 又完成长期 Context/Intervention 地基；M13 仍不单独打正式标签，项目保持 2.0.0-alpha.1 暂停发布，必须继续完成 H6–H8 和发布门禁。
 
 ### M14：技能图与计划映射
 

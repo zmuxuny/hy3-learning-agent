@@ -9,6 +9,7 @@ lease and ``state_version`` stored in SQLite.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -31,6 +32,7 @@ from app.db.uow import (
 from app.models import (
     AgentRun,
     ChatMessage,
+    ProactiveDecision,
     QueuedMessage,
     RunApproval,
     RunEvent,
@@ -43,6 +45,7 @@ from app.runtime.checkpoints import (
     make_checkpoint,
     normalize_checkpoint,
 )
+from app.runtime.interventions import finalize_run_intervention
 from app.runtime.events import publish_stream_event, stage_event
 
 
@@ -57,6 +60,45 @@ class RunStateError(RuntimeError):
 
 class RunLeaseLostError(RunStateError):
     """The caller no longer owns the lease/version it is trying to mutate."""
+
+
+def _proactive_failure_outcome(*, status: str, reason_code: str) -> str:
+    if status == "cancelled":
+        return "cancelled"
+    if reason_code.startswith("model_"):
+        return "model_failed"
+    return "runtime_failed"
+
+
+async def _finalize_captured_proactive_run(
+    db: AsyncSession,
+    run: AgentRun,
+    *,
+    outcome: str,
+    reason_code: str,
+) -> None:
+    """Close a captured root decision in the same UoW as its Run terminal state."""
+
+    if run.parent_run_id is not None or run.proactive_candidate_state != "captured":
+        return
+    existing = (
+        await db.execute(
+            select(ProactiveDecision).where(ProactiveDecision.source_run_id == run.id)
+        )
+    ).scalars().one_or_none()
+    if existing is not None and existing.status == "terminal":
+        # Notification/Guard owns its already-committed semantic outcome.
+        return
+    from app.runtime.proactive import finalize_proactive_decision
+
+    await finalize_proactive_decision(
+        db,
+        run,
+        outcome=outcome,
+        reason_code=reason_code,
+        decision_payload={"run_status": run.status},
+        source_invocation_id=(existing.source_invocation_id if existing is not None else None),
+    )
 
 
 @dataclass
@@ -661,6 +703,9 @@ async def record_steer(
         message_key=f"steer:{steer.id}",
         role="user",
         content=content,
+        version=1,
+        content_hash=hashlib.sha256(content.encode("utf-8")).hexdigest(),
+        reply_to_intervention_id=run.reply_to_intervention_id,
         message_metadata={"ui_kind": "steer", "steer_id": steer.id},
     )
     db.add(message)
@@ -679,6 +724,7 @@ async def record_steer(
             session_id=run.session_id,
             plan_id=run.plan_id,
             trigger="user_message",
+            execution_mode=run.execution_mode,
             objective=content,
             user_content=content,
             message_metadata={
@@ -688,6 +734,7 @@ async def record_steer(
             },
             source_steer_id=steer.id,
             source_message_id=message.id,
+            reply_to_intervention_id=run.reply_to_intervention_id,
             position=position,
         ))
     await stage_event(
@@ -723,6 +770,13 @@ async def finalize_run(
         if run is None:
             raise RunStateError("run disappeared during finalization")
         if run.status == "completed":
+            await _finalize_captured_proactive_run(
+                db,
+                run,
+                outcome="success_wait",
+                reason_code="completed_without_intervention",
+            )
+            await finalize_run_intervention(db, run)
             return run.id, None, published
         if (
             run.status != "running"
@@ -753,6 +807,9 @@ async def finalize_run(
                     message_key=message_key,
                     role="assistant",
                     content=final_text,
+                    version=1,
+                    content_hash=hashlib.sha256(final_text.encode("utf-8")).hexdigest(),
+                    reply_to_intervention_id=run.reply_to_intervention_id,
                     message_metadata=metadata,
                 ))
             elif message.run_id != run.id or message.role != "assistant" or message.content != final_text:
@@ -794,6 +851,13 @@ async def finalize_run(
         run.available_at = None
         run.state_version = int(run.state_version or 1) + 1
         run.updated_at = now
+        await _finalize_captured_proactive_run(
+            db,
+            run,
+            outcome="success_wait",
+            reason_code="completed_without_intervention",
+        )
+        await finalize_run_intervention(db, run)
         await flush_uow(db)
         successor_id: str | None = None
         if run.parent_run_id is None and run.session_id is not None:
@@ -1028,6 +1092,25 @@ async def terminate_run(
         if run is None:
             return None, None, published
         if run.status in TERMINAL_RUN_STATUSES:
+            outcome = (
+                "success_wait"
+                if run.status == "completed"
+                else _proactive_failure_outcome(
+                    status=run.status,
+                    reason_code=run.status_reason or reason_code,
+                )
+            )
+            await _finalize_captured_proactive_run(
+                db,
+                run,
+                outcome=outcome,
+                reason_code=(
+                    "completed_without_intervention"
+                    if run.status == "completed"
+                    else (run.status_reason or reason_code)
+                ),
+            )
+            await finalize_run_intervention(db, run)
             return run.id, None, published
         if lease is not None and (
             run.status != "running"
@@ -1067,6 +1150,7 @@ async def terminate_run(
                     session_id=run.session_id,
                     plan_id=run.plan_id,
                     trigger="user_message",
+                    execution_mode=run.execution_mode,
                     objective=steer.content,
                     user_content=steer.content,
                     message_metadata={
@@ -1076,6 +1160,7 @@ async def terminate_run(
                     },
                     source_steer_id=steer.id,
                     source_message_id=source_message.id if source_message is not None else None,
+                    reply_to_intervention_id=run.reply_to_intervention_id,
                     position=next_position,
                 ))
                 steer.disposition = "queued"
@@ -1121,6 +1206,13 @@ async def terminate_run(
         run.available_at = None
         run.state_version = int(run.state_version or 1) + 1
         run.updated_at = now
+        await _finalize_captured_proactive_run(
+            db,
+            run,
+            outcome=_proactive_failure_outcome(status=status, reason_code=reason_code),
+            reason_code=reason_code,
+        )
+        await finalize_run_intervention(db, run)
         await flush_uow(db)
         successor_id: str | None = None
         if run.parent_run_id is None and run.session_id is not None:
@@ -1217,7 +1309,28 @@ async def reconcile_run_after_restart(
         published: list[tuple[str, dict[str, Any]]] = []
         await ensure_sqlite_write_transaction(db)
         run = await db.get(AgentRun, run_id)
-        if run is None or run.status in TERMINAL_RUN_STATUSES:
+        if run is None:
+            return False, published
+        if run.status in TERMINAL_RUN_STATUSES:
+            outcome = (
+                "success_wait"
+                if run.status == "completed"
+                else _proactive_failure_outcome(
+                    status=run.status,
+                    reason_code=run.status_reason or "restart_terminal_repair",
+                )
+            )
+            await _finalize_captured_proactive_run(
+                db,
+                run,
+                outcome=outcome,
+                reason_code=(
+                    "completed_without_intervention"
+                    if run.status == "completed"
+                    else (run.status_reason or "restart_terminal_repair")
+                ),
+            )
+            await finalize_run_intervention(db, run)
             return False, published
         if not scope_valid:
             now = utc_now()
@@ -1243,6 +1356,13 @@ async def reconcile_run_after_restart(
             run.available_at = None
             run.state_version = int(run.state_version or 1) + 1
             run.updated_at = now
+            await _finalize_captured_proactive_run(
+                db,
+                run,
+                outcome="runtime_failed",
+                reason_code="scope_unavailable",
+            )
+            await finalize_run_intervention(db, run)
             event = await stage_event(
                 db,
                 run.id,

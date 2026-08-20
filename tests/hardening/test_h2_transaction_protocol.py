@@ -136,7 +136,12 @@ ALLOWED_UOW_ALIAS_CALLS = {
     },
     *{
         ("backend/app/api/agent.py", name, "rollback")
-        for name in {"create_run", "submit_planning_answers", "edit_user_message"}
+        for name in {
+            "create_run",
+            "handoff_session",
+            "submit_planning_answers",
+            "edit_user_message",
+        }
     },
     *{
         ("backend/app/api/memories.py", name, "commit")
@@ -189,7 +194,17 @@ ALLOWED_UOW_ALIAS_CALLS = {
     ("backend/app/main.py", "ensure_local_owner", "commit"),
     ("backend/app/main.py", "verify_database_writable", "rollback"),
     ("backend/app/main.py", "reconcile_interrupted_runs", "commit"),
-    ("backend/app/notifications/email.py", "poll", "commit"),
+    # IMAP acknowledgement is deliberately split into durable continuation,
+    # fenced ACK claim, external Seen mutation, and terminal ACK receipt.
+    *{
+        ("backend/app/notifications/email.py", name, "commit")
+        for name in {
+            "poll",
+            "_claim_ack_jobs",
+            "_complete_ack_claims",
+            "_fail_ack_claims",
+        }
+    },
     *{
         ("backend/app/runtime/agent.py", name, "commit")
         for name in {
@@ -2088,14 +2103,17 @@ async def test_memory_embedding_wait_precedes_event_write_boundary(
 
     run_id = await _create_run(sqlite_factory, status="running")
     async with sqlite_factory() as db:
-        memory = Memory(
-            owner_id=OWNER_ID,
+        manager = memory_context_module.MemoryManager(db)
+        memory, reused = await manager.propose(
+            OWNER_ID,
             scope="global",
+            scope_id=None,
             layer="semantic",
             content="offline embedding boundary probe",
-            status="confirmed",
+            source_type="user",
         )
-        db.add(memory)
+        _require_harness(not reused, "embedding fixture unexpectedly reused a Memory")
+        memory = await manager.confirm(OWNER_ID, memory.id)
         await commit_uow(db)
         memory_id = memory.id
 

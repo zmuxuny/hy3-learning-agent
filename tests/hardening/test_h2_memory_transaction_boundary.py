@@ -123,8 +123,19 @@ async def test_memory_embedding_wait_does_not_hold_database_or_event_writer(
             objective="exercise deferred maintenance boundary",
             status="running",
         )
-        memory = _memory("durable embedding boundary fixture")
-        db.add_all([run, memory])
+        db.add(run)
+        await flush_uow(db)
+        manager = memory_module.MemoryManager(db)
+        memory, reused = await manager.propose(
+            "local",
+            scope="global",
+            scope_id=None,
+            layer="semantic",
+            content="durable embedding boundary fixture",
+            source_type="user",
+        )
+        assert reused is False
+        memory = await manager.confirm("local", memory.id)
         await commit_uow(db)
         run_id = run.id
         memory_id = memory.id

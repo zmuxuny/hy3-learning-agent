@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 
 from sqlalchemy import func, select, update
@@ -7,13 +8,44 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import utc_now
 from app.db.uow import ensure_sqlite_write_transaction, flush as flush_uow
-from app.models import AgentRun, ChatMessage, Plan, QueuedMessage, Session
+from app.models import AgentRun, ChatMessage, Intervention, Plan, QueuedMessage, Session
+from app.runtime.interventions import accept_intervention_reply
 from app.runtime.session_titles import initial_session_title
 from app.runtime.state import RunStateError, ensure_root_scope_available
 
 
 class QueueStateError(RuntimeError):
     """A queue mutation lost its optimistic-concurrency precondition."""
+
+
+async def validate_intervention_reply_scope(
+    db: AsyncSession,
+    *,
+    intervention_id: str | None,
+    owner_id: str,
+    session_id: str | None,
+    plan_id: int | None,
+) -> Intervention | None:
+    """Resolve one typed reply target without trusting request metadata.
+
+    The same check runs when a reply is accepted and again after a process
+    restart when its queue item is dispatched.  That makes the durable FK an
+    identity, not an authorization shortcut.
+    """
+
+    if intervention_id is None:
+        return None
+    intervention = await db.get(Intervention, intervention_id)
+    if (
+        intervention is None
+        or intervention.owner_id != owner_id
+        or session_id is None
+        or intervention.session_id != session_id
+        or intervention.plan_id != plan_id
+        or intervention.state not in {"active", "replied"}
+    ):
+        raise ValueError("Intervention reply target is unavailable for this scope")
+    return intervention
 
 
 def _queue_scope(owner_id: str, session_id: str | None):
@@ -122,15 +154,28 @@ async def dispatch_queued_message(
     session = await db.get(Session, message.session_id) if message.session_id else None
     if message.session_id and (not session or session.owner_id != owner_id):
         raise ValueError("Queued Session no longer exists")
-    if session and session.archived_at is not None:
+    if session and session.archived_at is not None and message.execution_mode != "read_only":
         raise ValueError("Restore the Session before sending this message")
     if session and session.plan_id != message.plan_id:
         raise ValueError("Queued message no longer matches the Session focus")
 
     if message.plan_id is not None:
         plan = await db.get(Plan, message.plan_id)
-        if not plan or plan.owner_id != owner_id or plan.status == "archived":
+        if (
+            not plan
+            or plan.owner_id != owner_id
+            or (plan.status == "archived" and message.execution_mode != "read_only")
+        ):
             raise ValueError("Queued plan is unavailable or archived")
+
+    reply_target = await validate_intervention_reply_scope(
+        db,
+        intervention_id=message.reply_to_intervention_id,
+        owner_id=owner_id,
+        session_id=message.session_id,
+        plan_id=message.plan_id,
+    )
+    await accept_intervention_reply(db, reply_target)
 
     source_message = None
     if message.source_message_id is not None:
@@ -164,12 +209,25 @@ async def dispatch_queued_message(
         plan_id=message.plan_id,
         trigger=message.trigger,
         objective=message.objective,
+        execution_mode=message.execution_mode,
+        reply_to_intervention_id=message.reply_to_intervention_id,
     )
     db.add(run)
     await flush_uow(db)
     if source_message is not None:
+        if not source_message.content_hash:
+            source_message.content_hash = hashlib.sha256(
+                source_message.content.encode("utf-8")
+            ).hexdigest()
         source_message.run_id = run.id
         source_message.message_key = f"run:{run.id}:input"
+        if message.reply_to_intervention_id is not None:
+            if (
+                source_message.reply_to_intervention_id is not None
+                and source_message.reply_to_intervention_id != message.reply_to_intervention_id
+            ):
+                raise ValueError("Queued source message has a conflicting Intervention target")
+            source_message.reply_to_intervention_id = message.reply_to_intervention_id
     else:
         db.add(ChatMessage(
             session_id=session.id,
@@ -177,6 +235,11 @@ async def dispatch_queued_message(
             message_key=f"run:{run.id}:input",
             role="user",
             content=message.user_content or message.objective,
+            version=1,
+            content_hash=hashlib.sha256(
+                (message.user_content or message.objective).encode("utf-8")
+            ).hexdigest(),
+            reply_to_intervention_id=message.reply_to_intervention_id,
             message_metadata=message.message_metadata or {},
         ))
     session.updated_at = datetime.now(timezone.utc)

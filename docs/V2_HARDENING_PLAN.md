@@ -142,7 +142,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景在 H0 只登记独立 contract，H4 已把它们逐项改为 production reducer/audit baseline 与 mutant 门禁。
 - 定向套件登记 87 个 open defect ID、113 个 strict-xfail 节点和 20 个 passing gate。实现门禁修复每一项时必须删除对应 xfail，并在矩阵写入修复提交。
 - 最终全量回归为 146 passed、113 xfailed、0 XPASS、0 failed；Python compileall、pip check、前端生产构建与完整/production-only npm audit 均通过。五尺寸 Chrome 使用独立临时数据库和精确合成 Session 令牌，得到 3 个已登记 H7-UI-001 XFAIL，未产生非预期失败或 API 写请求。
-- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H4 已于后续阶段关闭，当前下一门禁为 H5。
+- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H5 已于后续阶段关闭，当前下一门禁为 H6。
 
 ## 5. H1：迁移、时间与备份基础
 
@@ -270,7 +270,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 主/子 Run 共享 model/tool/network/elapsed/token/cost 预算、耐久有界 retry 和只读 child Guard。child finalizing checkpoint 冻结报告，父终态取消覆盖所有非终态 child，child 终态与父 `subagent.completed` 在同一事务投影或可幂等修复。
 - 真实进程故障覆盖 claim/checkpoint/finalizing、同一 Run 连续三次中断、双进程 claim、SQLite busy 与 frozen-H2 migration publish；固定种子 100 轮逐轮比较无故障 baseline、恢复运行与手写语义 oracle。另有两工具测试在第二个数据库副作用已提交、Run checkpoint 尚未推进时中断，恢复后只保留两份领域事实与两个 completion。
 - H3 定向为 40 passed；前端状态契约为 9 passed，生产构建和 npm audit 通过。真实 Hy3 临时库演示完成两次 SIGKILL、三次 claim，最终只有一条 assistant message 与一个 completed event，正文和凭据未输出。完整结果只在 [`STATUS.md`](STATUS.md) 维护。
-- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4 已完成，H5–H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H5。
+- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4/H5 已完成，H6–H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H6。
 
 ## 8. H4：Evidence 与 Competency 事实层
 
@@ -317,9 +317,9 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 全量 reducer 不再截断，增量投影持久化 watermark 并持续和 full oracle 对比；0/1/500/501/10,000 条在全量、增量、CLI、Context、tool 与 HTTP API 上得到同一 digest，关闭重开和 SQLite backup restore 后仍一致。
 - Competency key 由数据库 partial unique 区分 global 与 plan scope；edge/link 从数据库解析两端真实 owner/plan，SQL 在 limit 前按 Evidence↔Competency 关联过滤。每次真实图 mutation 原子推进 durable revision；Operation dependency 与 `RESTRICT` FK 防止 undo 静默级联，失败保持原 Operation committed。
 - 41 个 `verified` 场景各自运行 production adapter/reducer/audit；41 个唯一 mutant 均先验证 baseline，再由独立 failure code 捕获。场景矩阵为 124 passed，未保留 `pending_rewrite`、synthetic oracle、测试专用规则或 strict xfail。
-- H4 新关闭 16 个 defect ID，累计关闭 50 个、剩余 37 个。外部安装、连续使用与 7 日留存仍为待真实用户验证；M14 的复杂前端属于 H7，M15–M20 继续冻结。下一门禁为 H5。
+- H4 新关闭 16 个 defect ID；该里程碑收口时累计关闭 50 个、剩余 37 个。H5 现已完成，当前状态见下一节。
 
-## 9. H5：Context、Memory 与 Intervention
+## 9. H5：Context、Memory 与 Intervention（已完成）
 
 目标：让用户、计划、Session、提醒和邮件在长期使用中保持同一个可解释身份与上下文。
 
@@ -357,6 +357,18 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 每个 Context 块都能解释进入/排除原因和真实 token 预算。
 - 任意渠道回复都进入原 Session 和原 Intervention。
 - quiet hours、模型失败和 Guard 拒绝不触发成功冷却。
+
+### H5 实施记录（2026-08-20，已完成）
+
+- schema revision 5 `h5_context_intervention_facts` 冻结 Context generation、typed provenance node/edge、摘要 claim/cursor、不可变 SessionHandoff、Memory lifecycle、ContextSnapshotBlock、ProactiveDecision、Intervention 与 InboundMailJob；canonical checksum 为 `878d69dc13324434678716be6c4d05bfa77ff80c25e16d157576ec6a5458ec45`。revision 1–4 registry 保持不可变，fresh 与 frozen revision 4 升级后的 `sqlite_schema` 精确等价。
+- Session 压缩以短事务 claim 后完整分块读取，只有模型链完整成功且 source version/generation CAS 仍成立时才推进连续 coverage；失败、竞争与编辑均不推进 cursor。handoff 以创建时来源、内容 hash 与 Context generation 冻结，精确重试不会被来源 Session 后续消息改写。
+- ContextAssembler 只把 SessionPlanLink 当关系与排序，不把它当计划私有读取权限；候选按 typed whole block 选择，retained/dropped manifest、reason code、source version/digest 与完整 PromptEnvelope 预算进入耐久 Snapshot。root、child、planning、title 与 compression 的每次模型调用都在 provider I/O 前执行同一预算 preflight。
+- Memory 来源使用版本化 graph；状态、版本、pointer、digest 与 lifecycle event 由同一 CAS 转换。检索先做绝对相关性门槛，再做 RRF 与 scope/layer 配额，并在 provider 等待后重验版本、有效期和来源 pointer；`legacy_unverified` 或 pointerless 记录不会进入检索、强化或维护。手工归档恢复保留仍在未来的 expiry。
+- 消息编辑保存 Revision，并按 verified provenance 递归失效 Summary、Memory、Snapshot 与 handoff；legacy 不完整来源仅保守失效、不猜测图。编辑 UoW 与唯一 queued rerun 在 commit 前/后真实 SIGKILL 下均重试收敛。
+- 一次逻辑 Intervention 拥有唯一 canonical message 与 reply token，多渠道 Notification 只是 delivery。reply target 与 read-only execution mode 耐久贯穿 Queue、Run、Message 和 child；Run 终态与 Intervention outcome 同一 UoW 收口。IMAP 使用 `BODY.PEEK[]`，先持久化唯一 UID/UIDVALIDITY inbound job，再以 lease/CAS ack Seen；归档计划回复产生可见只读回执和 SMTP outbox。
+- 心跳候选与终态 ProactiveDecision 分离；success 才消耗长期冷却，quiet hours 保存精确 `next_eligible_at`，model/runtime/Guard 失败使用短退避。Scheduler 的学习活动只读取有效 Evidence `occurred_at`，不再用晚写入或已失效事件刷新活动。
+- H5/H0 Context/Intervention 联合为 120 passed；revision 1–5 migration bridge 为 48 passed，H5 migration 7 个和 runtime 9 个真实 SIGKILL 节点通过。最终完整 pytest 为 941 passed / 30 strict xfailed / 0 failed，前端 9 tests、生产构建、compileall、依赖审计、数据库完整性和文档链接均通过；精确命令与限制见 [`STATUS.md`](STATUS.md)。
+- H5 新关闭 20 个 defect ID，累计关闭 70 个、剩余 17 个。没有真实 SMTP/IMAP/VAPID 账户验收；外部安装、连续使用与 7 日留存仍待真实用户验证。M15–M20 继续冻结，下一门禁为 H6。
 
 ## 10. H6：安全运行边界
 

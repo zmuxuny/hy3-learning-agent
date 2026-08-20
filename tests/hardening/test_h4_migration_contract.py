@@ -29,7 +29,7 @@ from hardening.h4_schema_fixture import (
 import app.models  # noqa: F401,E402 - registers tables and create_all triggers
 
 
-H4_CHECKSUM = "851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace"
+H5_CHECKSUM = "878d69dc13324434678716be6c4d05bfa77ff80c25e16d157576ec6a5458ec45"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -236,7 +236,7 @@ def test_fresh_and_revision_three_upgrade_have_identical_sqlite_schema(
         ).fetchall()
     migrate_sqlite_database(upgraded, backup_root=tmp_path / "upgrade-backups")
 
-    assert schema_checksum(fresh) == schema_checksum(upgraded) == H4_CHECKSUM
+    assert schema_checksum(fresh) == schema_checksum(upgraded) == H5_CHECKSUM
     assert _schema_rows(fresh) == _schema_rows(upgraded)
     with sqlite3.connect(upgraded) as connection:
         history = connection.execute(
@@ -269,7 +269,7 @@ def test_metadata_create_all_installs_the_canonical_trigger_set(tmp_path: Path) 
                 "SELECT name, sql FROM sqlite_schema WHERE type='trigger' ORDER BY name"
             ).fetchall()
 
-    assert schema_checksum(metadata_database) == H4_CHECKSUM
+    assert schema_checksum(metadata_database) == H5_CHECKSUM
     assert triggers(metadata_database) == triggers(migrated_database)
 
 
@@ -352,13 +352,13 @@ def test_revision_three_semantic_backfill_is_conservative_and_complete(
 
     report = migrate_sqlite_database(database, backup_root=tmp_path / "upgrade-backups")
 
-    assert report.version == 4
-    assert report.target_schema_checksum == H4_CHECKSUM
-    assert verify_sqlite_database(database, expected_schema_checksum=H4_CHECKSUM) == {
+    assert report.version == 5
+    assert report.target_schema_checksum == H5_CHECKSUM
+    assert verify_sqlite_database(database, expected_schema_checksum=H5_CHECKSUM) == {
         "integrity": ["ok"],
         "foreign_key_violation_count": 0,
-        "user_version": 4,
-        "schema_checksum": H4_CHECKSUM,
+        "user_version": 5,
+        "schema_checksum": H5_CHECKSUM,
     }
     with sqlite3.connect(database) as connection:
         connection.row_factory = sqlite3.Row
@@ -587,7 +587,7 @@ def test_revision_three_sigkill_converges_without_duplicate_derived_facts(
         f"stderr={completed.stderr!r}"
     )
     observed = verify_sqlite_database(database)
-    assert observed["schema_checksum"] in {FROZEN_H3_SCHEMA_CHECKSUM, H4_CHECKSUM}
+    assert observed["schema_checksum"] in {FROZEN_H3_SCHEMA_CHECKSUM, H5_CHECKSUM}
 
     migrate_sqlite_database(database, backup_root=backup_root)
     with sqlite3.connect(database) as connection:

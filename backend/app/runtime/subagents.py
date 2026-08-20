@@ -18,6 +18,7 @@ from app.runtime.budget import (
     reserve_model_call,
     reserve_tool_call,
 )
+from app.core.prompt_envelope import ensure_request_fits
 from app.runtime.checkpoints import make_checkpoint, normalize_checkpoint
 from app.runtime.events import emit_event
 from app.runtime.retry import is_transient_model_error
@@ -62,6 +63,19 @@ PLANNING_CHILD_ALLOWLIST: set[str] = {
     "file_read",
     "calendar_list",
 }
+
+
+SUBAGENT_SYSTEM_PROMPT = (
+    "You are a bounded sub-agent inside a personal learning harness. Work only on the assigned question. "
+    "You may use the supplied read-only tools, including web search/open when current external evidence "
+    "matters. Never request search-result saving and never create or modify application state. Return a "
+    "concise evidence-oriented report with sources, assumptions, recommendations, risks, and questions the "
+    "lead Agent should resolve. Do not expose chain-of-thought."
+)
+
+
+def subagent_user_prefix(assignment: str) -> str:
+    return f"Assignment: {assignment}\n\nShared context:\n"
 
 
 def _compact_child_observation(result: dict) -> str:
@@ -125,17 +139,11 @@ async def run_restricted_child(
         messages = [
             {
                 "role": "system",
-                "content": (
-                    "You are a bounded sub-agent inside a personal learning harness. Work only on the assigned question. "
-                    "You may use the supplied read-only tools, including web search/open when current external evidence "
-                    "matters. Never request search-result saving and never create or modify application state. Return a "
-                    "concise evidence-oriented report with sources, assumptions, recommendations, risks, and questions the "
-                    "lead Agent should resolve. Do not expose chain-of-thought."
-                ),
+                "content": SUBAGENT_SYSTEM_PROMPT,
             },
             {
                 "role": "user",
-                "content": f"Assignment: {objective}\n\nShared context:\n{context}",
+                "content": subagent_user_prefix(objective) + context,
             },
         ]
     step = int(checkpoint.get("step") or 0)
@@ -193,6 +201,7 @@ async def run_restricted_child(
             final_text = await stop_for_budget(reason)
             break
         if current_call is None and not pending_calls:
+            ensure_request_fits(messages=messages, tools=schemas)
             reserve_model_call(budget)
             await save_checkpoint("awaiting_model")
             response = await asyncio.wait_for(
@@ -202,6 +211,7 @@ async def run_restricted_child(
                     tools=schemas,
                     tool_choice="auto",
                     temperature=settings.MODEL_TEMPERATURE,
+                    max_tokens=settings.AGENT_OUTPUT_TOKEN_RESERVE,
                     extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
                 ),
                 timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
@@ -276,6 +286,8 @@ async def run_restricted_child(
                                     trigger="subagent",
                                     plan_id=child.plan_id,
                                     session_id=child.session_id,
+                                    execution_mode=child.execution_mode,
+                                    reply_to_intervention_id=child.reply_to_intervention_id,
                                     tool_call_id=call["id"],
                                 ),
                             ),
@@ -320,6 +332,7 @@ async def run_restricted_child(
         if reason:
             final_text = await stop_for_budget(reason)
         else:
+            ensure_request_fits(messages=synthesis_messages, tools=[])
             reserve_model_call(budget)
             await save_checkpoint("awaiting_model")
             response = await asyncio.wait_for(
@@ -327,6 +340,7 @@ async def run_restricted_child(
                     model=settings.MODEL_NAME,
                     messages=synthesis_messages,
                     temperature=settings.MODEL_TEMPERATURE,
+                    max_tokens=settings.AGENT_OUTPUT_TOKEN_RESERVE,
                     extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
                 ),
                 timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,

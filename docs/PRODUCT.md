@@ -1,6 +1,6 @@
 # 产品定义
 
-> 状态说明（2026-08-20）：本文主要定义目标产品契约。H1–H4 已完成，累计关闭 50 个缺陷 ID、剩余 37 个 open ID，下一门禁是 H5；Context、提醒、应用部署边界和完整前端仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前只建议受控 loopback Demo。
+> 状态说明（2026-08-20）：本文主要定义目标产品契约。H1–H5 已完成，累计关闭 70 个缺陷 ID、剩余 17 个 open ID，下一门禁是 H6；Context/Memory/Intervention 后端协议已验收，应用部署边界、完整前端和发布工程仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前只建议受控 loopback Demo。
 
 ## 一句话描述
 
@@ -54,11 +54,11 @@ Hy3 读取经过组装的上下文并自主决策。系统再经过冷却时间�
 
 当前实现是一个个人实例级的全局心跳，不是“每个任务一个定时器”。默认每 5 分钟轻量扫描所有活动计划的候选状态；到期复习、24 小时内截止任务或可配置的无学习证据时长（默认 24 小时）会产生候选。扫描本身不读取所有对话；命中后才以明确计划焦点启动 Hy3，读取该计划状态、证据与记忆并决定保持安静、提醒、询问进度或执行低风险动作。收件箱公开最近判断和下一轮时间，避免把“后台存在”当成不可验证的文案。
 
-目标契约中，主动提醒首先是一条连续对话中的 Agent 消息，收件箱只是跨对话聚合入口；所有渠道与回复引用唯一 Intervention/Session。旧实现的活动 Run 回复会丢 target，多渠道按 delivery 重复投影，IMAP 可能在 job 提交前置 Seen（H5-INT-001–003、H5-MAIL-002）。
+主动提醒首先是一条连续对话中的 canonical Agent 消息，收件箱只是跨对话聚合入口；所有渠道与回复引用唯一 Intervention/Session。活动 Run 的 Queue/Run/Message 保存 typed target，多个 delivery 只投影一次；IMAP 先提交唯一 reply job，再 ack Seen。
 
 ## 自主权模型
 
-目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制；H4 已让 Evidence eligibility、Artifact 完整性和 Competency scope/revision/dependency 由架构层强制。H5 的 Context/Intervention 与 H6 的应用部署边界仍未满足完整目标契约。
+目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制；H4 已让 Evidence eligibility、Artifact 完整性和 Competency scope/revision/dependency 由架构层强制；H5 已让 Context 来源、预算、Memory 生命周期和 Intervention 身份由后端协议强制。H6 的应用部署边界仍未满足完整目标契约。
 
 - **自动执行**：提醒、抽查、安排复习、创建通知、生成临时学习材料。
 - **自动执行且可撤销**：调整任务时间、创建补救任务、重排低风险任务。
@@ -110,11 +110,11 @@ Plan
 - 跨计划全局短期记忆
 - 经确认的全局长期画像
 
-数据库存储结构化事实，同时生成可读 Markdown 快照。用户可以在“AI 记忆”页面查看来源和使用痕迹、确认候选、提出纠正、归档与恢复；纠正会保留新旧替代关系，公开 API 不物理删除历史认识。当前跨重启仍以 Markdown 快照为投影边界，结构化 Context Pack 与完整 source-version 重建属于 H5/M17 债务。
+数据库存储结构化事实，同时生成可读 Markdown 投影。用户可以在“AI 记忆”页面查看来源和使用痕迹、确认候选、提出纠正、归档与恢复；纠正保留新旧替代关系，公开 API 不物理删除历史认识。H5 已建立 message/summary/handoff/memory/snapshot 的版本化 provenance、Context generation、retained/dropped blocks 与 lifecycle invalidation；Markdown 可从 SQLite 重建。完整产品化 ContextPack 与 learner-state 消费仍属于冻结的 M17/M18 后续工作。
 
 ## 通知渠道
 
-站内收件箱是无需外部凭据的默认渠道；浏览器通知和 SMTP/IMAP 是可选增强。H2 已要求 SMTP/WebPush 先写耐久 outbox，发送中断后保留 uncertain/needs-reconciliation，不能盲目重放；只有 workspace 文件可凭已持久化 hash 自动恢复。所有渠道共享唯一 Intervention 与 Session、邮件 reply job 耐久提交后才 ack 仍是 H5 的目标契约，不能承诺在活动 Run、归档计划或进程中断下已经满足该语义。
+站内收件箱是无需外部凭据的默认渠道；浏览器通知和 SMTP/IMAP 是可选增强。H2 要求 SMTP/WebPush 先写耐久 outbox，发送中断后保留 uncertain/needs-reconciliation，不能盲目重放；只有 workspace 文件可凭已持久化 hash 自动恢复。H5 进一步让所有渠道共享唯一 Intervention、Session 与 canonical message，邮件 reply job 提交后才 ack；活动 Run、归档计划和进程中断均有确定性路由或明确只读回执。
 
 应用关闭或主机停机时不保证提醒；用户需要让本地服务持续运行。
 
@@ -124,9 +124,9 @@ Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用
 
 前端以 Session 为连续对话主画布和侧栏导航单位；这些交互已有正常路径候选。唯一根 Run 与 late steer 已由 H3 作为耐久后端事实恢复；实时事实顺序、SSE 断线对账、归档焦点清理和提醒 target 仍由 H7-UI-002–005 阻塞。
 
-用户消息编辑已有 Revision 与当前分支候选；目标还要求失效所有下游 Memory/Summary/Snapshot/handoff，并保留完整审计。旧实现漏掉多种 scope/source（H5-CTX-006/007）。
+用户消息编辑保存带版本/hash 的 Revision，并沿 verified provenance 失效所有下游 Memory/Summary/Snapshot/handoff；同一编辑和 rerun 在中断后幂等恢复。无法证明来源的 legacy 事实只保守失效，不猜测为 verified。
 
-全局对话到计划 Session 的显式承接与可恢复归档是目标契约。旧 handoff 可被后续消息重写，Memory restore 会清空未来 expiry，前端归档可留下 stale focus（H5-CTX-005/011、H7-UI-003）。
+全局对话到计划 Session 的显式承接使用不可变、版本化 handoff；后续源消息不会改写它。Memory restore 保留仍在未来的 expiry。前端归档后的 stale focus 仍由 H7-UI-003 处理。
 
 计划页面是 Agent 的可操作环境而不是旁路 CRUD 后台。信息架构分为两层：学习计划首页用完整卡片列出所有目标、进度、期限和 Agent 操作概况；点击卡片后进入单一计划工作区，沿纵向时间线查看阶段、任务、证据、复习和操作痕迹。详情不使用横向 Kanban 方格，也不常驻计划列压缩内容；计划路径和 Agent 输入框共享同一视觉中轴。用户从任务行发起的请求仍回到统一 Runtime，由 Agent 先读取上下文再决定是否使用工具。
 

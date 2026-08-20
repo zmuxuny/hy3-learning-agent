@@ -27,6 +27,7 @@ from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow
 from app.api.operations import undo_operation
 from app.context.memory import MemoryManager
+from app.context.provenance import canonical_digest
 from app.models import (
     AgentRun,
     ChatMessage,
@@ -359,6 +360,7 @@ async def test_harness_runs_tools_and_keeps_reasoning_private():
         messages = await read_session_messages(run.session_id, db)
         assert [(message.role, message.content) for message in messages] == [
             ("user", "监督我开始今天的学习"),
+            ("assistant", "先完成 25 分钟的事件循环练习。"),
             ("assistant", "我检查了计划，并把本次练习提醒放进了收件箱。"),
         ]
         assert all(message.run_id == run_id for message in messages)
@@ -498,32 +500,61 @@ async def test_complete_learning_submission_calendar_and_workspace_loop():
 async def test_layered_memory_retrieval_lifecycle_and_session_compression():
     async with AsyncSessionLocal() as db:
         plan = await plan_service.create_plan(db, "local", plan_payload("Memory plan"))
-        db.add_all([
-            Memory(
-                owner_id="local", scope="global", layer="semantic", status="confirmed",
-                content="用户更喜欢通过编写 Python 项目学习异步编程", confidence=0.95,
-            ),
-            Memory(
-                owner_id="local", scope="plan", scope_id=str(plan.id), layer="episodic", status="confirmed",
-                content="并发抓取器任务的主要阻塞是超时处理", confidence=0.9,
-            ),
-            Memory(
-                owner_id="local", scope="global", layer="short_term", status="confirmed",
-                content="这条短期信息已经过期", expires_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
-            ),
-        ])
         session = Session(owner_id="local", plan_id=plan.id, title="Long session")
         db.add(session)
         await db.flush()
-        db.add(Memory(
-            owner_id="local", scope="session", scope_id=session.id, layer="episodic", status="confirmed",
-            content="本次会话约定先处理连接超时，再优化并发数", confidence=0.98,
-        ))
+        manager = MemoryManager(db)
+
+        async def verified_memory(**values):
+            memory, reused = await manager.propose(
+                "local",
+                source_type="user",
+                **values,
+            )
+            assert reused is False
+            return await manager.confirm("local", memory.id)
+
+        await verified_memory(
+            scope="global",
+            scope_id=None,
+            layer="semantic",
+            content="用户更喜欢通过编写 Python 项目学习异步编程",
+            confidence=0.95,
+        )
+        await verified_memory(
+            scope="plan",
+            scope_id=str(plan.id),
+            layer="episodic",
+            content="并发抓取器任务的主要阻塞是超时处理",
+            confidence=0.9,
+        )
+        await verified_memory(
+            scope="global",
+            scope_id=None,
+            layer="short_term",
+            content="这条短期信息已经过期",
+            expires_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        )
+        await verified_memory(
+            scope="session",
+            scope_id=session.id,
+            layer="episodic",
+            content="本次会话约定先处理连接超时，再优化并发数",
+            confidence=0.98,
+        )
         for index in range(28):
-            db.add(ChatMessage(session_id=session.id, role="user" if index % 2 == 0 else "assistant", content=f"第 {index} 轮：讨论并发抓取器和超时处理"))
+            content = f"第 {index} 轮：讨论并发抓取器和超时处理"
+            db.add(
+                ChatMessage(
+                    session_id=session.id,
+                    role="user" if index % 2 == 0 else "assistant",
+                    content=content,
+                    version=1,
+                    content_hash=canonical_digest(content),
+                )
+            )
         await db.commit()
 
-        manager = MemoryManager(db)
         found = await manager.retrieve(
             "local", plan_id=plan.id, session_id=session.id, query="抓取器连接超时怎么办", limit=5,
         )
@@ -533,6 +564,7 @@ async def test_layered_memory_retrieval_lifecycle_and_session_compression():
         assert all(item.scope != "session" for item in without_session)
         maintained = await manager.maintain("local")
         assert maintained["expired"] == 1
+        await db.commit()
         compressed = await manager.compress_session(session, client=None)
         await db.commit()
         assert compressed is True
@@ -744,18 +776,26 @@ async def test_email_reply_returns_to_notification_session(monkeypatch):
 
         monkeypatch.setattr(EmailReplyPoller, "configured", property(lambda self: True))
         monkeypatch.setattr(EmailReplyPoller, "_fetch_unseen", lambda self: [{
+            "uid": "1",
+            "uidvalidity": "1",
             "reply_token": notification.reply_token,
             "subject": "Re: 今天继续吗",
             "body": "我已经完成了，请检查。",
         }])
-        run_ids = await EmailReplyPoller().poll(db, "local")
+        poller = EmailReplyPoller()
+        monkeypatch.setattr(poller, "_mark_seen", lambda _uidvalidity, _uids: None)
+        run_ids = await poller.poll(db, "local")
 
         run = await db.get(AgentRun, run_ids[0])
         assert run.session_id == session.id
+        await db.refresh(notification)
+        assert notification.intervention_id is not None
+        assert run.reply_to_intervention_id == notification.intervention_id
         message = (await db.execute(select(ChatMessage).where(ChatMessage.run_id == run.id))).scalars().one()
         assert message.content == "我已经完成了，请检查。"
         assert message.message_metadata["channel"] == "email"
-        assert message.message_metadata["reply_to_notification_id"] == notification.id
+        assert message.reply_to_intervention_id == notification.intervention_id
+        assert message.message_metadata["notification_id"] == notification.id
 
 
 @pytest.mark.asyncio

@@ -158,23 +158,31 @@ class MemoryRead(APIModel):
     restorable: bool
     archived_from_status: str | None
     archived_reason: str
+    lifecycle_reason_code: str
     supersedes_id: int | None
     superseded_by_id: int | None
     last_accessed_at: UTCInstant | None
     access_count: int
     last_reinforced_at: UTCInstant | None
     expires_at: UTCInstant | None
+    lifecycle_version: int
+    validity_state: str
+    invalidated_at: UTCInstant | None
+    invalidation_reason: str
+    content_hash: str
+    provenance_digest: str
+    provenance_node_id: str | None
     created_at: UTCInstant
     updated_at: UTCInstant
 
 
 class MemoryProposalCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     scope: Literal["global", "plan", "session"] = "global"
     scope_id: str | None = None
-    layer: Literal["short_term", "long_term", "episodic", "semantic"] = "semantic"
+    layer: Literal["short_term", "long_term", "episodic", "semantic", "working"] = "semantic"
     content: str = Field(min_length=1)
-    source_type: str = "user"
-    source_id: str | None = None
     confidence: float = Field(default=1.0, ge=0, le=1)
     expires_at: UTCInstant | None = None
     supersedes_id: int | None = Field(default=None, ge=1)
@@ -206,6 +214,7 @@ class NotificationArchiveResult(BaseModel):
 
 class NotificationOpenResult(BaseModel):
     notification: NotificationRead
+    intervention_id: str | None = None
     session_id: str
     plan_id: int | None
     message_id: int
@@ -227,10 +236,22 @@ class PushSubscriptionRead(APIModel):
 class ContextSnapshotRead(APIModel):
     id: int
     plan_id: int | None
+    session_id: str | None
     run_id: str | None
     markdown: str
     source_manifest: list[dict[str, Any]]
+    dropped_source_manifest: list[dict[str, Any]]
+    budget_breakdown: dict[str, Any]
     estimated_tokens: int
+    context_generation: int
+    snapshot_version: int
+    assembler_version: str
+    context_digest: str
+    source_digest: str
+    validity_state: str
+    provenance_node_id: str | None
+    invalidated_at: UTCInstant | None
+    invalidation_reason: str
     created_at: UTCInstant
 
 
@@ -239,9 +260,18 @@ class SessionSummaryRead(APIModel):
     session_id: str
     version: int
     content: str
+    coverage_start_message_id: int | None
     covered_through_message_id: int | None
+    coverage_count: int
     source_message_ids: list[int]
     method: str
+    source_digest: str
+    content_hash: str
+    algorithm_version: str
+    validity_state: str
+    provenance_node_id: str | None
+    invalidated_at: UTCInstant | None
+    invalidation_reason: str
     created_at: UTCInstant
 
 
@@ -250,6 +280,8 @@ class AgentRunCreate(BaseModel):
     session_id: str | None = None
     plan_id: int | None = None
     reply_to_notification_id: int | None = Field(default=None, ge=1)
+    reply_to_intervention_id: str | None = Field(default=None, min_length=1, max_length=64)
+    execution_mode: Literal["normal", "read_only"] = "normal"
     # Public conversation turns are always user initiated. Background and
     # email triggers are created only by their trusted scheduler/poller paths.
     trigger: Literal["user_message"] = "user_message"
@@ -271,6 +303,16 @@ class AgentRunRead(APIModel):
     available_at: UTCInstant | None
     status_reason: str | None
     model: str
+    execution_mode: str
+    reply_to_intervention_id: str | None
+    proactive_candidate_state: str
+    proactive_candidate_key: str | None
+    proactive_candidate_kind: str | None
+    proactive_candidate_payload: dict[str, Any]
+    proactive_candidate_digest: str | None
+    proactive_source_watermark: int | None
+    proactive_source_projection_digest: str | None
+    proactive_detected_at: UTCInstant | None
     cancel_requested: bool
     pending_approval: dict[str, Any] | None
     budget_usage: dict[str, Any] | None
@@ -291,6 +333,8 @@ class QueuedMessageCreate(BaseModel):
     objective: str = Field(min_length=1, max_length=50000)
     session_id: str | None = None
     plan_id: int | None = None
+    reply_to_intervention_id: str | None = Field(default=None, min_length=1, max_length=64)
+    execution_mode: Literal["normal", "read_only"] = "normal"
 
     @field_validator("objective")
     @classmethod
@@ -326,9 +370,11 @@ class QueuedMessageRead(APIModel):
     session_id: str | None
     plan_id: int | None
     trigger: str
+    execution_mode: str
     objective: str
     user_content: str | None
     message_metadata: dict[str, Any]
+    reply_to_intervention_id: str | None
     position: int
     version: int
     created_at: UTCInstant
@@ -477,6 +523,12 @@ class ChatMessageRead(APIModel):
     message_key: str | None
     role: str
     content: str
+    version: int
+    content_hash: str
+    validity_state: str
+    invalidated_at: UTCInstant | None
+    invalidation_reason: str
+    reply_to_intervention_id: str | None
     message_metadata: dict[str, Any]
     created_at: UTCInstant
 

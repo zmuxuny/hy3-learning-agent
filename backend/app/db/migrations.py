@@ -31,6 +31,7 @@ from typing import Any
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from sqlalchemy import JSON, create_engine, insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import URL
 from sqlalchemy.schema import CreateIndex, CreateTable
 
@@ -77,6 +78,11 @@ MIGRATION_REGISTRY: tuple[MigrationRevision, ...] = (
         version=4,
         name="h4_evidence_competency_facts",
         checksum="851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace",
+    ),
+    MigrationRevision(
+        version=5,
+        name="h5_context_intervention_facts",
+        checksum="878d69dc13324434678716be6c4d05bfa77ff80c25e16d157576ec6a5458ec45",
     ),
 )
 if [revision.version for revision in MIGRATION_REGISTRY] != list(
@@ -1798,6 +1804,77 @@ def _normalize_row(table, raw: sqlite3.Row, counters: dict[str, int]) -> dict[st
         values["disposed_at"] = applied_at
     if table.name == "queued_messages" and "version" not in raw_keys:
         values["version"] = 1
+    if table.name == "chat_messages" and "version" not in raw_keys:
+        values["version"] = 1
+        values["content_hash"] = hashlib.sha256(
+            str(values.get("content") or "").encode("utf-8")
+        ).hexdigest()
+        values["validity_state"] = (
+            "superseded"
+            if isinstance(values.get("message_metadata"), dict)
+            and values["message_metadata"].get("superseded_by_edit")
+            else "active"
+        )
+        if values["validity_state"] == "superseded":
+            values["invalidated_at"] = values.get("created_at") or utc_now()
+            values["invalidation_reason"] = "legacy_superseded_by_edit"
+    if table.name == "chat_message_revisions" and "version" not in raw_keys:
+        # A deterministic temporary version keeps the canonical UNIQUE shape
+        # satisfiable during copy. H5 semantic backfill replaces it with the
+        # per-message chronological version before publication.
+        values["version"] = int(values["id"])
+        values["content_hash"] = hashlib.sha256(
+            str(values.get("content") or "").encode("utf-8")
+        ).hexdigest()
+    if table.name == "session_summaries" and "validity_state" not in raw_keys:
+        values["coverage_count"] = 0
+        values["source_digest"] = hashlib.sha256(
+            _canonical_json(values.get("source_message_ids") or [])
+        ).hexdigest()
+        values["content_hash"] = hashlib.sha256(
+            str(values.get("content") or "").encode("utf-8")
+        ).hexdigest()
+        values["algorithm_version"] = "legacy-unverified"
+        values["validity_state"] = "legacy_unverified"
+    if table.name == "memories" and "validity_state" not in raw_keys:
+        values["lifecycle_version"] = 1
+        values["lifecycle_reason_code"] = "legacy_unverified"
+        values["validity_state"] = "legacy_unverified"
+        values["content_hash"] = hashlib.sha256(
+            str(values.get("content") or "").encode("utf-8")
+        ).hexdigest()
+        values["provenance_digest"] = hashlib.sha256(
+            _canonical_json({
+                "source_type": values.get("source_type") or "",
+                "source_id": values.get("source_id"),
+            })
+        ).hexdigest()
+    if table.name == "context_snapshots" and "validity_state" not in raw_keys:
+        values["dropped_source_manifest"] = []
+        values["budget_breakdown"] = {}
+        values["context_generation"] = 0
+        values["snapshot_version"] = 1
+        values["assembler_version"] = "legacy-unverified"
+        values["context_digest"] = hashlib.sha256(
+            str(values.get("markdown") or "").encode("utf-8")
+        ).hexdigest()
+        values["source_digest"] = hashlib.sha256(
+            _canonical_json(values.get("source_manifest") or [])
+        ).hexdigest()
+        values["validity_state"] = "legacy_unverified"
+    if table.name == "notifications" and "intervention_id" not in raw_keys:
+        values["delivery_generation"] = 1
+        values["legacy_unlinked"] = True
+    if table.name == "agent_runs" and "proactive_candidate_state" not in raw_keys:
+        values["execution_mode"] = "normal"
+        values["proactive_candidate_state"] = (
+            "legacy_unavailable"
+            if str(values.get("trigger") or "") == "heartbeat"
+            else "not_applicable"
+        )
+        values["proactive_candidate_payload"] = {}
+    if table.name == "queued_messages" and "execution_mode" not in raw_keys:
+        values["execution_mode"] = "normal"
     return values
 
 
@@ -2664,6 +2741,408 @@ def _apply_h4_backfills(
         source.close()
 
 
+def _validate_h5_legacy_scopes(connection) -> None:
+    summary_conflict = connection.exec_driver_sql(
+        """
+        SELECT summary.id
+        FROM session_summaries AS summary
+        LEFT JOIN sessions AS session ON session.id=summary.session_id
+        LEFT JOIN chat_messages AS covered
+          ON covered.id=summary.covered_through_message_id
+        WHERE session.id IS NULL OR session.owner_id<>summary.owner_id
+           OR (summary.covered_through_message_id IS NOT NULL
+               AND (covered.id IS NULL OR covered.session_id<>summary.session_id))
+        LIMIT 1
+        """
+    ).first()
+    if summary_conflict is not None:
+        raise MigrationError(
+            "legacy_summary_scope_conflict",
+            "revision-4 SessionSummary crosses its owner or Session scope",
+        )
+
+    snapshot_conflict = connection.exec_driver_sql(
+        """
+        SELECT snapshot.id
+        FROM context_snapshots AS snapshot
+        LEFT JOIN plans AS plan ON plan.id=snapshot.plan_id
+        LEFT JOIN agent_runs AS run ON run.id=snapshot.run_id
+        WHERE (snapshot.plan_id IS NOT NULL
+               AND (plan.id IS NULL OR plan.owner_id<>snapshot.owner_id))
+           OR (snapshot.run_id IS NOT NULL
+               AND (run.id IS NULL OR run.owner_id<>snapshot.owner_id
+                    OR (snapshot.plan_id IS NOT NULL
+                        AND run.plan_id IS NOT snapshot.plan_id)))
+        LIMIT 1
+        """
+    ).first()
+    if snapshot_conflict is not None:
+        raise MigrationError(
+            "legacy_context_scope_conflict",
+            "revision-4 ContextSnapshot crosses its owner or Plan/Run scope",
+        )
+
+    notification_conflict = connection.exec_driver_sql(
+        """
+        SELECT notification.id
+        FROM notifications AS notification
+        LEFT JOIN plans AS plan ON plan.id=notification.plan_id
+        LEFT JOIN sessions AS session ON session.id=notification.session_id
+        LEFT JOIN agent_runs AS run ON run.id=notification.run_id
+        WHERE (notification.plan_id IS NOT NULL
+               AND (plan.id IS NULL OR plan.owner_id<>notification.owner_id))
+           OR (notification.session_id IS NOT NULL
+               AND (session.id IS NULL OR session.owner_id<>notification.owner_id))
+           OR (notification.run_id IS NOT NULL
+               AND (run.id IS NULL OR run.owner_id<>notification.owner_id))
+        LIMIT 1
+        """
+    ).first()
+    if notification_conflict is not None:
+        raise MigrationError(
+            "legacy_notification_scope_conflict",
+            "revision-4 Notification crosses its owner, Plan, Session, or Run scope",
+        )
+
+    memory_conflict = connection.exec_driver_sql(
+        """
+        SELECT memory.id
+        FROM memories AS memory
+        WHERE (memory.scope='global' AND memory.scope_id IS NOT NULL)
+           OR (memory.scope='plan' AND (
+                 memory.scope_id IS NULL
+                 OR NOT EXISTS (
+                   SELECT 1 FROM plans
+                   WHERE CAST(id AS TEXT)=memory.scope_id
+                     AND owner_id=memory.owner_id
+                 )))
+           OR (memory.scope='session' AND (
+                 memory.scope_id IS NULL
+                 OR NOT EXISTS (
+                   SELECT 1 FROM sessions
+                   WHERE id=memory.scope_id AND owner_id=memory.owner_id
+                 )))
+           OR memory.scope NOT IN ('global', 'plan', 'session')
+        LIMIT 1
+        """
+    ).first()
+    if memory_conflict is not None:
+        raise MigrationError(
+            "legacy_memory_scope_conflict",
+            "revision-4 Memory has an invalid owner or scope identity",
+        )
+
+
+def _backfill_h5_message_versions(connection) -> None:
+    rows = connection.exec_driver_sql(
+        """
+        SELECT id, message_id
+        FROM chat_message_revisions
+        ORDER BY message_id, created_at, id
+        """
+    ).all()
+    if rows:
+        offset = max(int(row[0]) for row in rows) + len(rows) + 1
+        connection.exec_driver_sql(
+            "UPDATE chat_message_revisions SET version=version+?",
+            (offset,),
+        )
+        versions: dict[int, int] = {}
+        for revision_id, message_id in rows:
+            message_key = int(message_id)
+            version = versions.get(message_key, 0) + 1
+            versions[message_key] = version
+            connection.exec_driver_sql(
+                "UPDATE chat_message_revisions SET version=? WHERE id=?",
+                (version, int(revision_id)),
+            )
+        for message_id, prior_versions in versions.items():
+            connection.exec_driver_sql(
+                "UPDATE chat_messages SET version=? WHERE id=?",
+                (prior_versions + 1, message_id),
+            )
+
+
+def _backfill_h5_verified_memories(connection) -> None:
+    """Verify only legacy Memory sources whose exact scope and bytes are durable."""
+
+    nodes = Base.metadata.tables["provenance_nodes"]
+    edges = Base.metadata.tables["provenance_edges"]
+    memories = connection.exec_driver_sql(
+        """
+        SELECT id, owner_id, scope, scope_id, source_type, source_id, content_hash
+        FROM memories ORDER BY id
+        """
+    ).mappings().all()
+    for memory in memories:
+        source_kind: str | None = None
+        source_key: str | None = None
+        source_version: int | None = None
+        source_digest: str | None = None
+        source_plan_id: int | None = None
+        source_session_id: str | None = None
+        source_type = str(memory["source_type"] or "")
+        source_id = str(memory["source_id"] or "")
+        if source_type in {"agent_run", "run"} and source_id:
+            source = connection.exec_driver_sql(
+                """
+                SELECT id, owner_id, plan_id, session_id, "trigger", objective, created_at
+                FROM agent_runs WHERE id=?
+                """,
+                (source_id,),
+            ).mappings().first()
+            if source is not None and source["owner_id"] == memory["owner_id"]:
+                source_kind = "agent_run"
+                source_key = str(source["id"])
+                source_version = 1
+                source_plan_id = source["plan_id"]
+                source_session_id = source["session_id"]
+                source_digest = hashlib.sha256(_canonical_json({
+                    "id": source_key,
+                    "objective": str(source["objective"] or ""),
+                    "trigger": str(source["trigger"] or ""),
+                    "created_at": canonical_utc(parse_legacy_datetime(source["created_at"])),
+                })).hexdigest()
+        elif source_type in {"message", "chat_message"} and source_id:
+            source = connection.exec_driver_sql(
+                """
+                SELECT message.id, message.version, message.content_hash,
+                       session.owner_id, session.id AS session_id, session.plan_id
+                FROM chat_messages AS message
+                JOIN sessions AS session ON session.id=message.session_id
+                WHERE CAST(message.id AS TEXT)=?
+                """,
+                (source_id,),
+            ).mappings().first()
+            if source is not None and source["owner_id"] == memory["owner_id"]:
+                source_kind = "message"
+                source_key = str(source["id"])
+                source_version = int(source["version"])
+                source_digest = str(source["content_hash"] or "")
+                source_plan_id = source["plan_id"]
+                source_session_id = str(source["session_id"])
+
+        if (
+            source_kind is None
+            or source_key is None
+            or source_version is None
+            or source_digest is None
+            or len(source_digest) != 64
+        ):
+            continue
+        memory_scope = str(memory["scope"])
+        memory_scope_id = memory["scope_id"]
+        scope_is_exact = (
+            memory_scope == "global" and source_plan_id is None
+        ) or (
+            memory_scope == "plan"
+            and source_plan_id is not None
+            and str(source_plan_id) == memory_scope_id
+        ) or (
+            memory_scope == "session" and source_session_id == memory_scope_id
+        )
+        if not scope_is_exact:
+            continue
+
+        source_node_id = str(uuid5(
+            NAMESPACE_URL,
+            f"h5:legacy-source:{memory['owner_id']}:{source_kind}:{source_key}:v{source_version}",
+        ))
+        connection.execute(
+            sqlite_insert(nodes).values(
+                id=source_node_id,
+                owner_id=memory["owner_id"],
+                plan_id=source_plan_id,
+                session_id=source_session_id,
+                kind=source_kind,
+                entity_key=source_key,
+                entity_version=source_version,
+                content_digest=source_digest,
+                metadata={},
+                created_at=utc_now(),
+            ).on_conflict_do_nothing(
+                index_elements=["owner_id", "kind", "entity_key", "entity_version"]
+            )
+        )
+        source_node_id = str(connection.exec_driver_sql(
+            """
+            SELECT id FROM provenance_nodes
+            WHERE owner_id=? AND kind=? AND entity_key=? AND entity_version=?
+            """,
+            (memory["owner_id"], source_kind, source_key, source_version),
+        ).scalar_one())
+        memory_plan_id: int | None = None
+        memory_session_id: str | None = None
+        if memory_scope == "plan":
+            memory_plan_id = int(str(memory_scope_id))
+        elif memory_scope == "session":
+            memory_session_id = str(memory_scope_id)
+            memory_plan_id = connection.exec_driver_sql(
+                "SELECT plan_id FROM sessions WHERE id=?",
+                (memory_session_id,),
+            ).scalar_one()
+        memory_node_id = str(uuid5(
+            NAMESPACE_URL,
+            f"h5:legacy-memory-node:{memory['owner_id']}:{memory['id']}:v1",
+        ))
+        connection.execute(sqlite_insert(nodes).values(
+            id=memory_node_id,
+            owner_id=memory["owner_id"],
+            plan_id=memory_plan_id,
+            session_id=memory_session_id,
+            kind="memory",
+            entity_key=str(memory["id"]),
+            entity_version=1,
+            content_digest=str(memory["content_hash"]),
+            metadata={},
+            created_at=utc_now(),
+        ))
+        connection.execute(sqlite_insert(edges).values(
+            owner_id=memory["owner_id"],
+            source_node_id=source_node_id,
+            target_node_id=memory_node_id,
+            relation="memory_source",
+            ordinal=0,
+            disposition="none",
+            reason_code="",
+            metadata={},
+            created_at=utc_now(),
+        ))
+        provenance_digest = hashlib.sha256(
+            _canonical_json([source_node_id])
+        ).hexdigest()
+        connection.exec_driver_sql(
+            """
+            UPDATE memories
+            SET validity_state='valid', lifecycle_reason_code='legacy_exact_source',
+                provenance_digest=?, provenance_node_id=?
+            WHERE id=?
+            """,
+            (provenance_digest, memory_node_id, int(memory["id"])),
+        )
+
+
+def _backfill_h5_context_facts(
+    connection,
+    *,
+    fault_injector: FaultInjector | None,
+) -> None:
+    _validate_h5_legacy_scopes(connection)
+    _backfill_h5_message_versions(connection)
+    _backfill_h5_verified_memories(connection)
+
+    connection.exec_driver_sql(
+        """
+        INSERT INTO context_states(owner_id, generation, updated_at)
+        SELECT id, 0, CURRENT_TIMESTAMP FROM owners
+        """
+    )
+    connection.exec_driver_sql(
+        """
+        INSERT INTO session_compression_states(
+            session_id, owner_id, generation, updated_at
+        )
+        SELECT id, owner_id, 0, CURRENT_TIMESTAMP FROM sessions
+        """
+    )
+    connection.exec_driver_sql(
+        """
+        UPDATE context_snapshots
+        SET session_id=(
+          SELECT agent_runs.session_id FROM agent_runs
+          WHERE agent_runs.id=context_snapshots.run_id
+        )
+        WHERE run_id IS NOT NULL
+        """
+    )
+
+    memories = connection.exec_driver_sql(
+        """
+        SELECT id, owner_id, status, expires_at, source_type, source_id,
+               content_hash, provenance_digest, validity_state,
+               lifecycle_reason_code
+        FROM memories ORDER BY id
+        """
+    ).all()
+    lifecycle = Base.metadata.tables["memory_lifecycle_events"]
+    for row in memories:
+        memory_id = int(row[0])
+        request_digest = hashlib.sha256(_canonical_json({
+            "memory_id": memory_id,
+            "owner_id": row[1],
+            "status": row[2],
+            "source_type": row[4],
+            "source_id": row[5],
+            "content_hash": row[6],
+            "provenance_digest": row[7],
+        })).hexdigest()
+        connection.execute(insert(lifecycle).values(
+            owner_id=row[1],
+            memory_id=memory_id,
+            version=1,
+            event_type="legacy_import",
+            action_key=f"h5:legacy-memory:{memory_id}",
+            request_digest=request_digest,
+            from_status=None,
+            to_status=row[2],
+            from_validity_state=None,
+            to_validity_state=row[8],
+            reason_code=row[9],
+            expires_at_before=row[3],
+            expires_at_after=row[3],
+            created_at=utc_now(),
+        ))
+
+    handoff_table = Base.metadata.tables["session_handoffs"]
+    handoffs = connection.exec_driver_sql(
+        """
+        SELECT child.id, child.owner_id, child.parent_session_id, child.plan_id,
+               child.handoff_summary, child.created_at
+        FROM sessions AS child
+        JOIN sessions AS source ON source.id=child.parent_session_id
+        JOIN plans AS plan ON plan.id=child.plan_id
+        WHERE child.parent_session_id IS NOT NULL
+          AND child.plan_id IS NOT NULL
+          AND length(child.handoff_summary)>0
+          AND source.owner_id=child.owner_id
+          AND plan.owner_id=child.owner_id
+        ORDER BY child.id
+        """
+    ).all()
+    for target_id, owner_id, source_id, plan_id, content, created_at in handoffs:
+        content_text = str(content)
+        connection.execute(insert(handoff_table).values(
+            id=str(uuid5(NAMESPACE_URL, f"h5:legacy-handoff:{target_id}")),
+            owner_id=owner_id,
+            source_session_id=source_id,
+            target_session_id=target_id,
+            plan_id=int(plan_id),
+            version=1,
+            content=content_text,
+            content_hash=hashlib.sha256(content_text.encode("utf-8")).hexdigest(),
+            source_context_generation=0,
+            provenance_state="legacy_unverified",
+            validity_state="legacy_unverified",
+            created_at=parse_legacy_datetime(created_at),
+        ))
+
+    _call_fault(fault_injector, "after_h5_summary_handoff_backfill")
+
+    # Revision 4 has no authoritative Intervention identity.  Notification
+    # title/body/run grouping would invent history, so delivery rows remain
+    # explicitly legacy-unlinked and no ProactiveDecision is synthesized from
+    # a completed heartbeat Run.
+    _call_fault(fault_injector, "after_h5_intervention_backfill")
+
+
+def _apply_h5_backfills(
+    connection,
+    *,
+    fault_injector: FaultInjector | None,
+) -> None:
+    _backfill_h5_context_facts(connection, fault_injector=fault_injector)
+
+
 def _apply_legacy_backfills(connection) -> None:
     # Every statement operates only on the unpublished candidate database.
     connection.exec_driver_sql(
@@ -3029,6 +3508,13 @@ def _build_candidate(
                 _call_fault(fault_injector, "before_h4_semantic_backfill")
                 _apply_h4_backfills(source_path, connection, counters)
                 _call_fault(fault_injector, "after_h4_semantic_backfill")
+            if source_schema_version < 5:
+                _call_fault(fault_injector, "before_h5_semantic_backfill")
+                _apply_h5_backfills(
+                    connection,
+                    fault_injector=fault_injector,
+                )
+                _call_fault(fault_injector, "after_h5_semantic_backfill")
             _call_fault(fault_injector, "after_copy")
             _call_fault(fault_injector, "before_indexes")
             _create_indexes(connection)
@@ -3036,6 +3522,7 @@ def _build_candidate(
 
             install_schema_triggers(connection)
             _call_fault(fault_injector, "after_h4_schema_triggers")
+            _call_fault(fault_injector, "after_h5_schema_triggers")
             _call_fault(fault_injector, "after_indexes")
         checksum = schema_checksum(target_path)
         if checksum != CANONICAL_SCHEMA_CHECKSUM:

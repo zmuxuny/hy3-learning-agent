@@ -91,6 +91,8 @@ def child_stub(*, age_seconds: int = 0):
         owner_id="local",
         plan_id=None,
         session_id=None,
+        execution_mode="normal",
+        reply_to_intervention_id=None,
         started_at=started_at,
         created_at=started_at,
     )

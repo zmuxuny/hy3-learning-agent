@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.db.database import AsyncSessionLocal
 from app.main import reconcile_interrupted_runs
@@ -158,7 +159,7 @@ async def test_notification_blocked_for_missing_or_archived_plan():
 
 
 @pytest.mark.asyncio
-async def test_orphan_plan_memories_are_archived_on_maintain():
+async def test_orphan_plan_memory_is_rejected_by_database_scope_guard():
     async with AsyncSessionLocal() as db:
         plan = await plan_service.create_plan(
             db,
@@ -172,34 +173,44 @@ async def test_orphan_plan_memories_are_archived_on_maintain():
                 stages=[StageCreate(title="s", tasks=[TaskCreate(title="t")])],
             ),
         )
-        db.add_all([
+        await db.commit()
+        plan_id = plan.id
+
+        db.add(
             Memory(
                 owner_id="local",
                 scope="plan",
                 scope_id="999",
                 layer="semantic",
-                content="已删除计划的旧记忆",
+                content="不存在计划的非法记忆",
                 confidence=0.9,
                 status="confirmed",
-            ),
-            Memory(
-                owner_id="local",
-                scope="plan",
-                scope_id=str(plan.id),
-                layer="semantic",
-                content="存活计划的有效记忆",
-                confidence=0.9,
-                status="confirmed",
-            ),
-        ])
+            )
+        )
+        with pytest.raises(IntegrityError, match="memory owner or scope mismatch"):
+            await db.flush()
+        await db.rollback()
+
+        manager = MemoryManager(db)
+        active, reused = await manager.propose(
+            "local",
+            scope="plan",
+            scope_id=str(plan_id),
+            layer="semantic",
+            content="存活计划的有效记忆",
+            source_type="user",
+            confidence=0.9,
+        )
+        assert reused is False
+        active = await manager.confirm("local", active.id)
         await db.commit()
 
-        await MemoryManager(db).maintain("local")
+        await manager.maintain("local")
         await db.commit()
         rows = list((await db.execute(select(Memory))).scalars())
         by_scope = {memory.scope_id: memory.status for memory in rows}
-        assert by_scope["999"] == "archived"
-        assert by_scope[str(plan.id)] == "confirmed"
+        assert "999" not in by_scope
+        assert by_scope[str(plan_id)] == "confirmed"
 
 
 @pytest.mark.asyncio

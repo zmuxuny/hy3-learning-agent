@@ -50,13 +50,14 @@ DOMAIN_DATETIME_COLUMNS = {
     "session_plan_links": ("created_at",),
     "planning_intakes": ("created_at", "updated_at"),
     "plan_proposals": ("decided_at", "created_at", "updated_at"),
-    "chat_messages": ("created_at",),
-    "session_summaries": ("created_at",),
+    "chat_messages": ("invalidated_at", "created_at"),
+    "session_summaries": ("invalidated_at", "created_at"),
     "chat_message_revisions": ("created_at",),
     "agent_runs": (
         "lease_acquired_at",
         "lease_expires_at",
         "available_at",
+        "proactive_detected_at",
         "started_at",
         "completed_at",
         "created_at",
@@ -82,20 +83,44 @@ DOMAIN_DATETIME_COLUMNS = {
     "task_competency_links": ("created_at",),
     "resource_competency_links": ("created_at",),
     "competency_graph_states": ("updated_at",),
+    "context_states": ("updated_at",),
     "evidence_projection_states": ("updated_at",),
     "evidence_artifact_links": ("created_at",),
     "evidence_competency_links": ("created_at",),
     "competency_graph_mutations": ("created_at",),
     "operation_dependencies": ("created_at",),
     "operation_evidence_links": ("created_at",),
+    "provenance_nodes": ("created_at",),
+    "provenance_edges": ("created_at",),
+    "session_handoffs": ("invalidated_at", "created_at"),
+    "context_snapshot_blocks": ("created_at",),
+    "memory_lifecycle_events": (
+        "expires_at_before",
+        "expires_at_after",
+        "created_at",
+    ),
+    "proactive_decisions": ("next_eligible_at", "decided_at", "created_at"),
+    "interventions": ("read_at", "archived_at", "resolved_at", "created_at"),
+    "session_compression_states": (
+        "claim_started_at",
+        "claim_expires_at",
+        "updated_at",
+    ),
+    "inbound_mail_jobs": (
+        "ack_claim_expires_at",
+        "acked_at",
+        "created_at",
+        "updated_at",
+    ),
     "memories": (
         "last_accessed_at",
         "last_reinforced_at",
         "expires_at",
+        "invalidated_at",
         "created_at",
         "updated_at",
     ),
-    "context_snapshots": ("created_at",),
+    "context_snapshots": ("invalidated_at", "created_at"),
     "outbox_actions": (
         "available_at",
         "claimed_at",
@@ -179,8 +204,8 @@ def test_h1_time_002_all_persisted_datetime_columns_use_utc_datetime() -> None:
     ]
 
     assert actual_domain_columns == DOMAIN_DATETIME_COLUMNS
-    assert len(actual_domain_columns) == 45
-    assert sum(map(len, actual_domain_columns.values())) == 94
+    assert len(actual_domain_columns) == 55
+    assert sum(map(len, actual_domain_columns.values())) == 122
     assert tuple(
         column.name
         for column in Base.metadata.tables["schema_migrations"].columns
@@ -190,7 +215,7 @@ def test_h1_time_002_all_persisted_datetime_columns_use_utc_datetime() -> None:
         isinstance(column.type, UTCDateTime)
         for table in Base.metadata.sorted_tables
         for column in table.columns
-    ) == 95
+    ) == 123
     assert naked_datetime_columns == []
 
 

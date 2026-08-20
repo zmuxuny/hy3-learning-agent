@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core.config import settings
+from app.core.prompt_envelope import ensure_request_fits
 from app.models import Session
 
 
@@ -36,15 +37,18 @@ async def generate_session_title(
         "标题应概括真实意图，不超过20个汉字，不加引号、序号或句号。\n\n"
         f"用户：{objective[:2000]}\n助手：{answer[:3000]}"
     )
+    messages = [
+        {"role": "system", "content": "你是学习会话标题编辑，只输出标题。"},
+        {"role": "user", "content": prompt},
+    ]
     try:
+        ensure_request_fits(messages=messages, tools=[])
         response = await asyncio.wait_for(
             client.chat.completions.create(
                 model=settings.MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": "你是学习会话标题编辑，只输出标题。"},
-                    {"role": "user", "content": prompt},
-                ],
+                messages=messages,
                 temperature=0.2,
+                max_tokens=settings.AGENT_OUTPUT_TOKEN_RESERVE,
             ),
             timeout=settings.AGENT_SESSION_TITLE_TIMEOUT_SECONDS,
         )

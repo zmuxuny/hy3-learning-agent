@@ -31,6 +31,8 @@ class ToolContext:
     trigger: str
     plan_id: int | None = None
     session_id: str | None = None
+    execution_mode: str = "normal"
+    reply_to_intervention_id: str | None = None
     approval_granted: bool = False
     # Stable provider-assigned id for one concrete tool call.  A model may
     # intentionally invoke the same write tool twice in one Run; only a replay

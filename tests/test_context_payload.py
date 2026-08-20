@@ -5,27 +5,35 @@ from sqlalchemy import select
 
 from app.api.agent import read_run_context
 from app.api.settings import read_settings
+from app.context.memory import MemoryManager
 from app.db.database import AsyncSessionLocal
-from app.models import AgentRun, Memory, RunEvent
+from app.models import AgentRun, RunEvent
 from app.runtime.agent import AgentRuntime
 
 
 @pytest.mark.asyncio
 async def test_context_built_event_carries_memory_ids():
     async with AsyncSessionLocal() as db:
-        db.add(Memory(
-            owner_id="local",
+        memory, reused = await MemoryManager(db).propose(
+            "local",
             scope="global",
+            scope_id=None,
             layer="semantic",
-            content="用户偏好通过项目实战学习",
+            content="今天学习应遵循用户偏好并通过项目实战",
+            source_type="user",
             confidence=0.95,
-            status="confirmed",
-        ))
-        run = AgentRun(owner_id="local", trigger="user_message", objective="今天学什么")
+        )
+        assert reused is False
+        memory = await MemoryManager(db).confirm("local", memory.id)
+        run = AgentRun(
+            owner_id="local",
+            trigger="user_message",
+            objective="根据用户偏好通过项目实战安排今天学习",
+        )
         db.add(run)
         await db.commit()
         run_id = run.id
-        memory_id = (await db.execute(select(Memory))).scalars().one().id
+        memory_id = memory.id
 
     class FinalCompletions:
         async def create(self, **_kwargs):

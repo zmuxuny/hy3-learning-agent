@@ -119,26 +119,26 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H5-CTX-001 | 全局 Session 的 discussed link 不是读取计划私有状态的权限；旧 assembler 注入 event/quiz/reminder/review/calendar。 | HP4, HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-002 | summary coverage 只能包含模型真实看到的消息；旧 10k 压缩把未进入 30k 字符窗口的消息也标 covered。 | HP4, HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-003 | 长消息必须先完整分块读取再推进 coverage；旧实现截掉前缀仍覆盖整条消息。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-004 | 模型/压缩失败不得推进 coverage；旧 fallback partial summary 被当成功。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-005 | handoff 在 child Session 创建时冻结；旧重复 handoff 用源 Session 后续消息重写。 | HP4, HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-006 | 消息编辑须失效所有派生 Memory scope/source；旧实现漏 original Run、Plan/Global、Message source。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-007 | 编辑保留审计但必须标记 Summary/Snapshot 失效；旧快照无法区分 stale/valid。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-008 | Context manifest 必须区分 retained/dropped source 并记录 reason；旧截断 Markdown 后仍把 dropped 列为 active。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-009 | 预算必须覆盖 system、tool schema、Context、output/tool-result reserve；旧实现只限制 snapshot Markdown。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-010 | Memory 检索必须有 relevance threshold 与 layer quota；旧无关 Session 噪声可挤掉 Global 核心记忆。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-011 | 手工归档再恢复必须保留未来 `expires_at`；旧 restore 无条件清空。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-CTX-012 | manifest 必须追踪 prompt 中 active summary 与 frozen handoff；旧只列 recent messages。 | HP9 | CTX | U | H5 | open · strict xfail / — |
-| H5-INT-001 | 活动 Run 中提醒回复必须带唯一耐久 target，不能退化成普通 steer/queue；旧请求丢 target。 | HP4, HP9, STATUS | INT, UI | U | H5 | open · strict xfail / — |
-| H5-INT-002 | 一次逻辑 Intervention 的站内/邮件/浏览器 delivery 只能投影一次 Context；旧按 delivery 重复注入。 | HP9 | INT | U | H5 | open · strict xfail / — |
-| H5-INT-003 | canonical message/Intervention 映射必须用稳定 ID；旧用 run/title/body/thread 启发式错误合并。 | HP9 | INT | U | H5 | open · strict xfail / — |
-| H5-MAIL-001 | 归档计划的 email reply 必须生成只读答复或明确失败回执；旧一端启动 Run、另一端静默阻断。 | HP9 | INT | U | H5 | open · strict xfail / — |
-| H5-MAIL-002 | IMAP fetch 必须 `BODY.PEEK[]`，Seen 只能在耐久 reply job 后更新；旧 `(RFC822)` 可提前置 Seen。 | HP9 | INT（另有 commit-before-Seen passing gate） | U | H5 | open · strict xfail / — |
-| H5-PRO-001 | failed heartbeat 不得消耗成功冷却；旧只看 Run 创建时间。 | HP9 | INT | U | H5 | open · strict xfail / — |
-| H5-PRO-002 | quiet-hours 拒绝必须记录 `next_eligible_at` 且不消耗成功冷却；旧只留下字符串原因。 | HP9 | INT | U | H5 | open · strict xfail / — |
-| H5-PRO-003 | Guard 拒绝不得因存在 heartbeat Run 就消耗成功冷却；旧缺 ProactiveDecision 事实。 | HP9 | INT | U | H5 | open · strict xfail / — |
+| H5-CTX-001 | 全局 Session 的 discussed link 不是读取计划私有状态的权限；旧 assembler 注入 event/quiz/reminder/review/calendar。 | HP4, HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-002 | summary coverage 只能包含模型真实看到的消息；旧 10k 压缩把未进入 30k 字符窗口的消息也标 covered。 | HP4, HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-003 | 长消息必须先完整分块读取再推进 coverage；旧实现截掉前缀仍覆盖整条消息。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-004 | 模型/压缩失败不得推进 coverage；旧 fallback partial summary 被当成功。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-005 | handoff 在 child Session 创建时冻结；旧重复 handoff 用源 Session 后续消息重写。 | HP4, HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-006 | 消息编辑须失效所有派生 Memory scope/source；旧实现漏 original Run、Plan/Global、Message source。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-007 | 编辑保留审计但必须标记 Summary/Snapshot 失效；旧快照无法区分 stale/valid。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-008 | Context manifest 必须区分 retained/dropped source 并记录 reason；旧截断 Markdown 后仍把 dropped 列为 active。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-009 | 预算必须覆盖 system、tool schema、Context、output/tool-result reserve；旧实现只限制 snapshot Markdown。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-010 | Memory 检索必须有 relevance threshold 与 layer quota；旧无关 Session 噪声可挤掉 Global 核心记忆。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-011 | 手工归档再恢复必须保留未来 `expires_at`；旧 restore 无条件清空。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-CTX-012 | manifest 必须追踪 prompt 中 active summary 与 frozen handoff；旧只列 recent messages。 | HP9 | CTX | U | H5 | fixed · passing / H5 阶段 |
+| H5-INT-001 | 活动 Run 中提醒回复必须带唯一耐久 target，不能退化成普通 steer/queue；旧请求丢 target。 | HP4, HP9, STATUS | INT, UI | U | H5 | fixed · passing / H5 阶段 |
+| H5-INT-002 | 一次逻辑 Intervention 的站内/邮件/浏览器 delivery 只能投影一次 Context；旧按 delivery 重复注入。 | HP9 | INT | U | H5 | fixed · passing / H5 阶段 |
+| H5-INT-003 | canonical message/Intervention 映射必须用稳定 ID；旧用 run/title/body/thread 启发式错误合并。 | HP9 | INT | U | H5 | fixed · passing / H5 阶段 |
+| H5-MAIL-001 | 归档计划的 email reply 必须生成只读答复或明确失败回执；旧一端启动 Run、另一端静默阻断。 | HP9 | INT | U | H5 | fixed · passing / H5 阶段 |
+| H5-MAIL-002 | IMAP fetch 必须 `BODY.PEEK[]`，Seen 只能在耐久 reply job 后更新；旧 `(RFC822)` 可提前置 Seen。 | HP9 | INT（另有 commit-before-Seen passing gate） | U | H5 | fixed · passing / H5 阶段 |
+| H5-PRO-001 | failed heartbeat 不得消耗成功冷却；旧只看 Run 创建时间。 | HP9 | INT | U | H5 | fixed · passing / H5 阶段 |
+| H5-PRO-002 | quiet-hours 拒绝必须记录 `next_eligible_at` 且不消耗成功冷却；旧只留下字符串原因。 | HP9 | INT | U | H5 | fixed · passing / H5 阶段 |
+| H5-PRO-003 | Guard 拒绝不得因存在 heartbeat Run 就消耗成功冷却；旧缺 ProactiveDecision 事实。 | HP9 | INT | U | H5 | fixed · passing / H5 阶段 |
 
 ## H6：安全运行边界
 
@@ -180,9 +180,17 @@
 
 ## 验收记录
 
-### H4 当前结果（2026-08-20）
+### H5 当前结果（2026-08-20）
 
-- H4-EVID-001–005/007/008、H4-COMP-001–006、H4-SCHEMA-001/002 与 H0-COV-001 均已删除原 strict xfail 并固定通过；H4 新关闭 16 个 ID，矩阵累计关闭 50 个 defect ID、剩余 37 个 open ID。下一门禁为 H5，M15–M20 继续冻结。
+- H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002 与 H5-PRO-001–003 均已删除原 strict xfail 并固定通过；H5 新关闭 20 个 ID，矩阵累计关闭 70 个 defect ID、剩余 17 个 open ID。下一门禁为 H6，M15–M20 继续冻结。
+- schema revision 5 冻结可追溯 Context 来源图、连续摘要 claim/cursor、不可变 handoff、Memory 生命周期、typed snapshot blocks、ProactiveDecision、Intervention 与 InboundMailJob。全局 Session 不因 relation 读取计划私有事实；无法证明来源的 legacy 数据保持 `legacy_unverified`，不会被静默提升。
+- 模型调用使用同一完整 PromptEnvelope 预算；Memory 检索在 RRF 前做绝对相关性门槛，并执行 scope/layer 配额和 provider 等待后的 lifecycle 重验。消息编辑通过来源闭包失效 Summary/Memory/Snapshot/handoff，commit 前后 SIGKILL 均可收敛到唯一 rerun。
+- 一次逻辑 Intervention 只有一条 canonical message，delivery 不再定义身份；Queue/Run/Message 保存 typed reply target。IMAP 使用 `BODY.PEEK[]`，先提交唯一 inbound job 再 ack；归档计划回复生成只读答复或明确失败回执。心跳冷却只读取终态 ProactiveDecision。
+- H5、迁移、H0 Context/Intervention、真实进程 SIGKILL 和旧兼容调用面的完整命令与结果见 [`STATUS.md`](STATUS.md)。没有调用真实 SMTP/IMAP/VAPID；外部安装、连续使用和 7 日留存仍待真实用户验证。
+
+### H4 收口历史（2026-08-20）
+
+- H4-EVID-001–005/007/008、H4-COMP-001–006、H4-SCHEMA-001/002 与 H0-COV-001 均已删除原 strict xfail 并固定通过；H4 当时新关闭 16 个 ID，累计关闭 50 个、剩余 37 个，下一门禁为 H5。H5 现已完成，当前计数见上方 H5 记录。
 - schema revision 4 冻结 append-only Evidence fact、Artifact snapshot、Evidence↔Competency/Artifact/Operation 关联、Competency scope、图 revision/mutation/dependency 与 projection watermark。fresh 和 frozen revision 3 升级结构等价；无法证明的历史关联不猜测，跨域、环和损坏来源 fail closed。
 - 0/1/500/501/10,000 条全量/增量/CLI/Context/tool/HTTP 投影、关闭重开和 SQLite backup restore digest 一致；submission/quiz/task undo/redo、kill-point、Artifact 篡改、图依赖撤销、跨计划 Guard 与 SQL-before-limit 均有独立回归。
 - 41 条领域 baseline 与 41 个对应 mutant 已逐项执行 production reducer/audit；完整 pytest、前端和其余最终门禁的唯一记录见 [`STATUS.md`](STATUS.md)。外部安装、连续使用和 7 日留存仍待真实用户验证。
@@ -192,7 +200,7 @@
 - H3-RUN-001–011 均已删除原 strict xfail 并固定通过；H3 新关闭 10 个 ID（H3-RUN-008 已在 H2 提前关闭），矩阵累计关闭 34 个 defect ID、剩余 53 个 open ID。下一门禁为 H4，M15–M20 继续冻结。
 - H3 定向套件为 40 passed，覆盖 revision 3、真实进程 SIGKILL、双进程 claim、SQLite 锁、审批、原子 finalization/queue successor、late steer、父子投影、耐久 retry、共享预算、tool/model wait 分类、多工具副作用 replay 和固定种子 100 轮语义恢复。
 - 真实 Hy3 临时库演示在同一 Run 上执行两次 SIGKILL 和三次 claim，最终只有一条 assistant message 与一个 completed event；未输出模型正文、秘密或用户数据。前端状态契约为 9 passed，生产构建通过，npm audit 为 0 vulnerabilities。
-- 完整 pytest 与其余门禁的唯一最终记录见 [`STATUS.md`](STATUS.md)。H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成。
+- H3 收口时 H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成；H4/H5 现已关闭，当前结果见上方记录与 [`STATUS.md`](STATUS.md)。
 
 ### H2 当前结果（2026-08-19）
 

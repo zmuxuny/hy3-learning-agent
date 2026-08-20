@@ -30,6 +30,7 @@ from app.models import (
 )
 from app.notifications.conversation import open_notification_in_conversation
 from app.notifications.service import NotificationService
+from app.runtime.proactive import capture_proactive_candidate, finalize_proactive_decision
 from app.runtime.scheduler import proactive_scheduler
 from app.schemas import (
     PlanArchiveUpdate,
@@ -130,19 +131,43 @@ async def test_archived_planning_session_cannot_materialize_a_pending_proposal()
 @pytest.mark.asyncio
 async def test_opening_one_notification_marks_the_whole_delivery_group_read():
     async with AsyncSessionLocal() as db:
-        run = AgentRun(owner_id="local", trigger="heartbeat", objective="提醒", status="completed")
+        session = Session(owner_id="local", title="Intervention delivery thread")
+        db.add(session)
+        await db.flush()
+        run = AgentRun(
+            owner_id="local",
+            session_id=session.id,
+            trigger="heartbeat",
+            objective="提醒",
+            status="completed",
+            phase="terminal",
+        )
         db.add(run)
         await db.flush()
-        in_app = Notification(
-            owner_id="local", run_id=run.id, channel="in_app",
-            title="同一提醒", body="正文", status="sent",
+        sent = await NotificationService(db).send(
+            owner_id="local",
+            run_id=run.id,
+            session_id=session.id,
+            trigger="manual_heartbeat",
+            title="同一提醒",
+            body="正文",
+            plan_id=None,
+            channels=["email"],
         )
-        email = Notification(
-            owner_id="local", run_id=run.id, channel="email",
-            title="同一提醒", body="正文", status="sent",
-        )
-        db.add_all([in_app, email])
         await db.commit()
+        deliveries = list(
+            (
+                await db.execute(
+                    select(Notification)
+                    .where(Notification.intervention_id == sent["intervention_id"])
+                    .order_by(Notification.id)
+                )
+            ).scalars()
+        )
+        assert [delivery.channel for delivery in deliveries] == ["in_app", "email"]
+        assert len({delivery.intervention_id for delivery in deliveries}) == 1
+        in_app = next(delivery for delivery in deliveries if delivery.channel == "in_app")
+        email = next(delivery for delivery in deliveries if delivery.channel == "email")
         await open_notification_in_conversation(db, email)
         await db.commit()
         await db.refresh(in_app)
@@ -293,13 +318,24 @@ async def test_scheduler_ignores_housekeeping_and_throttles_recent_plan_checks(m
     assert candidate["reason"] == "progress_checkin_due"
 
     async with AsyncSessionLocal() as db:
-        db.add(AgentRun(
+        run = AgentRun(
             owner_id="local",
             plan_id=plan_id,
             trigger="heartbeat",
             objective="刚检查过",
             status="completed",
-        ))
+            phase="terminal",
+        )
+        capture_proactive_candidate(run, candidate)
+        db.add(run)
+        await db.flush()
+        await finalize_proactive_decision(
+            db,
+            run,
+            outcome="success_wait",
+            reason_code="recent_plan_check_completed",
+            decision_payload={"plan_id": plan_id, "intervention_needed": False},
+        )
         await db.commit()
     assert await proactive_scheduler._next_candidate() is None
 
@@ -311,14 +347,44 @@ async def test_daily_limit_counts_one_intervention_not_each_delivery(monkeypatch
         profile = await db.get(UserProfile, "local")
         profile.quiet_hours = {"start": "00:00", "end": "00:00"}
         profile.daily_notification_limit = 2
-        run = AgentRun(owner_id="local", trigger="heartbeat", objective="检查", status="completed")
+        session = Session(owner_id="local", title="Daily Intervention count")
+        db.add(session)
+        await db.flush()
+        run = AgentRun(
+            owner_id="local",
+            session_id=session.id,
+            trigger="heartbeat",
+            objective="检查",
+            status="completed",
+            phase="terminal",
+        )
         db.add(run)
         await db.flush()
+        sent = await NotificationService(db).send(
+            owner_id="local",
+            run_id=run.id,
+            session_id=session.id,
+            trigger="manual_heartbeat",
+            title="同一提醒",
+            body="正文",
+            plan_id=None,
+            channels=["email"],
+        )
         now = datetime.now(timezone.utc)
-        db.add_all([
-            Notification(owner_id="local", run_id=run.id, channel="in_app", title="同一提醒", body="正文", status="sent", sent_at=now),
-            Notification(owner_id="local", run_id=run.id, channel="email", title="同一提醒", body="正文", status="sent", sent_at=now),
-        ])
+        deliveries = list(
+            (
+                await db.execute(
+                    select(Notification).where(
+                        Notification.intervention_id == sent["intervention_id"]
+                    )
+                )
+            ).scalars()
+        )
+        assert len(deliveries) == 2
+        assert len({delivery.intervention_id for delivery in deliveries}) == 1
+        for delivery in deliveries:
+            delivery.status = "sent"
+            delivery.sent_at = now
         await db.commit()
         allowed, reason = await NotificationService(db)._guard("local", "heartbeat", None)
     assert allowed is True

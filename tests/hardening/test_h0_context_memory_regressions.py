@@ -12,6 +12,7 @@ import app.context.assembler as context_assembler_module
 from app.api.agent import edit_user_message, handoff_session
 from app.context import ContextAssembler
 from app.context.memory import MemoryManager
+from app.context.provenance import canonical_digest
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow
@@ -31,6 +32,7 @@ from app.models import (
     SessionSummary,
 )
 from app.schemas import MessageEdit, SessionHandoffCreate
+from app.services.sessions import ensure_session_handoff
 
 
 class _RecordingCompletions:
@@ -58,6 +60,27 @@ def _require_fixture(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def _verified_message_values(
+    *, session_id: str, role: str, content: str
+) -> dict[str, object]:
+    return {
+        "session_id": session_id,
+        "role": role,
+        "content": content,
+        "version": 1,
+        "content_hash": canonical_digest(content),
+        "message_metadata": {},
+    }
+
+
+def _verified_message(*, session_id: str, role: str, content: str) -> ChatMessage:
+    return ChatMessage(**_verified_message_values(
+        session_id=session_id,
+        role=role,
+        content=content,
+    ))
+
+
 @pytest.fixture(autouse=True)
 def _isolate_context_projection(monkeypatch: pytest.MonkeyPatch, tmp_path):
     """ContextAssembler writes readable projections; keep every test in tmp_path."""
@@ -70,14 +93,6 @@ def _as_utc(value: datetime) -> datetime:
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-001: the old assembler treats SessionPlanLink as permission to inject "
-        "plan-private events, quizzes, reminders, reviews, and calendar rows into a global Session"
-    ),
-)
 async def test_global_session_links_do_not_unlock_private_plan_blocks():
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="global navigation")
@@ -169,14 +184,6 @@ async def test_global_session_links_do_not_unlock_private_plan_blocks():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-002: the old 10k compressor records every old message as covered even though "
-        "the model receives only the final 30,000 transcript characters"
-    ),
-)
 async def test_10000_message_coverage_contains_only_messages_seen_by_summarizer():
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="ten thousand turns")
@@ -185,12 +192,11 @@ async def test_10000_message_coverage_contains_only_messages_seen_by_summarizer(
         await db.execute(
             insert(ChatMessage),
             [
-                {
-                    "session_id": session.id,
-                    "role": "user" if index % 2 == 0 else "assistant",
-                    "content": f"MSG_{index:05d}|" + ("x" * 20),
-                    "message_metadata": {},
-                }
+                _verified_message_values(
+                    session_id=session.id,
+                    role="user" if index % 2 == 0 else "assistant",
+                    content=f"MSG_{index:05d}|" + ("x" * 20),
+                )
                 for index in range(10_000)
             ],
         )
@@ -243,14 +249,6 @@ async def test_10000_message_coverage_contains_only_messages_seen_by_summarizer(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-003: the old compressor truncates a long source message before summarization "
-        "but still marks that whole message as covered"
-    ),
-)
 async def test_long_message_prefix_is_read_before_message_is_marked_covered():
     begin_marker = "LONG_MESSAGE_BEGIN_SENTINEL"
     end_marker = "LONG_MESSAGE_END_SENTINEL"
@@ -259,7 +257,7 @@ async def test_long_message_prefix_is_read_before_message_is_marked_covered():
         db.add(session)
         await db.flush()
         db.add(
-            ChatMessage(
+            _verified_message(
                 session_id=session.id,
                 role="user",
                 content=begin_marker + ("x" * 45_000) + end_marker,
@@ -267,7 +265,11 @@ async def test_long_message_prefix_is_read_before_message_is_marked_covered():
         )
         db.add_all(
             [
-                ChatMessage(session_id=session.id, role="assistant", content=f"recent-{index}")
+                _verified_message(
+                    session_id=session.id,
+                    role="assistant",
+                    content=f"recent-{index}",
+                )
                 for index in range(settings.AGENT_RECENT_MESSAGE_LIMIT)
             ]
         )
@@ -289,14 +291,6 @@ async def test_long_message_prefix_is_read_before_message_is_marked_covered():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-004: the old compressor converts a model failure into a partial fallback "
-        "summary and advances the durable coverage cursor"
-    ),
-)
 async def test_compression_failure_does_not_advance_coverage():
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="failed compression", summary="stable summary")
@@ -304,7 +298,7 @@ async def test_compression_failure_does_not_advance_coverage():
         await db.flush()
         db.add_all(
             [
-                ChatMessage(
+                _verified_message(
                     session_id=session.id,
                     role="user" if index % 2 == 0 else "assistant",
                     content=f"turn-{index}",
@@ -347,14 +341,6 @@ async def test_compression_failure_does_not_advance_coverage():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-005: the old handoff endpoint rewrites an existing child Session's handoff "
-        "from later source-Session messages"
-    ),
-)
 async def test_handoff_is_frozen_when_plan_session_is_created():
     async with AsyncSessionLocal() as db:
         plan = Plan(owner_id="local", title="Frozen handoff plan")
@@ -398,14 +384,6 @@ async def test_handoff_is_frozen_when_plan_session_is_created():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-006: the old edit path invalidates only Session memories sourced from downstream "
-        "message Run IDs, omitting the original Run, Plan/Global scopes, and direct Message sources"
-    ),
-)
 async def test_message_edit_invalidates_all_derived_memory_scopes_and_sources(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -415,6 +393,7 @@ async def test_message_edit_invalidates_all_derived_memory_scopes_and_sources(
         session = Session(owner_id="local", plan_id=plan.id, title="Editable session")
         db.add_all([plan, session])
         await db.flush()
+        session.plan_id = plan.id
         original_run = AgentRun(
             owner_id="local",
             session_id=session.id,
@@ -524,14 +503,6 @@ async def test_message_edit_invalidates_all_derived_memory_scopes_and_sources(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-007: the old edit path preserves Summary/Snapshot audit rows but records no "
-        "source invalidation, so stale cached context cannot be distinguished from valid context"
-    ),
-)
 async def test_message_edit_preserves_audit_and_marks_summary_and_snapshot_invalid(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -600,33 +571,36 @@ async def test_message_edit_preserves_audit_and_marks_summary_and_snapshot_inval
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-008: the old assembler truncates rendered Markdown after collecting sources, "
-        "leaving dropped sources in the active manifest and recording no dropped reason code"
-    ),
-)
 async def test_budget_manifest_separates_retained_and_dropped_sources(
     monkeypatch: pytest.MonkeyPatch,
 ):
     monkeypatch.setattr(settings, "AGENT_CONTEXT_TOKEN_BUDGET", 2_000)
+    monkeypatch.setattr(settings, "AGENT_RECENT_MESSAGE_LIMIT", 10)
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="Budget manifest")
-        db.add(session)
+        source_run = AgentRun(
+            owner_id="local",
+            trigger="user_message",
+            objective="Provide verified budget-manifest Memory sources",
+            status="completed",
+            phase="terminal",
+        )
+        db.add_all([session, source_run])
         await db.flush()
-        memories = [
-            Memory(
-                owner_id="local",
+        manager = MemoryManager(db)
+        memories = []
+        for index in range(10):
+            memory, reused = await manager.propose(
+                "local",
                 scope="global",
+                scope_id=None,
                 layer="semantic",
-                content=f"CTX008_MEMORY_{index:02d}|" + ("m" * 3_000),
-                status="confirmed",
+                content=f"CTX008_MEMORY_{index:02d}|budget|" + ("m" * 600),
+                source_type="agent_run",
+                source_id=source_run.id,
             )
-            for index in range(10)
-        ]
-        db.add_all(memories)
+            _require_fixture(not reused, "budget Memory unexpectedly deduplicated")
+            memories.append(await manager.confirm("local", memory.id))
         event = LearningEvent(
             owner_id="local",
             event_type="budget.middle",
@@ -637,7 +611,7 @@ async def test_budget_manifest_separates_retained_and_dropped_sources(
             ChatMessage(
                 session_id=session.id,
                 role="user",
-                content=f"CTX008_MESSAGE_{index:02d}|" + ("t" * 3_000),
+                content=f"CTX008_MESSAGE_{index:02d}|" + ("t" * 600),
             )
             for index in range(10)
         ]
@@ -659,7 +633,7 @@ async def test_budget_manifest_separates_retained_and_dropped_sources(
         snapshot = await ContextAssembler(db).build(
             "local",
             session_id=session.id,
-            objective="budget",
+            objective="CTX008 MEMORY budget",
         )
         candidate_keys = set(candidate_marker_by_key)
         actually_retained = {
@@ -713,32 +687,34 @@ async def test_budget_manifest_separates_retained_and_dropped_sources(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-009: the old context budget caps only snapshot Markdown and ignores the System "
-        "Prompt, tool schemas, and output/tool-result reserve in the actual model window"
-    ),
-)
 async def test_context_budget_accounts_for_system_tools_and_output_reserve(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    monkeypatch.setattr(settings, "MODEL_CONTEXT_WINDOW", 20_000)
+    monkeypatch.setattr(settings, "MODEL_CONTEXT_WINDOW", 80_000)
     monkeypatch.setattr(settings, "AGENT_CONTEXT_TOKEN_BUDGET", 12_000)
     async with AsyncSessionLocal() as db:
-        db.add_all(
-            [
-                Memory(
-                    owner_id="local",
-                    scope="global",
-                    layer="semantic",
-                    content=f"full-budget-source-{index}-" + ("b" * 4_000),
-                    status="confirmed",
-                )
-                for index in range(24)
-            ]
+        source_run = AgentRun(
+            owner_id="local",
+            trigger="user_message",
+            objective="Provide verified full-envelope budget sources",
+            status="completed",
+            phase="terminal",
         )
+        db.add(source_run)
+        await db.flush()
+        manager = MemoryManager(db)
+        for index in range(24):
+            memory, reused = await manager.propose(
+                "local",
+                scope="global",
+                scope_id=None,
+                layer="semantic",
+                content=f"full-budget-source-{index}-" + ("b" * 4_000),
+                source_type="agent_run",
+                source_id=source_run.id,
+            )
+            _require_fixture(not reused, "full-budget Memory unexpectedly deduplicated")
+            await manager.confirm("local", memory.id)
         await db.commit()
 
         snapshot = await ContextAssembler(db).build(
@@ -857,54 +833,44 @@ async def test_context_budget_accounts_for_system_tools_and_output_reserve(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-010: the old memory ranker has neither a minimum relevance threshold nor a "
-        "layer quota, so irrelevant facts are returned and Session noise can evict core Global memory"
-    ),
-)
 async def test_memory_retrieval_enforces_relevance_threshold_and_layer_quota():
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="Retrieval quotas")
         db.add(session)
         await db.flush()
-        unrelated = Memory(
-            owner_id="local",
+        manager = MemoryManager(db)
+
+        async def verified_memory(**values):
+            memory, reused = await manager.propose(
+                "local",
+                source_type="user",
+                **values,
+            )
+            assert reused is False
+            return await manager.confirm("local", memory.id)
+
+        unrelated = await verified_memory(
             scope="global",
+            scope_id=None,
             layer="long_term",
             content="garden tomatoes watering schedule",
-            status="confirmed",
         )
-        db.add(unrelated)
-        await db.flush()
-        db.add_all(
-            [
-                Memory(
-                    owner_id="local",
-                    scope="session",
-                    scope_id=session.id,
-                    layer="long_term",
-                    content="asyncio timeout",
-                    confidence=1.0,
-                    status="confirmed",
-                )
-                for _ in range(30)
-            ]
-        )
-        await db.flush()
-        core_global = Memory(
-            owner_id="local",
+        for index in range(30):
+            await verified_memory(
+                scope="session",
+                scope_id=session.id,
+                layer="long_term",
+                content=f"asyncio timeout session {index}",
+                confidence=1.0,
+            )
+        core_global = await verified_memory(
             scope="global",
+            scope_id=None,
             layer="long_term",
             content="asyncio timeout",
             confidence=1.0,
-            status="confirmed",
         )
-        db.add(core_global)
         await db.commit()
-        manager = MemoryManager(db)
 
         unrelated_query = await manager.retrieve(
             "local",
@@ -930,28 +896,22 @@ async def test_memory_retrieval_enforces_relevance_threshold_and_layer_quota():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-011: the old restore path clears expires_at for every archived memory, "
-        "changing the semantics of a manually archived future-expiring fact"
-    ),
-)
 async def test_manual_archive_restore_preserves_future_expiry():
     future_expiry = datetime.now(timezone.utc) + timedelta(days=30)
     async with AsyncSessionLocal() as db:
-        memory = Memory(
-            owner_id="local",
+        manager = MemoryManager(db)
+        memory, reused = await manager.propose(
+            "local",
             scope="global",
+            scope_id=None,
             layer="long_term",
             content="temporary preference with a future expiry",
-            status="confirmed",
+            source_type="user",
             expires_at=future_expiry,
         )
-        db.add(memory)
+        assert reused is False
+        memory = await manager.confirm("local", memory.id)
         await db.commit()
-        manager = MemoryManager(db)
 
         archived = await manager.archive("local", memory.id)
         _require_fixture(archived.status == "archived", "memory archive fixture failed")
@@ -963,46 +923,65 @@ async def test_manual_archive_restore_preserves_future_expiry():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H5-CTX-012: the old Context source manifest includes recent messages but omits the "
-        "active SessionSummary and frozen SessionHandoff blocks rendered into the prompt"
-    ),
-)
 async def test_context_manifest_traces_active_summary_and_frozen_handoff():
-    summary_text = "SUMMARY_SOURCE_SENTINEL"
     handoff_text = "HANDOFF_SOURCE_SENTINEL"
-    handoff_hash = hashlib.sha256(handoff_text.encode("utf-8")).hexdigest()
     async with AsyncSessionLocal() as db:
         plan = Plan(owner_id="local", title="Manifest provenance plan")
+        source_session = Session(
+            owner_id="local",
+            plan_id=None,
+            title="Manifest provenance source",
+        )
         session = Session(
             owner_id="local",
             plan_id=None,
-            title="Manifest provenance",
-            summary=summary_text,
+            title="Manifest provenance target",
             handoff_summary=handoff_text,
         )
-        db.add_all([plan, session])
+        db.add_all([plan, source_session, session])
         await db.flush()
-        message = ChatMessage(
-            session_id=session.id,
+        source_session.plan_id = plan.id
+        session.plan_id = plan.id
+        source_message = ChatMessage(
+            session_id=source_session.id,
             role="user",
-            content="current message",
-        )
-        db.add(message)
-        await db.flush()
-        summary = SessionSummary(
-            owner_id="local",
-            session_id=session.id,
+            content="durable handoff source",
             version=1,
-            content=summary_text,
-            covered_through_message_id=message.id,
-            source_message_ids=[message.id],
-            method="fixture",
+            content_hash=canonical_digest("durable handoff source"),
         )
-        db.add(summary)
+        target_messages = [
+            ChatMessage(
+                session_id=session.id,
+                role="user" if index % 2 == 0 else "assistant",
+                content=f"target summary source {index}",
+                version=1,
+                content_hash=canonical_digest(f"target summary source {index}"),
+            )
+            for index in range(20)
+        ]
+        db.add_all([source_message, *target_messages])
+        await db.commit()
+
+        compressed = await MemoryManager(db).compress_session(session)
+        _require_fixture(compressed, "summary fixture did not use compression service")
+        summary = (
+            await db.execute(
+                select(SessionSummary)
+                .where(
+                    SessionSummary.session_id == session.id,
+                    SessionSummary.validity_state == "valid",
+                )
+                .order_by(SessionSummary.version.desc())
+                .limit(1)
+            )
+        ).scalars().one()
+        handoff = await ensure_session_handoff(
+            db,
+            source=source_session,
+            target=session,
+            plan=plan,
+            content=handoff_text,
+        )
         await db.commit()
 
         snapshot = await ContextAssembler(db).build(
@@ -1024,13 +1003,14 @@ async def test_context_manifest_traces_active_summary_and_frozen_handoff():
                 item
                 for item in snapshot.source_manifest
                 if item.get("type") == "session_handoff"
+                and item.get("id") == handoff.id
             ),
             None,
         )
 
-        _require_fixture(summary_text in snapshot.markdown, "summary fixture was not rendered")
-        _require_fixture(handoff_text in snapshot.markdown, "handoff fixture was not rendered")
+        _require_fixture(summary.content in snapshot.markdown, "summary fixture was not rendered")
+        _require_fixture(handoff.content in snapshot.markdown, "handoff fixture was not rendered")
         assert summary_entry is not None
         assert summary_entry.get("version") == summary.version
         assert handoff_entry is not None
-        assert handoff_entry.get("content_hash") == handoff_hash
+        assert handoff_entry.get("content_hash") == handoff.content_hash

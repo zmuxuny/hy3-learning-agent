@@ -4,11 +4,11 @@ from contextlib import suppress
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.context.memory import MemoryManager
+from app.context.provenance import canonical_digest
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.database import AsyncSessionLocal, get_db
 from app.db.uow import (
@@ -22,7 +22,6 @@ from app.models import (
     ChatMessage,
     ChatMessageRevision,
     ContextSnapshot,
-    Memory,
     Notification,
     Operation,
     Plan,
@@ -37,6 +36,7 @@ from app.models import (
 )
 from app.runtime import AgentRuntime
 from app.runtime.events import emit_event, subscribe_stream, unsubscribe_stream
+from app.runtime.interventions import InterventionStateError, accept_intervention_reply
 from app.runtime.session_titles import initial_session_title
 from app.runtime.state import (
     NONTERMINAL_RUN_STATUSES,
@@ -71,13 +71,20 @@ from app.schemas import (
     SessionSummaryRead,
     SessionUpdate,
 )
-from app.services.sessions import build_handoff_summary, link_session_plan
+from app.services.sessions import (
+    SessionHandoffConflict,
+    build_handoff_summary,
+    ensure_session_handoff,
+    invalidate_message_edit_derivations,
+    link_session_plan,
+)
 from app.services import plans as plan_service
 from app.services.queue import (
     QueueStateError,
     compact_queue_after_removal,
     dispatch_queued_message,
     reorder_queue,
+    validate_intervention_reply_scope,
 )
 
 
@@ -86,7 +93,12 @@ runtime = AgentRuntime()
 
 
 def _visible_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
-    return [message for message in messages if not message.message_metadata.get("superseded_by_edit")]
+    return [
+        message
+        for message in messages
+        if message.validity_state == "active"
+        and not message.message_metadata.get("superseded_by_edit")
+    ]
 
 
 def _start_runtime(run_id: str, **kwargs) -> None:
@@ -101,8 +113,32 @@ def _wake_runtime(run_id: str, *, wake_key: str, **kwargs) -> None:
     )
 
 
+async def _ensure_intervention_reply_not_inflight(
+    db: AsyncSession,
+    intervention_id: str | None,
+) -> None:
+    if intervention_id is None:
+        return
+    duplicate_reply = await db.scalar(
+        select(QueuedMessage.id).where(
+            QueuedMessage.owner_id == settings.DEFAULT_OWNER_ID,
+            QueuedMessage.reply_to_intervention_id == intervention_id,
+        ).limit(1)
+    )
+    active_reply_run = await db.scalar(
+        select(AgentRun.id).where(
+            AgentRun.owner_id == settings.DEFAULT_OWNER_ID,
+            AgentRun.reply_to_intervention_id == intervention_id,
+            AgentRun.status.in_(NONTERMINAL_RUN_STATUSES),
+        ).limit(1)
+    )
+    if duplicate_reply is not None or active_reply_run is not None:
+        raise InterventionStateError("Intervention reply is already queued or running")
+
+
 @router.post("/runs", response_model=AgentRunRead, status_code=202)
 async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
+    await ensure_sqlite_write_transaction(db)
     session_id = data.session_id
     if data.trigger == "user_message" and session_id:
         session = await db.get(Session, session_id)
@@ -150,17 +186,8 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             status_code=409,
             detail="This plan or Session already has an active run",
         ) from exc
-    run = AgentRun(
-        owner_id=settings.DEFAULT_OWNER_ID,
-        session_id=session_id,
-        plan_id=data.plan_id,
-        trigger=data.trigger,
-        objective=data.objective,
-        model=settings.MODEL_NAME,
-    )
-    db.add(run)
-    await flush_uow(db)
     message_metadata = {}
+    reply_to_intervention_id = data.reply_to_intervention_id
     if data.reply_to_notification_id is not None:
         if data.trigger != "user_message" or session_id is None:
             raise HTTPException(status_code=422, detail="Notification replies require a user Session")
@@ -172,6 +199,40 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
         ):
             raise HTTPException(status_code=409, detail="Reply target does not belong to this Session")
         message_metadata["reply_to_notification_id"] = notification.id
+        if notification.intervention_id is not None:
+            if (
+                reply_to_intervention_id is not None
+                and reply_to_intervention_id != notification.intervention_id
+            ):
+                raise HTTPException(status_code=409, detail="Reply targets identify different Interventions")
+            reply_to_intervention_id = notification.intervention_id
+    try:
+        reply_target = await validate_intervention_reply_scope(
+            db,
+            intervention_id=reply_to_intervention_id,
+            owner_id=settings.DEFAULT_OWNER_ID,
+            session_id=session_id,
+            plan_id=data.plan_id,
+        )
+        await _ensure_intervention_reply_not_inflight(
+            db,
+            reply_target.id if reply_target is not None else None,
+        )
+        await accept_intervention_reply(db, reply_target)
+    except (ValueError, InterventionStateError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    run = AgentRun(
+        owner_id=settings.DEFAULT_OWNER_ID,
+        session_id=session_id,
+        plan_id=data.plan_id,
+        trigger=data.trigger,
+        objective=data.objective,
+        model=settings.MODEL_NAME,
+        execution_mode=data.execution_mode,
+        reply_to_intervention_id=reply_to_intervention_id,
+    )
+    db.add(run)
+    await flush_uow(db)
     if session_id and data.trigger == "user_message":
         db.add(ChatMessage(
             session_id=session_id,
@@ -179,6 +240,9 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             message_key=f"run:{run.id}:input",
             role="user",
             content=data.objective,
+            version=1,
+            content_hash=canonical_digest(data.objective),
+            reply_to_intervention_id=reply_to_intervention_id,
             message_metadata=message_metadata,
         ))
     if session_id and data.plan_id is not None:
@@ -337,6 +401,7 @@ async def handoff_session(
     data: SessionHandoffCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    await ensure_sqlite_write_transaction(db)
     source = await db.get(Session, session_id)
     if not source or source.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -347,29 +412,51 @@ async def handoff_session(
         raise HTTPException(status_code=404, detail="Plan not found")
     if plan.status == "archived":
         raise HTTPException(status_code=409, detail="Restore the plan before continuing in it")
+    if source.plan_id is not None and source.plan_id != plan.id:
+        raise HTTPException(
+            status_code=409,
+            detail="The source Session is focused on a different plan",
+        )
 
-    child = (await db.execute(
+    children = list((await db.execute(
         select(Session).where(
             Session.owner_id == settings.DEFAULT_OWNER_ID,
             Session.parent_session_id == source.id,
             Session.plan_id == plan.id,
             Session.archived_at.is_(None),
-        ).order_by(Session.updated_at.desc()).limit(1)
-    )).scalars().one_or_none()
-    latest_handoff = await build_handoff_summary(db, source)
+        ).order_by(Session.created_at, Session.id)
+    )).scalars())
+    if len(children) > 1:
+        raise HTTPException(status_code=409, detail="Multiple active handoff Sessions already exist")
+    child = children[0] if children else None
     if child is None:
+        frozen_handoff = await build_handoff_summary(db, source)
         child = Session(
             owner_id=settings.DEFAULT_OWNER_ID,
             plan_id=plan.id,
             parent_session_id=source.id,
             title=plan.title[:80],
-            handoff_summary=latest_handoff,
+            handoff_summary=frozen_handoff,
         )
         db.add(child)
         await flush_uow(db)
-    elif child.handoff_summary != latest_handoff:
-        child.handoff_summary = latest_handoff
-        child.updated_at = utc_now()
+    else:
+        frozen_handoff = child.handoff_summary
+        if not frozen_handoff:
+            frozen_handoff = await build_handoff_summary(db, source)
+            child.handoff_summary = frozen_handoff
+            await flush_uow(db)
+    try:
+        await ensure_session_handoff(
+            db,
+            source=source,
+            target=child,
+            plan=plan,
+            content=frozen_handoff,
+        )
+    except SessionHandoffConflict as exc:
+        await rollback_uow(db)
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     await link_session_plan(
         db,
         owner_id=settings.DEFAULT_OWNER_ID,
@@ -525,6 +612,8 @@ async def submit_planning_answers(
         message_key=f"run:{run.id}:input",
         role="user",
         content=objective,
+        version=1,
+        content_hash=canonical_digest(objective),
         message_metadata={
             "ui_kind": "planning_answers",
             "answer_count": len(data.answers),
@@ -617,6 +706,7 @@ async def decide_plan_proposal(
 
 @router.post("/messages/{message_id}/edit", response_model=AgentRunRead, status_code=202)
 async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession = Depends(get_db)):
+    await ensure_sqlite_write_transaction(db)
     message = await db.get(ChatMessage, message_id)
     if not message or message.role != "user":
         raise HTTPException(status_code=404, detail="Editable user message not found")
@@ -625,6 +715,28 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
         raise HTTPException(status_code=404, detail="Session not found")
     if session.archived_at is not None:
         raise HTTPException(status_code=409, detail="Restore the Session before editing a message")
+    requested_hash = canonical_digest(data.content)
+    replay_run_id = (message.message_metadata or {}).get("edit_run_id")
+    if (
+        replay_run_id
+        and message.content == data.content
+        and message.content_hash == requested_hash
+    ):
+        replay_run = await db.get(AgentRun, str(replay_run_id))
+        if (
+            replay_run is not None
+            and replay_run.owner_id == settings.DEFAULT_OWNER_ID
+            and replay_run.session_id == session.id
+            and replay_run.objective == data.content
+        ):
+            await commit_uow(db)
+            await db.refresh(replay_run)
+            if data.rerun and replay_run.status in NONTERMINAL_RUN_STATUSES:
+                _start_runtime(replay_run.id)
+            return replay_run
+    if message.content == data.content:
+        await rollback_uow(db)
+        raise HTTPException(status_code=409, detail="Edited content is unchanged")
     active_run = (await db.execute(
         select(AgentRun.id).where(
             AgentRun.session_id == session.id,
@@ -648,41 +760,56 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
             detail="This plan or Session already has an active run",
         ) from exc
 
+    if not message.content_hash:
+        message.content_hash = canonical_digest(message.content)
+        await flush_uow(db)
+    previous_version = message.version
+    previous_content_hash = message.content_hash
     db.add(ChatMessageRevision(
         message_id=message.id,
         session_id=session.id,
         previous_run_id=message.run_id,
+        version=previous_version,
         content=message.content,
+        content_hash=previous_content_hash,
         message_metadata=dict(message.message_metadata),
     ))
+    # Revision INSERT validates against the still-current immutable source.
+    # Only after that row is durable in this UoW may the live message advance.
+    await flush_uow(db)
     downstream = list((await db.execute(
         select(ChatMessage).where(
             ChatMessage.session_id == session.id,
-            ChatMessage.id > message.id,
-        ).order_by(ChatMessage.id)
+            or_(
+                ChatMessage.created_at > message.created_at,
+                and_(
+                    ChatMessage.created_at == message.created_at,
+                    ChatMessage.id > message.id,
+                ),
+            ),
+        ).order_by(ChatMessage.created_at, ChatMessage.id)
     )).scalars())
     edited_at = utc_now()
     edited_at_text = canonical_utc(edited_at)
     edit_token = f"message:{message.id}:{edited_at_text}"
-    for stale in downstream:
-        stale.message_metadata = {**stale.message_metadata, "superseded_by_edit": edit_token}
-    downstream_run_ids = {stale.run_id for stale in downstream if stale.run_id}
-    if downstream_run_ids:
-        derived_memories = list((await db.execute(
-            select(Memory).where(
-                Memory.owner_id == settings.DEFAULT_OWNER_ID,
-                Memory.scope == "session",
-                Memory.scope_id == session.id,
-                Memory.source_id.in_(downstream_run_ids),
-                Memory.status.in_(["proposed", "confirmed"]),
-            )
-        )).scalars())
-        for memory in derived_memories:
-            memory.archived_from_status = memory.status
-            memory.status = "archived"
-            memory.archived_reason = "来源消息已被用户修订"
-            memory.updated_at = edited_at
     previous_run_id = message.run_id
+    context_generation = await invalidate_message_edit_derivations(
+        db,
+        owner_id=settings.DEFAULT_OWNER_ID,
+        session=session,
+        message=message,
+        previous_version=previous_version,
+        previous_content_hash=previous_content_hash,
+        previous_run_id=previous_run_id,
+        downstream_messages=downstream,
+        changed_at=edited_at,
+    )
+    for stale in downstream:
+        if stale.validity_state == "active":
+            stale.validity_state = "superseded"
+            stale.invalidated_at = edited_at
+            stale.invalidation_reason = "source_message_edited"
+            stale.message_metadata = {**stale.message_metadata, "superseded_by_edit": edit_token}
     run = AgentRun(
         owner_id=settings.DEFAULT_OWNER_ID,
         session_id=session.id,
@@ -690,16 +817,23 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
         trigger="user_message",
         objective=data.content,
         model=settings.MODEL_NAME,
+        execution_mode="normal",
+        reply_to_intervention_id=message.reply_to_intervention_id,
     )
     db.add(run)
     await flush_uow(db)
     message.content = data.content
+    message.version = previous_version + 1
+    message.content_hash = requested_hash
     message.run_id = run.id
     message.message_key = f"run:{run.id}:input"
     message.message_metadata = {
         **{key: value for key, value in message.message_metadata.items() if key != "included_in_summary"},
         "edited_at": edited_at_text,
         "revises_run_id": previous_run_id,
+        "edit_run_id": run.id,
+        "edit_source_version": previous_version,
+        "context_generation": context_generation,
     }
     session.summary = ""
     await flush_uow(db)
@@ -717,8 +851,6 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
                 for key, value in visible.message_metadata.items()
                 if key != "included_in_summary"
             }
-    await flush_uow(db)
-    await MemoryManager(db).compress_session(session)
     session.updated_at = edited_at
     db.add(Operation(
         owner_id=settings.DEFAULT_OWNER_ID,
@@ -726,7 +858,13 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
         tool_name="message.edit",
         entity_type="chat_message",
         entity_id=str(message.id),
-        forward_patch={"content": data.content, "superseded_message_ids": [item.id for item in downstream]},
+        forward_patch={
+            "content": data.content,
+            "from_version": previous_version,
+            "to_version": previous_version + 1,
+            "context_generation": context_generation,
+            "superseded_message_ids": [item.id for item in downstream],
+        },
         inverse_patch={"revision_preserved": True, "previous_run_id": previous_run_id},
         status="recorded",
     ))
@@ -946,7 +1084,7 @@ async def enqueue_message(data: QueuedMessageCreate, db: AsyncSession = Depends(
         session = await db.get(Session, data.session_id)
         if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
             raise HTTPException(status_code=404, detail="Session not found")
-        if session.archived_at is not None:
+        if session.archived_at is not None and data.execution_mode != "read_only":
             raise HTTPException(status_code=409, detail="Restore the Session before queueing a message")
         if session.plan_id != data.plan_id:
             raise HTTPException(status_code=409, detail="Session focus does not match queued message plan")
@@ -954,8 +1092,23 @@ async def enqueue_message(data: QueuedMessageCreate, db: AsyncSession = Depends(
         plan = await db.get(Plan, data.plan_id)
         if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID:
             raise HTTPException(status_code=404, detail="Plan not found")
-        if plan.status == "archived":
+        if plan.status == "archived" and data.execution_mode != "read_only":
             raise HTTPException(status_code=409, detail="Restore the plan before queueing a message")
+    try:
+        reply_target = await validate_intervention_reply_scope(
+            db,
+            intervention_id=data.reply_to_intervention_id,
+            owner_id=settings.DEFAULT_OWNER_ID,
+            session_id=data.session_id,
+            plan_id=data.plan_id,
+        )
+        await _ensure_intervention_reply_not_inflight(
+            db,
+            reply_target.id if reply_target is not None else None,
+        )
+        await accept_intervention_reply(db, reply_target)
+    except (ValueError, InterventionStateError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     scope_filter = QueuedMessage.session_id == data.session_id if data.session_id else QueuedMessage.session_id.is_(None)
     max_position = await db.scalar(
         select(func.coalesce(func.max(QueuedMessage.position), -1)).where(
@@ -969,7 +1122,9 @@ async def enqueue_message(data: QueuedMessageCreate, db: AsyncSession = Depends(
         owner_id=settings.DEFAULT_OWNER_ID,
         session_id=data.session_id,
         plan_id=data.plan_id,
+        execution_mode=data.execution_mode,
         objective=data.objective,
+        reply_to_intervention_id=data.reply_to_intervention_id,
         position=int(max_position) + 1,
     )
     db.add(message)

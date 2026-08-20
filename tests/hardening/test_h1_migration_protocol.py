@@ -61,14 +61,19 @@ CANONICAL_TABLES = {
     "competency_edges",
     "competency_graph_mutations",
     "competency_graph_states",
+    "context_snapshot_blocks",
     "context_snapshots",
+    "context_states",
     "evidence_artifact_links",
     "evidence_competency_links",
     "evidence_observations",
     "evidence_projection_states",
+    "inbound_mail_jobs",
+    "interventions",
     "learning_events",
     "learning_resources",
     "memories",
+    "memory_lifecycle_events",
     "notifications",
     "operation_dependencies",
     "operation_evidence_links",
@@ -80,6 +85,9 @@ CANONICAL_TABLES = {
     "plan_proposals",
     "planning_intakes",
     "plans",
+    "proactive_decisions",
+    "provenance_edges",
+    "provenance_nodes",
     "push_subscriptions",
     "queued_messages",
     "quizzes",
@@ -89,6 +97,8 @@ CANONICAL_TABLES = {
     "run_events",
     "run_steer_messages",
     "schema_migrations",
+    "session_compression_states",
+    "session_handoffs",
     "session_plan_links",
     "session_summaries",
     "sessions",
@@ -1607,7 +1617,7 @@ def test_canonical_schema_has_exact_current_table_inventory(
         actual_tables = _table_names(connection)
 
     assert actual_tables == CANONICAL_TABLES
-    assert len(actual_tables) == 48
+    assert len(actual_tables) == 58
 
 
 def test_learning_event_canonical_columns_defaults_and_partial_unique_index(

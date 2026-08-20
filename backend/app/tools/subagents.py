@@ -16,7 +16,9 @@ from app.runtime.events import emit_event
 from app.runtime.tasks import cancel_and_wait_tracked_task, start_tracked_task
 from app.runtime.subagents import (
     READ_ONLY_TOOL_NAMES,
+    SUBAGENT_SYSTEM_PROMPT,
     execute_durable_child,
+    subagent_user_prefix,
     wait_for_child,
 )
 from app.runtime.state import terminate_run
@@ -156,6 +158,8 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
         if (
             not _own_child(ctx, child)
             or child.objective != expected_objective
+            or child.execution_mode != ctx.execution_mode
+            or child.reply_to_intervention_id != ctx.reply_to_intervention_id
             or (
                 checkpoint
                 and checkpoint.get("action_key") != ctx.action_key
@@ -166,12 +170,21 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
         stored_context = str(checkpoint.get("context") or "")
         await coordinator.release_replay_read()
     else:
+        from app.tools.registry import TOOL_MAP
+
+        child_schemas = [
+            TOOL_MAP[name].openai_schema()
+            for name in sorted(allowlist)
+        ]
         snapshot = await ContextAssembler(ctx.db).build(
             ctx.owner_id,
             plan_id=ctx.plan_id,
             session_id=ctx.session_id,
             run_id=ctx.run_id,
             objective=args.objective,
+            prompt_system=SUBAGENT_SYSTEM_PROMPT,
+            prompt_tools=child_schemas,
+            prompt_prefix=subagent_user_prefix(f"{args.role}: {args.objective}"),
         )
         stored_context = snapshot.markdown
         child = AgentRun(
@@ -182,6 +195,8 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
             parent_run_id=ctx.run_id,
             trigger="subagent",
             objective=f"[{args.role}] {args.objective}",
+            execution_mode=ctx.execution_mode,
+            reply_to_intervention_id=ctx.reply_to_intervention_id,
             # Creation records durable intent only.  The shared child
             # executor must claim the queued Run before any model/tool work.
             status="queued",
