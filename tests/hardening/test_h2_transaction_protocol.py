@@ -73,6 +73,7 @@ from app.models import (
 )
 from app.notifications.service import NotificationService
 from app.runtime.agent import AgentRuntime
+from app.runtime.checkpoints import make_checkpoint
 from app.runtime.events import emit_event
 from app.runtime.scheduler import ProactiveScheduler
 from app.services.evidence import append_observation, create_artifact
@@ -127,13 +128,15 @@ ALLOWED_UOW_ALIAS_CALLS = {
             "decide_plan_proposal",
             "edit_user_message",
             "cancel_run",
-            "decide_run_approval",
-            "steer_run",
             "enqueue_message",
             "update_queued_message",
             "delete_queued_message",
             "send_queued_message",
         }
+    },
+    *{
+        ("backend/app/api/agent.py", name, "rollback")
+        for name in {"create_run", "submit_planning_answers", "edit_user_message"}
     },
     *{
         ("backend/app/api/memories.py", name, "commit")
@@ -188,31 +191,37 @@ ALLOWED_UOW_ALIAS_CALLS = {
     *{
         ("backend/app/runtime/agent.py", name, "commit")
         for name in {
-            "_start",
-            "_resume",
+            "_initialize_run",
             "_refresh_stateless_context",
             "_loop",
-            "_apply_pending_steer",
-            "_fail",
-            "_start_next_queued_message",
+            "_after_terminal",
             "_ensure_session",
             "_call_model",
         }
     },
+    ("backend/app/runtime/agent.py", "run", "rollback"),
     ("backend/app/runtime/agent.py", "_fail", "rollback"),
     ("backend/app/runtime/events.py", "emit_event", "commit"),
     ("backend/app/runtime/events.py", "emit_event", "rollback"),
-    ("backend/app/runtime/subagents.py", "cancel_child", "commit"),
+    *{
+        ("backend/app/runtime/state.py", name, method)
+        for name, method in {
+            ("persist_checkpoint", "rollback"),
+            ("persist_checkpoint", "commit"),
+            ("pause_for_approval", "rollback"),
+            ("pause_for_approval", "commit"),
+            ("decide_approval", "commit"),
+            ("record_steer", "commit"),
+        }
+    },
+    ("backend/app/runtime/subagents.py", "execute_durable_child", "rollback"),
+    ("scripts/h3-runtime-recovery-demo.py", "_seed", "commit"),
     # These are protocol coordinators, not ordinary effect handlers: each
     # releases/finishes a short DB phase before or after external work.
     *{
         ("backend/app/tools/planning.py", name, method)
         for name, method in {
             ("persist_children", "commit"),
-            ("persist_checkpoint", "commit"),
-            ("persist_terminal", "commit"),
-            ("cancel_children", "commit"),
-            ("_run_planning_child", "commit"),
         }
     },
     *{
@@ -234,9 +243,7 @@ ALLOWED_UOW_ALIAS_CALLS = {
         for name, method in {
             ("persist_new_child", "commit"),
             ("release_replay_read", "commit"),
-            ("persist_cancellation", "commit"),
-            ("persist_checkpoint", "commit"),
-            ("_run_child_async", "commit"),
+            ("subagent_cancel", "commit"),
         }
     },
     ("scripts/rebuild-evidence.py", "_run_uncoordinated", "commit"),
@@ -1810,6 +1817,27 @@ async def test_database_write_killpoint_is_atomic_across_domain_evidence_and_eve
             status="submitted",
         )
         db.add(submission)
+        await db.flush()
+        run.checkpoint_schema_version = 1
+        run.checkpoint = make_checkpoint(
+            kind="agent",
+            phase="tool_ready",
+            step=0,
+            messages=[],
+            current_tool_call={
+                "id": "atomic-submission-call",
+                "name": "submission_check",
+                "arguments": json.dumps(
+                    {
+                        "submission_id": submission.id,
+                        "score": 91,
+                        "feedback": "accepted by deterministic fixture",
+                        "checks": [{"name": "offline", "passed": True}],
+                    },
+                    sort_keys=True,
+                ),
+            },
+        )
         await db.commit()
         run_id = run.id
         session_id = session.id
@@ -1840,31 +1868,7 @@ async def test_database_write_killpoint_is_atomic_across_domain_evidence_and_eve
             _require_harness(stored_run is not None, "atomic fixture lost its run")
             _require_harness(stored_session is not None, "atomic fixture lost its session")
             try:
-                await runtime._loop(
-                    runtime_db,
-                    stored_run,
-                    [],
-                    start_step=0,
-                    pending_calls=[
-                        {
-                            "id": "atomic-submission-call",
-                            "name": "submission_check",
-                            "arguments": json.dumps(
-                                {
-                                    "submission_id": submission_id,
-                                    "score": 91,
-                                    "feedback": "accepted by deterministic fixture",
-                                    "checks": [{"name": "offline", "passed": True}],
-                                },
-                                sort_keys=True,
-                            ),
-                        }
-                    ],
-                    granted=set(),
-                    session=stored_session,
-                    run_cards=[],
-                    context_snapshot_id=None,
-                )
+                await runtime.run(run_id, resume=True)
             except InjectedProcessCrash:
                 crash_captured = True
                 await runtime_db.rollback()
@@ -2339,11 +2343,8 @@ async def test_session_compression_wait_never_holds_sqlite_writer(
     async def no_child_cancel(*_args, **_kwargs):
         return 0
 
-    async def no_next_message(*_args, **_kwargs):
-        return None
-
     monkeypatch.setattr(runtime, "_call_model", final_model)
-    monkeypatch.setattr(runtime, "_start_next_queued_message", no_next_message)
+    monkeypatch.setattr(agent_runtime_module, "AsyncSessionLocal", sqlite_factory)
     monkeypatch.setattr(agent_runtime_module, "generate_session_title", no_title)
     monkeypatch.setattr(runtime_subagents, "cancel_children_for_parent", no_child_cancel)
     monkeypatch.setattr(agent_runtime_module.settings, "AGENT_RECENT_MESSAGE_LIMIT", 1)
@@ -2360,8 +2361,7 @@ async def test_session_compression_wait_never_holds_sqlite_writer(
             session_id=session.id,
             trigger="user_message",
             objective="compress offline",
-            status="running",
-            started_at=datetime.now(timezone.utc),
+            status="queued",
         )
         compression_db.add(run)
         await compression_db.flush()
@@ -2376,20 +2376,11 @@ async def test_session_compression_wait_never_holds_sqlite_writer(
         await compression_db.commit()
         available, _ = await _probe_external_wait(
             sqlite_factory,
-            runtime._loop(
-                compression_db,
-                run,
-                [],
-                start_step=0,
-                pending_calls=[],
-                granted=set(),
-                session=session,
-                run_cards=[],
-                context_snapshot_id=None,
-            ),
+            runtime.run(run.id),
             compression_entered,
             compression_release.set,
         )
+        await compression_db.refresh(run)
         _require_harness(
             run.status == "completed",
             f"compression fixture did not finalize: {run.status!r}",

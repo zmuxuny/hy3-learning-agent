@@ -4,7 +4,7 @@
 目标版本：2.0.0
 当前基线：1.1.1
 
-> 2026-08-19 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1 与 H2 已完成，累计关闭 24 个缺陷 ID，矩阵剩余 63 个 open ID，下一门禁是 H3；M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成完成声明。
+> 2026-08-20 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1–H3 已完成，累计关闭 34 个缺陷 ID，矩阵剩余 53 个 open ID，下一门禁是 H4；M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成完成声明。
 
 H2 定向回归为 84 passed；当前 H0 跨阶段回归为 49 passed / 84 strict xfailed，普通非 hardening 回归为 139 passed；前端 Node 为 6 passed、生产构建成功、production audit 为 0。完整 pytest 结果及 H1 历史快照见 [`STATUS.md`](STATUS.md)；这些自动化证据不替代真实 SMTP/VAPID、外部安装、连续学习闭环和 7 日留存验证。
 

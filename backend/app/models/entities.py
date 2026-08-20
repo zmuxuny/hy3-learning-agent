@@ -269,10 +269,21 @@ class PlanProposal(Base):
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
+    __table_args__ = (
+        Index(
+            "uq_chat_messages_session_message_key",
+            "session_id",
+            "message_key",
+            unique=True,
+            sqlite_where=text("message_key IS NOT NULL"),
+        ),
+        Index("ix_chat_messages_run_role", "run_id", "role"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
     run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    message_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
     role: Mapped[str] = mapped_column(String(32))
     content: Mapped[str] = mapped_column(Text, default="")
     message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -320,6 +331,93 @@ class ChatMessageRevision(Base):
 
 class AgentRun(Base):
     __tablename__ = "agent_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('queued', 'running', 'waiting_approval', 'retry_wait', "
+            "'completed', 'failed', 'cancelled', 'needs_reconciliation')",
+            name="ck_agent_run_status",
+        ),
+        CheckConstraint(
+            "phase IN ('not_started', 'starting', 'awaiting_model', 'tool_ready', "
+            "'tool_running', 'waiting_approval', 'retry_wait', 'finalizing', "
+            "'terminal', 'reconciling')",
+            name="ck_agent_run_phase",
+        ),
+        CheckConstraint("state_version >= 1", name="ck_agent_run_state_version"),
+        CheckConstraint("attempt >= 0", name="ck_agent_run_attempt"),
+        CheckConstraint("retry_count >= 0", name="ck_agent_run_retry_count"),
+        CheckConstraint(
+            "(checkpoint IS NULL AND checkpoint_schema_version IS NULL) OR "
+            "(checkpoint IS NOT NULL AND checkpoint_schema_version = 1 AND "
+            "CASE WHEN json_valid(checkpoint) THEN coalesce(("
+            "json_extract(checkpoint, '$.schema_version') = checkpoint_schema_version "
+            "AND json_extract(checkpoint, '$.kind') IN ('agent', 'subagent') "
+            "AND json_extract(checkpoint, '$.phase') IN ("
+            "'not_started', 'starting', 'awaiting_model', 'tool_ready', "
+            "'tool_running', 'waiting_approval', 'retry_wait', 'finalizing', "
+            "'terminal', 'reconciling') "
+            "AND json_type(checkpoint, '$.step') = 'integer' "
+            "AND json_extract(checkpoint, '$.step') >= 0 "
+            "AND json_type(checkpoint, '$.messages') = 'array' "
+            "AND json_type(checkpoint, '$.current_tool_call') IN ('null', 'object') "
+            "AND json_type(checkpoint, '$.remaining_tool_calls') = 'array' "
+            "AND json_type(checkpoint, '$.current_invocation_id') IN ('null', 'integer') "
+            "AND (json_type(checkpoint, '$.current_invocation_id') = 'null' "
+            "OR json_extract(checkpoint, '$.current_invocation_id') > 0) "
+            "AND json_type(checkpoint, '$.context_snapshot_id') IN ('null', 'integer') "
+            "AND (json_type(checkpoint, '$.context_snapshot_id') = 'null' "
+            "OR json_extract(checkpoint, '$.context_snapshot_id') > 0) "
+            "AND json_type(checkpoint, '$.cards') = 'array' "
+            "AND json_type(checkpoint, '$.budget_usage') = 'object' "
+            "AND json_type(checkpoint, '$.state_version') = 'integer' "
+            "AND json_extract(checkpoint, '$.state_version') >= 1), 0) "
+            "ELSE 0 END)",
+            name="ck_agent_run_checkpoint_envelope",
+        ),
+        CheckConstraint(
+            "(lease_token IS NULL AND lease_owner IS NULL "
+            "AND lease_acquired_at IS NULL AND lease_expires_at IS NULL) OR "
+            "(lease_token IS NOT NULL AND lease_owner IS NOT NULL "
+            "AND lease_acquired_at IS NOT NULL AND lease_expires_at IS NOT NULL)",
+            name="ck_agent_run_lease_shape",
+        ),
+        CheckConstraint(
+            "status <> 'waiting_approval' OR pending_approval IS NOT NULL",
+            name="ck_agent_run_waiting_approval_projection",
+        ),
+        Index(
+            "uq_agent_runs_active_plan_root",
+            "owner_id",
+            "plan_id",
+            unique=True,
+            sqlite_where=text(
+                "parent_run_id IS NULL AND plan_id IS NOT NULL AND "
+                "status IN ('queued', 'running', 'waiting_approval', 'retry_wait')"
+            ),
+        ),
+        Index(
+            "uq_agent_runs_active_global_session_root",
+            "owner_id",
+            "session_id",
+            unique=True,
+            sqlite_where=text(
+                "parent_run_id IS NULL AND plan_id IS NULL AND session_id IS NOT NULL AND "
+                "status IN ('queued', 'running', 'waiting_approval', 'retry_wait')"
+            ),
+        ),
+        Index(
+            "uq_agent_runs_active_stateless_root",
+            "owner_id",
+            unique=True,
+            sqlite_where=text(
+                "parent_run_id IS NULL AND plan_id IS NULL AND session_id IS NULL AND "
+                "trigger <> 'subagent' AND "
+                "status IN ('queued', 'running', 'waiting_approval', 'retry_wait')"
+            ),
+        ),
+        Index("ix_agent_runs_recovery", "status", "available_at", "lease_expires_at"),
+        Index("ix_agent_runs_parent_status", "parent_run_id", "status"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
@@ -329,6 +427,17 @@ class AgentRun(Base):
     trigger: Mapped[str] = mapped_column(String(40), default="user_message", index=True)
     objective: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="queued", index=True)
+    phase: Mapped[str] = mapped_column(String(32), default="not_started", server_default=text("'not_started'"))
+    state_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    checkpoint_schema_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lease_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    lease_owner: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    lease_acquired_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    attempt: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    available_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    status_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     model: Mapped[str] = mapped_column(String(120), default="hy3")
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     checkpoint: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
@@ -341,6 +450,9 @@ class AgentRun(Base):
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
+    )
 
     events: Mapped[list[RunEvent]] = relationship(
         back_populates="run", cascade="all, delete-orphan", order_by="RunEvent.sequence", lazy="selectin"
@@ -363,11 +475,19 @@ class ToolInvocation(Base):
         ),
         CheckConstraint(
             "status IN ('running', 'pending_approval', 'pending_delivery', "
-            "'committed', 'failed', 'needs_reconciliation', 'retry_pending', 'cancelled')",
+            "'committed', 'failed', 'rejected', 'needs_reconciliation', 'retry_pending', 'cancelled')",
             name="ck_tool_invocation_status",
         ),
         CheckConstraint("attempt >= 1", name="ck_tool_invocation_attempt"),
         CheckConstraint("version >= 1", name="ck_tool_invocation_version"),
+        Index(
+            "uq_tool_invocations_run_tool_call",
+            "run_id",
+            "tool_call_id",
+            unique=True,
+            sqlite_where=text("tool_call_id IS NOT NULL"),
+        ),
+        Index("ix_tool_invocations_run_status", "run_id", "status"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -375,6 +495,7 @@ class ToolInvocation(Base):
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
     idempotency_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
     tool_name: Mapped[str] = mapped_column(String(120))
+    tool_call_id: Mapped[str | None] = mapped_column(String(180), nullable=True)
     args_hash: Mapped[str] = mapped_column(String(64))
     # ``NULL`` is intentionally reserved for pre-H2 rows whose original
     # validated request cannot be reconstructed.  Coordinators must fail
@@ -398,12 +519,24 @@ class ToolInvocation(Base):
 
 class RunEvent(Base):
     __tablename__ = "run_events"
-    __table_args__ = (UniqueConstraint("run_id", "sequence", name="uq_run_event_sequence"),)
+    __table_args__ = (
+        UniqueConstraint("run_id", "sequence", name="uq_run_event_sequence"),
+        CheckConstraint("sequence >= 1", name="ck_run_event_sequence"),
+        Index(
+            "uq_run_events_run_event_key",
+            "run_id",
+            "event_key",
+            unique=True,
+            sqlite_where=text("event_key IS NOT NULL"),
+        ),
+        Index("ix_run_events_run_type", "run_id", "event_type"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
     sequence: Mapped[int] = mapped_column(Integer)
     event_type: Mapped[str] = mapped_column(String(64), index=True)
+    event_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
@@ -415,6 +548,48 @@ class QueuedMessage(Base):
     """Messages the user queued while the Agent is busy; run after the current run."""
 
     __tablename__ = "queued_messages"
+    __table_args__ = (
+        CheckConstraint("position >= 0", name="ck_queued_message_position"),
+        CheckConstraint("version >= 1", name="ck_queued_message_version"),
+        Index(
+            "uq_queued_messages_source_steer",
+            "source_steer_id",
+            unique=True,
+            sqlite_where=text("source_steer_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_queued_messages_session_position",
+            "owner_id",
+            "session_id",
+            "position",
+            unique=True,
+            sqlite_where=text("session_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_queued_messages_stateless_position",
+            "owner_id",
+            "position",
+            unique=True,
+            sqlite_where=text("session_id IS NULL"),
+        ),
+        Index(
+            "ix_queued_messages_session_dequeue",
+            "owner_id",
+            "session_id",
+            "position",
+            "created_at",
+            "id",
+            sqlite_where=text("session_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_queued_messages_stateless_dequeue",
+            "owner_id",
+            "position",
+            "created_at",
+            "id",
+            sqlite_where=text("session_id IS NULL"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
@@ -426,7 +601,14 @@ class QueuedMessage(Base):
     objective: Mapped[str] = mapped_column(Text)
     user_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     message_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    source_steer_id: Mapped[str | None] = mapped_column(
+        ForeignKey("run_steer_messages.id", ondelete="SET NULL"), nullable=True
+    )
+    source_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="SET NULL"), nullable=True
+    )
     position: Mapped[int] = mapped_column(Integer, default=0)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
@@ -437,12 +619,71 @@ class RunSteerMessage(Base):
     """Mid-turn steering: a user message injected into a running Run without stopping it."""
 
     __tablename__ = "run_steer_messages"
+    __table_args__ = (
+        CheckConstraint(
+            "disposition IN ('pending', 'applied', 'queued')",
+            name="ck_run_steer_disposition",
+        ),
+        CheckConstraint(
+            "(disposition = 'pending' AND applied_at IS NULL AND disposed_at IS NULL) OR "
+            "(disposition = 'applied' AND applied_at IS NOT NULL AND disposed_at IS NOT NULL) OR "
+            "(disposition = 'queued' AND applied_at IS NULL AND disposed_at IS NOT NULL)",
+            name="ck_run_steer_disposition_times",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
     content: Mapped[str] = mapped_column(Text)
+    disposition: Mapped[str] = mapped_column(String(24), default="pending", server_default=text("'pending'"))
     applied_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    disposed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+
+
+class RunApproval(Base):
+    """Durable user decision for one blocking tool call.
+
+    ``AgentRun.pending_approval`` remains the current request projection used
+    by API clients.  This table is the immutable decision/audit identity and
+    supports more than one approval during a single Run.
+    """
+
+    __tablename__ = "run_approvals"
+    __table_args__ = (
+        UniqueConstraint("run_id", "tool_call_id", name="uq_run_approval_tool_call"),
+        CheckConstraint(
+            "decision IN ('pending', 'approve', 'reject', 'answer')",
+            name="ck_run_approval_decision",
+        ),
+        CheckConstraint(
+            "(decision = 'pending' AND decided_at IS NULL) OR "
+            "(decision <> 'pending' AND decided_at IS NOT NULL)",
+            name="ck_run_approval_decision_time",
+        ),
+        CheckConstraint(
+            "decision <> 'answer' OR (answer IS NOT NULL AND length(answer) > 0)",
+            name="ck_run_approval_answer",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
+    invocation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tool_invocations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    tool_call_id: Mapped[str] = mapped_column(String(180))
+    tool_name: Mapped[str] = mapped_column(String(120))
+    tool_call: Mapped[dict] = mapped_column(JSON)
+    remaining_tool_calls: Mapped[list] = mapped_column(JSON, default=list)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    decision: Mapped[str] = mapped_column(String(16), default="pending", server_default=text("'pending'"))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
 
 

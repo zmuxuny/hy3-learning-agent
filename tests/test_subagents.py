@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 import app.tools.subagents as subagent_tools
 from app.runtime.agent import tool_timeout_seconds
+from app.runtime.checkpoints import normalize_checkpoint
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, Operation, Plan, RunEvent
 from app.services import plans as plan_service
@@ -159,14 +160,22 @@ async def test_subagent_allowlist_never_exposes_write_tools(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_subagent_cancel_stops_child(monkeypatch):
+    model_started = asyncio.Event()
+    cleanup_started = asyncio.Event()
+    release_cleanup = asyncio.Event()
+
     class SlowClient:
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=SlowCompletions())
 
     class SlowCompletions:
         async def create(self, **_kwargs):
-            await asyncio.sleep(0.5)
-            return final_message("太晚的结论。")
+            model_started.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cleanup_started.set()
+                await release_cleanup.wait()
 
     monkeypatch.setattr(subagent_tools, "AsyncOpenAI", SlowClient)
     async with AsyncSessionLocal() as db:
@@ -181,7 +190,17 @@ async def test_subagent_cancel_stops_child(monkeypatch):
             ctx,
         )
         child_id = spawned["data"]["run_id"]
-        cancelled = await execute_tool("subagent_cancel", json.dumps({"run_id": child_id}), ctx)
+        await asyncio.wait_for(model_started.wait(), timeout=3)
+        cancel_task = asyncio.create_task(execute_tool(
+            "subagent_cancel",
+            json.dumps({"run_id": child_id}),
+            ctx,
+        ))
+        await asyncio.wait_for(cleanup_started.wait(), timeout=3)
+        await asyncio.sleep(0)
+        assert cancel_task.done() is False
+        release_cleanup.set()
+        cancelled = await asyncio.wait_for(cancel_task, timeout=3)
         assert cancelled["ok"] is True
         assert cancelled["data"]["status"] == "cancelled"
 
@@ -197,6 +216,46 @@ async def test_subagent_cancel_stops_child(monkeypatch):
         )).scalars())
         completed = [event for event in parent_events if event.event_type == "subagent.completed"]
         assert completed and completed[-1].payload["status"] == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_subagent_cancel_terminalizes_needs_reconciliation_child():
+    async with AsyncSessionLocal() as db:
+        parent = AgentRun(
+            owner_id="local",
+            trigger="user_message",
+            objective="cancel fenced child",
+            status="running",
+        )
+        db.add(parent)
+        await db.flush()
+        child = AgentRun(
+            owner_id="local",
+            parent_run_id=parent.id,
+            trigger="subagent",
+            objective="fenced child",
+            status="needs_reconciliation",
+            status_reason="missing_running_checkpoint",
+        )
+        db.add(child)
+        await db.commit()
+        ctx = ToolContext(
+            db=db,
+            owner_id="local",
+            run_id=parent.id,
+            trigger="user_message",
+        )
+
+        cancelled = await execute_tool(
+            "subagent_cancel",
+            json.dumps({"run_id": child.id}),
+            ctx,
+        )
+        await db.refresh(child)
+
+    assert cancelled["ok"] is True
+    assert cancelled["data"]["status"] == "cancelled"
+    assert child.status == "cancelled"
 
 
 @pytest.mark.asyncio
@@ -257,7 +316,8 @@ async def test_checkpointed_subagent_resumes_with_its_own_runtime(monkeypatch):
             trigger="subagent",
             objective="[恢复调查] 继续读取资料",
             status="queued",
-            checkpoint={
+            checkpoint_schema_version=1,
+            checkpoint=normalize_checkpoint({
                 "kind": "subagent",
                 "role": "恢复调查",
                 "objective": "继续读取资料",
@@ -267,7 +327,7 @@ async def test_checkpointed_subagent_resumes_with_its_own_runtime(monkeypatch):
                 "step": 0,
                 "messages": [],
                 "pending_tool_calls": [],
-            },
+            }, kind="subagent"),
         )
         db.add(child)
         await db.commit()

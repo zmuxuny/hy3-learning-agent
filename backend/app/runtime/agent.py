@@ -9,13 +9,39 @@ from sqlalchemy import select
 from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.core.config import settings
-from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
+from app.core.time import canonical_utc, utc_now
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow, flush as flush_uow, rollback as rollback_uow
-from app.models import AgentRun, ChatMessage, PlanProposal, RunSteerMessage, Session
+from app.models import AgentRun, ChatMessage, PlanProposal, Session
+from app.runtime.budget import (
+    budget_reason as shared_budget_reason,
+    default_budget,
+    normalize_budget,
+    record_model_usage,
+    refresh_elapsed,
+    reserve_model_call,
+    reserve_tool_call,
+)
+from app.runtime.checkpoints import make_checkpoint, normalize_checkpoint
 from app.runtime.events import emit_event, publish_stream_event
 from app.runtime.prompt import SYSTEM_PROMPT
+from app.runtime.retry import is_transient_model_error
 from app.runtime.session_titles import generate_session_title, initial_session_title
+from app.runtime.state import (
+    RunLease,
+    RunLeaseLostError,
+    RunStateError,
+    claim_run,
+    consume_pending_steers,
+    current_approval,
+    finalize_run,
+    maintain_run_lease,
+    pause_for_approval,
+    persist_checkpoint,
+    prepare_finalization,
+    schedule_retry,
+    terminate_run,
+)
 from app.runtime.tasks import start_tracked_task
 
 
@@ -188,166 +214,223 @@ class AgentRuntime:
     def __init__(self):
         self.client: AsyncOpenAI | None = None
 
-    async def run(self, run_id: str, resume: bool = False, approval_decision: str | None = None) -> None:
-        async with AsyncSessionLocal() as db:
-            run = await db.get(AgentRun, run_id)
-            if not run:
-                return
-            if resume:
-                await self._resume(db, run, approval_decision)
-            else:
-                await self._start(db, run)
+    async def run(
+        self,
+        run_id: str,
+        resume: bool = False,
+        approval_decision: str | None = None,
+    ) -> None:
+        """Execute only after winning the durable Run lease.
 
-    async def _start(self, db, run: AgentRun) -> None:
-        run.status = "running"
-        run.started_at = utc_now()
+        ``resume`` and ``approval_decision`` remain accepted for callers from
+        older releases, but neither carries state.  Recovery mode and approval
+        decisions are derived exclusively from committed database facts.
+        """
+
+        del resume, approval_decision
+        lease = await claim_run(AsyncSessionLocal, run_id)
+        if lease is None:
+            return
+        async with maintain_run_lease(AsyncSessionLocal, lease):
+            async with AsyncSessionLocal() as db:
+                run = await db.get(AgentRun, run_id)
+                if run is None:  # pragma: no cover - the claimed row cannot vanish
+                    return
+                try:
+                    if not settings.OPENAI_API_KEY:
+                        raise RuntimeError("OPENAI_API_KEY is not configured")
+                    if self.client is None:
+                        self.client = AsyncOpenAI(
+                            api_key=settings.OPENAI_API_KEY,
+                            base_url=settings.OPENAI_API_BASE,
+                        )
+                    checkpoint = normalize_checkpoint(
+                        lease.checkpoint,
+                        kind="subagent" if run.trigger == "subagent" else "agent",
+                    )
+                    if checkpoint is None:
+                        checkpoint, session = await self._initialize_run(db, run, lease)
+                        event_type = "run.started"
+                        summary = "Agent run started"
+                    else:
+                        session = await db.get(Session, run.session_id) if run.session_id else None
+                        checkpoint = await self._restore_approval(db, run, lease, checkpoint)
+                        if checkpoint.get("phase") == "finalizing":
+                            completed = await finalize_run(AsyncSessionLocal, lease)
+                            await self._after_terminal(completed, session)
+                            return
+                        if (
+                            run.session_id is None
+                            and run.trigger in {
+                                "heartbeat",
+                                "manual_heartbeat",
+                                "task_event",
+                                "review_due",
+                            }
+                        ):
+                            messages, snapshot_id = await self._refresh_stateless_context(
+                                db,
+                                run,
+                                list(checkpoint.get("messages") or []),
+                            )
+                            checkpoint["messages"] = messages
+                            checkpoint["context_snapshot_id"] = snapshot_id
+                            stored = await persist_checkpoint(
+                                db,
+                                lease,
+                                checkpoint,
+                                phase=str(checkpoint["phase"]),
+                            )
+                            checkpoint = normalize_checkpoint(stored.checkpoint) or checkpoint
+                        event_type = "run.resumed"
+                        summary = "从耐久检查点恢复运行"
+                    await emit_event(
+                        db,
+                        run.id,
+                        event_type,
+                        summary,
+                        {"trigger": run.trigger, "attempt": run.attempt},
+                        event_key=f"run:{run.id}:{event_type}",
+                    )
+                    await self._loop(db, run, lease, checkpoint, session=session)
+                except RunLeaseLostError:
+                    # A cancellation or a newer worker won the durable fence.  Its
+                    # committed state is authoritative; this executor stops.
+                    await rollback_uow(db)
+                except Exception as exc:
+                    await self._fail(db, run, lease, exc)
+
+    async def _initialize_run(
+        self,
+        db,
+        run: AgentRun,
+        lease: RunLease,
+    ) -> tuple[dict, Session | None]:
+        session = await self._ensure_session(db, run)
+        snapshot = await ContextAssembler(db).build(
+            run.owner_id,
+            plan_id=run.plan_id,
+            session_id=session.id if session else None,
+            run_id=run.id,
+            objective=run.objective,
+        )
         await commit_uow(db)
-        await emit_event(db, run.id, "run.started", "Agent run started", {"trigger": run.trigger})
-
-        try:
-            if not settings.OPENAI_API_KEY:
-                raise RuntimeError("OPENAI_API_KEY is not configured")
-            if self.client is None:
-                self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
-
-            session = await self._ensure_session(db, run)
-            snapshot = await ContextAssembler(db).build(
-                run.owner_id,
-                plan_id=run.plan_id,
-                session_id=session.id if session else None,
-                run_id=run.id,
-                objective=run.objective,
-            )
-            await commit_uow(db)
-            memory_ids = [
-                item["id"]
-                for item in snapshot.source_manifest
-                if item.get("type") == "memory"
-            ]
-            memory_matches = [
-                item for item in snapshot.source_manifest if item.get("type") == "memory"
-            ]
-            await emit_event(
-                db,
-                run.id,
-                "context.built",
-                "已组装本次运行所需的学习上下文",
-                {
-                    "snapshot_id": snapshot.id,
-                    "estimated_tokens": snapshot.estimated_tokens,
-                    "memory_ids": memory_ids,
-                    "memory_matches": memory_matches,
-                },
-            )
-
-            if session and run.trigger in {"user_message", "email_reply"}:
-                existing_user_message = (await db.execute(
-                    select(ChatMessage.id).where(
+        memory_ids = [
+            item["id"] for item in snapshot.source_manifest if item.get("type") == "memory"
+        ]
+        await emit_event(
+            db,
+            run.id,
+            "context.built",
+            "已组装本次运行所需的学习上下文",
+            {
+                "snapshot_id": snapshot.id,
+                "estimated_tokens": snapshot.estimated_tokens,
+                "memory_ids": memory_ids,
+                "memory_matches": [
+                    item for item in snapshot.source_manifest if item.get("type") == "memory"
+                ],
+            },
+            event_key=f"run:{run.id}:context:{snapshot.id}",
+        )
+        if session and run.trigger in {"user_message", "email_reply"}:
+            existing = (await db.execute(
+                select(ChatMessage).where(
+                    ChatMessage.session_id == session.id,
+                    ChatMessage.message_key == f"run:{run.id}:input",
+                )
+            )).scalars().one_or_none()
+            if existing is None:
+                fallback = (await db.execute(
+                    select(ChatMessage).where(
                         ChatMessage.session_id == session.id,
                         ChatMessage.run_id == run.id,
                         ChatMessage.role == "user",
-                    ).limit(1)
-                )).scalar_one_or_none()
-                if existing_user_message is None:
-                    db.add(ChatMessage(session_id=session.id, run_id=run.id, role="user", content=run.objective))
-                session.updated_at = utc_now()
-                await commit_uow(db)
+                    ).order_by(ChatMessage.id).limit(1)
+                )).scalars().one_or_none()
+                if fallback is None:
+                    db.add(ChatMessage(
+                        session_id=session.id,
+                        run_id=run.id,
+                        message_key=f"run:{run.id}:input",
+                        role="user",
+                        content=run.objective,
+                    ))
+                else:
+                    fallback.message_key = f"run:{run.id}:input"
+            session.updated_at = utc_now()
+            await commit_uow(db)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": f"Trigger: {run.trigger}\nObjective: {run.objective}\n\n{snapshot.markdown}",
+            },
+        ]
+        checkpoint = make_checkpoint(
+            kind="agent",
+            phase="awaiting_model",
+            step=0,
+            messages=messages,
+            context_snapshot_id=snapshot.id,
+            budget_usage=self._budget(run),
+            state_version=lease.version,
+        )
+        run = await persist_checkpoint(
+            db,
+            lease,
+            checkpoint,
+            phase="awaiting_model",
+        )
+        return normalize_checkpoint(run.checkpoint) or checkpoint, session
 
-            messages: list[dict] = [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"Trigger: {run.trigger}\nObjective: {run.objective}\n\n{snapshot.markdown}",
-                },
-            ]
-            messages = await self._apply_pending_steer(db, run, messages)
-            await self._loop(
-                db,
-                run,
-                messages,
-                start_step=0,
-                pending_calls=[],
-                granted=set(),
-                session=session,
-                run_cards=[],
-                context_snapshot_id=snapshot.id,
-            )
-        except Exception as exc:
-            await self._fail(db, run.id, exc)
-
-    async def _resume(self, db, run: AgentRun, approval_decision: str | None) -> None:
-        approval = run.pending_approval
-        checkpoint = run.checkpoint or {}
-        messages: list[dict] = list(checkpoint.get("messages") or [])
-        start_step = int(checkpoint.get("step") or 0)
-        pending_calls: list[dict] = list(checkpoint.get("pending_tool_calls") or [])
-        run_cards: list[dict] = list(checkpoint.get("cards") or [])
-        context_snapshot_id = checkpoint.get("context_snapshot_id")
-        granted: set[str] = set()
-
-        if approval is not None:
-            run.pending_approval = None
-            decision = approval_decision or "approve"
-            if decision == "approve":
-                pending_calls = [approval["tool_call"]] + list(approval.get("remaining_tool_calls") or [])
-                granted.add(approval["tool_call"]["id"])
-            else:
-                tool_result = {
-                    "ok": False,
-                    "error": "用户拒绝了该操作",
-                    "approval": "rejected",
-                    "retryable": True,
-                }
-                if approval.get("answer"):
-                    tool_result = {
-                        **tool_result,
-                        "approval": "answered",
-                        "answer": approval["answer"],
-                    }
-                if approval.get("note"):
-                    tool_result["note"] = approval["note"]
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": approval["tool_call"]["id"],
-                    "content": json.dumps(tool_result, ensure_ascii=False),
-                })
-                pending_calls = list(approval.get("remaining_tool_calls") or [])
-
-        run.status = "running"
-        run.checkpoint = None
-        await commit_uow(db)
-        await emit_event(db, run.id, "run.resumed", "从检查点恢复运行", {"approval_decision": approval_decision})
-        if approval is not None:
-            await emit_event(
-                db,
-                run.id,
-                "approval.resolved",
-                "用户已批准该操作" if decision == "approve" else "用户拒绝了该操作",
-                {"decision": decision, "tool_name": approval["tool_call"]["name"]},
-            )
-
-        try:
-            if not settings.OPENAI_API_KEY:
-                raise RuntimeError("OPENAI_API_KEY is not configured")
-            if self.client is None:
-                self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
-            session = await db.get(Session, run.session_id) if run.session_id else None
-            if run.session_id is None and run.trigger in {"heartbeat", "manual_heartbeat", "task_event", "review_due"}:
-                messages, context_snapshot_id = await self._refresh_stateless_context(db, run, messages)
-            messages = await self._apply_pending_steer(db, run, messages)
-            await self._loop(
-                db,
-                run,
-                messages,
-                start_step=start_step,
-                pending_calls=pending_calls,
-                granted=granted,
-                session=session,
-                run_cards=run_cards,
-                context_snapshot_id=context_snapshot_id,
-            )
-        except Exception as exc:
-            await self._fail(db, run.id, exc)
+    async def _restore_approval(
+        self,
+        db,
+        run: AgentRun,
+        lease: RunLease,
+        checkpoint: dict,
+    ) -> dict:
+        if not run.pending_approval:
+            return checkpoint
+        approval = await current_approval(db, run)
+        if approval is None or approval.decision == "pending":
+            raise RunStateError("approval has no committed decision")
+        messages = list(checkpoint.get("messages") or [])
+        current = dict(approval.tool_call)
+        remaining = list(approval.remaining_tool_calls or [])
+        granted: list[str] = list(checkpoint.get("granted_tool_call_ids") or [])
+        if approval.decision == "approve":
+            if approval.tool_call_id not in granted:
+                granted.append(approval.tool_call_id)
+            checkpoint["current_tool_call"] = current
+        else:
+            result = {
+                "ok": False,
+                "error": "用户拒绝了该操作",
+                "approval": "answered" if approval.decision == "answer" else "rejected",
+                "retryable": False,
+                "note": approval.note,
+                "answer": approval.answer,
+            }
+            messages.append({
+                "role": "tool",
+                "tool_call_id": approval.tool_call_id,
+                "content": json.dumps(result, ensure_ascii=False),
+            })
+            checkpoint["current_tool_call"] = None
+        checkpoint["messages"] = messages
+        checkpoint["remaining_tool_calls"] = remaining
+        checkpoint["granted_tool_call_ids"] = granted
+        checkpoint["phase"] = "tool_ready" if checkpoint.get("current_tool_call") or remaining else "awaiting_model"
+        stored = await persist_checkpoint(
+            db,
+            lease,
+            checkpoint,
+            phase=checkpoint["phase"],
+            clear_approval_id=approval.id,
+        )
+        return normalize_checkpoint(stored.checkpoint) or checkpoint
 
     async def _refresh_stateless_context(self, db, run: AgentRun, messages: list[dict]) -> tuple[list[dict], int]:
         """Rebuild the context snapshot for stateless background runs resumed after restart.
@@ -400,296 +483,315 @@ class AgentRuntime:
         self,
         db,
         run: AgentRun,
-        messages: list[dict],
+        lease: RunLease,
+        checkpoint: dict,
         *,
-        start_step: int,
-        pending_calls: list[dict],
-        granted: set[str],
         session: Session | None,
-        run_cards: list[dict],
-        context_snapshot_id: int | None,
     ) -> None:
         from app.tools import ToolContext, execute_tool
 
-        final_text = ""
         failure_guard = ToolFailureGuard(settings.AGENT_TOOL_FAILURE_LIMIT)
-        step = start_step
-        calls = list(pending_calls)
-        try:
-            while step < settings.AGENT_MAX_STEPS:
-                await db.refresh(run)
-                if run.cancel_requested:
-                    run.status = "cancelled"
-                    run.checkpoint = None
-                    await commit_uow(db)
-                    await emit_event(db, run.id, "run.cancelled", "Agent run cancelled")
-                    return
+        while int(checkpoint.get("step") or 0) < settings.AGENT_MAX_STEPS:
+            fresh = await db.get(AgentRun, run.id, populate_existing=True)
+            if fresh is None or fresh.status != "running" or fresh.cancel_requested:
+                await commit_uow(db)
+                return
+            run = fresh
+            messages = list(checkpoint.get("messages") or [])
+            step = int(checkpoint.get("step") or 0)
+            current = checkpoint.get("current_tool_call")
+            remaining = list(checkpoint.get("remaining_tool_calls") or [])
+            cards = list(checkpoint.get("cards") or [])
+            budget = normalize_budget(checkpoint.get("budget_usage"))
+            reason = self._budget_reason(run, budget)
+            if reason:
+                budget["stopped_reason"] = reason
+                checkpoint["budget_usage"] = budget
+                final_text = "运行预算已用尽，已安全停止。"
+                await emit_event(
+                    db,
+                    run.id,
+                    "run.budget_exceeded",
+                    f"预算上限已触发：{reason}",
+                    {"reason": reason, "budget_usage": budget},
+                    event_key=f"run:{run.id}:budget:{reason}",
+                )
+                break
 
-                messages = await self._apply_pending_steer(db, run, messages)
+            if current is None and remaining:
+                current = remaining.pop(0)
+                checkpoint["current_tool_call"] = current
+                checkpoint["remaining_tool_calls"] = remaining
 
-                if not calls:
-                    budget = self._budget(run)
-                    reason = self._budget_reason(run, budget)
-                    if reason:
-                        budget["stopped_reason"] = reason
-                        run.budget_usage = budget
-                        final_text = "运行预算已用尽，已安全停止。"
-                        await commit_uow(db)
-                        await emit_event(
-                            db,
-                            run.id,
-                            "run.budget_exceeded",
-                            f"预算上限已触发：{reason}",
-                            {"reason": reason, "budget_usage": budget},
-                        )
-                        break
-                    message, usage = await self._call_model(db, run, messages, failure_guard, step)
-                    assistant_payload: dict = {"role": "assistant", "content": message.content or ""}
-                    reasoning_content = getattr(message, "reasoning_content", None)
-                    if reasoning_content:
-                        assistant_payload["reasoning_content"] = reasoning_content
-                    if message.tool_calls:
-                        assistant_payload["tool_calls"] = [call.model_dump() for call in message.tool_calls]
-                        calls = [_call_to_dict(call) for call in message.tool_calls]
-                    messages.append(assistant_payload)
-
+            if current is None:
+                checkpoint = await consume_pending_steers(
+                    AsyncSessionLocal,
+                    lease,
+                    checkpoint=checkpoint,
+                )
+                checkpoint["phase"] = "awaiting_model"
+                # Reserve the model call before the external wait.  A process
+                # killed after the provider accepts the request must not make
+                # the persisted budget look as if no call happened.
+                reserve_model_call(budget)
+                checkpoint["budget_usage"] = budget
+                stored = await persist_checkpoint(
+                    db,
+                    lease,
+                    checkpoint,
+                    phase="awaiting_model",
+                )
+                run = stored
+                checkpoint = normalize_checkpoint(stored.checkpoint) or checkpoint
+                message, usage = await self._call_model(
+                    db,
+                    run,
+                    list(checkpoint.get("messages") or []),
+                    failure_guard,
+                    step,
+                )
+                assistant_payload: dict = {
+                    "role": "assistant",
+                    "content": message.content or "",
+                }
+                reasoning_content = getattr(message, "reasoning_content", None)
+                if reasoning_content:
+                    assistant_payload["reasoning_content"] = reasoning_content
+                calls: list[dict] = []
+                if message.tool_calls:
+                    assistant_payload["tool_calls"] = [call.model_dump() for call in message.tool_calls]
+                    calls = [_call_to_dict(call) for call in message.tool_calls]
+                messages = list(checkpoint.get("messages") or [])
+                messages.append(assistant_payload)
+                record_model_usage(budget, usage)
+                checkpoint.update({
+                    "messages": messages,
+                    "current_tool_call": calls[0] if calls else None,
+                    "remaining_tool_calls": calls[1:] if calls else [],
+                    "budget_usage": budget,
+                    "phase": "tool_ready" if calls else "finalizing",
+                })
+                if calls:
                     if message.content:
                         await emit_event(
                             db,
                             run.id,
-                            "assistant.status" if message.tool_calls else "assistant.message",
+                            "assistant.status",
                             message.content,
                             {"step": step + 1},
+                            event_key=f"run:{run.id}:step:{step}:assistant-status",
                         )
-
-                    budget = self._budget(run)
-                    budget["model_calls"] += 1
-                    if usage is not None:
-                        prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
-                        completion_tokens = getattr(usage, "completion_tokens", 0) or 0
-                        budget["prompt_tokens"] += prompt_tokens
-                        budget["completion_tokens"] += completion_tokens
-                        budget["estimated_cost_usd"] += (
-                            prompt_tokens / 1_000_000 * settings.MODEL_INPUT_PRICE_PER_1M
-                            + completion_tokens / 1_000_000 * settings.MODEL_OUTPUT_PRICE_PER_1M
-                        )
-                    run.budget_usage = budget
-
-                    if not message.tool_calls:
-                        final_text = message.content or ""
-                        break
-
-                call = calls.pop(0)
-                budget = self._budget(run)
-                reason = self._budget_reason(run, budget)
-                if reason:
-                    budget["stopped_reason"] = reason
-                    run.budget_usage = budget
-                    final_text = "运行预算已用尽，已安全停止。"
-                    await commit_uow(db)
-                    await emit_event(
+                    stored = await persist_checkpoint(
                         db,
-                        run.id,
-                        "run.budget_exceeded",
-                        f"预算上限已触发：{reason}",
-                        {"reason": reason, "budget_usage": budget},
+                        lease,
+                        checkpoint,
+                        phase="tool_ready",
                     )
-                    break
-                budget["tool_calls"] += 1
-                if call["name"] in {"web_search", "web_open"}:
-                    budget["network_requests"] += 1
-                run.budget_usage = budget
-                run.checkpoint = {
-                    "step": step,
-                    "messages": messages,
-                    "pending_tool_calls": calls,
-                    "cards": run_cards,
-                    "context_snapshot_id": context_snapshot_id,
-                }
-                await commit_uow(db)
+                    run = stored
+                    checkpoint = normalize_checkpoint(stored.checkpoint) or checkpoint
+                    continue
+                final_text = message.content or ""
+                preparation = await prepare_finalization(
+                    AsyncSessionLocal,
+                    lease,
+                    checkpoint=checkpoint,
+                    final_text=final_text,
+                )
+                checkpoint = preparation.checkpoint
+                if preparation.action == "continue":
+                    continue
+                break
 
+            call = dict(current)
+            reserve_tool_call(budget, call["name"])
+            checkpoint.update({
+                "phase": "tool_running",
+                "current_tool_call": call,
+                "remaining_tool_calls": remaining,
+                "budget_usage": budget,
+            })
+            stored = await persist_checkpoint(
+                db,
+                lease,
+                checkpoint,
+                phase="tool_running",
+            )
+            run = stored
+            checkpoint = normalize_checkpoint(stored.checkpoint) or checkpoint
+            await emit_event(
+                db,
+                run.id,
+                "tool.started",
+                f"调用工具 {call['name']}",
+                {
+                    "tool_call_id": call["id"],
+                    "name": call["name"],
+                    "arguments": _event_tool_arguments(call["arguments"]),
+                },
+                event_key=f"tool:{call['id']}:started",
+            )
+            result = failure_guard.before_call(call["name"])
+            if result is None:
+                async with AsyncSessionLocal() as tool_db:
+                    result = await asyncio.wait_for(
+                        execute_tool(
+                            call["name"],
+                            call["arguments"],
+                            ToolContext(
+                                db=tool_db,
+                                owner_id=run.owner_id,
+                                run_id=run.id,
+                                trigger=run.trigger,
+                                plan_id=run.plan_id,
+                                session_id=session.id if session else None,
+                                approval_granted=call["id"] in set(
+                                    checkpoint.get("granted_tool_call_ids") or []
+                                ),
+                                tool_call_id=call["id"],
+                            ),
+                        ),
+                        timeout=tool_timeout_seconds(call),
+                    )
+            result = failure_guard.observe(call["name"], result)
+            data = result.get("data") or {}
+            if data.get("approval_required") and data.get("blocking"):
+                await pause_for_approval(
+                    db,
+                    lease,
+                    checkpoint=checkpoint,
+                    tool_call=call,
+                    remaining_tool_calls=remaining,
+                    reason=data.get("reason", "需要用户确认"),
+                )
+                return
+            if result.get("completion_event_persisted") or data.get("completion_event_persisted"):
+                committed_event = result.get("completion_event")
+                if isinstance(committed_event, dict):
+                    publish_stream_event(run.id, committed_event)
+            else:
                 await emit_event(
                     db,
                     run.id,
-                    "tool.started",
-                    f"调用工具 {call['name']}",
+                    "tool.completed",
+                    f"工具 {call['name']} {'完成' if result.get('ok') else '失败'}",
                     {
                         "tool_call_id": call["id"],
                         "name": call["name"],
                         "arguments": _event_tool_arguments(call["arguments"]),
+                        "result": result,
                     },
+                    event_key=f"tool:{call['id']}:completed",
                 )
-                result = failure_guard.before_call(call["name"])
-                if result is None:
-                    async with AsyncSessionLocal() as tool_db:
-                        tool_timeout = tool_timeout_seconds(call)
-                        result = await asyncio.wait_for(
-                            execute_tool(
-                                call["name"],
-                                call["arguments"],
-                                ToolContext(
-                                    db=tool_db,
-                                    owner_id=run.owner_id,
-                                    run_id=run.id,
-                                    trigger=run.trigger,
-                                    plan_id=run.plan_id,
-                                    session_id=session.id if session else None,
-                                    approval_granted=call["id"] in granted,
-                                    tool_call_id=call["id"],
-                                ),
-                            ),
-                            timeout=tool_timeout,
-                        )
-                result = failure_guard.observe(call["name"], result)
-                data = result.get("data") or {}
-                completion_event_persisted = bool(
-                    result.get("completion_event_persisted")
-                    or data.get("completion_event_persisted")
-                )
-                if completion_event_persisted:
-                    committed_event = result.get("completion_event")
-                    if isinstance(committed_event, dict):
-                        # The registry inserted this exact event in the domain
-                        # UoW. Publish it to local SSE subscribers without a
-                        # second database append.
-                        publish_stream_event(run.id, committed_event)
-                else:
-                    await emit_event(
-                        db,
-                        run.id,
-                        "tool.completed",
-                        f"工具 {call['name']} {'完成' if result['ok'] else '失败'}",
-                        {
-                            "tool_call_id": call["id"],
-                            "name": call["name"],
-                            "arguments": _event_tool_arguments(call["arguments"]),
-                            "result": result,
-                        },
-                    )
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": call["id"],
-                        "content": _compact_tool_message(result),
-                    }
-                )
-                if result.get("ok") and call["name"] == "planning_intake_update" and data.get("open_questions"):
-                    _upsert_card(run_cards, {
-                        "kind": "planning_questions",
+            messages = list(checkpoint.get("messages") or [])
+            messages.append({
+                "role": "tool",
+                "tool_call_id": call["id"],
+                "content": _compact_tool_message(result),
+            })
+            if result.get("ok") and call["name"] == "planning_intake_update" and data.get("open_questions"):
+                _upsert_card(cards, {
+                    "kind": "planning_questions",
+                    "source_run_id": run.id,
+                    "created_at": canonical_utc(utc_now()),
+                    "intake": {**data, "source_run_id": run.id},
+                })
+            if result.get("ok") and call["name"] == "plan_proposal_create" and data.get("proposal_id"):
+                proposal_snapshot = await _proposal_snapshot(str(data["proposal_id"]))
+                if proposal_snapshot:
+                    _upsert_card(cards, {
+                        "kind": "plan_proposal",
                         "source_run_id": run.id,
                         "created_at": canonical_utc(utc_now()),
-                        "intake": {**data, "source_run_id": run.id},
+                        "proposal": proposal_snapshot,
                     })
-                if result.get("ok") and call["name"] == "plan_proposal_create" and data.get("proposal_id"):
-                    proposal_snapshot = await _proposal_snapshot(str(data["proposal_id"]))
-                    if proposal_snapshot:
-                        _upsert_card(run_cards, {
-                            "kind": "plan_proposal",
-                            "source_run_id": run.id,
-                            "created_at": canonical_utc(utc_now()),
-                            "proposal": proposal_snapshot,
-                        })
-                if data.get("approval_required") and data.get("blocking"):
-                    run.pending_approval = {
-                        "tool_call": call,
-                        "remaining_tool_calls": calls,
-                        "reason": data.get("reason", "需要用户确认"),
-                        "step": step,
-                    }
-                    run.status = "waiting_approval"
-                    await commit_uow(db)
-                    await emit_event(
-                        db,
-                        run.id,
-                        "approval.required",
-                        data.get("reason", "需要用户确认"),
-                        {**data, "tool_name": call["name"], "blocking": True},
-                    )
-                    return
-                if data.get("approval_required"):
-                    await emit_event(db, run.id, "approval.required", data.get("reason", "需要用户确认"), data)
-                if data.get("operation_id"):
-                    await emit_event(
-                        db,
-                        run.id,
-                        "operation.committed",
-                        f"{call['name']} 的修改已记录，可在操作记录中撤销",
-                        {"operation_id": data["operation_id"], "tool": call["name"]},
-                    )
-                if call["name"] == "notification_send" and result.get("ok") and not data.get("blocked"):
-                    await emit_event(db, run.id, "notification.sent", "学习提醒已进入通知渠道", data)
-
-                run.checkpoint = {
-                    "step": step,
-                    "messages": messages,
-                    "pending_tool_calls": calls,
-                    "cards": run_cards,
-                    "context_snapshot_id": context_snapshot_id,
-                }
-                await commit_uow(db)
-                if not calls:
-                    step += 1
-            else:
-                final_text = "本次运行达到最大工具轮次，已安全停止。"
-
-            run.output = final_text
-            if session and final_text:
-                message_metadata = {"cards": run_cards} if run_cards else {}
-                final_message = (await db.execute(
-                    select(ChatMessage).where(
-                        ChatMessage.session_id == session.id,
-                        ChatMessage.run_id == run.id,
-                        ChatMessage.role == "assistant",
-                    ).order_by(ChatMessage.id.desc()).limit(1)
-                )).scalars().one_or_none()
-                if final_message is None:
-                    db.add(ChatMessage(
-                        session_id=session.id,
-                        run_id=run.id,
-                        role="assistant",
-                        content=final_text,
-                        message_metadata=message_metadata,
-                    ))
-                else:
-                    final_message.content = final_text
-                    final_message.message_metadata = message_metadata
-                session.updated_at = utc_now()
-            # Make the final assistant turn durable before title/compression
-            # model calls.  A crash can replay finalization without duplicating
-            # the message because it is keyed above by Run + assistant role.
-            await commit_uow(db)
-
-            if session and final_text:
-                await generate_session_title(
-                    session,
-                    objective=run.objective,
-                    answer=final_text,
-                    client=self.client,
+            if data.get("operation_id"):
+                await emit_event(
+                    db,
+                    run.id,
+                    "operation.committed",
+                    f"{call['name']} 的修改已记录，可在操作记录中撤销",
+                    {"operation_id": data["operation_id"], "tool": call["name"]},
+                    event_key=f"tool:{call['id']}:operation",
                 )
-                # Title generation mutates only after its model wait. End that
-                # short UoW before compression performs its own model wait.
-                await commit_uow(db)
-                await MemoryManager(db).compress_session(session, self.client)
-                await commit_uow(db)
+            if call["name"] == "notification_send" and result.get("ok") and not data.get("blocked"):
+                await emit_event(
+                    db,
+                    run.id,
+                    "notification.sent",
+                    "学习提醒已进入通知渠道",
+                    data,
+                    event_key=f"tool:{call['id']}:notification",
+                )
+            checkpoint.update({
+                "messages": messages,
+                "current_tool_call": remaining[0] if remaining else None,
+                "remaining_tool_calls": remaining[1:] if remaining else [],
+                "cards": cards,
+                "budget_usage": budget,
+                "phase": "tool_ready" if remaining else "awaiting_model",
+                "step": step if remaining else step + 1,
+            })
+            stored = await persist_checkpoint(
+                db,
+                lease,
+                checkpoint,
+                phase=checkpoint["phase"],
+            )
+            run = stored
+            checkpoint = normalize_checkpoint(stored.checkpoint) or checkpoint
+        else:
+            checkpoint["budget_usage"] = normalize_budget(checkpoint.get("budget_usage"))
+            preparation = await prepare_finalization(
+                AsyncSessionLocal,
+                lease,
+                checkpoint=checkpoint,
+                final_text="本次运行达到最大工具轮次，已安全停止。",
+            )
+            checkpoint = preparation.checkpoint
+            if preparation.action == "continue":
+                return await self._loop(db, run, lease, checkpoint, session=session)
 
-            run.checkpoint = None
-            run.pending_approval = None
-            run.status = "completed"
-            run.completed_at = utc_now()
-            final_budget = self._budget(run)
-            self._refresh_elapsed(run, final_budget, ended_at=run.completed_at)
-            run.budget_usage = final_budget
+        budget = normalize_budget(checkpoint.get("budget_usage"))
+        self._refresh_elapsed(run, budget, ended_at=utc_now())
+        checkpoint["budget_usage"] = budget
+        if checkpoint.get("phase") != "finalizing":
+            preparation = await prepare_finalization(
+                AsyncSessionLocal,
+                lease,
+                checkpoint=checkpoint,
+                final_text=locals().get("final_text", ""),
+            )
+            checkpoint = preparation.checkpoint
+            if preparation.action == "continue":
+                return await self._loop(db, run, lease, checkpoint, session=session)
+        completed = await finalize_run(AsyncSessionLocal, lease)
+        await self._after_terminal(completed, session)
+
+    async def _after_terminal(self, run: AgentRun, session: Session | None) -> None:
+        """Best-effort post-terminal enrichment; it is never part of final truth."""
+
+        from app.runtime.subagents import cancel_children_for_parent
+
+        await cancel_children_for_parent(run.id, "父 Run 已结束")
+        successor_id = getattr(run, "_queued_successor_id", None)
+        if successor_id:
+            start_tracked_task(successor_id, AgentRuntime().run(successor_id))
+        if not session:
+            return
+        async with AsyncSessionLocal() as db:
+            stored_run = await db.get(AgentRun, run.id)
+            stored_session = await db.get(Session, session.id)
+            if stored_run is None or stored_session is None or not stored_run.output:
+                return
+            await generate_session_title(
+                stored_session,
+                objective=stored_run.objective,
+                answer=stored_run.output,
+                client=self.client,
+            )
             await commit_uow(db)
-            from app.runtime.subagents import cancel_children_for_parent
-
-            # Parent finalization has released its writer before child sessions
-            # perform their own cancellation UoWs.
-            await cancel_children_for_parent(run.id, "父 Run 已结束")
-            if session:
-                await self._start_next_queued_message(run.owner_id, session.id)
-            await emit_event(db, run.id, "run.completed", final_text or "Agent run completed")
-        except Exception as exc:
-            await self._fail(db, run.id, exc)
+            await MemoryManager(db).compress_session(stored_session, self.client)
+            await commit_uow(db)
 
     async def _call_model(self, db, run: AgentRun, messages: list[dict], failure_guard: ToolFailureGuard, step: int):
         from app.tools import openai_tools
@@ -706,57 +808,44 @@ class AgentRuntime:
             # connection, retry, or stream waits.
             await commit_uow(db)
 
-        for attempt in range(settings.AGENT_MODEL_RETRY_ATTEMPTS):
+        model_tools = [
+            tool
+            for tool in openai_tools()
+            if tool["function"]["name"] not in failure_guard.blocked
+        ]
+        request = {
+            "model": settings.MODEL_NAME,
+            "messages": messages,
+            "temperature": settings.MODEL_TEMPERATURE,
+            "extra_body": {"reasoning_effort": settings.MODEL_REASONING_EFFORT},
+        }
+        if model_tools:
+            request.update({"tools": model_tools, "tool_choice": "auto"})
+        try:
             try:
-                model_tools = [
-                    tool
-                    for tool in openai_tools()
-                    if tool["function"]["name"] not in failure_guard.blocked
-                ]
-                request = {
-                    "model": settings.MODEL_NAME,
-                    "messages": messages,
-                    "temperature": settings.MODEL_TEMPERATURE,
-                    "extra_body": {"reasoning_effort": settings.MODEL_REASONING_EFFORT},
-                }
-                if model_tools:
-                    request.update({"tools": model_tools, "tool_choice": "auto"})
-                try:
-                    response = await asyncio.wait_for(
-                        self.client.chat.completions.create(
-                            **request,
-                            stream=True,
-                            stream_options={"include_usage": True},
-                        ),
-                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-                    )
-                except Exception as stream_exc:
-                    if "stream_options" not in str(stream_exc):
-                        raise
-                    response = await asyncio.wait_for(
-                        self.client.chat.completions.create(**request, stream=True),
-                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-                    )
-                if hasattr(response, "__aiter__"):
-                    message, usage = await asyncio.wait_for(
-                        self._drain_stream(response, run, step),
-                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-                    )
-                else:
-                    message = response.choices[0].message
-                    usage = getattr(response, "usage", None)
-                return message, usage
-            except TimeoutError as exc:
-                if attempt + 1 >= settings.AGENT_MODEL_RETRY_ATTEMPTS:
-                    raise AgentModelTimeout("模型连续响应超时") from exc
-                await emit_event(
-                    db,
-                    run.id,
-                    "run.retrying",
-                    "模型响应超时，正在重新连接并保留当前进度",
-                    {"attempt": attempt + 2, "max_attempts": settings.AGENT_MODEL_RETRY_ATTEMPTS},
+                response = await asyncio.wait_for(
+                    self.client.chat.completions.create(
+                        **request,
+                        stream=True,
+                        stream_options={"include_usage": True},
+                    ),
+                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
                 )
-        raise AgentModelTimeout("模型未返回响应")
+            except Exception as stream_exc:
+                if "stream_options" not in str(stream_exc):
+                    raise
+                response = await asyncio.wait_for(
+                    self.client.chat.completions.create(**request, stream=True),
+                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                )
+            if hasattr(response, "__aiter__"):
+                return await asyncio.wait_for(
+                    self._drain_stream(response, run, step),
+                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                )
+            return response.choices[0].message, getattr(response, "usage", None)
+        except TimeoutError as exc:
+            raise AgentModelTimeout("模型响应超时") from exc
 
     async def _drain_stream(self, stream, run: AgentRun, step: int):
         """Collect an OpenAI-compatible token stream and publish live deltas."""
@@ -818,122 +907,102 @@ class AgentRuntime:
             list(tool_calls.values()),
         ), usage
 
-    async def _apply_pending_steer(self, db, run: AgentRun, messages: list[dict]) -> list[dict]:
-        """Inject user steering messages into the model context without stopping the run."""
-        pending = list((await db.execute(
-            select(RunSteerMessage).where(
-                RunSteerMessage.run_id == run.id,
-                RunSteerMessage.applied_at.is_(None),
-            ).order_by(RunSteerMessage.created_at)
-        )).scalars())
-        if not pending:
-            return messages
-        for steer in pending:
-            steer.applied_at = utc_now()
-            messages.append({"role": "user", "content": f"[中途转向] {steer.content}"})
-        await commit_uow(db)
-        return messages
+    async def _fail(
+        self,
+        db,
+        run: AgentRun,
+        lease: RunLease,
+        exc: Exception,
+    ) -> None:
+        """Commit one fenced failure transition after releasing caller state."""
 
-    async def _fail(self, db, run_id: str, exc: Exception) -> None:
-        """Mark a run as failed using a fresh session so a broken caller session cannot cascade."""
-        owner_id: str | None = None
-        session_id: str | None = None
         try:
-            # A failed flush/commit or an exception after staging ORM work can
-            # leave the caller owning SQLite's writer. Release it before the
-            # fresh failure-record session attempts its short UoW.
             try:
                 await rollback_uow(db)
             except Exception:
                 pass
-            async with AsyncSessionLocal() as failure_db:
-                run = await failure_db.get(AgentRun, run_id)
-                if not run:
-                    return
-                owner_id = run.owner_id
-                session_id = run.session_id
-                run.status = "failed"
-                run.completed_at = utc_now()
-                await commit_uow(failure_db)
-                if isinstance(exc, AgentModelTimeout):
-                    summary = "模型暂时没有响应。本轮已执行的工具结果和会话内容均已保留，可以直接重试。"
-                    error_code = "model_timeout"
-                elif isinstance(exc, TimeoutError):
-                    summary = "某个工具执行超时。本轮状态已安全保留，请重试或查看运行详情。"
-                    error_code = "tool_timeout"
-                else:
-                    summary = "运行遇到内部错误，状态已安全保留。请重试；技术详情已记录在运行轨迹中。"
-                    error_code = "internal_error"
-                from app.runtime.subagents import cancel_children_for_parent
-
-                await cancel_children_for_parent(run_id, "父 Run 失败")
-                if owner_id and session_id:
-                    await self._start_next_queued_message(owner_id, session_id)
-                await emit_event(
-                    failure_db,
-                    run_id,
-                    "run.failed",
-                    summary,
-                    {"code": error_code, "technical_error": f"{type(exc).__name__}: {exc}"},
+            tool_timed_out = isinstance(exc, TimeoutError)
+            model_timed_out = isinstance(exc, AgentModelTimeout)
+            transient_model_failure = (
+                not tool_timed_out
+                and not model_timed_out
+                and is_transient_model_error(exc)
+            )
+            if (
+                (model_timed_out or tool_timed_out or transient_model_failure)
+                and int(run.retry_count or 0) < settings.AGENT_RUN_MAX_RETRIES
+            ):
+                retry_reason = "model_timeout"
+                if tool_timed_out:
+                    retry_reason = "tool_timeout"
+                elif transient_model_failure:
+                    retry_reason = "model_transient"
+                delay = settings.AGENT_RUN_RETRY_BACKOFF_SECONDS * (
+                    2 ** int(run.retry_count or 0)
                 )
+                await schedule_retry(
+                    AsyncSessionLocal,
+                    lease,
+                    reason_code=retry_reason,
+                    retry_after_seconds=delay,
+                )
+                await asyncio.sleep(delay)
+                await self.run(run.id)
+                return
+            if isinstance(exc, AgentModelTimeout):
+                summary = "模型暂时没有响应。本轮已执行的工具结果和会话内容均已保留。"
+                error_code = "model_timeout"
+            elif isinstance(exc, TimeoutError):
+                summary = "某个工具执行超时。本轮状态已安全保留。"
+                error_code = "tool_timeout"
+            elif is_transient_model_error(exc):
+                summary = "模型服务在有界重试后仍不可用，本轮状态已安全保留。"
+                error_code = "model_retry_exhausted"
+            elif isinstance(exc, RunStateError):
+                summary = "运行的耐久状态需要人工核对。"
+                error_code = "runtime_state_conflict"
+            else:
+                summary = "运行遇到内部错误，状态已安全收口。"
+                error_code = "internal_error"
+            terminal = await terminate_run(
+                AsyncSessionLocal,
+                run.id,
+                status="failed",
+                reason_code=error_code,
+                summary=summary,
+                lease=lease,
+            )
+            if terminal is None:
+                return
+            from app.runtime.subagents import cancel_children_for_parent
+
+            await cancel_children_for_parent(run.id, "父 Run 失败")
+            successor_id = getattr(terminal, "_queued_successor_id", None)
+            if successor_id:
+                start_tracked_task(successor_id, AgentRuntime().run(successor_id))
+        except RunLeaseLostError:
+            return
         except Exception as record_error:
-            # If even the failure record cannot be written (e.g. readonly DB), surface it loudly.
             print(
-                f"[learning-agent] run {run_id} failed ({type(exc).__name__}: {exc}) "
-                f"and failure record also failed ({type(record_error).__name__}: {record_error})",
+                f"[learning-agent] run {run.id} failed ({type(exc).__name__}) "
+                f"and failure record also failed ({type(record_error).__name__})",
                 flush=True,
             )
 
-    async def _start_next_queued_message(self, owner_id: str, session_id: str) -> AgentRun | None:
-        """Continue a Session queue only after the previous root Run is terminal."""
-        from app.services.queue import dispatch_next_queued_message
-
-        async with AsyncSessionLocal() as queue_db:
-            next_run = await dispatch_next_queued_message(
-                queue_db,
-                owner_id=owner_id,
-                session_id=session_id,
-            )
-            if next_run is not None:
-                await commit_uow(queue_db)
-        if next_run is not None:
-            start_tracked_task(next_run.id, AgentRuntime().run(next_run.id))
-        return next_run
-
     @staticmethod
     def _default_budget() -> dict:
-        return {
-            "model_calls": 0,
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
-            "tool_calls": 0,
-            "network_requests": 0,
-            "elapsed_ms": 0,
-            "estimated_cost_usd": 0.0,
-            "stopped_reason": "",
-        }
+        return default_budget()
 
     @staticmethod
     def _budget(run: AgentRun) -> dict:
-        if not run.budget_usage:
-            return AgentRuntime._default_budget()
-        return {**AgentRuntime._default_budget(), **run.budget_usage}
+        return normalize_budget(run.budget_usage)
 
     @staticmethod
     def _budget_reason(run: AgentRun, budget: dict) -> str | None:
-        AgentRuntime._refresh_elapsed(run, budget)
-        if settings.AGENT_MAX_ELAPSED_SECONDS and budget["elapsed_ms"] >= settings.AGENT_MAX_ELAPSED_SECONDS * 1000:
-            return "elapsed_limit"
-        if budget["model_calls"] >= settings.AGENT_MAX_MODEL_CALLS:
-            return "model_call_limit"
-        if budget["tool_calls"] >= settings.AGENT_MAX_TOOL_CALLS:
-            return "tool_call_limit"
-        if (
-            settings.AGENT_MAX_ESTIMATED_COST_USD > 0
-            and budget["estimated_cost_usd"] >= settings.AGENT_MAX_ESTIMATED_COST_USD
-        ):
-            return "cost_limit"
-        return None
+        return shared_budget_reason(
+            budget,
+            started_at=run.started_at or run.created_at,
+        )
 
     @staticmethod
     def _refresh_elapsed(
@@ -942,18 +1011,11 @@ class AgentRuntime:
         *,
         ended_at: datetime | None = None,
     ) -> None:
-        started = run.started_at or run.created_at
-        if started:
-            budget["elapsed_ms"] = max(
-                0,
-                int(
-                    (
-                        coerce_legacy_utc(ended_at or utc_now())
-                        - coerce_legacy_utc(started)
-                    ).total_seconds()
-                    * 1000
-                ),
-            )
+        refresh_elapsed(
+            budget,
+            run.started_at or run.created_at,
+            ended_at=ended_at,
+        )
 
     async def _ensure_session(self, db, run: AgentRun) -> Session | None:
         if run.session_id:

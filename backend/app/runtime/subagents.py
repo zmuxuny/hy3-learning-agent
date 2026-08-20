@@ -2,17 +2,35 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
 from sqlalchemy import select
 
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
-from app.db.uow import commit as commit_uow
+from app.db.uow import rollback as rollback_uow
 from app.models import AgentRun
+from app.runtime.budget import (
+    budget_reason,
+    normalize_budget,
+    record_model_usage,
+    refresh_elapsed,
+    reserve_model_call,
+    reserve_tool_call,
+)
+from app.runtime.checkpoints import make_checkpoint, normalize_checkpoint
 from app.runtime.events import emit_event
-from app.runtime.tasks import cancel_tracked_task
+from app.runtime.retry import is_transient_model_error
+from app.runtime.state import (
+    RunLeaseLostError,
+    claim_run,
+    finalize_child,
+    maintain_run_lease,
+    persist_checkpoint,
+    schedule_retry,
+    terminate_run,
+)
+from app.runtime.tasks import cancel_and_wait_tracked_task
 
 
 READ_ONLY_TOOL_NAMES: set[str] = {
@@ -99,8 +117,9 @@ async def run_restricted_child(
     from app.tools import ToolContext, execute_tool
     from app.tools.registry import TOOL_MAP
 
-    schemas = [TOOL_MAP[name].openai_schema() for name in sorted(allowlist)]
-    checkpoint = checkpoint or {}
+    effective_allowlist = READ_ONLY_TOOL_NAMES.intersection(allowlist)
+    schemas = [TOOL_MAP[name].openai_schema() for name in sorted(effective_allowlist)]
+    checkpoint = normalize_checkpoint(checkpoint, kind="subagent") or {}
     messages: list[dict] = list(checkpoint.get("messages") or [])
     if not messages:
         messages = [
@@ -120,26 +139,62 @@ async def run_restricted_child(
             },
         ]
     step = int(checkpoint.get("step") or 0)
-    pending_calls: list[dict] = list(checkpoint.get("pending_tool_calls") or [])
+    current_call: dict | None = checkpoint.get("current_tool_call")
+    pending_calls: list[dict] = list(checkpoint.get("remaining_tool_calls") or [])
     tool_calls_used = int(checkpoint.get("tool_calls_used") or 0)
+    budget = normalize_budget(checkpoint.get("budget_usage"))
+    budget["tool_calls"] = max(int(budget.get("tool_calls") or 0), tool_calls_used)
     tool_call_limit = min(settings.AGENT_MAX_TOOL_CALLS, max(4, max_steps * 4))
 
-    async def save_checkpoint() -> None:
+    async def save_checkpoint(
+        phase: str,
+        *,
+        freeze_final_text: bool = False,
+    ) -> None:
+        refresh_elapsed(budget, child.started_at or child.created_at)
         if checkpoint_callback is not None:
-            await checkpoint_callback({
+            payload = {
+                "phase": phase,
                 "step": step,
                 "messages": messages,
-                "pending_tool_calls": pending_calls,
+                "current_tool_call": current_call,
+                "remaining_tool_calls": pending_calls,
                 "tool_calls_used": tool_calls_used,
-            })
+                "budget_usage": budget,
+            }
+            if freeze_final_text:
+                payload["final_text"] = final_text
+            await checkpoint_callback(payload)
+
+    async def stop_for_budget(reason: str) -> str:
+        budget["stopped_reason"] = reason
+        await child_event(
+            child.id,
+            "run.budget_exceeded",
+            f"子 Agent 预算上限已触发：{reason}",
+            {"reason": reason, "budget_usage": dict(budget)},
+            event_key=f"run:{child.id}:budget:{reason}",
+        )
+        return "子 Agent 运行预算已用尽，已安全停止。"
 
     final_text = ""
+    if checkpoint.get("phase") == "finalizing" and "final_text" in checkpoint:
+        return str(checkpoint.get("final_text") or "")
     while step < max(1, max_steps):
         if cancel_check is not None and await cancel_check():
             final_text = "子 Agent 已按要求停止。"
             break
-        if not pending_calls:
-            await save_checkpoint()
+        reason = budget_reason(
+            budget,
+            started_at=child.started_at or child.created_at,
+            tool_call_limit=tool_call_limit,
+        )
+        if reason:
+            final_text = await stop_for_budget(reason)
+            break
+        if current_call is None and not pending_calls:
+            reserve_model_call(budget)
+            await save_checkpoint("awaiting_model")
             response = await asyncio.wait_for(
                 client.chat.completions.create(
                     model=settings.MODEL_NAME,
@@ -152,6 +207,8 @@ async def run_restricted_child(
                 timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
             )
             message = response.choices[0].message
+            usage = getattr(response, "usage", None)
+            record_model_usage(budget, usage)
             tool_calls = getattr(message, "tool_calls", None)
             assistant_payload: dict = {"role": "assistant", "content": message.content or ""}
             reasoning_content = getattr(message, "reasoning_content", None)
@@ -159,7 +216,7 @@ async def run_restricted_child(
                 assistant_payload["reasoning_content"] = reasoning_content
             if tool_calls:
                 assistant_payload["tool_calls"] = [call.model_dump() for call in tool_calls]
-                pending_calls = [
+                calls = [
                     {
                         "id": call.id,
                         "name": call.function.name,
@@ -167,14 +224,27 @@ async def run_restricted_child(
                     }
                     for call in tool_calls
                 ]
+                current_call = calls[0]
+                pending_calls = calls[1:]
             messages.append(assistant_payload)
             if not tool_calls:
                 final_text = (message.content or "").strip()
                 break
-            await save_checkpoint()
+            await save_checkpoint("tool_ready")
 
-        while pending_calls:
-            call = pending_calls.pop(0)
+        while current_call is not None:
+            call = dict(current_call)
+            reason = budget_reason(
+                budget,
+                started_at=child.started_at or child.created_at,
+                tool_call_limit=tool_call_limit,
+            )
+            if reason:
+                final_text = await stop_for_budget(reason)
+                break
+            tool_calls_used += 1
+            reserve_tool_call(budget, call["name"])
+            await save_checkpoint("tool_running")
             try:
                 raw_args = json.loads(call["arguments"] or "{}")
             except json.JSONDecodeError:
@@ -184,15 +254,7 @@ async def run_restricted_child(
                 "name": call["name"],
                 "arguments": raw_args,
             })
-            tool_calls_used += 1
-            if tool_calls_used > tool_call_limit:
-                result = {
-                    "ok": False,
-                    "error": "Sub-agent tool budget reached; synthesize from collected evidence",
-                    "retryable": False,
-                    "budget_exceeded": True,
-                }
-            elif call["name"] not in allowlist:
+            if call["name"] not in effective_allowlist:
                 result = {
                     "ok": False,
                     "error": "Tool is outside this sub-agent's read-only allowlist",
@@ -203,18 +265,21 @@ async def run_restricted_child(
                     result = {"ok": False, "error": "Sub-agents cannot save search results", "retryable": False}
                 else:
                     async with AsyncSessionLocal() as tool_db:
-                        result = await execute_tool(
-                            call["name"],
-                            call["arguments"],
-                            ToolContext(
-                                db=tool_db,
-                                owner_id=child.owner_id,
-                                run_id=child.id,
-                                trigger="subagent",
-                                plan_id=child.plan_id,
-                                session_id=child.session_id,
-                                tool_call_id=call["id"],
+                        result = await asyncio.wait_for(
+                            execute_tool(
+                                call["name"],
+                                call["arguments"],
+                                ToolContext(
+                                    db=tool_db,
+                                    owner_id=child.owner_id,
+                                    run_id=child.id,
+                                    trigger="subagent",
+                                    plan_id=child.plan_id,
+                                    session_id=child.session_id,
+                                    tool_call_id=call["id"],
+                                ),
                             ),
+                            timeout=settings.AGENT_TOOL_TIMEOUT_SECONDS,
                         )
             await child_event(child.id, "tool.completed", f"只读工具 {call['name']} {'完成' if result.get('ok') else '失败'}", {
                 "tool_call_id": call["id"],
@@ -227,14 +292,15 @@ async def run_restricted_child(
                 "tool_call_id": call["id"],
                 "content": _compact_child_observation(result),
             })
-            await save_checkpoint()
+            current_call = pending_calls.pop(0) if pending_calls else None
+            await save_checkpoint("tool_ready" if current_call is not None else "awaiting_model")
             if cancel_check is not None and await cancel_check():
                 final_text = "子 Agent 已按要求停止。"
                 break
-        if final_text == "子 Agent 已按要求停止。":
+        if final_text:
             break
         step += 1
-        await save_checkpoint()
+        await save_checkpoint("awaiting_model")
     if not final_text:
         # A research model may spend every allowed turn calling tools. Reserve
         # one tools-disabled call for the deliverable so a successful child Run
@@ -246,23 +312,210 @@ async def run_restricted_child(
                 "建议、风险与仍需主 Agent 判断的问题。不要再调用工具，不要描述内部思维过程。"
             ),
         }]
-        await save_checkpoint()
-        response = await asyncio.wait_for(
-            client.chat.completions.create(
-                model=settings.MODEL_NAME,
-                messages=synthesis_messages,
-                temperature=settings.MODEL_TEMPERATURE,
-                extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
-            ),
-            timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+        reason = budget_reason(
+            budget,
+            started_at=child.started_at or child.created_at,
+            tool_call_limit=tool_call_limit,
         )
-        final_text = (response.choices[0].message.content or "").strip()
-    return final_text or "子 Agent 已完成调查，但模型没有生成最终报告。"
+        if reason:
+            final_text = await stop_for_budget(reason)
+        else:
+            reserve_model_call(budget)
+            await save_checkpoint("awaiting_model")
+            response = await asyncio.wait_for(
+                client.chat.completions.create(
+                    model=settings.MODEL_NAME,
+                    messages=synthesis_messages,
+                    temperature=settings.MODEL_TEMPERATURE,
+                    extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
+                ),
+                timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+            )
+            record_model_usage(budget, getattr(response, "usage", None))
+            final_text = (response.choices[0].message.content or "").strip()
+    final_text = final_text or "子 Agent 已完成调查，但模型没有生成最终报告。"
+    await save_checkpoint("finalizing", freeze_final_text=True)
+    return final_text
 
 
-async def child_event(run_id: str, event_type: str, summary: str, payload: dict | None = None) -> None:
+async def child_event(
+    run_id: str,
+    event_type: str,
+    summary: str,
+    payload: dict | None = None,
+    *,
+    event_key: str | None = None,
+) -> None:
     async with AsyncSessionLocal() as event_db:
-        await emit_event(event_db, run_id, event_type, summary, payload)
+        tool_call_id = (payload or {}).get("tool_call_id")
+        event_key = event_key or (
+            f"tool:{tool_call_id}:{event_type.rsplit('.', 1)[-1]}"
+            if tool_call_id
+            else None
+        )
+        await emit_event(event_db, run_id, event_type, summary, payload, event_key=event_key)
+
+
+async def execute_durable_child(
+    child_id: str,
+    *,
+    role: str,
+    objective: str,
+    context: str,
+    allowlist: set[str],
+    max_steps: int,
+    client_factory: Callable[[], Any],
+) -> None:
+    """Run every child kind through the same claim/checkpoint/retry protocol."""
+
+    client: Any | None = None
+    while True:
+        lease = await claim_run(AsyncSessionLocal, child_id)
+        if lease is None:
+            return
+        async with AsyncSessionLocal() as db:
+            child = await db.get(AgentRun, child_id)
+            if child is None or child.cancel_requested:
+                await rollback_uow(db)
+                await terminate_run(
+                    AsyncSessionLocal,
+                    child_id,
+                    status="cancelled",
+                    reason_code="cancel_requested",
+                    summary="子 Agent 已按要求停止",
+                    lease=lease,
+                )
+                return
+            identity = dict(lease.checkpoint or child.checkpoint or {})
+            checkpoint = normalize_checkpoint(identity, kind="subagent") or make_checkpoint(
+                kind="subagent",
+                phase="awaiting_model",
+                step=0,
+                messages=[],
+                identity={
+                    "role": role,
+                    "objective": objective,
+                    "context": context,
+                    "allowlist": sorted(allowlist),
+                    "max_steps": max_steps,
+                    "action_key": identity.get("action_key"),
+                    "assignment_index": identity.get("assignment_index"),
+                },
+            )
+            checkpoint.update({
+                "role": role,
+                "objective": objective,
+                "context": context,
+                "allowlist": sorted(allowlist),
+                "max_steps": max_steps,
+                "action_key": identity.get("action_key"),
+                "assignment_index": identity.get("assignment_index"),
+            })
+            child = await persist_checkpoint(
+                db,
+                lease,
+                checkpoint,
+                phase=str(checkpoint.get("phase") or "awaiting_model"),
+            )
+
+        async def save_checkpoint(runtime_checkpoint: dict) -> None:
+            nonlocal checkpoint
+            checkpoint = {
+                **checkpoint,
+                **runtime_checkpoint,
+                "kind": "subagent",
+                "role": role,
+                "objective": objective,
+                "context": context,
+                "allowlist": sorted(allowlist),
+                "max_steps": max_steps,
+            }
+            async with AsyncSessionLocal() as checkpoint_db:
+                stored = await persist_checkpoint(
+                    checkpoint_db,
+                    lease,
+                    checkpoint,
+                    phase=str(runtime_checkpoint.get("phase") or "awaiting_model"),
+                )
+                checkpoint = normalize_checkpoint(stored.checkpoint, kind="subagent") or checkpoint
+
+        try:
+            await child_event(
+                child.id,
+                "run.started",
+                f"{role} 子 Agent 已开始",
+                {
+                    "parent_run_id": child.parent_run_id,
+                    "role": role,
+                    "attempt": child.attempt,
+                },
+                event_key=f"run:{child.id}:started",
+            )
+            if checkpoint.get("phase") == "finalizing" and "final_text" in checkpoint:
+                await finalize_child(
+                    AsyncSessionLocal,
+                    lease,
+                    status="completed",
+                    report=str(checkpoint.get("final_text") or ""),
+                    role=role,
+                )
+                return
+            client = client or client_factory()
+            async with maintain_run_lease(AsyncSessionLocal, lease):
+                report = await run_restricted_child(
+                    client=client,
+                    child=child,
+                    objective=f"{role}: {objective}",
+                    context=context,
+                    allowlist=allowlist,
+                    max_steps=max_steps,
+                    cancel_check=lambda: child_cancel_requested(child_id),
+                    checkpoint=checkpoint,
+                    checkpoint_callback=save_checkpoint,
+                )
+            await finalize_child(
+                AsyncSessionLocal,
+                lease,
+                status="completed",
+                report=report,
+                role=role,
+            )
+            return
+        except asyncio.CancelledError:
+            raise
+        except RunLeaseLostError:
+            return
+        except Exception as exc:
+            if not is_transient_model_error(exc):
+                await finalize_child(
+                    AsyncSessionLocal,
+                    lease,
+                    status="failed",
+                    report=f"子 Agent 运行失败：{type(exc).__name__}",
+                    role=role,
+                    reason_code="child_error",
+                )
+                return
+            if int(checkpoint.get("retry_count") or 0) >= settings.AGENT_RUN_MAX_RETRIES:
+                await finalize_child(
+                    AsyncSessionLocal,
+                    lease,
+                    status="failed",
+                    report="子 Agent 运行失败：TimeoutError",
+                    role=role,
+                    reason_code="retry_exhausted",
+                )
+                return
+            delay = settings.AGENT_RUN_RETRY_BACKOFF_SECONDS * (
+                2 ** int(checkpoint.get("retry_count") or 0)
+            )
+            await schedule_retry(
+                AsyncSessionLocal,
+                lease,
+                reason_code="model_timeout",
+                retry_after_seconds=delay,
+            )
+            await asyncio.sleep(delay)
 
 
 async def child_cancel_requested(child_id: str) -> bool:
@@ -273,19 +526,19 @@ async def child_cancel_requested(child_id: str) -> bool:
 
 async def cancel_child(child: AgentRun, reason: str = "父 Agent 取消") -> bool:
     """Safely stop a queued or running child Run and return True if it was active."""
-    if child.status not in {"queued", "running"}:
+    if child.status not in {
+        "queued", "running", "waiting_approval", "retry_wait", "needs_reconciliation",
+    }:
         return False
-    async with AsyncSessionLocal() as db:
-        stored = await db.get(AgentRun, child.id)
-        if stored is None or stored.status not in {"queued", "running"}:
-            return False
-        stored.cancel_requested = True
-        stored.status = "cancelled"
-        stored.completed_at = datetime.now(timezone.utc)
-        await commit_uow(db)
-        cancel_tracked_task(child.id)
-        await emit_event(db, child.id, "run.cancelled", reason, {"parent_run_id": child.parent_run_id})
-        return True
+    terminal = await terminate_run(
+        AsyncSessionLocal,
+        child.id,
+        status="cancelled",
+        reason_code="parent_cancelled",
+        summary=reason,
+    )
+    await cancel_and_wait_tracked_task(child.id)
+    return terminal is not None and terminal.status == "cancelled"
 
 
 async def cancel_children_for_parent(parent_run_id: str, reason: str) -> int:
@@ -295,19 +548,16 @@ async def cancel_children_for_parent(parent_run_id: str, reason: str) -> int:
             select(AgentRun).where(
                 AgentRun.parent_run_id == parent_run_id,
                 AgentRun.trigger == "subagent",
-                AgentRun.status.in_(["queued", "running"]),
+                AgentRun.status.in_([
+                    "queued", "running", "waiting_approval", "retry_wait",
+                    "needs_reconciliation",
+                ]),
             )
         )).scalars())
     cancelled = 0
     for child in children:
         if await cancel_child(child, reason):
             cancelled += 1
-            async with AsyncSessionLocal() as event_db:
-                await emit_event(event_db, parent_run_id, "subagent.completed", "子 Agent 随父 Run 停止", {
-                    "child_run_id": child.id,
-                    "status": "cancelled",
-                    "report": "",
-                })
     return cancelled
 
 

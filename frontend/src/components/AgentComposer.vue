@@ -15,6 +15,7 @@ import {
 import { computed, nextTick, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import api from '../api/client';
+import { isRunBlocking, isRunSteerable } from '../runState.js';
 
 const store = useWorkspaceStore();
 const prompt = ref('');
@@ -24,14 +25,15 @@ const queueMenuOpen = ref(false);
 const editingQueueId = ref(null);
 const editingDraft = ref('');
 const queueEditInput = ref(null);
-const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
+const running = computed(() => isRunBlocking(store.currentRun?.status));
 const waitingApproval = computed(() => store.currentRun?.status === 'waiting_approval');
+const steerable = computed(() => isRunSteerable(store.currentRun?.status));
 const queuedMessages = computed(() => store.queuedMessages.filter(
   (item) => item.session_id === (store.activeSessionId || null),
 ));
 const followUpBehavior = computed(() => store.followUpBehavior);
 const defaultActionLabel = computed(() => (
-  !waitingApproval.value && followUpBehavior.value === 'steer' ? '转向当前运行' : '排队到下一轮'
+  steerable.value && followUpBehavior.value === 'steer' ? '转向当前运行' : '排队到下一轮'
 ));
 const contextUsage = computed(() => {
   const event = [...store.runEvents].reverse().find((item) => item.type === 'context.built');
@@ -55,7 +57,7 @@ async function submit() {
   const value = prompt.value.trim();
   if (!value) return;
   if (running.value) {
-    await applyFollowUp(value, waitingApproval.value ? 'queue' : followUpBehavior.value);
+    await applyFollowUp(value, steerable.value ? followUpBehavior.value : 'queue');
     return;
   }
   await sendNow(value);

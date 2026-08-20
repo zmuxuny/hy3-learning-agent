@@ -11,6 +11,7 @@ from app.db.uow import (
     DEFAULT_RETRY_DELAYS,
     DatabaseBusyError,
     commit as commit_uow,
+    flush as flush_uow,
     rollback as rollback_uow,
 )
 from app.models import RunEvent
@@ -104,6 +105,8 @@ async def emit_event(
     event_type: str,
     summary: str = "",
     payload: dict | None = None,
+    *,
+    event_key: str | None = None,
 ) -> RunEvent:
     # Runtime, steering and cancellation can all emit against the same Run at
     # once.  The sequence is scoped to a Run, so serialize its max+1 write in
@@ -122,6 +125,17 @@ async def emit_event(
         last_busy: DatabaseBusyError | None = None
         for attempt, retry_delay in enumerate(retry_delays, start=1):
             try:
+                if event_key is not None:
+                    existing = (await db.execute(
+                        select(RunEvent).where(
+                            RunEvent.run_id == run_id,
+                            RunEvent.event_key == event_key,
+                        )
+                    )).scalars().one_or_none()
+                    if existing is not None:
+                        await commit_uow(db)
+                        event = existing
+                        break
                 result = await db.execute(
                     select(func.coalesce(func.max(RunEvent.sequence), 0)).where(RunEvent.run_id == run_id)
                 )
@@ -129,6 +143,7 @@ async def emit_event(
                     run_id=run_id,
                     sequence=int(result.scalar_one()) + 1,
                     event_type=event_type,
+                    event_key=event_key,
                     summary=summary,
                     payload=payload or {},
                 )
@@ -156,4 +171,51 @@ async def emit_event(
         "payload": event.payload,
         "created_at": canonical_utc(event.created_at),
     })
+    return event
+
+
+async def stage_event(
+    db: AsyncSession,
+    run_id: str,
+    event_type: str,
+    summary: str = "",
+    payload: dict | None = None,
+    *,
+    event_key: str | None = None,
+) -> RunEvent:
+    """Stage one event inside the caller's already-serialized Unit of Work.
+
+    H3 terminal transitions need Run state, final messages and cross-run child
+    projections to commit atomically.  Unlike :func:`emit_event`, this helper
+    never commits and therefore must only be used while the caller owns the
+    SQLite writer (or an equivalent database transaction lock).
+    """
+
+    if event_key is not None:
+        existing = (await db.execute(
+            select(RunEvent).where(
+                RunEvent.run_id == run_id,
+                RunEvent.event_key == event_key,
+            )
+        )).scalars().one_or_none()
+        if existing is not None:
+            return existing
+    next_sequence = int(
+        await db.scalar(
+            select(func.coalesce(func.max(RunEvent.sequence), 0)).where(
+                RunEvent.run_id == run_id
+            )
+        )
+        or 0
+    ) + 1
+    event = RunEvent(
+        run_id=run_id,
+        sequence=next_sequence,
+        event_type=event_type,
+        event_key=event_key,
+        summary=summary,
+        payload=payload or {},
+    )
+    db.add(event)
+    await flush_uow(db)
     return event

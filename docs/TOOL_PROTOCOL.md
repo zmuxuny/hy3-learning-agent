@@ -1,6 +1,6 @@
 # Agent 工具与运行协议
 
-> 状态说明（2026-08-19）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3-RUN-008 和 H4-EVID-006 也随该协议提前关闭。审批/Run 恢复、领域作用域、Evidence 语义、提醒线程和安全边界仍有阻塞缺陷，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
+> 状态说明（2026-08-20）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算。领域作用域、Evidence 语义、提醒线程和应用部署边界仍有阻塞缺陷，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
 
 ## 设计原则
 
@@ -38,7 +38,7 @@ SQLite 写协调器会在嵌套 savepoint 前显式建立 physical outer transac
 | `subagent_cancel` | 取消由当前 Run 发起的子 Run |
 | `study_state_get` | 读取带计划版本的当前阶段/任务、下一步、证据、阻塞、逾期、复习和近期提交快照 |
 
-子 Agent 的轮次、工具上限、结果压缩和父事件投影已有正常路径。planning delegate 现在使用 stable action key/index 派生 child ID，并在 model wait 前保存 Context、messages 与 checkpoint，H3-RUN-008 已提前关闭；H2-TXN-009 也已关闭主/子/心跳的 writer 竞争丢工作问题。child 终态与父 completion 非原子、瞬时模型错误无耐久重试且预算不完整仍由 H3-RUN-009–011 阻塞，因此这里仍不能保证任意崩溃后一定形成完整报告。
+子 Agent 使用 stable action key/index 派生 child ID，并在 model wait 前保存 Context、messages 与 checkpoint。H3 已让 planning 与通用 child 复用统一 lease/checkpoint/retry/finalize 状态机；终态与父 completion 同事务投影或幂等修复，model/tool/network/elapsed/token/cost 预算与主 Run 共享语义。
 
 ### 状态与计划
 
@@ -122,9 +122,9 @@ run.started → context.built → assistant.status
 → assistant.message → run.completed
 ```
 
-审批暂停/恢复已有正常路径候选；H3-RUN-001 已证明拒绝决定不是耐久事实，重启会默认批准，H3-RUN-002/003 又证明 checkpoint 可在二次中断或 current tool 边界丢失。修复前不能把上述流程写成重启保证。
+审批暂停/恢复现在把 decision、answer、note、decided_at、ToolInvocation identity 与 checkpoint 原子持久化；拒绝不会在重启后默认批准，二次中断与 current-tool 边界保留上一份可信 checkpoint。缺失或无法证明的 legacy 审批进入 `needs_reconciliation`。
 
-`idempotent` 现在由数据库约束、canonical digest、CAS claim 与 fenced finalization 强制；H2-TXN-002/003 和 H4-EVID-006 已关闭。预算字段仍不是完整耐久协议，H3-RUN-011 继续阻塞 child 与主 Run 的 model/tool/time/network/cost 共享预算。
+`idempotent` 由数据库约束、canonical digest、CAS claim 与 fenced finalization 强制；H2-TXN-002/003 和 H4-EVID-006 已关闭。H3 进一步让 child 与主 Run 共享并持久化 model/tool/time/network/token/cost 预算及耗尽 reason。
 
 私有思维链不写入事件；TokenHub 要求的 `reasoning_content` 只在同一 Run 的模型轮次间回填。
 
@@ -132,7 +132,7 @@ run.started → context.built → assistant.status
 
 - 目标上 `plan_id` 必须由后端强制且不依赖 Prompt；旧 Competency/Context 路径仍可跨计划（H4-COMP-002–004、H5-CTX-001）。
 - Session 内的计划创建只能写提案；提案采用 API 幂等地物化正式计划，未采用时数据库中不存在对应 Plan。
-- `spawn/status/join/cancel` 与只读白名单已有候选；planning delegate 已在 model wait 前进入耐久 child checkpoint（H3-RUN-008 已关闭），但终态父事件、重试和预算仍待 H3-RUN-009–011。
+- `spawn/status/join/cancel` 与执行层只读白名单已接入统一 durable child 状态机；终态父事件、重试和预算对应的 H3-RUN-008–011 均已关闭。
 - 核心任务的目标门槛是可验证 Evidence；旧自由文本/self-report/checkbox 可越级 demonstrated，一次提交还会重复计权（H4-EVID-003/004）。
 - 删除、全局长期记忆和后台改变最终目标需要用户确认；阻塞型审批会暂停 Run 等待批准/拒绝，候选式确认只生成候选不中断运行。
 - `Operation` 的数据库 undo 使用 CAS，workspace undo 先提交 outbox intent 并以 forward hash 拒绝覆盖后续用户修改；H2-TXN-008 已关闭。Evidence undo 仍不追加 amendment/invalidation，图节点 undo 仍可能静默级联（H4-EVID-002、H4-COMP-006），因此不能把 H2 的事务撤销写成所有领域语义都已安全撤销。

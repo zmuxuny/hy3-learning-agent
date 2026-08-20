@@ -2,6 +2,7 @@
 import { BellIcon, CheckIcon, ChevronDownIcon, ClipboardIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
+import { isRunBlocking } from '../runState.js';
 
 const props = defineProps({ message: { type: Object, required: true } });
 const store = useWorkspaceStore();
@@ -15,7 +16,7 @@ const planningAnswers = computed(() => (
     ? (props.message.message_metadata.answers || [])
     : null
 ));
-const canEdit = computed(() => !['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
+const canEdit = computed(() => !isRunBlocking(store.currentRun?.status));
 const repliedNotification = computed(() => {
   const notificationId = props.message.message_metadata?.reply_to_notification_id;
   if (!notificationId) return null;

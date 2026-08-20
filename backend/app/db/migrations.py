@@ -28,7 +28,7 @@ from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from sqlalchemy import JSON, create_engine, insert
 from sqlalchemy.engine import URL
@@ -67,6 +67,11 @@ MIGRATION_REGISTRY: tuple[MigrationRevision, ...] = (
         version=2,
         name="h2_transaction_outbox",
         checksum="7f42435d235b1497a358abc4353ff6b52771514a4b252c5ba74acec6e1493de1",
+    ),
+    MigrationRevision(
+        version=3,
+        name="h3_durable_runtime",
+        checksum="b69ed9f0844106e54936e008c22b4d4ebd7e089a8cb38989a4306ad25c7239de",
     ),
 )
 if [revision.version for revision in MIGRATION_REGISTRY] != list(
@@ -1352,6 +1357,273 @@ def _normalize_json(value: Any, *, table_name: str, column_name: str) -> Any:
         ) from exc
 
 
+_H3_CHECKPOINT_PHASES = frozenset(
+    {
+        "not_started",
+        "starting",
+        "awaiting_model",
+        "tool_ready",
+        "tool_running",
+        "waiting_approval",
+        "retry_wait",
+        "finalizing",
+        "terminal",
+        "reconciling",
+    }
+)
+_H3_CHECKPOINT_REQUIRED_KEYS = frozenset(
+    {
+        "schema_version",
+        "kind",
+        "phase",
+        "step",
+        "messages",
+        "current_tool_call",
+        "remaining_tool_calls",
+        "current_invocation_id",
+        "context_snapshot_id",
+        "cards",
+        "budget_usage",
+        "state_version",
+    }
+)
+
+
+def _normalized_tool_call(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    function = value.get("function")
+    if isinstance(function, dict):
+        name = function.get("name")
+        arguments = function.get("arguments")
+    else:
+        name = value.get("name")
+        arguments = value.get("arguments")
+    tool_call_id = value.get("id")
+    if (
+        not isinstance(tool_call_id, str)
+        or not tool_call_id
+        or not isinstance(name, str)
+        or not name
+        or not isinstance(arguments, str)
+    ):
+        return None
+    try:
+        parsed_arguments = json.loads(arguments)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed_arguments, dict):
+        return None
+    return {"id": tool_call_id, "name": name, "arguments": arguments}
+
+
+def _strict_h3_checkpoint(checkpoint: Any, *, kind: str) -> bool:
+    """Accept a self-described H3 envelope only when every base field is valid."""
+
+    if (
+        not isinstance(checkpoint, dict)
+        or not _H3_CHECKPOINT_REQUIRED_KEYS.issubset(checkpoint)
+    ):
+        return False
+    if checkpoint.get("schema_version") != 1 or checkpoint.get("kind") != kind:
+        return False
+    phase = checkpoint.get("phase")
+    step = checkpoint.get("step")
+    state_version = checkpoint.get("state_version")
+    if phase not in _H3_CHECKPOINT_PHASES:
+        return False
+    if isinstance(step, bool) or not isinstance(step, int) or step < 0:
+        return False
+    if (
+        isinstance(state_version, bool)
+        or not isinstance(state_version, int)
+        or state_version < 1
+    ):
+        return False
+    messages = checkpoint.get("messages")
+    cards = checkpoint.get("cards")
+    budget_usage = checkpoint.get("budget_usage")
+    if (
+        not isinstance(messages, list)
+        or not all(isinstance(message, dict) for message in messages)
+        or not isinstance(cards, list)
+        or not isinstance(budget_usage, dict)
+    ):
+        return False
+    current = checkpoint.get("current_tool_call")
+    remaining = checkpoint.get("remaining_tool_calls")
+    if current is not None and _normalized_tool_call(current) is None:
+        return False
+    if not isinstance(remaining, list) or any(
+        _normalized_tool_call(call) is None for call in remaining
+    ):
+        return False
+    for key in ("current_invocation_id", "context_snapshot_id"):
+        value = checkpoint.get(key)
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or value < 1
+        ):
+            return False
+    if phase in {"tool_ready", "tool_running", "waiting_approval"} and current is None:
+        return False
+    if phase == "finalizing" and (
+        not isinstance(checkpoint.get("final_text"), str)
+        or not isinstance(checkpoint.get("final_message_key"), str)
+        or not checkpoint.get("final_message_key")
+    ):
+        return False
+    return True
+
+
+def _legacy_checkpoint_progress(
+    checkpoint: dict[str, Any],
+    *,
+    kind: str,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]], str, str | None]:
+    """Recover the current H2 tool only when its transcript proves the boundary.
+
+    H2 wrote a checkpoint twice around a tool: immediately after popping the
+    current call, and again after appending its result.  Comparing the
+    assistant tool-call transcript, durable tool results, and the stored tail
+    distinguishes those two boundaries, including the single-tool ``[]`` case.
+    """
+
+    if "schema_version" in checkpoint:
+        if not _strict_h3_checkpoint(checkpoint, kind=kind):
+            return None, [], "reconciling", "legacy_checkpoint_envelope_invalid"
+        current = (
+            _normalized_tool_call(checkpoint.get("current_tool_call"))
+            if checkpoint.get("current_tool_call") is not None
+            else None
+        )
+        remaining = [
+            _normalized_tool_call(call) for call in checkpoint["remaining_tool_calls"]
+        ]
+        return (
+            current,
+            [call for call in remaining if call is not None],
+            str(checkpoint["phase"]),
+            None,
+        )
+
+    raw_messages = checkpoint.get("messages") or []
+    raw_pending = checkpoint.get("pending_tool_calls") or []
+    if not isinstance(raw_messages, list) or not isinstance(raw_pending, list):
+        return None, [], "reconciling", "legacy_checkpoint_invalid"
+    if not all(isinstance(message, dict) for message in raw_messages):
+        return None, [], "reconciling", "legacy_checkpoint_invalid"
+    pending: list[dict[str, Any]] = []
+    for raw_call in raw_pending:
+        call = _normalized_tool_call(raw_call)
+        if call is None:
+            return None, [], "reconciling", "legacy_checkpoint_invalid"
+        pending.append(call)
+
+    outstanding: list[dict[str, Any]] = []
+    seen_call_ids: set[str] = set()
+    for message in raw_messages:
+        role = message.get("role")
+        if role == "assistant" and message.get("tool_calls") is not None:
+            raw_calls = message.get("tool_calls")
+            if not isinstance(raw_calls, list):
+                return None, [], "reconciling", "legacy_tool_transcript_invalid"
+            for raw_call in raw_calls:
+                call = _normalized_tool_call(raw_call)
+                if call is None or call["id"] in seen_call_ids:
+                    return None, [], "reconciling", "legacy_tool_transcript_invalid"
+                seen_call_ids.add(call["id"])
+                outstanding.append(call)
+        elif role == "tool":
+            tool_call_id = message.get("tool_call_id")
+            matches = [
+                index for index, call in enumerate(outstanding)
+                if call["id"] == tool_call_id
+            ]
+            if len(matches) != 1:
+                return None, [], "reconciling", "legacy_tool_transcript_invalid"
+            outstanding.pop(matches[0])
+
+    if pending == outstanding:
+        if not outstanding:
+            return None, [], "awaiting_model", None
+        return outstanding[0], outstanding[1:], "tool_ready", None
+    if outstanding and pending == outstanding[1:]:
+        return outstanding[0], pending, "tool_ready", None
+    return None, [], "reconciling", "legacy_current_tool_ambiguous"
+
+
+def _upgrade_legacy_run_checkpoint(
+    checkpoint: Any,
+    *,
+    kind: str,
+    phase: str,
+    current_tool_call: dict[str, Any] | None = None,
+    remaining_tool_calls: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """Rebuild an H3 envelope; never trust a legacy self-reported version."""
+
+    if not isinstance(checkpoint, dict):
+        return None
+    raw_step = checkpoint.get("step")
+    step = raw_step if isinstance(raw_step, int) and not isinstance(raw_step, bool) else 0
+    raw_messages = checkpoint.get("messages")
+    messages = (
+        list(raw_messages)
+        if isinstance(raw_messages, list)
+        and all(isinstance(message, dict) for message in raw_messages)
+        else []
+    )
+    raw_cards = checkpoint.get("cards")
+    raw_budget = checkpoint.get("budget_usage")
+    current_invocation_id = checkpoint.get("current_invocation_id")
+    context_snapshot_id = checkpoint.get("context_snapshot_id")
+    return {
+        "schema_version": 1,
+        "kind": kind,
+        "phase": phase,
+        "step": max(0, step),
+        "messages": messages,
+        "current_tool_call": current_tool_call,
+        "remaining_tool_calls": list(remaining_tool_calls or []),
+        "current_invocation_id": (
+            current_invocation_id
+            if isinstance(current_invocation_id, int)
+            and not isinstance(current_invocation_id, bool)
+            and current_invocation_id >= 1
+            else None
+        ),
+        "context_snapshot_id": (
+            context_snapshot_id
+            if isinstance(context_snapshot_id, int)
+            and not isinstance(context_snapshot_id, bool)
+            and context_snapshot_id >= 1
+            else None
+        ),
+        "cards": list(raw_cards) if isinstance(raw_cards, list) else [],
+        "budget_usage": dict(raw_budget) if isinstance(raw_budget, dict) else {},
+        "state_version": 1,
+        **{
+            key: checkpoint[key]
+            for key in (
+                "action_key",
+                "assignment_index",
+                "role",
+                "objective",
+                "context",
+                "allowlist",
+                "max_steps",
+                "tool_calls_used",
+                "granted_tool_call_ids",
+                "retry_count",
+                "retry_not_before",
+                "final_text",
+                "final_message_key",
+            )
+            if key in checkpoint
+        },
+    }
+
+
 def _normalize_row(table, raw: sqlite3.Row, counters: dict[str, int]) -> dict[str, Any]:
     values: dict[str, Any] = {}
     raw_keys = set(raw.keys())
@@ -1384,6 +1656,86 @@ def _normalize_row(table, raw: sqlite3.Row, counters: dict[str, int]) -> dict[st
         elif isinstance(column.type, JSON):
             value = _normalize_json(value, table_name=table.name, column_name=column.name)
         values[column.name] = value
+    if table.name == "agent_runs" and "phase" not in raw_keys:
+        status = str(values.get("status") or "queued")
+        checkpoint = values.get("checkpoint")
+        pending_approval = values.get("pending_approval")
+        trigger = str(values.get("trigger") or "user_message")
+        kind = "subagent" if trigger == "subagent" else "agent"
+        phase = "not_started"
+        reason = None
+        current_tool_call = None
+        remaining_tool_calls: list[dict[str, Any]] = []
+        checkpoint_phase = "awaiting_model"
+        checkpoint_reason = None
+        if checkpoint is not None:
+            if isinstance(checkpoint, dict):
+                (
+                    current_tool_call,
+                    remaining_tool_calls,
+                    checkpoint_phase,
+                    checkpoint_reason,
+                ) = _legacy_checkpoint_progress(checkpoint, kind=kind)
+            else:
+                checkpoint_reason = "legacy_checkpoint_invalid"
+                checkpoint_phase = "reconciling"
+        if status in {"completed", "failed", "cancelled"}:
+            phase = "terminal"
+        elif status == "needs_reconciliation":
+            phase = "reconciling"
+            reason = "legacy_preexisting_reconciliation"
+        elif status == "waiting_approval":
+            if pending_approval is None:
+                status = "needs_reconciliation"
+                phase = "reconciling"
+                reason = "legacy_approval_missing"
+            elif checkpoint_reason is not None:
+                status = "needs_reconciliation"
+                phase = "reconciling"
+                reason = checkpoint_reason
+            else:
+                phase = "waiting_approval"
+        elif status == "queued" and pending_approval is not None:
+            status = "needs_reconciliation"
+            phase = "reconciling"
+            reason = "legacy_approval_decision_missing"
+        elif checkpoint is not None:
+            if checkpoint_reason is not None:
+                status = "needs_reconciliation"
+                phase = "reconciling"
+                reason = checkpoint_reason
+            else:
+                status = "queued"
+                phase = checkpoint_phase
+        elif status == "running":
+            status = "needs_reconciliation"
+            phase = "reconciling"
+            reason = "legacy_running_without_checkpoint"
+        elif status not in {"queued"}:
+            status = "needs_reconciliation"
+            phase = "reconciling"
+            reason = "legacy_run_status_unknown"
+        values["status"] = status
+        values["phase"] = phase
+        values["state_version"] = 1
+        values["attempt"] = 0
+        values["retry_count"] = 0
+        values["status_reason"] = reason
+        values["checkpoint"] = _upgrade_legacy_run_checkpoint(
+            checkpoint,
+            kind=kind,
+            phase=phase,
+            current_tool_call=current_tool_call,
+            remaining_tool_calls=remaining_tool_calls,
+        )
+        values["checkpoint_schema_version"] = 1 if values["checkpoint"] is not None else None
+        values["updated_at"] = values.get("created_at") or utc_now()
+    if table.name == "run_steer_messages" and "disposition" not in raw_keys:
+        applied_at = values.get("applied_at")
+        values["disposition"] = "applied" if applied_at is not None else "pending"
+        values["disposed_at"] = applied_at
+    if table.name == "queued_messages" and "version" not in raw_keys:
+        values["version"] = 1
     return values
 
 
@@ -1434,6 +1786,102 @@ def _copy_legacy_rows(source_path: Path, target_connection, counters: dict[str, 
                     )
     finally:
         source.close()
+
+
+def _legacy_tool_idempotency_key(run_id: str, tool_name: str, tool_call_id: str) -> str:
+    identity = f"provider:{tool_call_id}"
+    digest = hashlib.sha256(
+        f"{run_id}|{tool_name}|{identity}".encode("utf-8")
+    ).hexdigest()
+    return f"{run_id[:8]}:{tool_name}:{digest[:48]}"
+
+
+def _legacy_approval_invocation_id(
+    connection,
+    *,
+    run_id: str,
+    tool_name: str,
+    tool_call_id: str,
+) -> int | None:
+    rows = connection.exec_driver_sql(
+        """
+        SELECT id, idempotency_key, args_hash, request_digest, canonical_args,
+               effect_kind, tool_call_id
+        FROM tool_invocations
+        WHERE run_id=? AND tool_name=? AND status='pending_approval'
+        ORDER BY id
+        """,
+        (run_id, tool_name),
+    ).all()
+    if len(rows) != 1:
+        return None
+    (
+        invocation_id,
+        idempotency_key,
+        args_hash,
+        request_digest,
+        raw_canonical_args,
+        effect_kind,
+        persisted_tool_call_id,
+    ) = rows[0]
+    try:
+        canonical_args = (
+            json.loads(raw_canonical_args)
+            if isinstance(raw_canonical_args, str)
+            else raw_canonical_args
+        )
+        encoded = json.dumps(
+            canonical_args,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    expected_digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    expected_key = _legacy_tool_idempotency_key(run_id, tool_name, tool_call_id)
+    if (
+        idempotency_key != expected_key
+        or not isinstance(canonical_args, dict)
+        or request_digest != expected_digest
+        or args_hash != request_digest
+        or effect_kind not in {"pure_read", "database_write", "external_read", "external_write"}
+        or persisted_tool_call_id not in {None, tool_call_id}
+    ):
+        return None
+    return int(invocation_id)
+
+
+def _mark_legacy_run_reconciliation(connection, run_id: str, reason: str) -> None:
+    row = connection.exec_driver_sql(
+        "SELECT checkpoint FROM agent_runs WHERE id=?",
+        (run_id,),
+    ).first()
+    checkpoint = None
+    if row is not None and row[0] is not None:
+        try:
+            checkpoint = json.loads(row[0]) if isinstance(row[0], str) else dict(row[0])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            checkpoint = None
+    if isinstance(checkpoint, dict):
+        checkpoint["phase"] = "reconciling"
+        checkpoint["state_version"] = 1
+    connection.exec_driver_sql(
+        """
+        UPDATE agent_runs
+        SET status='needs_reconciliation', phase='reconciling', status_reason=?,
+            checkpoint=?, checkpoint_schema_version=?,
+            lease_token=NULL, lease_owner=NULL,
+            lease_acquired_at=NULL, lease_expires_at=NULL
+        WHERE id=?
+        """,
+        (
+            reason,
+            json.dumps(checkpoint, ensure_ascii=False, sort_keys=True) if checkpoint else None,
+            1 if checkpoint else None,
+            run_id,
+        ),
+    )
 
 
 def _apply_legacy_backfills(connection) -> None:
@@ -1515,6 +1963,256 @@ def _apply_legacy_backfills(connection) -> None:
           AND invocation_id IS NULL
         """
     )
+
+    # H3 durable approval facts.  Only an intact waiting request paired with
+    # exactly one pending invocation is safe to migrate.  A queued request in
+    # revision 2 cannot reveal whether the process-only decision was approve
+    # or reject, so _normalize_row has already fenced it for reconciliation.
+    approval_table = Base.metadata.tables["run_approvals"]
+    waiting_rows = connection.exec_driver_sql(
+        """
+        SELECT id, owner_id, pending_approval
+        FROM agent_runs
+        WHERE status = 'waiting_approval' AND pending_approval IS NOT NULL
+        ORDER BY id
+        """
+    ).all()
+    for run_id, owner_id, raw_pending in waiting_rows:
+        try:
+            pending = json.loads(raw_pending) if isinstance(raw_pending, str) else dict(raw_pending)
+            tool_call = _normalized_tool_call(pending["tool_call"])
+            if tool_call is None:
+                raise ValueError("approval tool call is invalid")
+            tool_call_id = tool_call["id"]
+            tool_name = tool_call["name"]
+            raw_remaining = pending.get("remaining_tool_calls") or []
+            if not isinstance(raw_remaining, list):
+                raise ValueError("approval remaining calls are invalid")
+            remaining_tool_calls = []
+            for raw_call in raw_remaining:
+                call = _normalized_tool_call(raw_call)
+                if call is None:
+                    raise ValueError("approval remaining call is invalid")
+                remaining_tool_calls.append(call)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            _mark_legacy_run_reconciliation(
+                connection,
+                run_id,
+                "legacy_approval_invalid",
+            )
+            continue
+        invocation_id = _legacy_approval_invocation_id(
+            connection,
+            run_id=run_id,
+            tool_name=tool_name,
+            tool_call_id=tool_call_id,
+        )
+        if invocation_id is None:
+            _mark_legacy_run_reconciliation(
+                connection,
+                run_id,
+                "legacy_approval_invocation_unproven",
+            )
+            continue
+        approval_id = str(uuid5(NAMESPACE_URL, f"learning-travel:approval:{run_id}:{tool_call_id}"))
+        connection.exec_driver_sql(
+            "UPDATE tool_invocations SET tool_call_id=? WHERE id=?",
+            (tool_call_id, invocation_id),
+        )
+        connection.execute(insert(approval_table).values(
+            id=approval_id,
+            owner_id=owner_id,
+            run_id=run_id,
+            invocation_id=invocation_id,
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            tool_call=tool_call,
+            remaining_tool_calls=remaining_tool_calls,
+            reason=str(pending.get("reason") or "需要用户确认"),
+            decision="pending",
+            created_at=utc_now(),
+        ))
+        pending["approval_id"] = approval_id
+        connection.exec_driver_sql(
+            "UPDATE agent_runs SET pending_approval=? WHERE id=?",
+            (json.dumps(pending, ensure_ascii=False, sort_keys=True), run_id),
+        )
+
+    # Give only provably canonical legacy final rows stable replay keys.  A
+    # split H2 finalization with one exact message can continue from the
+    # finalizing phase without another model call.
+    final_rows = connection.exec_driver_sql(
+        """
+        SELECT id, session_id, output, status, status_reason
+        FROM agent_runs
+        WHERE session_id IS NOT NULL AND output <> ''
+        ORDER BY id
+        """
+    ).all()
+    for run_id, session_id, output, status, status_reason in final_rows:
+        matches = connection.exec_driver_sql(
+            """
+            SELECT id FROM chat_messages
+            WHERE session_id=? AND run_id=? AND role='assistant' AND content=?
+            ORDER BY id DESC
+            """,
+            (session_id, run_id, output),
+        ).all()
+        if len(matches) != 1:
+            continue
+        message_key = f"run:{run_id}:final"
+        connection.exec_driver_sql(
+            "UPDATE chat_messages SET message_key=? WHERE id=? AND message_key IS NULL",
+            (message_key, int(matches[0][0])),
+        )
+        if status == "needs_reconciliation" and status_reason == "legacy_running_without_checkpoint":
+            checkpoint = {
+                "schema_version": 1,
+                "kind": "agent",
+                "phase": "finalizing",
+                "step": 0,
+                "messages": [],
+                "current_tool_call": None,
+                "remaining_tool_calls": [],
+                "current_invocation_id": None,
+                "context_snapshot_id": None,
+                "cards": [],
+                "budget_usage": {},
+                "state_version": 1,
+                "final_text": output,
+                "final_message_key": message_key,
+            }
+            connection.exec_driver_sql(
+                """
+                UPDATE agent_runs
+                SET status='queued', phase='finalizing', checkpoint=?,
+                    checkpoint_schema_version=1, status_reason=NULL
+                WHERE id=?
+                """,
+                (json.dumps(checkpoint, ensure_ascii=False, sort_keys=True), run_id),
+            )
+
+    # Assign stable keys to one canonical legacy event of each replayable
+    # projection.  Historical duplicates remain immutable audit rows.
+    run_ids = [row[0] for row in connection.exec_driver_sql(
+        "SELECT id FROM agent_runs ORDER BY id"
+    ).all()]
+    for run_id in run_ids:
+        event_rows = connection.exec_driver_sql(
+            """
+            SELECT id, event_type FROM run_events
+            WHERE run_id=? AND event_type IN ('assistant.message', 'run.completed')
+            ORDER BY sequence DESC
+            """,
+            (run_id,),
+        ).all()
+        seen_types: set[str] = set()
+        for event_id, event_type in event_rows:
+            if event_type in seen_types:
+                continue
+            seen_types.add(event_type)
+            suffix = "assistant-final" if event_type == "assistant.message" else "completed"
+            connection.exec_driver_sql(
+                "UPDATE run_events SET event_key=? WHERE id=? AND event_key IS NULL",
+                (f"run:{run_id}:{suffix}", int(event_id)),
+            )
+    child_rows = connection.exec_driver_sql(
+        "SELECT id, parent_run_id FROM agent_runs WHERE parent_run_id IS NOT NULL ORDER BY id"
+    ).all()
+    for child_id, parent_run_id in child_rows:
+        parent_events = connection.exec_driver_sql(
+            """
+            SELECT id FROM run_events
+            WHERE run_id=? AND event_type='subagent.completed'
+              AND json_extract(payload, '$.child_run_id')=?
+            ORDER BY sequence
+            """,
+            (parent_run_id, child_id),
+        ).all()
+        if parent_events:
+            connection.exec_driver_sql(
+                "UPDATE run_events SET event_key=? WHERE id=? AND event_key IS NULL",
+                (f"child:{child_id}:terminal", int(parent_events[0][0])),
+            )
+
+    # Stable queue order is part of the durable Session protocol.  Repair
+    # duplicate/gapped legacy positions without touching message contents.
+    queue_scopes = connection.exec_driver_sql(
+        "SELECT DISTINCT owner_id, session_id FROM queued_messages ORDER BY owner_id, session_id"
+    ).all()
+    for owner_id, session_id in queue_scopes:
+        if session_id is None:
+            rows = connection.exec_driver_sql(
+                """
+                SELECT id FROM queued_messages
+                WHERE owner_id=? AND session_id IS NULL
+                ORDER BY position, created_at, id
+                """,
+                (owner_id,),
+            ).all()
+        else:
+            rows = connection.exec_driver_sql(
+                """
+                SELECT id FROM queued_messages
+                WHERE owner_id=? AND session_id=?
+                ORDER BY position, created_at, id
+                """,
+                (owner_id, session_id),
+            ).all()
+        for position, (message_id,) in enumerate(rows):
+            connection.exec_driver_sql(
+                "UPDATE queued_messages SET position=? WHERE id=?",
+                (position, message_id),
+            )
+
+    # If a legacy database already contains two active roots in one scope,
+    # executing either first would invent ordering.  Fence the entire group
+    # before the H3 partial unique indexes are created.
+    active = "('queued', 'running', 'waiting_approval', 'retry_wait')"
+    conflict_groups = [
+        (
+            f"SELECT owner_id, plan_id FROM agent_runs WHERE parent_run_id IS NULL "
+            f"AND plan_id IS NOT NULL AND status IN {active} GROUP BY owner_id, plan_id HAVING count(*) > 1",
+            "owner_id=? AND plan_id=?",
+        ),
+        (
+            f"SELECT owner_id, session_id FROM agent_runs WHERE parent_run_id IS NULL "
+            f"AND plan_id IS NULL AND session_id IS NOT NULL AND status IN {active} "
+            f"GROUP BY owner_id, session_id HAVING count(*) > 1",
+            "owner_id=? AND session_id=? AND plan_id IS NULL",
+        ),
+    ]
+    for query, predicate in conflict_groups:
+        for first, second in connection.exec_driver_sql(query).all():
+            connection.exec_driver_sql(
+                f"""
+                UPDATE agent_runs
+                SET status='needs_reconciliation', phase='reconciling',
+                    status_reason='legacy_active_root_conflict'
+                WHERE parent_run_id IS NULL AND {predicate} AND status IN {active}
+                """,
+                (first, second),
+            )
+    stateless_owners = connection.exec_driver_sql(
+        f"""
+        SELECT owner_id FROM agent_runs
+        WHERE parent_run_id IS NULL AND plan_id IS NULL AND session_id IS NULL
+          AND trigger <> 'subagent'
+          AND status IN {active}
+        GROUP BY owner_id HAVING count(*) > 1
+        """
+    ).all()
+    for (owner_id,) in stateless_owners:
+        connection.exec_driver_sql(
+            f"""
+            UPDATE agent_runs
+            SET status='needs_reconciliation', phase='reconciling',
+                status_reason='legacy_active_root_conflict'
+            WHERE parent_run_id IS NULL AND owner_id=? AND plan_id IS NULL
+              AND session_id IS NULL AND trigger <> 'subagent' AND status IN {active}
+            """,
+            (owner_id,),
+        )
 
 
 def _build_candidate(

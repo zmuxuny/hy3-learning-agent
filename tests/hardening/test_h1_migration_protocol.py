@@ -78,6 +78,7 @@ CANONICAL_TABLES = {
     "quizzes",
     "resource_competency_links",
     "review_schedules",
+    "run_approvals",
     "run_events",
     "run_steer_messages",
     "schema_migrations",
@@ -1558,7 +1559,7 @@ def test_canonical_schema_has_exact_current_table_inventory(
         actual_tables = _table_names(connection)
 
     assert actual_tables == CANONICAL_TABLES
-    assert len(actual_tables) == 40
+    assert len(actual_tables) == 41
 
 
 def test_learning_event_canonical_columns_defaults_and_partial_unique_index(

@@ -10,9 +10,11 @@ from sqlalchemy.exc import OperationalError
 from app.api.agent import decide_run_approval
 from app.db.database import AsyncSessionLocal
 from app.main import reconcile_interrupted_runs
-from app.models import AgentRun, ChatMessage, Plan, RunEvent, Session
+from app.models import AgentRun, ChatMessage, Plan, RunApproval, RunEvent, Session, ToolInvocation
 from app.runtime.agent import AgentRuntime
+from app.runtime.checkpoints import normalize_checkpoint
 from app.runtime.events import emit_event
+from app.runtime.tasks import start_tracked_task, wake_tracked_task
 from app.schemas import RunApprovalRequest
 from app.services import plans as plan_service
 
@@ -156,23 +158,26 @@ async def test_blocking_approval_pauses_run_and_approve_resumes(monkeypatch):
 
     started = {}
 
-    def fake_start(run_id_value, **kwargs):
+    def fake_start(run_id_value, *, wake_key, **kwargs):
+        started["wake_key"] = wake_key
         started["kwargs"] = kwargs
 
-    monkeypatch.setattr(agent_api, "_start_runtime", fake_start)
+    monkeypatch.setattr(agent_api, "_wake_runtime", fake_start)
     async with AsyncSessionLocal() as db:
         queued = await decide_run_approval(run_id, RunApprovalRequest(approved=True), db)
         assert queued.status == "queued"
-    assert started["kwargs"]["approval_decision"] == "approve"
+    assert started["kwargs"] == {"resume": True}
+    assert started["wake_key"].startswith("approval:")
 
-    await runtime.run(run_id, resume=True, approval_decision="approve")
+    await runtime.run(run_id, resume=True)
     async with AsyncSessionLocal() as db:
         completed = await db.get(AgentRun, run_id)
         assert completed.status == "completed"
         assert completed.output == "计划已按你的批准创建。"
         assert completed.pending_approval is None
         plans = list((await db.execute(select(Plan))).scalars())
-        assert len(plans) == 1
+        invocations = list((await db.execute(select(ToolInvocation))).scalars())
+        assert len(plans) == 1, invocations[0].result_payload if invocations else None
         assert plans[0].title == "审批创建的计划"
         resumed = [event for event in await _events(db, run_id) if event.event_type == "run.resumed"]
         resolved = [event for event in await _events(db, run_id) if event.event_type == "approval.resolved"]
@@ -189,7 +194,7 @@ async def test_rejected_approval_feeds_model_and_does_not_write(monkeypatch):
         await db.commit()
         run_id = run.id
 
-    monkeypatch.setattr(agent_api, "_start_runtime", lambda _run_id, **_kwargs: None)
+    monkeypatch.setattr(agent_api, "_wake_runtime", lambda _run_id, **_kwargs: None)
     completions = ApprovalCompletions()
     completions.final_text = "你拒绝了这次创建，我不写入计划。"
     runtime = AgentRuntime()
@@ -199,7 +204,7 @@ async def test_rejected_approval_feeds_model_and_does_not_write(monkeypatch):
     async with AsyncSessionLocal() as db:
         await decide_run_approval(run_id, RunApprovalRequest(approved=False), db)
 
-    await runtime.run(run_id, resume=True, approval_decision="reject")
+    await runtime.run(run_id, resume=True)
     async with AsyncSessionLocal() as db:
         completed = await db.get(AgentRun, run_id)
         assert completed.status == "completed"
@@ -208,6 +213,164 @@ async def test_rejected_approval_feeds_model_and_does_not_write(monkeypatch):
         resolved = [event for event in await _events(db, run_id) if event.event_type == "approval.resolved"]
         assert resolved[0].payload["decision"] == "reject"
 
+
+@pytest.mark.asyncio
+async def test_approval_wakeup_hands_off_after_old_task_and_coalesces_duplicates(monkeypatch):
+    import app.api.agent as agent_api
+
+    tool_call = {"id": "wakeup-call", "name": "plan_create", "arguments": "{}"}
+    approval_id = "approval-wakeup-race"
+    async with AsyncSessionLocal() as db:
+        run = AgentRun(
+            owner_id="local",
+            trigger="heartbeat",
+            objective="approval wakeup race",
+            status="waiting_approval",
+            phase="waiting_approval",
+            checkpoint_schema_version=1,
+            checkpoint=normalize_checkpoint({
+                "schema_version": 1,
+                "kind": "agent",
+                "phase": "waiting_approval",
+                "step": 0,
+                "messages": [],
+                "current_tool_call": tool_call,
+                "remaining_tool_calls": [],
+                "budget_usage": {},
+                "state_version": 1,
+            }),
+            pending_approval={
+                "approval_id": approval_id,
+                "tool_call": tool_call,
+                "remaining_tool_calls": [],
+                "reason": "deterministic wakeup fixture",
+                "step": 0,
+            },
+        )
+        db.add(run)
+        await db.flush()
+        db.add(RunApproval(
+            id=approval_id,
+            owner_id="local",
+            run_id=run.id,
+            tool_call_id=tool_call["id"],
+            tool_name=tool_call["name"],
+            tool_call=tool_call,
+            remaining_tool_calls=[],
+            reason="deterministic wakeup fixture",
+        ))
+        await db.commit()
+        run_id = run.id
+
+    old_started = asyncio.Event()
+    allow_old_to_finish = asyncio.Event()
+    resumed_started = asyncio.Event()
+    allow_resumed_to_finish = asyncio.Event()
+    resumed_finished = asyncio.Event()
+    resumed_calls: list[dict] = []
+
+    async def old_pause_task() -> None:
+        old_started.set()
+        await allow_old_to_finish.wait()
+
+    async def resumed_run(run_id_value: str, **kwargs) -> None:
+        resumed_calls.append({"run_id": run_id_value, "kwargs": kwargs})
+        resumed_started.set()
+        try:
+            await allow_resumed_to_finish.wait()
+        finally:
+            resumed_finished.set()
+
+    monkeypatch.setattr(agent_api.runtime, "run", resumed_run)
+    old_task = start_tracked_task(run_id, old_pause_task())
+    await old_started.wait()
+
+    async with AsyncSessionLocal() as db:
+        first = await decide_run_approval(run_id, RunApprovalRequest(approved=True), db)
+    async with AsyncSessionLocal() as db:
+        duplicate_before_handoff = await decide_run_approval(
+            run_id,
+            RunApprovalRequest(approved=True),
+            db,
+        )
+    assert first.status == duplicate_before_handoff.status == "queued"
+    assert not resumed_started.is_set()
+
+    allow_old_to_finish.set()
+    await old_task
+    await asyncio.wait_for(resumed_started.wait(), timeout=1)
+    assert resumed_calls == [{"run_id": run_id, "kwargs": {"resume": True}}]
+
+    async with AsyncSessionLocal() as db:
+        duplicate_while_running = await decide_run_approval(
+            run_id,
+            RunApprovalRequest(approved=True),
+            db,
+        )
+    assert duplicate_while_running.status == "queued"
+    await asyncio.sleep(0)
+    assert len(resumed_calls) == 1
+
+    allow_resumed_to_finish.set()
+    await asyncio.wait_for(resumed_finished.wait(), timeout=1)
+    await asyncio.sleep(0)
+    assert len(resumed_calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_wakeup_replaces_done_owner_before_its_cleanup_callback() -> None:
+    run_id = "done-before-cleanup-window"
+    wake_key = "approval:done-before-cleanup"
+    window_observed = asyncio.Event()
+    successor_started = asyncio.Event()
+    allow_successor_to_finish = asyncio.Event()
+    successor_finished = asyncio.Event()
+    owner: dict[str, asyncio.Task] = {}
+    successors: list[asyncio.Task] = []
+    successor_calls = 0
+
+    async def successor() -> None:
+        nonlocal successor_calls
+        successor_calls += 1
+        successor_started.set()
+        try:
+            await allow_successor_to_finish.wait()
+        finally:
+            successor_finished.set()
+
+    def wake_after_done_before_cleanup() -> None:
+        assert owner["task"].done()
+        window_observed.set()
+        successors.append(wake_tracked_task(
+            run_id,
+            successor(),
+            wake_key=wake_key,
+        ))
+
+    async def old_owner() -> None:
+        # call_soon is queued before Task schedules its done callbacks.  The
+        # callback therefore observes done()==True while the old task still
+        # occupies the tracked slot.
+        asyncio.get_running_loop().call_soon(wake_after_done_before_cleanup)
+
+    owner["task"] = wake_tracked_task(
+        run_id,
+        old_owner(),
+        wake_key=wake_key,
+    )
+    await asyncio.wait_for(window_observed.wait(), timeout=1)
+    await asyncio.wait_for(successor_started.wait(), timeout=1)
+    assert successor_calls == 1
+
+    duplicate = wake_tracked_task(run_id, successor(), wake_key=wake_key)
+    assert duplicate is successors[0]
+    await asyncio.sleep(0)
+    assert successor_calls == 1
+
+    allow_successor_to_finish.set()
+    await asyncio.wait_for(successor_finished.wait(), timeout=1)
+    await asyncio.sleep(0)
+    assert successor_calls == 1
 
 @pytest.mark.asyncio
 async def test_checkpointed_run_is_queued_and_resumes_after_restart(monkeypatch):
@@ -219,7 +382,8 @@ async def test_checkpointed_run_is_queued_and_resumes_after_restart(monkeypatch)
             objective="读取计划",
             model="hy3",
             status="running",
-            checkpoint={
+            checkpoint_schema_version=1,
+            checkpoint=normalize_checkpoint({
                 "step": 0,
                 "messages": [
                     {"role": "system", "content": "system"},
@@ -240,7 +404,7 @@ async def test_checkpointed_run_is_queued_and_resumes_after_restart(monkeypatch)
                     "name": "plan_get",
                     "arguments": json.dumps({"plan_id": plan.id}),
                 }],
-            },
+            }),
         )
         db.add(run)
         await db.commit()
@@ -300,7 +464,8 @@ async def test_resume_preserves_inline_card_snapshots_in_final_message():
             trigger="user_message",
             objective="继续规划",
             status="queued",
-            checkpoint={
+            checkpoint_schema_version=1,
+            checkpoint=normalize_checkpoint({
                 "step": 1,
                 "messages": [
                     {"role": "system", "content": "system"},
@@ -308,7 +473,7 @@ async def test_resume_preserves_inline_card_snapshots_in_final_message():
                 ],
                 "pending_tool_calls": [],
                 "cards": [card],
-            },
+            }),
         )
         db.add(run)
         await db.commit()

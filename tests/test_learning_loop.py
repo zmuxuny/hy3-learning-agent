@@ -114,14 +114,14 @@ async def test_startup_reconciles_interrupted_runs_without_losing_trace():
     async with AsyncSessionLocal() as db:
         interrupted = await db.get(AgentRun, interrupted_id)
         completed = await db.get(AgentRun, completed_id)
-        assert interrupted.status == "failed"
-        assert interrupted.completed_at is not None
+        assert interrupted.status == "needs_reconciliation"
+        assert interrupted.completed_at is None
         assert completed.status == "completed"
         event = (await db.execute(select(RunEvent).where(
             RunEvent.run_id == interrupted_id,
-            RunEvent.event_type == "run.failed",
+            RunEvent.event_type == "run.reconciliation_required",
         ))).scalars().one()
-        assert event.payload["code"] == "process_interrupted"
+        assert event.payload["code"] == "missing_running_checkpoint"
 
 
 @pytest.mark.asyncio

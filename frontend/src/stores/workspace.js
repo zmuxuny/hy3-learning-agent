@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import api from '../api/client.js';
+import { isRunBlocking, isRunStreamable } from '../runState.js';
 
 const RUN_EVENTS = [
   'run.started',
@@ -264,12 +265,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function updateQueuedMessage(messageId, patch) {
-    await api.patch(`/agent/queue/${messageId}`, patch);
+    const current = queuedMessages.value.find((item) => item.id === messageId);
+    await api.patch(`/agent/queue/${messageId}`, {
+      ...patch,
+      expected_version: current?.version ?? 1,
+    });
     await loadQueue();
   }
 
   async function deleteQueuedMessage(messageId) {
-    await api.delete(`/agent/queue/${messageId}`);
+    const current = queuedMessages.value.find((item) => item.id === messageId);
+    await api.delete(`/agent/queue/${messageId}`, {
+      expected_version: current?.version ?? 1,
+    });
     await loadQueue();
   }
 
@@ -286,7 +294,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     runEvents.value = [];
     error.value = '';
     try {
-      const response = await api.post(`/agent/queue/${messageId}/send`);
+      const current = queuedMessages.value.find((item) => item.id === messageId);
+      const response = await api.post(`/agent/queue/${messageId}/send`, {
+        expected_version: current?.version ?? 1,
+      });
       currentRun.value = response.data;
       focusPlanId.value = response.data.plan_id ?? focusPlanId.value;
       activeSessionId.value = response.data.session_id || activeSessionId.value;
@@ -386,22 +397,22 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (
       resumedPlanSession
       && currentRun.value
-      && ['queued', 'running', 'waiting_approval'].includes(currentRun.value.status)
+      && isRunBlocking(currentRun.value.status)
     ) {
       await enqueueMessage(objective);
       return 'queued';
     }
-    if (options.mode === 'queue' && currentRun.value && ['queued', 'running', 'waiting_approval'].includes(currentRun.value.status)) {
+    if (options.mode === 'queue' && currentRun.value && isRunBlocking(currentRun.value.status)) {
       await enqueueMessage(objective);
       return 'queued';
     }
-    if (options.mode === 'interrupt' && currentRun.value && ['queued', 'running', 'waiting_approval'].includes(currentRun.value.status)) {
+    if (options.mode === 'interrupt' && currentRun.value && isRunBlocking(currentRun.value.status)) {
       await api.post(`/agent/runs/${currentRun.value.id}/cancel`);
       const deadline = Date.now() + 8000;
       while (Date.now() < deadline) {
         const polled = (await api.get(`/agent/runs/${currentRun.value.id}`)).data;
         currentRun.value = polled;
-        if (!['queued', 'running', 'waiting_approval'].includes(polled.status)) break;
+        if (!isRunBlocking(polled.status)) break;
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
     }
@@ -482,7 +493,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       payload: event.payload,
       created_at: event.created_at,
     }));
-    if (['queued', 'running'].includes(run.status)) subscribeToRun(run.id, false);
+    if (isRunStreamable(run.status)) subscribeToRun(run.id, false);
   }
 
   async function inspectChildRun(runId) {
@@ -515,7 +526,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       payload: event.payload,
       created_at: event.created_at,
     }));
-    if (['queued', 'running'].includes(run.status)) subscribeToRun(run.id, false);
+    if (isRunStreamable(run.status)) subscribeToRun(run.id, false);
   }
 
   async function renameSession(sessionId, title) {
@@ -1021,14 +1032,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const nextSessionRun = activeSessionId.value
       ? runs.value.find((item) => (
         item.session_id === activeSessionId.value
-        && ['queued', 'running', 'waiting_approval'].includes(item.status)
+        && isRunBlocking(item.status)
       ))
       : null;
     if (nextSessionRun && nextSessionRun.id !== currentRun.value?.id) {
       currentRun.value = nextSessionRun;
       const events = await loadRunEvents(nextSessionRun.id, true);
       runEvents.value = events;
-      if (['queued', 'running'].includes(nextSessionRun.status)) subscribeToRun(nextSessionRun.id, false);
+      if (isRunStreamable(nextSessionRun.status)) subscribeToRun(nextSessionRun.id, false);
     }
     await refreshCurrentPlan();
     await loadConversation(activeSessionId.value);

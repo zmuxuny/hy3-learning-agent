@@ -9,6 +9,7 @@ import {
 import { computed, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import AgentMessage from './AgentMessage.vue';
+import { isRunBlocking } from '../runState.js';
 
 const props = defineProps({
   run: { type: Object, default: null },
@@ -78,7 +79,7 @@ const normalizedEvents = computed(() => props.events.map((event) => ({
   ...event,
   type: event.type || event.event_type,
 })));
-const active = computed(() => ['queued', 'running'].includes(props.run?.status));
+const active = computed(() => isRunBlocking(props.run?.status));
 const terminalEvent = computed(() => [...normalizedEvents.value].reverse().find((event) => (
   ['run.completed', 'run.failed', 'run.cancelled'].includes(event.type)
 )));
@@ -134,6 +135,8 @@ const durationLabel = computed(() => {
 });
 const statusLabel = computed(() => {
   if (props.run?.status === 'waiting_approval') return '等待确认';
+  if (props.run?.status === 'retry_wait') return '等待重试';
+  if (props.run?.status === 'needs_reconciliation') return '需要人工处理';
   if (active.value) return '处理中';
   if (props.run?.status === 'failed') return '处理失败';
   if (props.run?.status === 'cancelled') return '已停止';
@@ -141,7 +144,7 @@ const statusLabel = computed(() => {
 });
 
 watch(() => props.run?.id, () => {
-  expanded.value = ['queued', 'running', 'waiting_approval', 'failed'].includes(props.run?.status);
+  expanded.value = isRunBlocking(props.run?.status) || props.run?.status === 'failed';
   if (expanded.value) queueMicrotask(() => emit('expand'));
 }, { immediate: true });
 

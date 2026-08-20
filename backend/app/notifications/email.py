@@ -11,9 +11,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.uow import commit as commit_uow, flush as flush_uow
+from app.db.uow import (
+    commit as commit_uow,
+    ensure_sqlite_write_transaction,
+    flush as flush_uow,
+)
 from app.models import AgentRun, ChatMessage, LearningEvent, Notification, QueuedMessage
 from app.notifications.conversation import open_notification_in_conversation
+from app.runtime.state import RunStateError, ensure_root_scope_available
 
 
 class EmailReplyPoller:
@@ -29,6 +34,9 @@ class EmailReplyPoller:
         if db.in_transaction():
             await commit_uow(db)
         replies = await asyncio.to_thread(self._fetch_unseen)
+        if replies:
+            # IMAP is complete before this short serialized queue/root-run UoW.
+            await ensure_sqlite_write_transaction(db)
         run_ids: list[str] = []
         handled_reply = False
         acknowledged_uids: list[str] = []
@@ -74,15 +82,17 @@ class EmailReplyPoller:
                 "reply_to_notification_id": notification.id,
                 **({"email_uid": email_uid} if email_uid else {}),
             }
-            active_run = (await db.execute(
-                select(AgentRun.id).where(
-                    AgentRun.owner_id == owner_id,
-                    AgentRun.session_id == session.id,
-                    AgentRun.parent_run_id.is_(None),
-                    AgentRun.status.in_(["queued", "running", "waiting_approval"]),
-                ).limit(1)
-            )).scalar_one_or_none()
-            if active_run:
+            scope_busy = False
+            try:
+                await ensure_root_scope_available(
+                    db,
+                    owner_id=owner_id,
+                    plan_id=notification.plan_id,
+                    session_id=session.id,
+                )
+            except RunStateError:
+                scope_busy = True
+            if scope_busy:
                 max_position = await db.scalar(
                     select(func.coalesce(func.max(QueuedMessage.position), -1)).where(
                         QueuedMessage.owner_id == owner_id,
@@ -115,6 +125,7 @@ class EmailReplyPoller:
             db.add(ChatMessage(
                 session_id=session.id,
                 run_id=run.id,
+                message_key=f"run:{run.id}:input",
                 role="user",
                 content=reply["body"],
                 message_metadata=message_metadata,

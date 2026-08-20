@@ -264,6 +264,12 @@ class AgentRunRead(APIModel):
     trigger: str
     objective: str
     status: str
+    phase: str
+    state_version: int
+    attempt: int
+    retry_count: int
+    available_at: UTCInstant | None
+    status_reason: str | None
     model: str
     cancel_requested: bool
     pending_approval: dict[str, Any] | None
@@ -296,6 +302,7 @@ class QueuedMessageCreate(BaseModel):
 
 
 class QueuedMessageUpdate(BaseModel):
+    expected_version: int = Field(ge=1)
     objective: str | None = Field(default=None, min_length=1, max_length=50000)
     position: int | None = Field(default=None, ge=0, le=1000)
 
@@ -310,6 +317,10 @@ class QueuedMessageUpdate(BaseModel):
         return normalized
 
 
+class QueuedMessageMutation(BaseModel):
+    expected_version: int = Field(ge=1)
+
+
 class QueuedMessageRead(APIModel):
     id: str
     session_id: str | None
@@ -319,6 +330,7 @@ class QueuedMessageRead(APIModel):
     user_content: str | None
     message_metadata: dict[str, Any]
     position: int
+    version: int
     created_at: UTCInstant
     updated_at: UTCInstant
 
@@ -462,6 +474,7 @@ class ChatMessageRead(APIModel):
     id: int
     session_id: str
     run_id: str | None
+    message_key: str | None
     role: str
     content: str
     message_metadata: dict[str, Any]
@@ -473,6 +486,7 @@ class RunEventRead(APIModel):
     run_id: str
     sequence: int
     event_type: str
+    event_key: str | None
     summary: str
     payload: dict[str, Any]
     created_at: UTCInstant

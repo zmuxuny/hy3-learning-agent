@@ -14,6 +14,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
+import { isRunBlocking, isRunStreamable } from '../runState.js';
 
 const store = useWorkspaceStore();
 const editingSessionId = ref(null);
@@ -191,16 +192,16 @@ async function toggleSearch() {
           title="有待处理消息"
         ></i>
         <i
-          v-else-if="['queued', 'running'].includes(session.last_run_status)"
+          v-else-if="isRunStreamable(session.last_run_status)"
           class="session-status-dot running"
           title="运行中"
         ></i>
         <i
-          v-else-if="session.last_run_status === 'waiting_approval'"
+          v-else-if="['waiting_approval', 'needs_reconciliation'].includes(session.last_run_status)"
           class="session-status-dot waiting"
-          title="等待你的确认"
+          :title="session.last_run_status === 'waiting_approval' ? '等待你的确认' : '需要人工处理'"
         ></i>
-        <div v-if="!['queued', 'running', 'waiting_approval'].includes(session.last_run_status)" class="session-actions" @click.stop>
+        <div v-if="!isRunBlocking(session.last_run_status)" class="session-actions" @click.stop>
           <button v-if="!session.archived_at" title="重命名对话" @click="beginRename(session)"><PencilIcon /></button>
           <button
             :title="session.archived_at ? '恢复对话' : '归档对话'"

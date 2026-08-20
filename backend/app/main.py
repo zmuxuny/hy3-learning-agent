@@ -1,6 +1,5 @@
 import asyncio
 from contextlib import asynccontextmanager, suppress
-from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -26,7 +25,11 @@ from app.db.uow import (
 from app.models import AgentRun, Owner, Plan, Session, UserProfile  # noqa: F401 - imports register every mapped entity
 from app.outbox import drain_outbox, recover_interrupted_deliveries
 from app.runtime.agent import AgentRuntime
-from app.runtime.events import emit_event
+from app.runtime.state import (
+    NONTERMINAL_RUN_STATUSES,
+    reconcile_run_after_restart,
+    repair_child_terminal_projection,
+)
 from app.runtime.scheduler import proactive_scheduler
 from app.runtime.tasks import start_tracked_task
 
@@ -72,79 +75,56 @@ async def verify_database_writable() -> None:
 
 
 async def reconcile_interrupted_runs() -> list[str]:
-    """Recover checkpointed Runs and safely close in-memory Runs left by a previous process."""
+    """Rebuild runnable work from durable state, never from the old task map."""
     async with AsyncSessionLocal() as db:
-        interrupted = list((await db.execute(
-            select(AgentRun).where(AgentRun.status.in_(["queued", "running"]))
-        )).scalars())
-        if not interrupted:
-            return []
-        now = datetime.now(timezone.utc)
-        resumable: list[str] = []
-        failed_sessions: set[tuple[str, str]] = set()
+        interrupted = list((await db.execute(select(AgentRun).where(
+            AgentRun.status.in_(NONTERMINAL_RUN_STATUSES)
+        ))).scalars())
+        terminal_children = list((await db.execute(select(AgentRun.id).where(
+            AgentRun.parent_run_id.is_not(None),
+            AgentRun.status.in_(["completed", "failed", "cancelled"]),
+        ))).scalars())
+        classifications: list[tuple[str, bool, str | None, str, str | None]] = []
         for run in interrupted:
-            if run.checkpoint:
-                scope_is_valid = True
-                if run.plan_id is not None:
-                    plan_status = (await db.execute(
-                        select(Plan.status).where(
-                            Plan.id == run.plan_id,
-                            Plan.owner_id == run.owner_id,
-                        )
-                    )).scalar_one_or_none()
-                    scope_is_valid = bool(plan_status and plan_status != "archived")
-                if scope_is_valid and run.session_id is not None:
-                    session = await db.get(Session, run.session_id)
-                    scope_is_valid = bool(
-                        session
-                        and session.owner_id == run.owner_id
-                        and session.archived_at is None
-                        and session.plan_id == run.plan_id
-                    )
-                if scope_is_valid and run.parent_run_id is not None:
-                    parent = await db.get(AgentRun, run.parent_run_id)
-                    scope_is_valid = bool(
-                        parent and parent.status in {"queued", "running", "waiting_approval"}
-                    )
-                if scope_is_valid:
-                    run.status = "queued"
-                    run.checkpoint = dict(run.checkpoint)
-                    resumable.append(run.id)
-                else:
-                    run.status = "failed"
-                    run.completed_at = now
-            else:
-                run.status = "failed"
-                run.completed_at = now
-            if (
-                run.status == "failed"
-                and run.parent_run_id is None
-                and run.session_id is not None
-            ):
-                failed_sessions.add((run.owner_id, run.session_id))
+            scope_is_valid = True
+            if run.plan_id is not None:
+                plan_status = (await db.execute(select(Plan.status).where(
+                    Plan.id == run.plan_id,
+                    Plan.owner_id == run.owner_id,
+                ))).scalar_one_or_none()
+                scope_is_valid = bool(plan_status and plan_status != "archived")
+            if scope_is_valid and run.session_id is not None:
+                session = await db.get(Session, run.session_id)
+                scope_is_valid = bool(
+                    session
+                    and session.owner_id == run.owner_id
+                    and session.archived_at is None
+                    and session.plan_id == run.plan_id
+                )
+            if scope_is_valid and run.parent_run_id is not None:
+                parent = await db.get(AgentRun, run.parent_run_id)
+                scope_is_valid = bool(
+                    parent and parent.status in NONTERMINAL_RUN_STATUSES
+                )
+            classifications.append((
+                run.id,
+                scope_is_valid,
+                run.session_id,
+                run.owner_id,
+                run.parent_run_id,
+            ))
         await commit_uow(db)
-        for run in interrupted:
-            if run.id not in resumable:
-                await emit_event(
-                    db,
-                    run.id,
-                    "run.failed",
-                    "上一次应用进程结束，本 Run 已安全收口；既有消息、工具结果和操作记录均保留。",
-                    {"code": "process_interrupted", "recoverable": False},
-                )
-        if failed_sessions:
-            from app.services.queue import dispatch_next_queued_message
-
-            for owner_id, session_id in failed_sessions:
-                next_run = await dispatch_next_queued_message(
-                    db,
-                    owner_id=owner_id,
-                    session_id=session_id,
-                )
-                if next_run is not None:
-                    await commit_uow(db)
-                    start_tracked_task(next_run.id, AgentRuntime().run(next_run.id))
-        return resumable
+    resumable: list[str] = []
+    for run_id, scope_valid, _session_id, _owner_id, _parent_id in classifications:
+        if await reconcile_run_after_restart(
+            AsyncSessionLocal,
+            run_id,
+            scope_valid=scope_valid,
+        ):
+            resumable.append(run_id)
+    for child_id in terminal_children:
+        await repair_child_terminal_projection(AsyncSessionLocal, child_id)
+    return resumable
 
 
 async def resume_interrupted_run(run_id: str) -> None:

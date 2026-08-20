@@ -29,6 +29,7 @@ from app.db.migrations import (
     verify_sqlite_database,
 )
 from app.db.uow import DatabaseBusyError, run_short_transaction
+from hardening.h3_schema_fixture import materialize_frozen_h2
 
 
 FROZEN_H1_SCHEMA_CHECKSUM = (
@@ -36,6 +37,9 @@ FROZEN_H1_SCHEMA_CHECKSUM = (
 )
 FROZEN_H2_SCHEMA_CHECKSUM = (
     "7f42435d235b1497a358abc4353ff6b52771514a4b252c5ba74acec6e1493de1"
+)
+FROZEN_H3_SCHEMA_CHECKSUM = (
+    "b69ed9f0844106e54936e008c22b4d4ebd7e089a8cb38989a4306ad25c7239de"
 )
 
 
@@ -202,11 +206,7 @@ CREATE INDEX ix_notifications_status ON notifications (status);
 
 
 def _materialize_frozen_h1(path: Path, bootstrap_backups: Path) -> None:
-    migrate_sqlite_database(
-        path,
-        backup_root=bootstrap_backups,
-        database_identity=path.name,
-    )
+    materialize_frozen_h2(path, bootstrap_backups)
     with sqlite3.connect(path) as connection:
         connection.execute("PRAGMA foreign_keys=OFF")
         connection.executescript(
@@ -309,18 +309,18 @@ def test_revision_one_upgrades_to_h2_without_inventing_request_identity(
 
     assert report.applied is True
     assert report.source_kind == "versioned"
-    assert report.version == 2
+    assert report.version == 3
     assert report.source_schema_checksum == FROZEN_H1_SCHEMA_CHECKSUM
-    assert report.target_schema_checksum == FROZEN_H2_SCHEMA_CHECKSUM
+    assert report.target_schema_checksum == FROZEN_H3_SCHEMA_CHECKSUM
     assert report.backup_path is not None
     assert verify_sqlite_database(
         database,
-        expected_schema_checksum=FROZEN_H2_SCHEMA_CHECKSUM,
+        expected_schema_checksum=FROZEN_H3_SCHEMA_CHECKSUM,
     ) == {
         "integrity": ["ok"],
         "foreign_key_violation_count": 0,
-        "user_version": 2,
-        "schema_checksum": FROZEN_H2_SCHEMA_CHECKSUM,
+        "user_version": 3,
+        "schema_checksum": FROZEN_H3_SCHEMA_CHECKSUM,
     }
 
     with sqlite3.connect(database) as connection:

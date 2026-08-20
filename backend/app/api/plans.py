@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.db.database import get_db
 from app.db.uow import commit as commit_uow
 from app.models import AgentRun, LearningResource, Operation, Plan, QueuedMessage
+from app.runtime.state import NONTERMINAL_RUN_STATUSES
 from app.schemas import LearningResourceRead, PlanArchiveUpdate, PlanCreate, PlanRead, TaskRead, TaskUpdate
 from app.services import plans as plan_service
 
@@ -70,7 +71,7 @@ async def set_plan_archived(plan_id: int, data: PlanArchiveUpdate, db: AsyncSess
                 AgentRun.owner_id == settings.DEFAULT_OWNER_ID,
                 AgentRun.plan_id == plan.id,
                 AgentRun.parent_run_id.is_(None),
-                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+                AgentRun.status.in_(NONTERMINAL_RUN_STATUSES),
             ).limit(1)
         )).scalar_one_or_none()
         if active_run:

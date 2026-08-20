@@ -11,11 +11,12 @@ import {
 } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
+import { isRunBlocking, runStatusLabel as labelForRunStatus } from '../runState.js';
 
 const store = useWorkspaceStore();
 const expanded = ref(new Set());
 const pendingUndoId = ref(null);
-const running = computed(() => ['queued', 'running', 'waiting_approval'].includes(store.currentRun?.status));
+const running = computed(() => isRunBlocking(store.currentRun?.status));
 const contextUsage = computed(() => {
   const event = [...store.runEvents].reverse().find((item) => item.type === 'context.built');
   if (!event?.payload?.estimated_tokens) return null;
@@ -27,14 +28,7 @@ const contextUsage = computed(() => {
 const undoable = computed(() => store.operations.filter(
   (operation) => operation.run_id === store.currentRun?.id && operation.status === 'committed',
 ));
-const runStatusLabel = computed(() => ({
-  queued: '等待处理',
-  running: '处理中',
-  waiting_approval: '等待确认',
-  completed: '已完成',
-  failed: '失败',
-  cancelled: '已停止',
-}[store.currentRun?.status] || '空闲'));
+const runStatusLabel = computed(() => labelForRunStatus(store.currentRun?.status));
 
 function triggerLabel(trigger) {
   return {

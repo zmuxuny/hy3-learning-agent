@@ -23,6 +23,7 @@ from app.runtime.events import subscribe_stream, unsubscribe_stream
 from app.runtime.tasks import start_tracked_task
 from app.schemas import (
     QueuedMessageCreate,
+    QueuedMessageMutation,
     QueuedMessageUpdate,
     RunApprovalRequest,
     RunSteerCreate,
@@ -187,19 +188,35 @@ async def test_queue_crud_and_send(monkeypatch):
         rows = await list_queue(db=db)
         assert [row.objective for row in rows] == ["第一条排队", "第二条排队"]
 
-        moved = await update_queued_message(first.id, QueuedMessageUpdate(position=1), db)
+        moved = await update_queued_message(
+            first.id,
+            QueuedMessageUpdate(position=1, expected_version=first.version),
+            db,
+        )
         assert moved.position == 1
         rows = await list_queue(db=db)
         assert [row.objective for row in rows] == ["第二条排队", "第一条排队"]
 
-        edited = await update_queued_message(second.id, QueuedMessageUpdate(objective="改过的第二条"), db)
+        edited = await update_queued_message(
+            second.id,
+            QueuedMessageUpdate(objective="改过的第二条", expected_version=second.version),
+            db,
+        )
         assert edited.objective == "改过的第二条"
 
-        await delete_queued_message(first.id, db)
+        await delete_queued_message(
+            first.id,
+            QueuedMessageMutation(expected_version=moved.version),
+            db,
+        )
         rows = await list_queue(db=db)
         assert [row.objective for row in rows] == ["改过的第二条"]
 
-        sent = await send_queued_message(second.id, db)
+        sent = await send_queued_message(
+            second.id,
+            QueuedMessageMutation(expected_version=edited.version),
+            db,
+        )
         assert sent.objective == "改过的第二条"
         remaining = (await db.execute(select(QueuedMessage))).scalars().all()
         assert remaining == []
@@ -249,7 +266,7 @@ async def test_approval_answer_is_fed_back_to_model(monkeypatch):
     def noop_start(_run_id, **_kwargs):
         return None
 
-    monkeypatch.setattr("app.api.agent._start_runtime", noop_start)
+    monkeypatch.setattr("app.api.agent._wake_runtime", noop_start)
 
     completions = AnswerApprovalCompletions()
     runtime = AgentRuntime()

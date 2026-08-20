@@ -1,6 +1,6 @@
 # V2 H0 缺陷—测试—门禁矩阵
 
-更新时间：2026-08-19（Asia/Shanghai）
+更新时间：2026-08-20（Asia/Shanghai）
 
 审查基线：`baf256430d7aff43708188955c8049137512b601`
 
@@ -82,17 +82,17 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H3-RUN-001 | 审批拒绝必须是耐久事实；旧重启恢复在 decision 缺失时默认批准并执行工具。 | HP4, HP7, STATUS | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-002 | 恢复期间再次崩溃仍须保留上一 checkpoint；旧 resume 一开始就清空。 | HP4, HP7 | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-003 | checkpoint 必须区分 current tool 与 remaining calls；旧实现先 pop 当前调用再保存，恢复会跳过。 | HP4, HP7 | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-004 | 已提交 queued/no-checkpoint Run 必须可 claim；旧启动 reconcile 将其标为 `process_interrupted` failed。 | HP4, HP7 | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-005 | final reply、ChatMessage 与终态必须有稳定 finalization phase/key；旧 kill-point 会丢回复或重放 final。 | HP7 | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-006 | final stream 期间到达的 steer 必须被消费或原子转队列；旧终态留下 `applied_at=NULL`。 | HP7 | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-007 | reconcile 必须使用 lease/version/CAS，单 Run 只能被一个 worker 领取；旧实现可双恢复。 | HP7 | RUN | U | H3 | open · strict xfail / — |
+| H3-RUN-001 | 审批拒绝必须是耐久事实；旧重启恢复在 decision 缺失时默认批准并执行工具。 | HP4, HP7, STATUS | RUN | U | H3 | fixed · passing / H3 阶段 |
+| H3-RUN-002 | 恢复期间再次崩溃仍须保留上一 checkpoint；旧 resume 一开始就清空。 | HP4, HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
+| H3-RUN-003 | checkpoint 必须区分 current tool 与 remaining calls；旧实现先 pop 当前调用再保存，恢复会跳过。 | HP4, HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
+| H3-RUN-004 | 已提交 queued/no-checkpoint Run 必须可 claim；旧启动 reconcile 将其标为 `process_interrupted` failed。 | HP4, HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
+| H3-RUN-005 | final reply、ChatMessage 与终态必须有稳定 finalization phase/key；旧 kill-point 会丢回复或重放 final。 | HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
+| H3-RUN-006 | final stream 期间到达的 steer 必须被消费或原子转队列；旧终态留下 `applied_at=NULL`。 | HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
+| H3-RUN-007 | reconcile 必须使用 lease/version/CAS，单 Run 只能被一个 worker 领取；旧实现可双恢复。 | HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
 | H3-RUN-008 | planning delegate 必须复用统一 durable child 状态机并在 model wait 前 checkpoint；旧实现是无 checkpoint 的第二套 runtime。 | HP7 | RUN, H2TXN | U | H3 | fixed · passing / H2 提前关闭 |
-| H3-RUN-009 | child 终态与父 `subagent.completed` 投影必须可原子提交/修复；旧分次提交会永久缺父事件。 | HP7 | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-010 | 可重试模型错误必须有有界、可观察、耐久重试；旧 child 第一次超时即失败并清 checkpoint。 | HP7 | RUN | U | H3 | open · strict xfail / — |
-| H3-RUN-011 | child 与主 Run 必须共享并持久化 model/tool/time/network/cost 预算；旧 child 只存局部工具计数。 | HP7 | RUN | U | H3 | open · strict xfail / — |
+| H3-RUN-009 | child 终态与父 `subagent.completed` 投影必须可原子提交/修复；旧分次提交会永久缺父事件。 | HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
+| H3-RUN-010 | 可重试模型错误必须有有界、可观察、耐久重试；旧 child 第一次超时即失败并清 checkpoint。 | HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
+| H3-RUN-011 | child 与主 Run 必须共享并持久化 model/tool/time/network/cost 预算；旧 child 只存局部工具计数。 | HP7 | RUN | U | H3 | fixed · passing / H3 阶段 |
 
 ## H4：Evidence 与 Competency 事实层
 
@@ -180,10 +180,17 @@ H0 的 passing contract tests 只证明清单完整、输入/oracle/mutant 互�
 
 ## 验收记录
 
+### H3 当前结果（2026-08-20）
+
+- H3-RUN-001–011 均已删除原 strict xfail 并固定通过；H3 新关闭 10 个 ID（H3-RUN-008 已在 H2 提前关闭），矩阵累计关闭 34 个 defect ID、剩余 53 个 open ID。下一门禁为 H4，M15–M20 继续冻结。
+- H3 定向套件为 40 passed，覆盖 revision 3、真实进程 SIGKILL、双进程 claim、SQLite 锁、审批、原子 finalization/queue successor、late steer、父子投影、耐久 retry、共享预算、tool/model wait 分类、多工具副作用 replay 和固定种子 100 轮语义恢复。
+- 真实 Hy3 临时库演示在同一 Run 上执行两次 SIGKILL 和三次 claim，最终只有一条 assistant message 与一个 completed event；未输出模型正文、秘密或用户数据。前端状态契约为 9 passed，生产构建通过，npm audit 为 0 vulnerabilities。
+- 完整 pytest 与其余门禁的唯一最终记录见 [`STATUS.md`](STATUS.md)。H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成。
+
 ### H2 当前结果（2026-08-19）
 
 - H2-TXN-001–009 的 9 个 ID、10 个原基线节点均已删除 xfail 并固定通过；同一 request identity 工作提前关闭 H4-EVID-006 的 2 个节点，planning delegate checkpoint 提前关闭 H3-RUN-008 的 1 个节点。H6-CONFIG-001 有 1 个节点提前通过但仍有 2 个 strict xfail，因此该 ID 不关闭。
-- 当前累计关闭 24 个 defect ID、剩余 63 个 open ID；H0 当前为 49 passed、84 strict xfailed，0 XPASS、0 unexpected failure。下一门禁为 H3，M15–M20 继续冻结。
+- H2 收口时累计关闭 24 个 defect ID、剩余 63 个 open ID；H0 当时为 49 passed、84 strict xfailed，0 XPASS、0 unexpected failure。当前状态以上方 H3 记录为准。
 - H2 定向套件为 84 passed，包含新增的 4 个 physical outer transaction/savepoint 与 nested transaction guard 节点，覆盖 TXN/H2TXN/H2MIG/H2OUT/H2UNDO/H2PROC/H2FILE/H2MEM；普通非-hardening 回归为 139 passed。前端 Node 为 6 passed，生产构建通过，完整与 production-only audit 均为 0 vulnerabilities；DOC 与本地相对链接检查通过。
 - H2 不把外部副作用的不确定状态伪装成成功：SMTP/Web Push/subprocess 等待人工或 provider 对账，仅 workspace effect 可按 hash 自动恢复。真实 SMTP/VAPID 和外部用户验收尚未执行；完整 pytest 的待确认结果只在 `STATUS.md` 保留一个占位符。
 

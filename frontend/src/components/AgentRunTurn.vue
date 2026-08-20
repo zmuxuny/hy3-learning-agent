@@ -7,6 +7,7 @@ import PlanCard from './PlanCard.vue';
 import PlanningProposalPanel from './PlanningProposalPanel.vue';
 import PlanningQuestionsPanel from './PlanningQuestionsPanel.vue';
 import RunDisclosure from './RunDisclosure.vue';
+import { isRunBlocking } from '../runState.js';
 
 const props = defineProps({
   answer: { type: String, default: '' },
@@ -31,7 +32,7 @@ const live = computed(() => !props.historical && resolvedRun.value?.id === store
 const resolvedEvents = computed(() => (
   live.value ? store.runEvents : props.events
 ));
-const running = computed(() => live.value && ['queued', 'running', 'waiting_approval'].includes(resolvedRun.value?.status));
+const running = computed(() => live.value && isRunBlocking(resolvedRun.value?.status));
 const streaming = computed(() => live.value && store.streamingRunId === resolvedRun.value?.id && Boolean(store.streamingText));
 const thinking = computed(() => live.value && store.streamingRunId === resolvedRun.value?.id && Boolean(store.streamingReasoning) && !store.streamingText);
 const finalEvent = computed(() => [...resolvedEvents.value].reverse().find((event) => (

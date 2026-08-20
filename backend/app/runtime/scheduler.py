@@ -12,6 +12,7 @@ from app.db.uow import run_short_transaction
 from app.models import AgentRun, LearningEvent, Notification, Plan, ReviewSchedule, Stage, Task, UserProfile
 from app.notifications.email import EmailReplyPoller
 from app.runtime.agent import AgentRuntime
+from app.runtime.state import NONTERMINAL_RUN_STATUSES, ensure_root_scope_available
 from app.runtime.tasks import start_tracked_task
 
 
@@ -47,15 +48,12 @@ class ProactiveScheduler:
 
     async def trigger_now(self, trigger: str = "heartbeat", *, plan_id: int | None = None, objective: str | None = None) -> AgentRun:
         async def create_run(db) -> AgentRun:
-            active = await db.execute(
-                select(AgentRun.id).where(
-                    AgentRun.owner_id == settings.DEFAULT_OWNER_ID,
-                    AgentRun.trigger.in_(["heartbeat", "manual_heartbeat"]),
-                    AgentRun.status.in_(["queued", "running", "waiting_approval"]),
-                ).limit(1)
+            await ensure_root_scope_available(
+                db,
+                owner_id=settings.DEFAULT_OWNER_ID,
+                plan_id=plan_id,
+                session_id=None,
             )
-            if active.scalar_one_or_none():
-                raise RuntimeError("A heartbeat run is already active")
             run = AgentRun(
                 owner_id=settings.DEFAULT_OWNER_ID,
                 trigger=trigger,
@@ -127,7 +125,7 @@ class ProactiveScheduler:
             "next_cycle_at": canonical_utc(self._next_cycle_at),
             "last_decision": self._last_decision,
             "paused": await self._paused_by_user(),
-            "active": bool(latest and latest.status in {"queued", "running", "waiting_approval"}),
+            "active": bool(latest and latest.status in NONTERMINAL_RUN_STATUSES),
             "last_run": ({
                 "id": latest.id,
                 "trigger": latest.trigger,

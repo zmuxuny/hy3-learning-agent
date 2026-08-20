@@ -1,6 +1,6 @@
 # Personal Learning Harness
 
-> 状态说明（2026-08-19）：本文描述产品目标，并区分已经验收的 H1/H2 边界与后续正常路径候选。迁移/UTC/备份、工具事务/幂等/outbox 已完成，累计关闭 24 个缺陷 ID；矩阵剩余 63 个 open ID，下一门禁为 H3，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)；H6 完成前仍只建议受控 loopback 使用。
+> 状态说明（2026-08-20）：本文描述产品目标，并区分已经验收的 H1/H2/H3 边界与后续正常路径候选。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child 已完成，累计关闭 34 个缺陷 ID；矩阵剩余 53 个 open ID，下一门禁为 H4，M15–M20 继续冻结。当前阻塞项见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复门禁见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)；H6 完成前仍只建议受控 loopback 使用。
 
 ## 产品边界
 
@@ -22,14 +22,15 @@ Harness 的目标由四层共同实现：System Prompt 定义工作方式，Cont
 站内提醒（默认）/邮箱 → 用户回复邮件重新进入同一 Runtime
 ```
 
-这条链路不是后端写死的工作流。Hy3 在每轮观察工具结果后自主选择下一项原子能力，直到完成、需要确认、失败、取消或达到预算。图中的邮件回复、提醒 target、队列恢复和多渠道线程只是正常路径候选；H3-RUN-004/006/007 与 H5-INT/MAIL 已证明它们尚不耐久。
+这条链路不是后端写死的工作流。Hy3 在每轮观察工具结果后自主选择下一项原子能力，直到完成、需要确认、失败、取消或达到预算。H3 已验收 Run/Queue 恢复；图中的提醒 target、多渠道 Intervention 与 IMAP ack 仍由 H5-INT/MAIL 阻塞。
 
 ## Runtime 契约
 
 - `backend/app/runtime/prompt.py`：身份、循环、计划焦点、工具纪律、证据标准、主动触达和安全边界。
-- `backend/app/runtime/agent.py`：多轮 Function Calling、结果回填、模型超时重试、取消、SSE 事件和 Session 压缩。H2 已确保模型/压缩/child cancel 等等待不持有 writer，并让数据库写工具结果与事件共享 UoW；版本化 checkpoint、审批恢复和最终消息/终态原子 finalization 仍不满足 H3。
-- `backend/app/runtime/tasks.py`：按 `run_id` 跟踪当前进程内的主 Run、心跳和子 Run，使停止操作取消真实协程而不只写数据库标记。
-- `backend/app/tools/registry.py`：向 Hy3 注入工具 Schema 并校验成功结果；H2 已让 48 个工具公开并执行 `effect_kind`，以 stable action key、canonical request digest、CAS claim token/version 和 typed retry/conflict 强制幂等。H4-SCHEMA-001/002 的 Evidence 嵌套类型与 H3 的完整 Runtime 状态机仍未关闭。
+- `backend/app/runtime/agent.py`：多轮 Function Calling、结果回填、耐久 retry、取消、SSE 事件和 Session 压缩。模型/压缩/child cancel 等等待不持有 writer；模型/工具前提交版本化 checkpoint，最终消息/output/终态/Queue successor 原子收口。
+- `backend/app/runtime/state.py`：统一主/子 Run 的 claim、lease heartbeat、checkpoint、审批、steer、retry、finalize、cancel 与 restart reconcile；无法证明的旧状态进入 `needs_reconciliation`。
+- `backend/app/runtime/tasks.py`：按 `run_id` 跟踪当前进程内的主 Run、心跳和子 Run，使停止操作取消真实协程；stable wake key 避免审批 task 收尾窗口丢唤醒或重复启动。
+- `backend/app/tools/registry.py`：向 Hy3 注入工具 Schema 并校验成功结果；48 个工具公开并执行 `effect_kind`，以 stable action key、canonical request digest、CAS claim token/version 和 typed retry/conflict 强制幂等。H4-SCHEMA-001/002 的 Evidence 嵌套类型仍未关闭。
 - `backend/app/runtime/scheduler.py`：先用确定性规则发现到期复习、24 小时内任务和长期停滞，再为有价值的候选启动 Hy3。
 
 ## 分层上下文与记忆
@@ -63,8 +64,10 @@ H1 的数据维护边界已经使用受控 lifecycle lease、固定的路径/目
 
 H2 在应用写路径上增加统一 UoW 和 SQLite physical outer transaction，防止嵌套 savepoint release 提前提交。SMTP、Web Push、workspace 文件与子进程采用 durable outbox；外部已接受但 receipt 未提交时进入 `needs_reconciliation`。SMTP/Web Push/subprocess 只能由人工或 provider 对账，只有 workspace 能依据本地 hash 自动恢复。Context Markdown 虽以原子替换发布，但它是可从 SQLite 重建的投影，数据库提交后、文件发布前崩溃尚无跨重启 durable recovery。
 
+H3 在其上增加 revision 3 与统一 Run 状态机：主/子 Run 共享 lease/version fence、checkpoint、审批、retry 和完整预算；Queue/late steer/终态 successor 以短 UoW/CAS 仲裁。真实 SIGKILL、双进程 claim、SQLite busy、100 轮语义恢复和 Hy3 双中断演示已通过。SQLite lease 是共享单库执行 fence，不提供多节点 scheduler 或分布式数据库语义。
+
 ## 完整性结论
 
 当前版本已经形成真实可运行的个人学习 Harness 原型：计划、资源、执行、证据、检查、记忆和主动提醒均有正常路径能力；SMTP/IMAP 代码、连续 Session 路由和诊断接口已经存在，真实供应商收发仍依赖本机邮箱凭据。它不是通用操作系统 Agent，也不宣称拥有容器级代码隔离、任意宿主目录权限或多节点分布式调度能力。
 
-截至 2026-08-19，H2 定向为 84 passed，H0 为 49 passed / 84 strict xfailed，普通非-hardening 为 139 passed；前端 Node 6 passed、生产构建和依赖审计通过。H3-RUN-008 已提前关闭，但审批、进程恢复、finalization、lease、child 终态投影/重试/预算，以及 Evidence、Context、提醒线程、移动导航和服务器安全仍有阻塞问题。这些项目会阻塞 V2 Alpha 和无人值守使用，统一按硬化计划 H3–H8 修复；没有真实 SMTP/VAPID 验证，外部安装、连续使用和 7 日留存也必须由真人记录验收。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。
+截至 2026-08-20，H3 定向为 40 passed，前端 Node 9 passed、生产构建和依赖审计通过，真实 Hy3 双中断恢复成功。Evidence、Context、提醒线程、移动导航和应用部署边界仍有阻塞问题，统一按硬化计划 H4–H8 修复；没有真实 SMTP/VAPID 验证，外部安装、连续使用和 7 日留存也必须由真人记录验收。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。

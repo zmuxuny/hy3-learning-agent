@@ -24,6 +24,7 @@ from app.models import (
     UserProfile,
 )
 from app.schemas import TaskCreate, TaskUpdate
+from app.runtime.state import NONTERMINAL_RUN_STATUSES
 from app.services.evidence import append_observation, artifact_ref, build_plan_evidence_state, create_artifact
 from app.services import plans as plan_service
 from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
@@ -157,7 +158,7 @@ async def plan_patch(ctx: ToolContext, args: PlanPatchArgs) -> dict:
                 AgentRun.plan_id == plan.id,
                 AgentRun.id != ctx.run_id,
                 AgentRun.parent_run_id.is_(None),
-                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+                AgentRun.status.in_(NONTERMINAL_RUN_STATUSES),
             ).limit(1)
         )).scalar_one_or_none()
         if other_active_run:

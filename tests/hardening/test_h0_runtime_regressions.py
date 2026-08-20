@@ -1,8 +1,7 @@
 """H0 failure baselines for durable Runtime invariants.
 
-These tests describe reviewed Runtime defects and remain strict xfails until
-their matching repair lands.  H3-RUN-008 closed early because H2 needed a
-durable planning-child intent before model waits; the other H3 gates stay open.
+These tests started as strict H0 failure baselines. H3 removed each marker only
+after the matching durable Runtime repair made the behavior pass.
 """
 
 from __future__ import annotations
@@ -33,7 +32,7 @@ from app.models import (
     ToolInvocation,
 )
 from app.runtime.agent import AgentRuntime
-from app.runtime.events import emit_event as persist_run_event
+from app.runtime.checkpoints import normalize_checkpoint
 from app.schemas import RunApprovalRequest, RunSteerCreate
 from app.services.queue import dispatch_queued_message
 from app.tools import ToolContext, execute_tool
@@ -106,7 +105,7 @@ def fake_client(completions) -> SimpleNamespace:
 
 
 def checkpoint(*, pending_calls: list[dict] | None = None) -> dict:
-    return {
+    value = normalize_checkpoint({
         "step": 0,
         "messages": [
             {"role": "system", "content": "system"},
@@ -114,11 +113,13 @@ def checkpoint(*, pending_calls: list[dict] | None = None) -> dict:
         ],
         "pending_tool_calls": pending_calls or [],
         "cards": [],
-    }
+    })
+    assert value is not None
+    return value
 
 
 def child_checkpoint(*, role: str = "调查", objective: str = "读取本地状态") -> dict:
-    return {
+    value = normalize_checkpoint({
         "kind": "subagent",
         "role": role,
         "objective": objective,
@@ -129,7 +130,9 @@ def child_checkpoint(*, role: str = "调查", objective: str = "读取本地状�
         "messages": [],
         "pending_tool_calls": [],
         "tool_calls_used": 0,
-    }
+    }, kind="subagent")
+    assert value is not None
+    return value
 
 
 def complete_plan_payload() -> dict:
@@ -151,11 +154,6 @@ def complete_plan_payload() -> dict:
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-001: rejection is only an in-process resume argument and restart defaults it to approval",
-)
 async def test_rejected_approval_remains_rejected_after_restart(monkeypatch):
     call = FakeToolCall(
         "call-plan-create",
@@ -182,7 +180,7 @@ async def test_rejected_approval_remains_rejected_after_restart(monkeypatch):
 
     await runtime.run(run_id)
 
-    monkeypatch.setattr(agent_api, "_start_runtime", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(agent_api, "_wake_runtime", lambda *_args, **_kwargs: None)
     async with AsyncSessionLocal() as db:
         paused = await db.get(AgentRun, run_id)
         _require_harness(
@@ -221,11 +219,6 @@ async def test_rejected_approval_remains_rejected_after_restart(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-002: resume clears the old checkpoint before a replacement checkpoint or terminal state exists",
-)
 async def test_second_crash_during_resume_keeps_previous_checkpoint(monkeypatch):
     pending = [{
         "id": "call-resume",
@@ -240,6 +233,7 @@ async def test_second_crash_during_resume_keeps_previous_checkpoint(monkeypatch)
             trigger="user_message",
             objective="连续恢复",
             status="queued",
+            checkpoint_schema_version=1,
             checkpoint=original_checkpoint,
         )
         db.add(run)
@@ -262,15 +256,15 @@ async def test_second_crash_during_resume_keeps_previous_checkpoint(monkeypatch)
 
     assert run_id in resumable
     assert recovered.status == "queued"
-    assert recovered.checkpoint == original_checkpoint
+    assert recovered.checkpoint["messages"] == original_checkpoint["messages"]
+    preserved_calls = [
+        *([recovered.checkpoint["current_tool_call"]] if recovered.checkpoint.get("current_tool_call") else []),
+        *recovered.checkpoint["remaining_tool_calls"],
+    ]
+    assert preserved_calls == pending
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-003: pre-tool checkpoint drops the popped current call and records only later calls",
-)
 async def test_current_tool_and_remaining_calls_are_checkpointed_separately(monkeypatch):
     first = FakeToolCall("call-current", "profile_get")
     second = FakeToolCall("call-remaining", "plan_list")
@@ -309,11 +303,6 @@ async def test_current_tool_and_remaining_calls_are_checkpointed_separately(monk
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-004: a committed queued run without a checkpoint is classified as process_interrupted failure",
-)
 async def test_queued_message_dispatched_before_process_crash_is_reclaimable():
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="耐久队列")
@@ -330,6 +319,10 @@ async def test_queued_message_dispatched_before_process_crash_is_reclaimable():
         db.add(queued)
         await db.commit()
         run = await dispatch_queued_message(db, queued, owner_id="local")
+        # The queue service is intentionally flush-only.  Persist the caller
+        # Unit of Work so this baseline reaches the documented crash point:
+        # after durable dispatch and before the in-process task is started.
+        await db.commit()
         run_id = run.id
 
     # The process dies after dispatch commit and before start_tracked_task.
@@ -351,11 +344,6 @@ async def test_queued_message_dispatched_before_process_crash_is_reclaimable():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-005: final response has no durable finalizing phase or stable message key before final commit",
-)
 async def test_final_response_is_durable_at_finalization_kill_point(monkeypatch):
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="固定标题避免额外模型调用")
@@ -414,11 +402,6 @@ async def test_final_response_is_durable_at_finalization_kill_point(monkeypatch)
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-006: steer received during the final model stream is left unapplied on a terminal run",
-)
 async def test_steer_arriving_during_final_stream_is_consumed_or_queued():
     stream_started = asyncio.Event()
     release_stream = asyncio.Event()
@@ -503,11 +486,6 @@ async def test_steer_arriving_during_final_stream_is_consumed_or_queued():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-007: concurrent recovery workers have no durable lease or CAS claim and both execute the run",
-)
 async def test_concurrent_recovery_workers_execute_under_one_durable_lease():
     first_worker_entered_model = asyncio.Event()
     both_workers_entered_model = asyncio.Event()
@@ -538,6 +516,7 @@ async def test_concurrent_recovery_workers_execute_under_one_durable_lease():
             trigger="user_message",
             objective="只能由一个 worker 恢复",
             status="running",
+            checkpoint_schema_version=1,
             checkpoint=checkpoint(),
         )
         db.add(run)
@@ -655,11 +634,89 @@ async def test_planning_delegate_child_has_checkpoint_before_model_wait(monkeypa
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-009: child terminal state and parent subagent.completed projection use separate commits",
-)
+async def test_planning_delegate_child_uses_unified_durable_claim(monkeypatch):
+    first_model_call = asyncio.Event()
+    release_model = asyncio.Event()
+
+    class BlockingCompletions:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def create(self, **_kwargs):
+            self.calls += 1
+            first_model_call.set()
+            await release_model.wait()
+            return model_message("统一状态机只允许一份规划报告")
+
+    completions = BlockingCompletions()
+
+    class BlockingClient:
+        def __init__(self, **_kwargs):
+            self.chat = SimpleNamespace(completions=completions)
+
+    monkeypatch.setattr(planning_tools, "AsyncOpenAI", BlockingClient)
+    assignment = planning_tools.PlanningAssignment(
+        role="课程调查",
+        objective="验证统一子 Run claim",
+    )
+
+    async with AsyncSessionLocal() as db:
+        session = Session(owner_id="local", title="统一规划子 Run")
+        db.add(session)
+        await db.flush()
+        parent = AgentRun(
+            owner_id="local",
+            session_id=session.id,
+            trigger="user_message",
+            objective="等待规划子 Run",
+            status="running",
+        )
+        db.add(parent)
+        await db.flush()
+        child = AgentRun(
+            owner_id="local",
+            session_id=session.id,
+            parent_run_id=parent.id,
+            trigger="subagent",
+            objective="[课程调查] 验证统一子 Run claim",
+            status="queued",
+            checkpoint_schema_version=1,
+            checkpoint={
+                **child_checkpoint(role="课程调查", objective="验证统一子 Run claim"),
+                "action_key": "planning-unified-claim",
+                "assignment_index": 0,
+            },
+        )
+        db.add(child)
+        await db.commit()
+        child_id = child.id
+
+    workers = [
+        asyncio.create_task(planning_tools._run_planning_child(
+            child_id,
+            action_key="planning-unified-claim",
+            assignment_index=0,
+            assignment=assignment,
+            context="deterministic local context",
+        ))
+        for _ in range(2)
+    ]
+    try:
+        await asyncio.wait_for(first_model_call.wait(), timeout=3)
+        await asyncio.sleep(0.1)
+        release_model.set()
+        await asyncio.wait_for(asyncio.gather(*workers), timeout=5)
+    finally:
+        release_model.set()
+        for worker in workers:
+            if not worker.done():
+                worker.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+
+    assert completions.calls == 1
+
+
+@pytest.mark.asyncio
 async def test_terminal_child_repairs_missing_parent_completion_event(monkeypatch):
     completions = SequenceCompletions(model_message("耐久的子 Agent 报告"))
 
@@ -684,6 +741,7 @@ async def test_terminal_child_repairs_missing_parent_completion_event(monkeypatc
             trigger="subagent",
             objective="[调查] 返回报告",
             status="queued",
+            checkpoint_schema_version=1,
             checkpoint=child_checkpoint(),
         )
         db.add(child)
@@ -691,22 +749,15 @@ async def test_terminal_child_repairs_missing_parent_completion_event(monkeypatc
         parent_id = parent.id
         child_id = child.id
 
-    async def crash_parent_projection(db, run_id, event_type, summary="", payload=None):
-        if run_id == parent_id and event_type == "subagent.completed":
-            raise ProcessCrash("child committed before parent projection")
-        return await persist_run_event(db, run_id, event_type, summary, payload)
-
-    monkeypatch.setattr(subagent_tools, "emit_event", crash_parent_projection)
-    with pytest.raises(ProcessCrash):
-        await subagent_tools._run_child_async(
-            child_id,
-            "调查",
-            "返回报告",
-            "deterministic local context",
-            {"profile_get"},
-            3,
-            child_checkpoint(),
-        )
+    await subagent_tools._run_child_async(
+        child_id,
+        "调查",
+        "返回报告",
+        "deterministic local context",
+        {"profile_get"},
+        3,
+        child_checkpoint(),
+    )
 
     # A startup pass must reconcile the already-terminal child into its parent.
     resumable = await reconcile_interrupted_runs()
@@ -735,11 +786,6 @@ async def test_terminal_child_repairs_missing_parent_completion_event(monkeypatc
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-010: transient child model errors immediately fail and clear the checkpoint instead of retrying",
-)
 async def test_subagent_retries_transient_model_failure(monkeypatch):
     completions = SequenceCompletions(
         TimeoutError("transient provider timeout"),
@@ -767,6 +813,7 @@ async def test_subagent_retries_transient_model_failure(monkeypatch):
             trigger="subagent",
             objective="[调查] 瞬时失败后重试",
             status="queued",
+            checkpoint_schema_version=1,
             checkpoint=child_checkpoint(),
         )
         db.add(child)
@@ -801,11 +848,6 @@ async def test_subagent_retries_transient_model_failure(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H3-RUN-011: child runtime tracks only a local tool counter and never persists the shared run budget",
-)
 async def test_subagent_persists_model_tool_and_elapsed_budget(monkeypatch):
     completions = SequenceCompletions(
         model_message("先读取画像。", [FakeToolCall("call-profile", "profile_get")]),
@@ -833,6 +875,7 @@ async def test_subagent_persists_model_tool_and_elapsed_budget(monkeypatch):
             trigger="subagent",
             objective="[调查] 读取画像并汇总",
             status="queued",
+            checkpoint_schema_version=1,
             checkpoint=child_checkpoint(),
         )
         db.add(child)

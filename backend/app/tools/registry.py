@@ -801,11 +801,15 @@ async def _existing_result(
             "retryable": False,
             "uncertain_outcome": True,
         }
-    if invocation.status in {"failed", "cancelled"}:
+    if invocation.status in {"failed", "cancelled", "rejected"}:
         return {
             "ok": False,
             "error": str((invocation.result_payload or {}).get("error") or "The invocation failed."),
-            "error_code": "invocation_failed",
+            "error_code": (
+                "approval_rejected"
+                if invocation.status == "rejected"
+                else "invocation_failed"
+            ),
             "status": invocation.status,
             "retryable": False,
             "replayed": True,
@@ -921,6 +925,7 @@ async def _claim_invocation(
             run_id=ctx.run_id,
             idempotency_key=key,
             tool_name=name,
+            tool_call_id=ctx.tool_call_id,
             args_hash=request_digest,
             request_digest=request_digest,
             canonical_args=canonical_args,
@@ -1153,6 +1158,8 @@ async def _transition_owned_invocation(
             status=status,
             result_payload=result_payload,
             claim_token=None,
+            claimed_at=None,
+            claim_expires_at=None,
             completed_at=utc_now() if status == "committed" else None,
             version=ToolInvocation.version + 1,
         )
@@ -1273,6 +1280,7 @@ async def _append_atomic_completion(
         run_id=ctx.run_id,
         sequence=next_sequence,
         event_type="tool.completed",
+        event_key=f"tool:{ctx.tool_call_id}:completed" if ctx.tool_call_id else None,
         summary=f"工具 {name} 完成",
         payload={
             "tool_call_id": ctx.tool_call_id,
@@ -1461,7 +1469,12 @@ async def execute_tool(name: str, raw_arguments: str, ctx: ToolContext) -> dict:
                     ctx=ctx,
                 )
                 await commit_uow(ctx.db)
-            return {"ok": True, "data": data, "status": "pending_approval"}
+            return {
+                "ok": True,
+                "data": data,
+                "status": "pending_approval",
+                "invocation_id": invocation_id,
+            }
 
         dispatch_action_key = data.pop("_dispatch_outbox_action_key", None)
         requested_status = str(data.pop("_invocation_status", ""))

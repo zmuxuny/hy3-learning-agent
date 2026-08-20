@@ -9,6 +9,8 @@ from app.main import reconcile_interrupted_runs
 from app.models import AgentRun, Memory, Plan, RunEvent, UserProfile
 from app.notifications.service import NotificationService
 from app.runtime.agent import AgentRuntime
+from app.runtime.checkpoints import normalize_checkpoint
+from app.runtime.state import claim_run
 from app.schemas import PlanCreate, StageCreate, TaskCreate
 from app.services import plans as plan_service
 from app.context.memory import MemoryManager
@@ -37,7 +39,8 @@ async def test_heartbeat_resume_rebuilds_fresh_context_instead_of_stale_snapshot
             objective="检查进行中的计划",
             model="hy3",
             status="queued",
-            checkpoint={
+            checkpoint_schema_version=1,
+            checkpoint=normalize_checkpoint({
                 "step": 0,
                 "messages": [
                     {"role": "system", "content": "system prompt"},
@@ -50,7 +53,7 @@ async def test_heartbeat_resume_rebuilds_fresh_context_instead_of_stale_snapshot
                     },
                 ],
                 "pending_tool_calls": [],
-            },
+            }),
         )
         db.add(run)
         await db.commit()
@@ -91,7 +94,8 @@ async def test_reconcile_does_not_resume_run_for_archived_plan():
             model="hy3",
             plan_id=plan.id,
             status="running",
-            checkpoint={"step": 0, "messages": [], "pending_tool_calls": []},
+            checkpoint_schema_version=1,
+            checkpoint=normalize_checkpoint({"step": 0, "messages": [], "pending_tool_calls": []}),
         )
         db.add(run)
         await db.commit()
@@ -213,7 +217,12 @@ async def test_fail_records_run_failure_with_fresh_session():
 
     broken_db = object()  # a broken session must not cascade into failure recording
     runtime = AgentRuntime()
-    await runtime._fail(broken_db, run_id, RuntimeError("boom"))
+    lease = await claim_run(AsyncSessionLocal, run_id, worker_id="failure-test")
+    assert lease is not None
+    async with AsyncSessionLocal() as db:
+        run = await db.get(AgentRun, run_id)
+        assert run is not None
+        await runtime._fail(broken_db, run, lease, RuntimeError("boom"))
 
     async with AsyncSessionLocal() as db:
         failed = await db.get(AgentRun, run_id)

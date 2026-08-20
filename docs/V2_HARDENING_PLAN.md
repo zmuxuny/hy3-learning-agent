@@ -142,7 +142,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景已登记独立 contract，但仍为 `pending_rewrite`，不会被当作 41 项已覆盖。
 - 定向套件登记 87 个 open defect ID、113 个 strict-xfail 节点和 20 个 passing gate。实现门禁修复每一项时必须删除对应 xfail，并在矩阵写入修复提交。
 - 最终全量回归为 146 passed、113 xfailed、0 XPASS、0 failed；Python compileall、pip check、前端生产构建与完整/production-only npm audit 均通过。五尺寸 Chrome 使用独立临时数据库和精确合成 Session 令牌，得到 3 个已登记 H7-UI-001 XFAIL，未产生非预期失败或 API 写请求。
-- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1、H2 已于后续阶段关闭，当前下一门禁为 H3。
+- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H3 已于后续阶段关闭，当前下一门禁为 H4。
 
 ## 5. H1：迁移、时间与备份基础
 
@@ -224,9 +224,9 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - SMTP、Web Push、workspace 文件和子进程采用 durable intent → 独立 dispatcher → receipt 协议。并发 dispatcher 只能有一个 claim；外部已接受而 receipt 未提交时转入 `needs_reconciliation` 并禁止盲重发。workspace effect 额外保存前后 hash，可在 publish 后中断时自动对账；上传、`.env` 与 Context 投影使用原子临时文件、文件/父目录 fsync 和失败清理，其中 `.env` 的 read-modify-write 由跨进程目录锁串行化。
 - Operation undo 使用状态 CAS；并发 exact replay 只应用一次 inverse 和一次审计事件。workspace undo 也先持久化 outbox intent，并以 forward digest 防止覆盖用户后续修改。该事务/文件闭环不等同于 H4 的 Evidence amendment/invalidation 或 Competency 依赖撤销。
 - H2-TXN-001–009 的 10 个原基线节点均删除 strict xfail；request identity 工作提前关闭 H4-EVID-006 的 2 个节点，planning delegate 在 model wait 前保存确定性 child ID、Context/messages 与 checkpoint，提前关闭 H3-RUN-008。H6-CONFIG-001 只提前关闭原子临时文件的 1 个节点，控制字符和复杂值往返 2 个节点仍 strict xfail，所以该 ID 保持 open。
-- 当前矩阵累计关闭 24 个 defect ID、剩余 63 个 open ID。H2 定向为 84 passed，H0 当前为 49 passed / 84 strict xfailed，普通非-hardening 回归为 139 passed；前端 Node 为 6 passed，生产构建通过，完整与 production-only audit 均为 0 vulnerabilities。完整 pytest 的唯一待替换结果记录在 [`STATUS.md`](STATUS.md)，本文件不复制未确认数字。
+- H2 收口时矩阵累计关闭 24 个 defect ID、剩余 63 个 open ID。H2 定向为 84 passed，H0 当时为 49 passed / 84 strict xfailed，普通非-hardening 回归为 139 passed；前端 Node 为 6 passed，生产构建通过，完整与 production-only audit 均为 0 vulnerabilities。当前数字见 H3 记录与 [`STATUS.md`](STATUS.md)。
 - 已知限制：SMTP、Web Push 与子进程的不确定结果只能等待人工或 provider 对账，仅 workspace 可依据本地 hash 自动恢复；Context Markdown 是可重建派生投影，数据库提交后、投影发布前崩溃尚无跨重启 durable recovery；真实 SMTP/VAPID、外部安装、连续学习闭环与 7 日留存均未验证。
-- 下一门禁为 H3。H3 仍需集中 Run 状态机、lease/version CAS、版本化 checkpoint、审批拒绝/current tool/queued Run 恢复、late steer、final reply/ChatMessage/终态原子 finalization，以及 child terminal/父事件、耐久重试和完整预算。H3–H8 全部关闭前继续冻结 M15–M20。
+- H2 收口时下一门禁为 H3；该门禁现已完成，当前状态见下一节。H4–H8 全部关闭前继续冻结 M15–M20。
 
 ## 7. H3：耐久 Run、Queue 与子 Agent
 
@@ -261,6 +261,16 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 所有非终态 Run 重启后均能被确定分类。
 - 状态只能通过统一服务转换，API 和工具不能任意赋值。
 - 完成一次真实 Hy3 双中断恢复演示。
+
+### H3 实施记录（2026-08-20，已完成）
+
+- schema revision 3 新增受约束的 Run phase/state version、checkpoint schema version、lease、retry deadline/reason、审批事实与 Queue version/position；fresh install 与 frozen H2 upgrade 的 `sqlite_schema` 完全一致。旧 current-tool、缺失审批身份和不完整 checkpoint 只在可证明时回填，否则 fail closed 到 `needs_reconciliation`。
+- `app.runtime.state` 成为主 Run、planning child 与通用 child 的统一状态转换入口。claim/heartbeat 使用 lease token 与 state-version fence；checkpoint 在模型/工具外部等待前提交，terminal transition 清理 lease/checkpoint/approval/retry 字段；API、scheduler、email 与 Queue 使用同一根 Run scope 仲裁。
+- approval decision、current/remaining tool、ToolInvocation、late steer、final message/output/event、取消与下一个 Queue successor 均纳入短 UoW。Queue position 由 scoped partial unique index 强制，并以两阶段重排避免 SQLite 即时唯一约束的中间冲突。
+- 主/子 Run 共享 model/tool/network/elapsed/token/cost 预算、耐久有界 retry 和只读 child Guard。child finalizing checkpoint 冻结报告，父终态取消覆盖所有非终态 child，child 终态与父 `subagent.completed` 在同一事务投影或可幂等修复。
+- 真实进程故障覆盖 claim/checkpoint/finalizing、同一 Run 连续三次中断、双进程 claim、SQLite busy 与 frozen-H2 migration publish；固定种子 100 轮逐轮比较无故障 baseline、恢复运行与手写语义 oracle。另有两工具测试在第二个数据库副作用已提交、Run checkpoint 尚未推进时中断，恢复后只保留两份领域事实与两个 completion。
+- H3 定向为 40 passed；前端状态契约为 9 passed，生产构建和 npm audit 通过。真实 Hy3 临时库演示完成两次 SIGKILL、三次 claim，最终只有一条 assistant message 与一个 completed event，正文和凭据未输出。完整结果只在 [`STATUS.md`](STATUS.md) 维护。
+- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4–H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H4。
 
 ## 8. H4：Evidence 与 Competency 事实层
 

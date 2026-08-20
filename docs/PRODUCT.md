@@ -1,6 +1,6 @@
 # 产品定义
 
-> 状态说明（2026-08-19）：本文主要定义目标产品契约。H1 与 H2 已完成，累计关闭 24 个缺陷 ID、剩余 63 个 open ID，下一门禁是 H3；Runtime finalization、Evidence、Context、提醒、安全和移动端仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前只建议受控 loopback Demo。
+> 状态说明（2026-08-20）：本文主要定义目标产品契约。H1–H3 已完成，累计关闭 34 个缺陷 ID、剩余 53 个 open ID，下一门禁是 H4；Evidence、Context、提醒、应用部署边界和完整前端仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前只建议受控 loopback Demo。
 
 ## 一句话描述
 
@@ -58,7 +58,7 @@ Hy3 读取经过组装的上下文并自主决策。系统再经过冷却时间�
 
 ## 自主权模型
 
-目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW，并用 physical outer transaction 防止最外层 SQLite savepoint 提前提交；持久化业务变更产生版本或审计记录，外部副作用可表达 uncertain/needs-reconciliation。H3 的 Runtime finalization/child 预算、H4 的领域语义与 H6 的安全边界仍未满足完整目标契约。
+目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制。H4 的领域语义与 H6 的应用部署边界仍未满足完整目标契约。
 
 - **自动执行**：提醒、抽查、安排复习、创建通知、生成临时学习材料。
 - **自动执行且可撤销**：调整任务时间、创建补救任务、重排低风险任务。
@@ -122,7 +122,7 @@ Plan
 
 Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用户消息、后台心跳、任务事件、复习到期和邮件回复进入同一个耐久 Runtime；Agent 自主选择工具，确定性 Guard 强制权限、频率、预算和安全边界。H2 已落实 UoW、幂等 CAS 与 outbox；统一 lease/phase、终态提交和崩溃后的 finalization 仍是 H3 债务，不能以 Prompt 或正常路径替代这些后端约束。
 
-前端以 Session 为连续对话主画布和侧栏导航单位；这些交互已有正常路径候选。目标状态要求 steer 的实时事实顺序、SSE 断线对账、归档焦点清理、提醒 target 和唯一根 Run 都以耐久后端事实恢复；当前 H3-RUN-006/007 与 H7-UI-002–005 仍失败。
+前端以 Session 为连续对话主画布和侧栏导航单位；这些交互已有正常路径候选。唯一根 Run 与 late steer 已由 H3 作为耐久后端事实恢复；实时事实顺序、SSE 断线对账、归档焦点清理和提醒 target 仍由 H7-UI-002–005 阻塞。
 
 用户消息编辑已有 Revision 与当前分支候选；目标还要求失效所有下游 Memory/Summary/Snapshot/handoff，并保留完整审计。旧实现漏掉多种 scope/source（H5-CTX-006/007）。
 
@@ -137,7 +137,7 @@ Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用
 - 进入计划工作区会显示计划焦点；“新对话”始终回到全局焦点。浏览列表、后台刷新和 Run 完成都不能偷偷改变当前页面或焦点。
 - 切换焦点使用新的会话边界，避免一个计划的近期原始对话无意进入另一计划；有价值的跨计划结论仍需通过全局记忆候选提升。
 
-统一主 Agent 负责证据、权限和最终写操作；受限子 Run 的 spawn/status/join/cancel 与只读白名单已有正常路径候选。H2 已让 planning delegate 在模型等待前持久化确定性 AgentRun/checkpoint，关闭 H3-RUN-008；child final/parent event、重试和预算仍未耐久闭环（H3-RUN-009–011）。
+统一主 Agent 负责证据、权限和最终写操作；受限子 Run 的 spawn/status/join/cancel 在执行层强制只读白名单。H3 已让 planning 与通用 child 复用统一 lease/checkpoint/retry/budget/finalize 协议，并原子投影或幂等修复父 completion。
 
 ## 视觉与游戏化
 

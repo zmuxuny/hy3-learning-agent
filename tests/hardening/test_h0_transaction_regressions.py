@@ -174,10 +174,6 @@ def _final_message(content: str = "事务完成。") -> SimpleNamespace:
     )
 
 
-async def _no_next_message(*_args, **_kwargs):
-    return None
-
-
 def test_registered_tools_are_classified_and_handlers_do_not_commit() -> None:
     restricted_roots = [
         PROJECT_ROOT / "backend" / "app" / "tools",
@@ -528,7 +524,7 @@ async def test_final_model_wait_does_not_hold_the_sqlite_writer_lock(
         return 0
 
     monkeypatch.setattr(runtime, "_call_model", fake_model)
-    monkeypatch.setattr(runtime, "_start_next_queued_message", _no_next_message)
+    monkeypatch.setattr(agent_runtime_module, "AsyncSessionLocal", sqlite_factory)
     monkeypatch.setattr(agent_runtime_module, "generate_session_title", gated_title)
     monkeypatch.setattr(MemoryManager, "compress_session", no_compression)
     monkeypatch.setattr(runtime_subagents, "cancel_children_for_parent", no_child_cancel)
@@ -542,24 +538,13 @@ async def test_final_model_wait_does_not_hold_the_sqlite_writer_lock(
             session_id=session.id,
             trigger="user_message",
             objective="finalize without a long writer lock",
-            status="running",
-            started_at=datetime.now(timezone.utc),
+            status="queued",
         )
         db.add(run)
         await db.commit()
 
         runtime_task = asyncio.create_task(
-            runtime._loop(
-                db,
-                run,
-                [],
-                start_step=0,
-                pending_calls=[],
-                granted=set(),
-                session=session,
-                run_cards=[],
-                context_snapshot_id=None,
-            )
+            runtime.run(run.id)
         )
         await asyncio.wait_for(entered_title_model.wait(), timeout=1)
         writer_error: BaseException | None = None
@@ -574,6 +559,7 @@ async def test_final_model_wait_does_not_hold_the_sqlite_writer_lock(
         finally:
             release_title_model.set()
         await asyncio.wait_for(runtime_task, timeout=2)
+        await db.refresh(run)
         _require_harness(
             run.status == "completed",
             f"finalization baseline did not complete successfully: status={run.status!r}",
@@ -601,7 +587,6 @@ async def test_parent_finalization_does_not_self_lock_while_cancelling_a_child(
         return False
 
     monkeypatch.setattr(runtime, "_call_model", fake_model)
-    monkeypatch.setattr(runtime, "_start_next_queued_message", _no_next_message)
     monkeypatch.setattr(agent_runtime_module, "generate_session_title", no_title)
     monkeypatch.setattr(MemoryManager, "compress_session", no_compression)
     monkeypatch.setattr(agent_runtime_module, "AsyncSessionLocal", sqlite_factory)
@@ -616,8 +601,7 @@ async def test_parent_finalization_does_not_self_lock_while_cancelling_a_child(
             session_id=session.id,
             trigger="user_message",
             objective="complete with an active child",
-            status="running",
-            started_at=datetime.now(timezone.utc),
+            status="queued",
         )
         db.add(parent)
         await db.flush()
@@ -636,17 +620,7 @@ async def test_parent_finalization_does_not_self_lock_while_cancelling_a_child(
         child_id = child.id
 
         await asyncio.wait_for(
-            runtime._loop(
-                db,
-                parent,
-                [],
-                start_step=0,
-                pending_calls=[],
-                granted=set(),
-                session=session,
-                run_cards=[],
-                context_snapshot_id=None,
-            ),
+            runtime.run(parent.id),
             timeout=2,
         )
         await db.rollback()
@@ -887,7 +861,12 @@ async def test_main_child_and_heartbeat_survive_real_sqlite_writer_contention(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,
 ) -> None:
-    main_run_id = await _create_run(sqlite_factory, status="queued")
+    async with sqlite_factory() as db:
+        session = Session(owner_id=OWNER_ID, title="H0 contention scope")
+        db.add(session)
+        await db.commit()
+        session_id = session.id
+    main_run_id = await _create_run(sqlite_factory, status="queued", session_id=session_id)
     child_run_id = await _create_run(
         sqlite_factory,
         trigger="subagent",

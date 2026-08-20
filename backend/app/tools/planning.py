@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow, flush as flush_uow
 from app.models import AgentRun, PlanProposal, PlanningIntake, RunEvent, Session
+from app.runtime.checkpoints import make_checkpoint
 from app.runtime.events import emit_event
 from app.runtime.tasks import start_tracked_task
 from app.schemas import PlanCreate
@@ -168,13 +169,14 @@ class _PlanningDelegateCoordinator:
                 await emit_event(
                     self.ctx.db,
                     child.id,
-                    "run.started",
-                    f"{assignment.role} 子 Agent 已开始",
+                    "run.queued",
+                    f"{assignment.role} 子 Agent 已排队",
                     {
                         "parent_run_id": self.ctx.run_id,
                         "role": assignment.role,
                         "action_key": self.ctx.action_key,
                     },
+                    event_key=f"run:{child.id}:queued",
                 )
                 await emit_event(
                     self.ctx.db,
@@ -196,107 +198,17 @@ class _PlanningDelegateCoordinator:
             await commit_uow(self.ctx.db)
 
     @staticmethod
-    async def persist_checkpoint(
-        child_id: str,
-        *,
-        action_key: str,
-        assignment_index: int,
-        role: str,
-        objective: str,
-        context: str,
-        runtime_checkpoint: dict,
-    ) -> None:
-        async with AsyncSessionLocal() as checkpoint_db:
-            child = await checkpoint_db.get(AgentRun, child_id)
-            if child is None or child.status not in {"queued", "running"}:
-                return
-            child.checkpoint = {
-                "kind": "subagent",
-                "role": role,
-                "objective": objective,
-                "context": context,
-                "allowlist": sorted(_planning_allowlist()),
-                "max_steps": 4,
-                **runtime_checkpoint,
-                "action_key": action_key,
-                "assignment_index": assignment_index,
-            }
-            await commit_uow(checkpoint_db)
-
-    @staticmethod
-    async def persist_terminal(
-        child_id: str,
-        *,
-        role: str,
-        status: str,
-        report: str,
-    ) -> None:
-        async with AsyncSessionLocal() as terminal_db:
-            child = await terminal_db.get(AgentRun, child_id)
-            if child is None or child.status in {"completed", "failed", "cancelled"}:
-                return
-            child.status = status
-            child.output = report
-            child.checkpoint = None
-            child.completed_at = datetime.now(timezone.utc)
-            parent_run_id = child.parent_run_id
-            await commit_uow(terminal_db)
-            await emit_event(
-                terminal_db,
-                child.id,
-                "run.completed" if status == "completed" else "run.failed",
-                report,
-                {"role": role},
-            )
-            if parent_run_id:
-                await emit_event(
-                    terminal_db,
-                    parent_run_id,
-                    "subagent.completed",
-                    f"{role} 已返回结论",
-                    {
-                        "child_run_id": child.id,
-                        "role": role,
-                        "status": status,
-                        "report": report,
-                    },
-                )
-
-    @staticmethod
     async def cancel_children(
         children: list[tuple[str, str]],
-        parent_run_id: str,
     ) -> None:
         """Leave no child Run looking active when the parent tool is cancelled."""
-        async with AsyncSessionLocal() as cleanup_db:
-            now = datetime.now(timezone.utc)
-            for child_id, role in children:
+        from app.runtime.subagents import cancel_child
+
+        for child_id, role in children:
+            async with AsyncSessionLocal() as cleanup_db:
                 child = await cleanup_db.get(AgentRun, child_id)
-                if child is None or child.status not in {"queued", "running"}:
-                    continue
-                child.status = "cancelled"
-                child.checkpoint = None
-                child.completed_at = now
-                await commit_uow(cleanup_db)
-                await emit_event(
-                    cleanup_db,
-                    child.id,
-                    "run.cancelled",
-                    f"{role} 子 Agent 随父运行停止",
-                    {"parent_run_id": parent_run_id, "role": role},
-                )
-                await emit_event(
-                    cleanup_db,
-                    parent_run_id,
-                    "subagent.completed",
-                    f"{role} 已停止",
-                    {
-                        "child_run_id": child.id,
-                        "role": role,
-                        "status": "cancelled",
-                        "report": "",
-                    },
-                )
+            if child is not None:
+                await cancel_child(child, f"{role} 子 Agent 随父运行停止")
 
 
 def _planning_allowlist() -> set[str]:
@@ -313,58 +225,23 @@ async def _run_planning_child(
     assignment: PlanningAssignment,
     context: str,
 ) -> None:
-    """Resume one deterministic child and persist terminal state before return."""
-    from app.runtime.subagents import run_restricted_child
+    """Resume one deterministic planning child through the shared state machine."""
 
-    async with AsyncSessionLocal() as start_db:
-        child = await start_db.get(AgentRun, child_id)
-        if child is None or child.status in {"completed", "failed", "cancelled"}:
-            return
-        checkpoint = dict(child.checkpoint or {})
-        child.status = "running"
-        child.started_at = child.started_at or datetime.now(timezone.utc)
-        await commit_uow(start_db)
+    from app.runtime.subagents import execute_durable_child
 
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
-
-    async def save_checkpoint(runtime_checkpoint: dict) -> None:
-        await _PlanningDelegateCoordinator.persist_checkpoint(
-            child_id,
-            action_key=action_key,
-            assignment_index=assignment_index,
-            role=assignment.role,
-            objective=assignment.objective,
-            context=context,
-            runtime_checkpoint=runtime_checkpoint,
-        )
-
-    try:
-        report = await run_restricted_child(
-            client=client,
-            child=child,
-            objective=f"{assignment.role}: {assignment.objective}",
-            context=context,
-            allowlist=_planning_allowlist(),
-            max_steps=4,
-            checkpoint=checkpoint,
-            checkpoint_callback=save_checkpoint,
-        )
-    except asyncio.CancelledError:
-        raise
-    except Exception as exc:
-        await _PlanningDelegateCoordinator.persist_terminal(
-            child_id,
-            role=assignment.role,
-            status="failed",
-            report=f"子 Agent 调查失败：{type(exc).__name__}",
-        )
-    else:
-        await _PlanningDelegateCoordinator.persist_terminal(
-            child_id,
-            role=assignment.role,
-            status="completed",
-            report=report,
-        )
+    del action_key, assignment_index
+    await execute_durable_child(
+        child_id,
+        role=assignment.role,
+        objective=assignment.objective,
+        context=context,
+        allowlist=_planning_allowlist(),
+        max_steps=4,
+        client_factory=lambda: AsyncOpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENAI_API_BASE,
+        ),
+    )
 
 
 async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dict:
@@ -415,19 +292,22 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
                 objective=f"[{assignment.role}] {assignment.objective}",
                 status="queued",
                 model=settings.MODEL_NAME,
-                checkpoint={
-                    "kind": "subagent",
-                    "action_key": ctx.action_key,
-                    "assignment_index": index,
-                    "role": assignment.role,
-                    "objective": assignment.objective,
-                    "context": snapshot_markdown,
-                    "allowlist": sorted(_planning_allowlist()),
-                    "max_steps": 4,
-                    "step": 0,
-                    "messages": [],
-                    "pending_tool_calls": [],
-                },
+                checkpoint_schema_version=1,
+                checkpoint=make_checkpoint(
+                    kind="subagent",
+                    phase="awaiting_model",
+                    step=0,
+                    messages=[],
+                    identity={
+                        "action_key": ctx.action_key,
+                        "assignment_index": index,
+                        "role": assignment.role,
+                        "objective": assignment.objective,
+                        "context": snapshot_markdown,
+                        "allowlist": sorted(_planning_allowlist()),
+                        "max_steps": 4,
+                    },
+                ),
             )
             new_children.append((child, assignment))
         else:
@@ -480,7 +360,7 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
             await asyncio.gather(*active_tasks)
     except asyncio.CancelledError:
         await asyncio.shield(
-            _PlanningDelegateCoordinator.cancel_children(child_refs, ctx.run_id)
+            _PlanningDelegateCoordinator.cancel_children(child_refs)
         )
         raise
     reports: list[dict] = []

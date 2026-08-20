@@ -11,7 +11,12 @@ from app.core.config import settings
 from app.context.memory import MemoryManager
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.database import AsyncSessionLocal, get_db
-from app.db.uow import commit as commit_uow, flush as flush_uow
+from app.db.uow import (
+    commit as commit_uow,
+    ensure_sqlite_write_transaction,
+    flush as flush_uow,
+    rollback as rollback_uow,
+)
 from app.models import (
     AgentRun,
     ChatMessage,
@@ -25,7 +30,6 @@ from app.models import (
     PlanningIntake,
     QueuedMessage,
     RunEvent,
-    RunSteerMessage,
     Session,
     SessionPlanLink,
     SessionSummary,
@@ -34,14 +38,23 @@ from app.models import (
 from app.runtime import AgentRuntime
 from app.runtime.events import emit_event, subscribe_stream, unsubscribe_stream
 from app.runtime.session_titles import initial_session_title
+from app.runtime.state import (
+    NONTERMINAL_RUN_STATUSES,
+    RunStateError,
+    decide_approval,
+    ensure_root_scope_available,
+    record_steer,
+    terminate_run,
+)
 from app.runtime.scheduler import proactive_scheduler
-from app.runtime.tasks import cancel_tracked_task, start_tracked_task
+from app.runtime.tasks import cancel_tracked_task, start_tracked_task, wake_tracked_task
 from app.schemas import (
     AgentRunCreate,
     AgentRunRead,
     ChatMessageRead,
     ContextSnapshotRead,
     QueuedMessageCreate,
+    QueuedMessageMutation,
     QueuedMessageRead,
     QueuedMessageUpdate,
     MessageEdit,
@@ -60,7 +73,12 @@ from app.schemas import (
 )
 from app.services.sessions import build_handoff_summary, link_session_plan
 from app.services import plans as plan_service
-from app.services.queue import dispatch_queued_message
+from app.services.queue import (
+    QueueStateError,
+    compact_queue_after_removal,
+    dispatch_queued_message,
+    reorder_queue,
+)
 
 
 router = APIRouter()
@@ -73,6 +91,14 @@ def _visible_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
 
 def _start_runtime(run_id: str, **kwargs) -> None:
     start_tracked_task(run_id, runtime.run(run_id, **kwargs))
+
+
+def _wake_runtime(run_id: str, *, wake_key: str, **kwargs) -> None:
+    wake_tracked_task(
+        run_id,
+        runtime.run(run_id, **kwargs),
+        wake_key=wake_key,
+    )
 
 
 @router.post("/runs", response_model=AgentRunRead, status_code=202)
@@ -88,7 +114,7 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             select(AgentRun.id).where(
                 AgentRun.session_id == session.id,
                 AgentRun.parent_run_id.is_(None),
-                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+                AgentRun.status.in_(NONTERMINAL_RUN_STATUSES),
             ).limit(1)
         )).scalar_one_or_none()
         if active_run:
@@ -111,6 +137,19 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Plan not found")
         if plan.status == "archived":
             raise HTTPException(status_code=409, detail="Archived plans must be restored before continuing")
+    try:
+        await ensure_root_scope_available(
+            db,
+            owner_id=settings.DEFAULT_OWNER_ID,
+            plan_id=data.plan_id,
+            session_id=session_id,
+        )
+    except RunStateError as exc:
+        await rollback_uow(db)
+        raise HTTPException(
+            status_code=409,
+            detail="This plan or Session already has an active run",
+        ) from exc
     run = AgentRun(
         owner_id=settings.DEFAULT_OWNER_ID,
         session_id=session_id,
@@ -137,6 +176,7 @@ async def create_run(data: AgentRunCreate, db: AsyncSession = Depends(get_db)):
         db.add(ChatMessage(
             session_id=session_id,
             run_id=run.id,
+            message_key=f"run:{run.id}:input",
             role="user",
             content=data.objective,
             message_metadata=message_metadata,
@@ -234,7 +274,7 @@ async def rename_session(session_id: str, data: SessionUpdate, db: AsyncSession 
             select(AgentRun.id).where(
                 AgentRun.session_id == session.id,
                 AgentRun.parent_run_id.is_(None),
-                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+                AgentRun.status.in_(NONTERMINAL_RUN_STATUSES),
             ).limit(1)
         )).scalar_one_or_none()
         if active_run:
@@ -426,7 +466,7 @@ async def submit_planning_answers(
         select(AgentRun.id).where(
             AgentRun.session_id == session.id,
             AgentRun.parent_run_id.is_(None),
-            AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+            AgentRun.status.in_(NONTERMINAL_RUN_STATUSES),
         ).limit(1)
     )).scalar_one_or_none()
     if active_run:
@@ -456,6 +496,19 @@ async def submit_planning_answers(
         + "\n请更新 planning_intake；如果仍不充分，提出下一组最高信息量问题；"
           "如果已经充分，进行必要的规划子 Agent 分工并生成可审阅提案。"
     )
+    try:
+        await ensure_root_scope_available(
+            db,
+            owner_id=settings.DEFAULT_OWNER_ID,
+            plan_id=session.plan_id,
+            session_id=session.id,
+        )
+    except RunStateError as exc:
+        await rollback_uow(db)
+        raise HTTPException(
+            status_code=409,
+            detail="This plan or Session already has an active run",
+        ) from exc
     run = AgentRun(
         owner_id=settings.DEFAULT_OWNER_ID,
         session_id=session.id,
@@ -469,6 +522,7 @@ async def submit_planning_answers(
     db.add(ChatMessage(
         session_id=session.id,
         run_id=run.id,
+        message_key=f"run:{run.id}:input",
         role="user",
         content=objective,
         message_metadata={
@@ -574,11 +628,25 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
     active_run = (await db.execute(
         select(AgentRun.id).where(
             AgentRun.session_id == session.id,
-            AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+            AgentRun.status.in_(NONTERMINAL_RUN_STATUSES),
         ).limit(1)
     )).scalar_one_or_none()
     if active_run:
         raise HTTPException(status_code=409, detail="Stop the active run before editing an earlier message")
+
+    try:
+        await ensure_root_scope_available(
+            db,
+            owner_id=settings.DEFAULT_OWNER_ID,
+            plan_id=session.plan_id,
+            session_id=session.id,
+        )
+    except RunStateError as exc:
+        await rollback_uow(db)
+        raise HTTPException(
+            status_code=409,
+            detail="This plan or Session already has an active run",
+        ) from exc
 
     db.add(ChatMessageRevision(
         message_id=message.id,
@@ -627,6 +695,7 @@ async def edit_user_message(message_id: int, data: MessageEdit, db: AsyncSession
     await flush_uow(db)
     message.content = data.content
     message.run_id = run.id
+    message.message_key = f"run:{run.id}:input"
     message.message_metadata = {
         **{key: value for key, value in message.message_metadata.items() if key != "included_in_summary"},
         "edited_at": edited_at_text,
@@ -782,28 +851,25 @@ async def cancel_run(run_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Run not found")
     if run.status in {"completed", "failed", "cancelled"}:
         return run
-    run.cancel_requested = True
-    run.status = "cancelled"
-    run.checkpoint = None
-    run.pending_approval = None
-    run.completed_at = utc_now()
     await commit_uow(db)
     cancel_tracked_task(run.id)
+    terminal = await terminate_run(
+        AsyncSessionLocal,
+        run.id,
+        status="cancelled",
+        reason_code="user_cancelled",
+        summary="Agent run cancelled by user",
+    )
+    if terminal is None:  # pragma: no cover - loaded immediately above
+        raise HTTPException(status_code=404, detail="Run not found")
     if run.parent_run_id is None:
         from app.runtime.subagents import cancel_children_for_parent
 
         await cancel_children_for_parent(run.id, "父 Run 被用户取消")
-    await emit_event(db, run.id, "run.cancelled", "Agent run cancelled by user")
-    if run.parent_run_id:
-        await emit_event(
-            db,
-            run.parent_run_id,
-            "subagent.completed",
-            "子 Agent 已停止",
-            {"child_run_id": run.id, "status": "cancelled", "report": ""},
-        )
-    await db.refresh(run)
-    return run
+        successor_id = getattr(terminal, "_queued_successor_id", None)
+        if successor_id:
+            _start_runtime(successor_id)
+    return terminal
 
 
 @router.post("/runs/{run_id}/approval", response_model=AgentRunRead)
@@ -815,7 +881,7 @@ async def decide_run_approval(
     run = await db.get(AgentRun, run_id)
     if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Run not found")
-    if run.status != "waiting_approval" or not run.pending_approval:
+    if run.status not in {"waiting_approval", "queued", "running"} or not run.pending_approval:
         raise HTTPException(status_code=409, detail="This run has no pending approval request")
     if run.session_id:
         session = await db.get(Session, run.session_id)
@@ -825,58 +891,39 @@ async def decide_run_approval(
         plan = await db.get(Plan, run.plan_id)
         if not plan or plan.status == "archived":
             raise HTTPException(status_code=409, detail="Restore the plan before resolving this approval")
-    if data.note:
-        pending = dict(run.pending_approval)
-        pending["note"] = data.note
-        run.pending_approval = pending
-    if data.answer:
-        pending = dict(run.pending_approval)
-        pending["answer"] = data.answer
-        run.pending_approval = pending
-    run.status = "queued"
-    await commit_uow(db)
-    await db.refresh(run)
-    _start_runtime(
+    try:
+        run = await decide_approval(
+            db,
+            run.id,
+            owner_id=settings.DEFAULT_OWNER_ID,
+            approved=data.approved,
+            note=data.note,
+            answer=data.answer,
+        )
+    except RunStateError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    approval_id = str((run.pending_approval or {}).get("approval_id") or "")
+    _wake_runtime(
         run.id,
+        wake_key=f"approval:{approval_id}",
         resume=True,
-        approval_decision="approve" if data.approved else "reject",
     )
     return run
 
 
 @router.post("/runs/{run_id}/steer", response_model=AgentRunRead)
 async def steer_run(run_id: str, data: RunSteerCreate, db: AsyncSession = Depends(get_db)):
-    run = await db.get(AgentRun, run_id)
-    if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
-        raise HTTPException(status_code=404, detail="Run not found")
-    if run.status == "waiting_approval":
-        raise HTTPException(
-            status_code=409,
-            detail="Resolve the pending approval before steering this run",
-        )
-    if run.status not in {"queued", "running"}:
-        raise HTTPException(status_code=409, detail="Only a queued or running run can be steered")
-    steer = RunSteerMessage(
-        owner_id=settings.DEFAULT_OWNER_ID,
-        run_id=run.id,
-        content=data.content,
-    )
-    db.add(steer)
-    if run.session_id:
-        db.add(ChatMessage(
-            session_id=run.session_id,
-            run_id=run.id,
-            role="user",
+    try:
+        run, _ = await record_steer(
+            db,
+            run_id,
+            owner_id=settings.DEFAULT_OWNER_ID,
             content=data.content,
-            message_metadata={"ui_kind": "steer"},
-        ))
-    await commit_uow(db)
-    await db.refresh(steer)
-    await emit_event(db, run.id, "steer.received", "已收到你的中途转向", {
-        "steer_id": steer.id,
-        "content": data.content,
-    })
-    await db.refresh(run)
+        )
+    except RunStateError as exc:
+        if str(exc) == "run_not_found":
+            raise HTTPException(status_code=404, detail="Run not found") from exc
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return run
 
 
@@ -894,6 +941,7 @@ async def list_queue(
 
 @router.post("/queue", response_model=QueuedMessageRead, status_code=201)
 async def enqueue_message(data: QueuedMessageCreate, db: AsyncSession = Depends(get_db)):
+    await ensure_sqlite_write_transaction(db)
     if data.session_id:
         session = await db.get(Session, data.session_id)
         if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
@@ -936,9 +984,12 @@ async def update_queued_message(
     data: QueuedMessageUpdate,
     db: AsyncSession = Depends(get_db),
 ):
+    await ensure_sqlite_write_transaction(db)
     message = await db.get(QueuedMessage, message_id)
     if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Queued message not found")
+    if message.version != data.expected_version:
+        raise HTTPException(status_code=409, detail="queued_message_version_conflict")
     if data.objective is not None:
         if message.trigger != "user_message":
             raise HTTPException(
@@ -946,41 +997,76 @@ async def update_queued_message(
                 detail="Email and system queue items preserve their original content and cannot be edited",
             )
         message.objective = data.objective
+    changed = data.objective is not None
+    reordered = False
     if data.position is not None and data.position != message.position:
         scope_filter = (
             QueuedMessage.session_id == message.session_id
             if message.session_id
             else QueuedMessage.session_id.is_(None)
         )
-        swapped = (await db.execute(
+        ordered = list((await db.execute(
             select(QueuedMessage).where(
                 QueuedMessage.owner_id == settings.DEFAULT_OWNER_ID,
                 scope_filter,
-                QueuedMessage.position == data.position,
-            ).limit(1)
-        )).scalars().one_or_none()
-        if swapped and swapped.id != message.id:
-            swapped.position = message.position
-        message.position = data.position
+            ).order_by(QueuedMessage.position, QueuedMessage.created_at, QueuedMessage.id)
+        )).scalars())
+        ordered = [item for item in ordered if item.id != message.id]
+        ordered.insert(min(data.position, len(ordered)), message)
+        await flush_uow(db)
+        await reorder_queue(
+            db,
+            owner_id=settings.DEFAULT_OWNER_ID,
+            session_id=message.session_id,
+            ordered=ordered,
+        )
+        changed = True
+        reordered = True
+    if changed and not reordered and message.version == data.expected_version:
+        message.version += 1
+        message.updated_at = utc_now()
     await commit_uow(db)
     await db.refresh(message)
     return message
 
 
 @router.delete("/queue/{message_id}", status_code=204)
-async def delete_queued_message(message_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_queued_message(
+    message_id: str,
+    data: QueuedMessageMutation,
+    db: AsyncSession = Depends(get_db),
+):
+    await ensure_sqlite_write_transaction(db)
     message = await db.get(QueuedMessage, message_id)
     if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Queued message not found")
+    if message.version != data.expected_version:
+        raise HTTPException(status_code=409, detail="queued_message_version_conflict")
+    deleted_position = message.position
+    deleted_session_id = message.session_id
     await db.delete(message)
+    await flush_uow(db)
+    await compact_queue_after_removal(
+        db,
+        owner_id=settings.DEFAULT_OWNER_ID,
+        session_id=deleted_session_id,
+        deleted_position=deleted_position,
+    )
     await commit_uow(db)
 
 
 @router.post("/queue/{message_id}/send", response_model=AgentRunRead, status_code=202)
-async def send_queued_message(message_id: str, db: AsyncSession = Depends(get_db)):
+async def send_queued_message(
+    message_id: str,
+    data: QueuedMessageMutation,
+    db: AsyncSession = Depends(get_db),
+):
+    await ensure_sqlite_write_transaction(db)
     message = await db.get(QueuedMessage, message_id)
     if not message or message.owner_id != settings.DEFAULT_OWNER_ID:
         raise HTTPException(status_code=404, detail="Queued message not found")
+    if message.version != data.expected_version:
+        raise HTTPException(status_code=409, detail="queued_message_version_conflict")
     if message.session_id:
         session = await db.get(Session, message.session_id)
         if not session or session.owner_id != settings.DEFAULT_OWNER_ID:
@@ -993,7 +1079,7 @@ async def send_queued_message(message_id: str, db: AsyncSession = Depends(get_db
             select(AgentRun.id).where(
                 AgentRun.session_id == message.session_id,
                 AgentRun.parent_run_id.is_(None),
-                AgentRun.status.in_(["queued", "running", "waiting_approval"]),
+                AgentRun.status.in_(NONTERMINAL_RUN_STATUSES),
             ).limit(1)
         )).scalar_one_or_none()
         if active_run:
@@ -1003,8 +1089,13 @@ async def send_queued_message(message_id: str, db: AsyncSession = Depends(get_db
         if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID or plan.status == "archived":
             raise HTTPException(status_code=409, detail="Queued plan is unavailable or archived")
     try:
-        run = await dispatch_queued_message(db, message, owner_id=settings.DEFAULT_OWNER_ID)
-    except (RuntimeError, ValueError) as exc:
+        run = await dispatch_queued_message(
+            db,
+            message,
+            owner_id=settings.DEFAULT_OWNER_ID,
+            expected_version=data.expected_version,
+        )
+    except (QueueStateError, RunStateError, RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     await commit_uow(db)
     await db.refresh(run)

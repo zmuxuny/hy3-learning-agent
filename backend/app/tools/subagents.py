@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
 from uuid import NAMESPACE_URL, uuid5
 
 from openai import AsyncOpenAI
@@ -12,14 +11,15 @@ from app.core.config import settings
 from app.db.database import AsyncSessionLocal
 from app.db.uow import commit as commit_uow
 from app.models import AgentRun
+from app.runtime.checkpoints import make_checkpoint
 from app.runtime.events import emit_event
-from app.runtime.tasks import start_tracked_task
+from app.runtime.tasks import cancel_and_wait_tracked_task, start_tracked_task
 from app.runtime.subagents import (
     READ_ONLY_TOOL_NAMES,
-    child_cancel_requested,
-    run_restricted_child,
+    execute_durable_child,
     wait_for_child,
 )
+from app.runtime.state import terminate_run
 from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind
 
 
@@ -63,11 +63,11 @@ class _SubagentToolCoordinator:
         self.ctx.db.add(child)
         await commit_uow(self.ctx.db)
         await self.ctx.db.refresh(child)
-        await emit_event(self.ctx.db, child.id, "run.started", f"{role} 子 Agent 已开始", {
+        await emit_event(self.ctx.db, child.id, "run.queued", f"{role} 子 Agent 已排队", {
             "parent_run_id": self.ctx.run_id,
             "role": role,
             "action_key": self.ctx.action_key,
-        })
+        }, event_key=f"run:{child.id}:queued")
         await emit_event(self.ctx.db, self.ctx.run_id, "subagent.started", f"已委派给 {role}", {
             "child_run_id": child.id,
             "role": role,
@@ -80,38 +80,6 @@ class _SubagentToolCoordinator:
         if self.ctx.db.new or self.ctx.db.dirty or self.ctx.db.deleted:
             raise RuntimeError("sub-agent wait requires a clean caller session")
         await commit_uow(self.ctx.db)
-
-    async def persist_cancellation(self, child: AgentRun) -> None:
-        child_id = child.id
-        role = child.objective.split("]", 1)[0].lstrip("[")
-        await commit_uow(self.ctx.db)
-        active_task = _active_child_tasks.get(child_id)
-        if active_task is not None and active_task is not asyncio.current_task():
-            # Cancellation is first made durable. Give the child a bounded
-            # opportunity to observe that state and unwind cooperatively.
-            # Abruptly cancelling an aiosqlite await can strand its worker
-            # thread with the writer lock after the coroutine is already done.
-            done, _ = await asyncio.wait({active_task}, timeout=0.75)
-            if active_task in done:
-                try:
-                    active_task.result()
-                except asyncio.CancelledError:
-                    pass
-                except Exception:
-                    # The durable cancellation state wins over an overlapping
-                    # child failure; terminal events below remain authoritative.
-                    pass
-        await emit_event(self.ctx.db, child_id, "run.cancelled", "父 Agent 取消", {
-            "parent_run_id": self.ctx.run_id,
-            "action_key": self.ctx.action_key,
-        })
-        await emit_event(self.ctx.db, self.ctx.run_id, "subagent.completed", f"{role} 已停止", {
-            "child_run_id": child_id,
-            "status": "cancelled",
-            "report": "",
-            "action_key": self.ctx.action_key,
-        })
-
 
 def _effective_allowlist(requested: list[str] | None) -> set[str]:
     if not requested:
@@ -137,96 +105,19 @@ async def _run_child_async(
     max_steps: int,
     checkpoint: dict | None = None,
 ) -> None:
-    async def persist_checkpoint(runtime_checkpoint: dict) -> None:
-        async with AsyncSessionLocal() as checkpoint_db:
-            stored_child = await checkpoint_db.get(AgentRun, child_id)
-            if stored_child is None or stored_child.status not in {"queued", "running"}:
-                return
-            durable_identity = dict(stored_child.checkpoint or {})
-            stored_child.checkpoint = {
-                "kind": "subagent",
-                "role": role,
-                "objective": objective,
-                "context": context,
-                "allowlist": sorted(allowlist),
-                "max_steps": max_steps,
-                **runtime_checkpoint,
-                # The runtime checkpoint is replaced on every model/tool step.
-                # Keep the coordinator identity authoritative so a reclaimed
-                # parent invocation can reuse this exact child instead of
-                # manufacturing a second run.
-                "action_key": durable_identity.get("action_key"),
-            }
-            await commit_uow(checkpoint_db)
-
-    try:
-        async with AsyncSessionLocal() as db:
-            child = await db.get(AgentRun, child_id)
-            if child is None or child.status == "cancelled" or child.cancel_requested:
-                return
-            if child.status == "queued":
-                child.status = "running"
-                child.started_at = child.started_at or datetime.now(timezone.utc)
-                await commit_uow(db)
-
-        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_API_BASE)
-        report = await run_restricted_child(
-            client=client,
-            child=child,
-            objective=f"{role}: {objective}",
-            context=context,
-            allowlist=allowlist,
-            max_steps=max_steps,
-            cancel_check=lambda: child_cancel_requested(child_id),
-            checkpoint=checkpoint,
-            checkpoint_callback=persist_checkpoint,
-        )
-        async with AsyncSessionLocal() as db:
-            stored = await db.get(AgentRun, child_id)
-            if stored is None:
-                return
-            if stored.cancel_requested or stored.status == "cancelled":
-                if stored.status == "cancelled":
-                    return
-                stored.status = "cancelled"
-                stored.checkpoint = None
-                stored.completed_at = datetime.now(timezone.utc)
-                await commit_uow(db)
-                await emit_event(db, child_id, "run.cancelled", "子 Agent 已按要求停止", {"role": role})
-                return
-            stored.status = "completed"
-            stored.output = report
-            stored.checkpoint = None
-            stored.completed_at = datetime.now(timezone.utc)
-            await commit_uow(db)
-            await emit_event(db, child_id, "run.completed", report, {"role": role})
-            await emit_event(db, stored.parent_run_id, "subagent.completed", f"{role} 已返回结论", {
-                "child_run_id": child_id,
-                "role": role,
-                "status": "completed",
-                "report": report,
-            })
-    except asyncio.CancelledError:
-        # Explicit cancellation already commits its terminal state and events.
-        raise
-    except Exception as exc:
-        safe_error = f"子 Agent 运行失败：{type(exc).__name__}"
-        async with AsyncSessionLocal() as db:
-            stored = await db.get(AgentRun, child_id)
-            if stored is None or stored.status == "cancelled":
-                return
-            stored.status = "failed"
-            stored.output = safe_error
-            stored.checkpoint = None
-            stored.completed_at = datetime.now(timezone.utc)
-            await commit_uow(db)
-            await emit_event(db, child_id, "run.failed", safe_error, {"role": role, "recoverable": False})
-            await emit_event(db, stored.parent_run_id, "subagent.completed", f"{role} 调查失败", {
-                "child_run_id": child_id,
-                "role": role,
-                "status": "failed",
-                "report": safe_error,
-            })
+    del checkpoint
+    await execute_durable_child(
+        child_id,
+        role=role,
+        objective=objective,
+        context=context,
+        allowlist=allowlist,
+        max_steps=max_steps,
+        client_factory=lambda: AsyncOpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENAI_API_BASE,
+        ),
+    )
 
 
 async def resume_subagent_run(child_id: str) -> None:
@@ -291,21 +182,25 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
             parent_run_id=ctx.run_id,
             trigger="subagent",
             objective=f"[{args.role}] {args.objective}",
-            status="running",
-            started_at=datetime.now(timezone.utc),
+            # Creation records durable intent only.  The shared child
+            # executor must claim the queued Run before any model/tool work.
+            status="queued",
             model=settings.MODEL_NAME,
-            checkpoint={
-                "kind": "subagent",
-                "action_key": ctx.action_key,
-                "role": args.role,
-                "objective": args.objective,
-                "context": stored_context,
-                "allowlist": sorted(allowlist),
-                "max_steps": args.max_steps,
-                "step": 0,
-                "messages": [],
-                "pending_tool_calls": [],
-            },
+            checkpoint_schema_version=1,
+            checkpoint=make_checkpoint(
+                kind="subagent",
+                phase="awaiting_model",
+                step=0,
+                messages=[],
+                identity={
+                    "action_key": ctx.action_key,
+                    "role": args.role,
+                    "objective": args.objective,
+                    "context": stored_context,
+                    "allowlist": sorted(allowlist),
+                    "max_steps": args.max_steps,
+                },
+            ),
         )
         await coordinator.persist_new_child(
             child,
@@ -376,13 +271,19 @@ async def subagent_cancel(ctx: ToolContext, args: SubagentIdArgs) -> dict:
     child = await ctx.db.get(AgentRun, args.run_id)
     if not _own_child(ctx, child):
         return {"error": "Sub-agent run not found"}
-    cancelled = child.status in {"queued", "running"}
+    cancelled = child.status in {
+        "queued", "running", "waiting_approval", "retry_wait", "needs_reconciliation",
+    }
     if cancelled:
-        child.cancel_requested = True
-        child.status = "cancelled"
-        child.checkpoint = None
-        child.completed_at = datetime.now(timezone.utc)
-        await _SubagentToolCoordinator(ctx).persist_cancellation(child)
+        await commit_uow(ctx.db)
+        await terminate_run(
+            AsyncSessionLocal,
+            child.id,
+            status="cancelled",
+            reason_code="parent_cancelled",
+            summary="父 Agent 取消",
+        )
+        await cancel_and_wait_tracked_task(child.id)
     return {"run_id": child.id, "status": "cancelled" if cancelled else child.status}
 
 
