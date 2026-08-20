@@ -117,6 +117,7 @@ async def update_task(
     run_id: str | None = None,
     *,
     session_id: str | None = None,
+    emit_evidence: bool = True,
 ) -> Task:
     result = await db.execute(
         select(Task)
@@ -193,8 +194,14 @@ async def update_task(
     )
     db.add(learning_event)
     await flush_uow(db)
-    if evidence:
-        from app.services.evidence import append_observation, artifact_ref, create_artifact
+    produced_evidence = []
+    if evidence and emit_evidence:
+        from app.services.evidence import (
+            append_observation,
+            artifact_ref,
+            create_artifact,
+            refresh_plan_evidence_projection,
+        )
 
         completion_artifact, _ = await create_artifact(
             db,
@@ -211,10 +218,10 @@ async def update_task(
             session_id=session_id,
         )
 
-        await append_observation(
+        observation, _ = await append_observation(
             db,
             owner_id=owner_id,
-            source_type="task_completion",
+            source_type="task_evidence",
             source_id=f"task:{task.id}:event:{learning_event.id}",
             outcome="verified" if changes.get("status") == "completed" else "observed",
             idempotency_key=f"task:{task.id}:event:{learning_event.id}:evidence",
@@ -223,11 +230,22 @@ async def update_task(
             plan_id=task.stage.plan_id,
             task_id=task.id,
             payload={"evidence": evidence},
+            evaluator={
+                "type": "agent" if run_id else "explicit_task_evidence",
+                "run_id": run_id,
+            },
             artifact_refs=[artifact_ref(completion_artifact, kind="task_evidence")],
             occurred_at=task.completed_at or utc_now(),
             correlation_id=run_id,
             causation_id=f"learning_event:{learning_event.id}",
         )
+        produced_evidence.append(observation)
+        await refresh_plan_evidence_projection(
+            db,
+            owner_id,
+            task.stage.plan_id,
+        )
+    task._produced_evidence = produced_evidence
     await flush_uow(db)
     return task
 

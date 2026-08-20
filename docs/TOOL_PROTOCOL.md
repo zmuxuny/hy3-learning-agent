@@ -1,10 +1,10 @@
 # Agent 工具与运行协议
 
-> 状态说明（2026-08-20）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算。领域作用域、Evidence 语义、提醒线程和应用部署边界仍有阻塞缺陷，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
+> 状态说明（2026-08-20）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算；H4 已验收 Evidence/Competency 领域作用域、事实语义与严格嵌套 Schema。Context/提醒线程和应用部署边界仍有阻塞缺陷，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
 
 ## 设计原则
 
-工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。当前实现为工具注册输入/输出 Schema 与 H2 effect kind，并通过 `GET /api/v1/settings/tools` 暴露；H4-SCHEMA-001/002 仍证明 Evidence 嵌套项存在裸 `list/dict` 和 extra-field 缺口。高层流程由 Hy3 规划；H2 已统一工具事务协议，各触发源仍须完成 H3 的 Run 状态机与 H5 的 Intervention 语义，才能称为共享同一耐久 Runtime。
+工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。当前实现为工具注册输入/输出 Schema 与 H2 effect kind，并通过 `GET /api/v1/settings/tools` 暴露；Evidence/Competency 已使用具名嵌套模型并在每层拒绝 extra fields。高层流程由 Hy3 规划；H2/H3 已统一工具事务与 Run 状态机，各触发源仍须完成 H5 的 Intervention 语义，才能称为共享同一长期上下文。
 
 ## 48 个已注册工具
 
@@ -130,9 +130,9 @@ run.started → context.built → assistant.status
 
 ## 权限与撤销
 
-- 目标上 `plan_id` 必须由后端强制且不依赖 Prompt；旧 Competency/Context 路径仍可跨计划（H4-COMP-002–004、H5-CTX-001）。
+- 目标上 `plan_id` 必须由后端强制且不依赖 Prompt；Competency edge/link 已由 H4 从数据库解析真实 scope，Context discussed-link 泄漏仍由 H5-CTX-001 阻塞。
 - Session 内的计划创建只能写提案；提案采用 API 幂等地物化正式计划，未采用时数据库中不存在对应 Plan。
 - `spawn/status/join/cancel` 与执行层只读白名单已接入统一 durable child 状态机；终态父事件、重试和预算对应的 H3-RUN-008–011 均已关闭。
-- 核心任务的目标门槛是可验证 Evidence；旧自由文本/self-report/checkbox 可越级 demonstrated，一次提交还会重复计权（H4-EVID-003/004）。
+- 核心任务的目标门槛是可验证 Evidence；H4 eligibility Guard 已限制自由文本/self-report/checkbox 的阶段上限，并保证一次 submission/quiz/task 行为只有一份 primary observation。
 - 删除、全局长期记忆和后台改变最终目标需要用户确认；阻塞型审批会暂停 Run 等待批准/拒绝，候选式确认只生成候选不中断运行。
-- `Operation` 的数据库 undo 使用 CAS，workspace undo 先提交 outbox intent 并以 forward hash 拒绝覆盖后续用户修改；H2-TXN-008 已关闭。Evidence undo 仍不追加 amendment/invalidation，图节点 undo 仍可能静默级联（H4-EVID-002、H4-COMP-006），因此不能把 H2 的事务撤销写成所有领域语义都已安全撤销。
+- `Operation` 的数据库 undo 使用 CAS，workspace undo 先提交 outbox intent 并以 forward hash 拒绝覆盖后续用户修改；H2-TXN-008 已关闭。H4 进一步让 Evidence undo 追加 amendment/invalidation 控制事实，并在图节点 undo 前执行 dependency preflight、revision mutation 与 `RESTRICT` FK backstop。

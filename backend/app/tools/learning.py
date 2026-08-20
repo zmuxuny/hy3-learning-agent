@@ -10,8 +10,10 @@ from sqlalchemy.orm import selectinload
 from app.core.time import UTCInstant, canonical_utc, coerce_legacy_utc, utc_now
 from app.db.uow import flush as flush_uow
 from app.models import (
+    Achievement,
     ActivityDay,
     AgentRun,
+    Artifact,
     LearningEvent,
     LearningResource,
     Operation,
@@ -25,7 +27,15 @@ from app.models import (
 )
 from app.schemas import TaskCreate, TaskUpdate
 from app.runtime.state import NONTERMINAL_RUN_STATUSES
-from app.services.evidence import append_observation, artifact_ref, build_plan_evidence_state, create_artifact
+from app.services.evidence import (
+    append_observation,
+    artifact_ref,
+    build_plan_evidence_state,
+    create_artifact,
+    link_operation_observations,
+    normalize_percentage_score,
+    refresh_plan_evidence_projection,
+)
 from app.services import plans as plan_service
 from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
 
@@ -311,6 +321,7 @@ async def submission_create(ctx: ToolContext, args: SubmissionCreateArgs) -> dic
         correlation_id=ctx.run_id,
         causation_id=f"learning_event:{learning_event.id}",
     )
+    await refresh_plan_evidence_projection(ctx.db, ctx.owner_id, submission.plan_id)
     await flush_uow(ctx.db)
     return {"submission_id": submission.id, "status": submission.status, "task_id": task.id}
 
@@ -361,20 +372,27 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
     submission.feedback = args.feedback
     submission.status = "accepted" if passed else "revision_required"
     submission.checked_at = utc_now()
-    submission_artifact, _ = await create_artifact(
-        ctx.db,
-        owner_id=ctx.owner_id,
-        artifact_type="submission",
-        source_uri=f"submission:{submission.id}",
-        idempotency_key=f"submission:{submission.id}:artifact",
-        title=f"提交：{task.title}",
-        content=submission.content,
-        metadata={"submission_type": submission.submission_type, "artifacts": submission.artifacts},
-        plan_id=submission.plan_id,
-        task_id=submission.task_id,
-        run_id=submission.run_id or ctx.run_id,
-        session_id=ctx.session_id,
+    submission_artifact = await ctx.db.scalar(
+        select(Artifact).where(
+            Artifact.owner_id == ctx.owner_id,
+            Artifact.idempotency_key == f"submission:{submission.id}:artifact",
+        )
     )
+    if submission_artifact is None:
+        submission_artifact, _ = await create_artifact(
+            ctx.db,
+            owner_id=ctx.owner_id,
+            artifact_type="submission",
+            source_uri=f"submission:{submission.id}",
+            idempotency_key=f"submission:{submission.id}:artifact",
+            title=f"提交：{task.title}",
+            content=submission.content,
+            metadata={"submission_type": submission.submission_type, "artifacts": submission.artifacts},
+            plan_id=submission.plan_id,
+            task_id=submission.task_id,
+            run_id=submission.run_id or ctx.run_id,
+            session_id=ctx.session_id,
+        )
     evidence = [{"submission_id": submission.id, "score": args.score, "checks": args.checks}]
     award_inverse = None
     if passed and task.status != "completed":
@@ -385,6 +403,7 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
             TaskUpdate(status="completed", evidence=evidence),
             ctx.run_id,
             session_id=ctx.session_id,
+            emit_evidence=False,
         )
         award_inverse = await _award_completion(ctx, task)
     elif task.status == "pending":
@@ -398,7 +417,7 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
     )
     ctx.db.add(learning_event)
     await flush_uow(ctx.db)
-    await append_observation(
+    observation, _ = await append_observation(
         ctx.db,
         owner_id=ctx.owner_id,
         source_type="submission",
@@ -409,7 +428,7 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
         session_id=ctx.session_id,
         plan_id=submission.plan_id,
         task_id=submission.task_id,
-        normalized_score=args.score / 100,
+        normalized_score=normalize_percentage_score(args.score),
         is_correct=passed,
         rubric_snapshot={"pass_threshold": args.pass_threshold, "checks": args.checks},
         evaluator={"type": "agent", "run_id": ctx.run_id},
@@ -419,15 +438,79 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
         correlation_id=ctx.run_id,
         causation_id=f"learning_event:{learning_event.id}",
     )
+    profile_after = await ctx.db.get(UserProfile, ctx.owner_id)
+    forward_award = None
+    if award_inverse:
+        day_after = await ctx.db.get(ActivityDay, award_inverse["day_id"])
+        achievement_ids = award_inverse.get("delete_achievements", [])
+        achievement_rows = list(
+            (
+                await ctx.db.execute(
+                    select(Achievement)
+                    .where(Achievement.id.in_(achievement_ids))
+                    .order_by(Achievement.id)
+                )
+            ).scalars()
+        ) if achievement_ids else []
+        forward_award = {
+            "profile": (
+                {
+                    "xp": profile_after.xp,
+                    "level": profile_after.level,
+                    "streak_days": profile_after.streak_days,
+                }
+                if profile_after is not None
+                else None
+            ),
+            "day": (
+                {
+                    "id": day_after.id,
+                    "date": day_after.date,
+                    "xp": day_after.xp,
+                    "completed_tasks": day_after.completed_tasks,
+                    "passed_quizzes": day_after.passed_quizzes,
+                }
+                if day_after is not None
+                else None
+            ),
+            "achievements": [
+                {
+                    "id": item.id,
+                    "key": item.key,
+                    "title": item.title,
+                    "description": item.description,
+                    "badge_kind": item.badge_kind,
+                    "badge_image_url": item.badge_image_url,
+                    "unlocked_at": canonical_utc(item.unlocked_at),
+                }
+                for item in achievement_rows
+            ],
+        }
     operation = Operation(
         owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
         run_id=ctx.run_id, tool_name="submission.check",
         entity_type="submission", entity_id=str(submission.id),
-        forward_patch={"score": args.score, "status": submission.status},
+        forward_patch={
+            "evidence_protocol": 1,
+            "submission": {
+                "status": submission.status,
+                "score": submission.score,
+                "feedback": submission.feedback,
+                "checked_at": canonical_utc(submission.checked_at),
+            },
+            "task": {
+                "status": task.status,
+                "completed_at": canonical_utc(task.completed_at),
+                "task_metadata": task.task_metadata,
+            },
+            "award": forward_award,
+        },
         inverse_patch={"submission": json_safe(before_submission), "task": json_safe(before_task), "award": award_inverse},
     )
     ctx.db.add(operation)
     await flush_uow(ctx.db)
+    await link_operation_observations(ctx.db, operation, [observation])
+    await refresh_plan_evidence_projection(ctx.db, ctx.owner_id, submission.plan_id)
     return {
         "submission_id": submission.id, "task_id": task.id, "status": submission.status,
         "task_status": task.status, "score": submission.score,
@@ -576,7 +659,11 @@ async def _award_completion(ctx: ToolContext, task: Task) -> dict:
     profile = await ctx.db.get(UserProfile, ctx.owner_id)
     profile_before = None
     if profile:
-        profile_before = {"xp": profile.xp, "level": profile.level}
+        profile_before = {
+            "xp": profile.xp,
+            "level": profile.level,
+            "streak_days": profile.streak_days,
+        }
         profile.xp += 25 if task.is_core else 10
         profile.level = 1 + profile.xp // 100
     day_key = datetime.now(timezone.utc).date().isoformat()
@@ -593,8 +680,14 @@ async def _award_completion(ctx: ToolContext, task: Task) -> dict:
     day.xp += 25 if task.is_core else 10
     from app.services.gamification import evaluate_achievements
 
-    await evaluate_achievements(ctx.db, ctx.owner_id)
-    return {"profile": profile_before, "day_id": day.id, "day": day_before}
+    unlocked = await evaluate_achievements(ctx.db, ctx.owner_id)
+    await flush_uow(ctx.db)
+    return {
+        "profile": profile_before,
+        "day_id": day.id,
+        "day": day_before,
+        "delete_achievements": [item.id for item in unlocked],
+    }
 
 
 LEARNING_TOOLS = [

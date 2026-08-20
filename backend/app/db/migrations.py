@@ -73,6 +73,11 @@ MIGRATION_REGISTRY: tuple[MigrationRevision, ...] = (
         name="h3_durable_runtime",
         checksum="b69ed9f0844106e54936e008c22b4d4ebd7e089a8cb38989a4306ad25c7239de",
     ),
+    MigrationRevision(
+        version=4,
+        name="h4_evidence_competency_facts",
+        checksum="851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace",
+    ),
 )
 if [revision.version for revision in MIGRATION_REGISTRY] != list(
     range(1, len(MIGRATION_REGISTRY) + 1)
@@ -1624,6 +1629,32 @@ def _upgrade_legacy_run_checkpoint(
     }
 
 
+def _legacy_evidence_policy(values: dict[str, Any]) -> tuple[str, str, bool, str]:
+    """Classify revision-3 observations without upgrading uncertain claims."""
+
+    source_type = str(values.get("source_type") or "")
+    outcome = str(values.get("outcome") or "")
+    assistance = str(values.get("assistance_level") or "unknown")
+    role = "supporting" if source_type == "task_completion" else "primary"
+    success = outcome in {"accepted", "passed", "verified"} and source_type in {
+        "submission",
+        "quiz",
+        "code_run",
+        "file",
+    }
+    if source_type in {"self_report", "conversation", "message"}:
+        return "exposed", "LEGACY_UNVERIFIED_CLAIM", False, role
+    if source_type == "task_completion":
+        return "practicing", "LEGACY_TASK_COMPLETION_SUPPORTING", False, role
+    if success:
+        if assistance == "independent":
+            return "demonstrated", "LEGACY_ELIGIBLE_INDEPENDENT_SUCCESS", True, role
+        return "practicing", "LEGACY_SUCCESS_ASSISTANCE_UNPROVEN", True, role
+    if outcome in {"submitted", "attempted", "failed", "needs_revision", "observed"}:
+        return "practicing", "LEGACY_ATTEMPT", False, role
+    return "unknown", "LEGACY_ELIGIBILITY_UNCLASSIFIED", False, role
+
+
 def _normalize_row(table, raw: sqlite3.Row, counters: dict[str, int]) -> dict[str, Any]:
     values: dict[str, Any] = {}
     raw_keys = set(raw.keys())
@@ -1656,6 +1687,37 @@ def _normalize_row(table, raw: sqlite3.Row, counters: dict[str, int]) -> dict[st
         elif isinstance(column.type, JSON):
             value = _normalize_json(value, table_name=table.name, column_name=column.name)
         values[column.name] = value
+    if table.name == "artifacts":
+        content_hash = values.get("content_hash")
+        if (
+            not isinstance(content_hash, str)
+            or len(content_hash) != 64
+            or any(character not in "0123456789abcdef" for character in content_hash)
+        ):
+            content_hash = hashlib.sha256(_canonical_json({
+                "legacy_content_hash": content_hash,
+                "metadata": values.get("metadata") or values.get("artifact_metadata") or {},
+                "source_uri": values.get("source_uri") or "",
+            })).hexdigest()
+        values["content_hash"] = content_hash
+        values["snapshot_bytes"] = None
+        values["snapshot_sha256"] = None
+        values["storage_state"] = "legacy_unavailable"
+        values["envelope_version"] = 0
+    if table.name == "evidence_observations":
+        target_id = raw["supersedes_id"] if "supersedes_id" in raw_keys else None
+        fact_kind = "amendment" if target_id is not None else "observation"
+        stage, eligibility_reason, counts_as_success, evidence_role = (
+            _legacy_evidence_policy(values)
+        )
+        values["fact_kind"] = fact_kind
+        values["target_observation_id"] = target_id
+        values["reason_code"] = "LEGACY_SUPERSESSION" if target_id is not None else ""
+        values["evidence_role"] = evidence_role
+        values["eligibility_stage"] = stage
+        values["eligibility_reason"] = eligibility_reason
+        values["eligibility_policy_version"] = "evidence-eligibility-v1"
+        values["counts_as_success"] = counts_as_success
     if table.name == "agent_runs" and "phase" not in raw_keys:
         status = str(values.get("status") or "queued")
         checkpoint = values.get("checkpoint")
@@ -1882,6 +1944,724 @@ def _mark_legacy_run_reconciliation(connection, run_id: str, reason: str) -> Non
             run_id,
         ),
     )
+
+
+def _legacy_artifact_content(
+    source: sqlite3.Connection,
+    artifact_type: str,
+    source_uri: str,
+) -> str | None:
+    """Recover bytes only from immutable database facts, never source paths."""
+
+    submission = re.fullmatch(r"submission:(\d+)", source_uri)
+    if artifact_type == "submission" and submission:
+        row = source.execute(
+            "SELECT content FROM task_submissions WHERE id=?",
+            (int(submission.group(1)),),
+        ).fetchone()
+        return None if row is None else str(row[0] or "")
+    quiz = re.fullmatch(r"quiz:(\d+):answer", source_uri)
+    if artifact_type == "quiz_answer" and quiz:
+        row = source.execute(
+            "SELECT answer FROM quizzes WHERE id=?",
+            (int(quiz.group(1)),),
+        ).fetchone()
+        return None if row is None or row[0] is None else str(row[0])
+    task_event = re.fullmatch(r"task:\d+:event:(\d+)", source_uri)
+    if artifact_type == "task_evidence" and task_event:
+        row = source.execute(
+            "SELECT payload FROM learning_events WHERE id=?",
+            (int(task_event.group(1)),),
+        ).fetchone()
+        if row is None:
+            return None
+        payload = _normalize_json(
+            row[0], table_name="learning_events", column_name="payload"
+        )
+        if not isinstance(payload, dict) or not payload.get("evidence"):
+            return None
+        return json.dumps(
+            payload["evidence"],
+            ensure_ascii=False,
+            sort_keys=True,
+            default=canonical_utc,
+        )
+    return None
+
+
+def _validate_legacy_evidence_targets(
+    source: sqlite3.Connection,
+) -> list[sqlite3.Row]:
+    rows = source.execute(
+        """
+        SELECT id, owner_id, plan_id, task_id, supersedes_id,
+               invalidated_at, invalidation_reason
+        FROM evidence_observations ORDER BY id
+        """
+    ).fetchall()
+    by_id = {int(row["id"]): row for row in rows}
+    targets: dict[int, int] = {}
+    target_children: dict[int, int] = {}
+    for row in rows:
+        target_id = row["supersedes_id"]
+        if target_id is None:
+            continue
+        target = by_id.get(int(target_id))
+        if target is None:
+            raise MigrationError(
+                "legacy_evidence_target_missing",
+                "revision-3 Evidence references a missing supersession target",
+            )
+        if (
+            row["owner_id"] != target["owner_id"]
+            or row["plan_id"] != target["plan_id"]
+            or row["task_id"] != target["task_id"]
+        ):
+            raise MigrationError(
+                "legacy_evidence_scope_conflict",
+                "revision-3 Evidence supersession crosses an owner, plan, or task scope",
+            )
+        targets[int(row["id"])] = int(target_id)
+        target_children[int(target_id)] = target_children.get(int(target_id), 0) + 1
+        if target_children[int(target_id)] > 1:
+            raise MigrationError(
+                "legacy_evidence_branch_conflict",
+                "revision-3 Evidence contains multiple supersession branches",
+            )
+    for start in targets:
+        seen: set[int] = set()
+        current = start
+        while current in targets:
+            if current in seen:
+                raise MigrationError(
+                    "legacy_evidence_supersession_cycle",
+                    "revision-3 Evidence contains a supersession cycle",
+                )
+            seen.add(current)
+            current = targets[current]
+    return rows
+
+
+def _backfill_h4_artifacts(
+    source: sqlite3.Connection,
+    connection,
+) -> dict[int, str]:
+    original_hashes: dict[int, str] = {}
+    rows = source.execute(
+        "SELECT id, artifact_type, source_uri, content_hash, metadata FROM artifacts ORDER BY id"
+    ).fetchall()
+    for row in rows:
+        artifact_id = int(row["id"])
+        old_hash = str(row["content_hash"] or "")
+        original_hashes[artifact_id] = old_hash
+        content = _legacy_artifact_content(
+            source,
+            str(row["artifact_type"]),
+            str(row["source_uri"]),
+        )
+        if content is None:
+            continue
+        raw = content.encode("utf-8")
+        raw_hash = hashlib.sha256(raw).hexdigest()
+        if old_hash != raw_hash:
+            continue
+        metadata = _normalize_json(
+            row["metadata"], table_name="artifacts", column_name="metadata"
+        )
+        if not isinstance(metadata, dict):
+            raise MigrationError(
+                "legacy_artifact_metadata_invalid",
+                "revision-3 Artifact metadata is not an object",
+            )
+        envelope_hash = hashlib.sha256(_canonical_json({
+            "content": content,
+            "metadata": metadata,
+        })).hexdigest()
+        connection.exec_driver_sql(
+            """
+            UPDATE artifacts
+            SET content_hash=?, snapshot_bytes=?, snapshot_sha256=?, size_bytes=?,
+                storage_state='stored', envelope_version=1
+            WHERE id=?
+            """,
+            (envelope_hash, raw, raw_hash, len(raw), artifact_id),
+        )
+    return original_hashes
+
+
+def _validate_h4_source_scopes(connection) -> None:
+    invalid_evidence = connection.exec_driver_sql(
+        """
+        SELECT observations.id
+        FROM evidence_observations AS observations
+        LEFT JOIN agent_runs AS runs ON runs.id=observations.run_id
+        LEFT JOIN sessions ON sessions.id=observations.session_id
+        LEFT JOIN plans ON plans.id=observations.plan_id
+        LEFT JOIN tasks ON tasks.id=observations.task_id
+        LEFT JOIN stages ON stages.id=tasks.stage_id
+        LEFT JOIN plans AS task_plans ON task_plans.id=stages.plan_id
+        WHERE (observations.run_id IS NOT NULL AND runs.owner_id<>observations.owner_id)
+           OR (observations.session_id IS NOT NULL AND sessions.owner_id<>observations.owner_id)
+           OR (observations.plan_id IS NOT NULL AND plans.owner_id<>observations.owner_id)
+           OR (observations.task_id IS NOT NULL AND (
+                observations.plan_id IS NULL
+                OR task_plans.id<>observations.plan_id
+                OR task_plans.owner_id<>observations.owner_id
+           ))
+        LIMIT 1
+        """
+    ).first()
+    if invalid_evidence:
+        raise MigrationError(
+            "legacy_evidence_source_scope_conflict",
+            "revision-3 Evidence source identity crosses owner or plan scope",
+        )
+    invalid_artifact = connection.exec_driver_sql(
+        """
+        SELECT artifacts.id
+        FROM artifacts
+        LEFT JOIN agent_runs AS runs ON runs.id=artifacts.run_id
+        LEFT JOIN sessions ON sessions.id=artifacts.session_id
+        LEFT JOIN plans ON plans.id=artifacts.plan_id
+        LEFT JOIN tasks ON tasks.id=artifacts.task_id
+        LEFT JOIN stages ON stages.id=tasks.stage_id
+        LEFT JOIN plans AS task_plans ON task_plans.id=stages.plan_id
+        WHERE (artifacts.run_id IS NOT NULL AND runs.owner_id<>artifacts.owner_id)
+           OR (artifacts.session_id IS NOT NULL AND sessions.owner_id<>artifacts.owner_id)
+           OR (artifacts.plan_id IS NOT NULL AND plans.owner_id<>artifacts.owner_id)
+           OR (artifacts.task_id IS NOT NULL AND (
+                artifacts.plan_id IS NULL
+                OR task_plans.id<>artifacts.plan_id
+                OR task_plans.owner_id<>artifacts.owner_id
+           ))
+        LIMIT 1
+        """
+    ).first()
+    if invalid_artifact:
+        raise MigrationError(
+            "legacy_artifact_source_scope_conflict",
+            "revision-3 Artifact source identity crosses owner or plan scope",
+        )
+
+
+def _backfill_h4_evidence_links(
+    source: sqlite3.Connection,
+    connection,
+    *,
+    original_artifact_hashes: dict[int, str],
+    source_tables: set[str],
+) -> None:
+    artifact_link = Base.metadata.tables["evidence_artifact_links"]
+    competency_link = Base.metadata.tables["evidence_competency_links"]
+    evidence_columns = set(_legacy_columns(source, "evidence_observations"))
+    competency_id_projection = (
+        "competency_id" if "competency_id" in evidence_columns else "NULL AS competency_id"
+    )
+    source_rows = source.execute(
+        f"""
+        SELECT id, owner_id, plan_id, task_id, {competency_id_projection}, competency_key,
+               artifact_refs, occurred_at, recorded_at
+        FROM evidence_observations ORDER BY id
+        """
+    ).fetchall()
+    for row in source_rows:
+        observation_id = int(row["id"])
+        if "artifacts" in source_tables:
+            refs = _normalize_json(
+                row["artifact_refs"],
+                table_name="evidence_observations",
+                column_name="artifact_refs",
+            )
+            if not isinstance(refs, list):
+                raise MigrationError(
+                    "legacy_evidence_artifact_refs_invalid",
+                    "revision-3 Evidence artifact references are not a list",
+                )
+            for ordinal, ref in enumerate(refs):
+                if not isinstance(ref, dict) or isinstance(ref.get("artifact_id"), bool):
+                    raise MigrationError(
+                        "legacy_evidence_artifact_ref_invalid",
+                        "revision-3 Evidence contains a malformed Artifact reference",
+                    )
+                try:
+                    artifact_id = int(ref["artifact_id"])
+                except (KeyError, TypeError, ValueError) as exc:
+                    raise MigrationError(
+                        "legacy_evidence_artifact_ref_invalid",
+                        "revision-3 Evidence contains a malformed Artifact reference",
+                    ) from exc
+                artifact = connection.exec_driver_sql(
+                    """
+                    SELECT owner_id, plan_id, task_id, artifact_type, content_hash
+                    FROM artifacts WHERE id=?
+                    """,
+                    (artifact_id,),
+                ).first()
+                if artifact is None:
+                    raise MigrationError(
+                        "legacy_evidence_artifact_missing",
+                        "revision-3 Evidence references a missing Artifact",
+                    )
+                old_hash = ref.get("content_hash")
+                if old_hash and old_hash != original_artifact_hashes.get(artifact_id):
+                    raise MigrationError(
+                        "legacy_evidence_artifact_hash_conflict",
+                        "revision-3 Evidence and Artifact hashes disagree",
+                    )
+                if (
+                    artifact[0] != row["owner_id"]
+                    or artifact[1] != row["plan_id"]
+                    or artifact[2] != row["task_id"]
+                ):
+                    raise MigrationError(
+                        "legacy_evidence_artifact_scope_conflict",
+                        "revision-3 Evidence Artifact reference crosses scope",
+                    )
+                connection.execute(insert(artifact_link).values(
+                    observation_id=observation_id,
+                    artifact_id=artifact_id,
+                    kind=str(ref.get("kind") or artifact[3]),
+                    ordinal=ordinal,
+                    content_hash_snapshot=str(artifact[4]),
+                    created_at=utc_now(),
+                ))
+
+        explicit_competency_id = row["competency_id"]
+        explicit_key = row["competency_key"]
+        if "competencies" in source_tables and (
+            explicit_competency_id is not None or explicit_key
+        ):
+            if explicit_competency_id is not None:
+                candidates = connection.exec_driver_sql(
+                    """
+                    SELECT id, owner_id, "key", scope, plan_id
+                    FROM competencies WHERE id=?
+                    """,
+                    (int(explicit_competency_id),),
+                ).all()
+            else:
+                candidates = connection.exec_driver_sql(
+                    """
+                    SELECT id, owner_id, "key", scope, plan_id
+                    FROM competencies
+                    WHERE owner_id=? AND "key"=?
+                      AND (scope='global' OR plan_id IS ?)
+                    ORDER BY id
+                    """,
+                    (row["owner_id"], str(explicit_key), row["plan_id"]),
+                ).all()
+            if len(candidates) != 1:
+                raise MigrationError(
+                    "legacy_evidence_competency_unresolved",
+                    "revision-3 Evidence competency identity is not uniquely resolvable",
+                )
+            competency = candidates[0]
+            if (
+                competency[1] != row["owner_id"]
+                or (competency[3] == "plan" and competency[4] != row["plan_id"])
+                or (explicit_key and competency[2] != explicit_key)
+            ):
+                raise MigrationError(
+                    "legacy_evidence_competency_scope_conflict",
+                    "revision-3 Evidence competency crosses scope",
+                )
+            connection.execute(insert(competency_link).values(
+                observation_id=observation_id,
+                competency_id=int(competency[0]),
+                association_kind="legacy",
+                competency_key_snapshot=str(competency[2]),
+                created_at=utc_now(),
+            ))
+
+        if row["task_id"] is None:
+            continue
+        observed_at = canonical_utc(
+            parse_legacy_datetime(row["occurred_at"] or row["recorded_at"])
+        )
+        assesses = connection.exec_driver_sql(
+            """
+            SELECT links.id, competencies.id, competencies."key",
+                   competencies.owner_id, competencies.scope, competencies.plan_id
+            FROM task_competency_links AS links
+            JOIN competencies ON competencies.id = links.competency_id
+            WHERE links.task_id=? AND links.relation='assesses'
+              AND links.created_at <= ?
+            ORDER BY links.id
+            """,
+            (int(row["task_id"]), observed_at),
+        ).all()
+        for mapping_id, competency_id, key, owner_id, scope, plan_id in assesses:
+            if owner_id != row["owner_id"] or (scope == "plan" and plan_id != row["plan_id"]):
+                raise MigrationError(
+                    "legacy_task_assesses_scope_conflict",
+                    "revision-3 task assessment mapping crosses Evidence scope",
+                )
+            connection.exec_driver_sql(
+                """
+                INSERT OR IGNORE INTO evidence_competency_links(
+                    observation_id, competency_id, association_kind,
+                    task_competency_link_id_snapshot, competency_key_snapshot, created_at
+                ) VALUES (?, ?, 'task_assesses', ?, ?, ?)
+                """,
+                (
+                    observation_id,
+                    int(competency_id),
+                    int(mapping_id),
+                    str(key),
+                    canonical_utc(utc_now()),
+                ),
+            )
+
+
+def _append_h4_legacy_invalidations(
+    connection,
+    source_rows: list[sqlite3.Row],
+    counters: dict[str, int],
+) -> None:
+    table = Base.metadata.tables["evidence_observations"]
+    for raw in source_rows:
+        if raw["invalidated_at"] is None:
+            continue
+        target = connection.exec_driver_sql(
+            """
+            SELECT owner_id, run_id, session_id, plan_id, task_id
+            FROM evidence_observations WHERE id=?
+            """,
+            (int(raw["id"]),),
+        ).first()
+        if target is None:
+            raise MigrationError(
+                "legacy_evidence_target_missing",
+                "revision-3 invalidation target disappeared during migration",
+            )
+        invalidated_at = _normalize_datetime(raw["invalidated_at"], counters)
+        legacy_reason = str(raw["invalidation_reason"] or "")
+        idempotency_key = f"migration:v4:evidence:{int(raw['id'])}:invalidation"
+        request = {
+            "fact_kind": "invalidation",
+            "target_observation_id": int(raw["id"]),
+            "reason_code": "LEGACY_INVALIDATION",
+            "legacy_reason": legacy_reason,
+        }
+        connection.execute(insert(table).values(
+            owner_id=target[0],
+            source_type="evidence_invalidation",
+            source_id=f"legacy:{int(raw['id'])}:invalidation",
+            run_id=target[1],
+            session_id=target[2],
+            plan_id=target[3],
+            task_id=target[4],
+            fact_kind="invalidation",
+            target_observation_id=int(raw["id"]),
+            reason_code="LEGACY_INVALIDATION",
+            evidence_role="control",
+            eligibility_stage="unknown",
+            eligibility_reason="INVALIDATED_FACT",
+            eligibility_policy_version="evidence-eligibility-v1",
+            counts_as_success=False,
+            outcome="invalidated",
+            assistance_level="unknown",
+            transfer_level="unknown",
+            rubric_snapshot={},
+            evaluator={"type": "migration", "revision": 4},
+            payload={"legacy_invalidation_reason": legacy_reason},
+            occurred_at=invalidated_at,
+            recorded_at=invalidated_at,
+            schema_version=2,
+            causation_id=f"evidence:{int(raw['id'])}",
+            idempotency_key=idempotency_key,
+            request_digest=hashlib.sha256(_canonical_json(request)).hexdigest(),
+        ))
+
+
+def _validate_and_seed_h4_graph(connection) -> None:
+    competencies = {
+        int(row[0]): row
+        for row in connection.exec_driver_sql(
+            'SELECT id, owner_id, "key", scope, plan_id FROM competencies ORDER BY id'
+        ).all()
+    }
+    adjacency: dict[str, dict[int, set[int]]] = {}
+    for edge in connection.exec_driver_sql(
+        "SELECT id, owner_id, source_id, target_id, relation FROM competency_edges ORDER BY id"
+    ).all():
+        _, owner_id, source_id, target_id, relation = edge
+        source = competencies.get(int(source_id))
+        target = competencies.get(int(target_id))
+        if (
+            source is None
+            or target is None
+            or source[1] != owner_id
+            or target[1] != owner_id
+            or (source[3] == "plan" and target[3] == "plan" and source[4] != target[4])
+        ):
+            raise MigrationError(
+                "legacy_competency_edge_scope_conflict",
+                "revision-3 competency edge crosses owner or plan scope",
+            )
+        if relation in {"prerequisite", "part_of"}:
+            adjacency.setdefault(str(owner_id), {}).setdefault(
+                int(source_id), set()
+            ).add(int(target_id))
+    for graph in adjacency.values():
+        visiting: set[int] = set()
+        visited: set[int] = set()
+
+        def visit(node: int) -> None:
+            if node in visiting:
+                raise MigrationError(
+                    "legacy_competency_cycle",
+                    "revision-3 competency graph contains a cycle",
+                )
+            if node in visited:
+                return
+            visiting.add(node)
+            for target in graph.get(node, set()):
+                visit(target)
+            visiting.remove(node)
+            visited.add(node)
+
+        for node in graph:
+            visit(node)
+
+    invalid_plan_links = connection.exec_driver_sql(
+        """
+        SELECT links.id
+        FROM plan_competency_links AS links
+        JOIN plans ON plans.id=links.plan_id
+        JOIN competencies ON competencies.id=links.competency_id
+        WHERE plans.owner_id<>links.owner_id OR competencies.owner_id<>links.owner_id
+           OR (competencies.scope='plan' AND competencies.plan_id<>links.plan_id)
+        LIMIT 1
+        """
+    ).first()
+    invalid_task_links = connection.exec_driver_sql(
+        """
+        SELECT links.id
+        FROM task_competency_links AS links
+        JOIN tasks ON tasks.id=links.task_id
+        JOIN stages ON stages.id=tasks.stage_id
+        JOIN plans ON plans.id=stages.plan_id
+        JOIN competencies ON competencies.id=links.competency_id
+        WHERE plans.owner_id<>links.owner_id OR competencies.owner_id<>links.owner_id
+           OR (competencies.scope='plan' AND competencies.plan_id<>plans.id)
+        LIMIT 1
+        """
+    ).first()
+    invalid_resource_links = connection.exec_driver_sql(
+        """
+        SELECT links.id
+        FROM resource_competency_links AS links
+        JOIN learning_resources AS resources ON resources.id=links.resource_id
+        JOIN competencies ON competencies.id=links.competency_id
+        WHERE resources.owner_id<>links.owner_id OR competencies.owner_id<>links.owner_id
+           OR (resources.plan_id IS NOT NULL AND competencies.scope='plan'
+               AND competencies.plan_id<>resources.plan_id)
+        LIMIT 1
+        """
+    ).first()
+    if invalid_plan_links or invalid_task_links or invalid_resource_links:
+        raise MigrationError(
+            "legacy_competency_link_scope_conflict",
+            "revision-3 competency mapping crosses owner or plan scope",
+        )
+
+    graph_owners = connection.exec_driver_sql(
+        """
+        SELECT DISTINCT owner_id FROM (
+            SELECT owner_id FROM competencies
+            UNION ALL SELECT owner_id FROM competency_edges
+            UNION ALL SELECT owner_id FROM plan_competency_links
+            UNION ALL SELECT owner_id FROM task_competency_links
+            UNION ALL SELECT owner_id FROM resource_competency_links
+        ) ORDER BY owner_id
+        """
+    ).all()
+    state = Base.metadata.tables["competency_graph_states"]
+    mutation = Base.metadata.tables["competency_graph_mutations"]
+    for (owner_id,) in graph_owners:
+        now = utc_now()
+        connection.execute(insert(state).values(
+            owner_id=owner_id,
+            revision=1,
+            updated_at=now,
+        ))
+        connection.execute(insert(mutation).values(
+            owner_id=owner_id,
+            revision=1,
+            operation_id=None,
+            action_key=f"migration:v4:graph:{owner_id}:baseline",
+            action="baseline",
+            entity_type="competency_graph",
+            entity_id=str(owner_id),
+            created_at=now,
+        ))
+
+
+def _backfill_h4_operation_links(connection) -> None:
+    evidence_link = Base.metadata.tables["operation_evidence_links"]
+    dependency = Base.metadata.tables["operation_dependencies"]
+    operations = connection.exec_driver_sql(
+        """
+        SELECT id, run_id, tool_name, entity_type, entity_id, created_at
+        FROM operations ORDER BY created_at, id
+        """
+    ).all()
+    producer_candidates: list[tuple[str, int]] = []
+    for operation_id, run_id, tool_name, entity_type, entity_id, _ in operations:
+        matches: list[tuple[Any, ...]] = []
+        if tool_name == "submission.check" and entity_type == "submission":
+            matches = connection.exec_driver_sql(
+                """
+                SELECT id FROM evidence_observations
+                WHERE source_type='submission' AND source_id=?
+                  AND fact_kind IN ('observation', 'amendment')
+                ORDER BY id
+                """,
+                (f"{entity_id}:check",),
+            ).all()
+        elif tool_name == "quiz.grade" and entity_type == "quiz":
+            matches = connection.exec_driver_sql(
+                """
+                SELECT id FROM evidence_observations
+                WHERE source_type='quiz' AND source_id=?
+                  AND fact_kind IN ('observation', 'amendment')
+                ORDER BY id
+                """,
+                (f"{entity_id}:grade",),
+            ).all()
+        elif tool_name == "task.patch" and entity_type == "task":
+            matches = connection.exec_driver_sql(
+                """
+                SELECT id FROM evidence_observations
+                WHERE source_type='task_completion' AND task_id=? AND run_id IS ?
+                  AND fact_kind IN ('observation', 'amendment')
+                ORDER BY id
+                """,
+                (int(entity_id), run_id),
+            ).all()
+        if len(matches) == 1:
+            producer_candidates.append((str(operation_id), int(matches[0][0])))
+    candidate_counts: dict[int, int] = {}
+    for _, observation_id in producer_candidates:
+        candidate_counts[observation_id] = candidate_counts.get(observation_id, 0) + 1
+    for operation_id, observation_id in producer_candidates:
+        if candidate_counts[observation_id] == 1:
+            connection.execute(insert(evidence_link).values(
+                operation_id=operation_id,
+                observation_id=observation_id,
+                generation=0,
+                role="produced",
+                created_at=utc_now(),
+            ))
+
+    node_operations: dict[int, list[str]] = {}
+    for operation_id, _, _, entity_type, entity_id, _ in operations:
+        if entity_type == "competency":
+            try:
+                node_operations.setdefault(int(entity_id), []).append(str(operation_id))
+            except (TypeError, ValueError):
+                continue
+    for operation_id, _, _, entity_type, entity_id, _ in operations:
+        references: list[tuple[int, str]] = []
+        try:
+            numeric_entity_id = int(entity_id)
+        except (TypeError, ValueError):
+            continue
+        if entity_type == "competency_edge":
+            edge = connection.exec_driver_sql(
+                "SELECT source_id, target_id FROM competency_edges WHERE id=?",
+                (numeric_entity_id,),
+            ).first()
+            if edge is not None:
+                references = [
+                    (int(edge[0]), "source_competency"),
+                    (int(edge[1]), "target_competency"),
+                ]
+        elif entity_type in {
+            "plan_competency_link",
+            "task_competency_link",
+            "resource_competency_link",
+        }:
+            table_name = f"{entity_type}s"
+            link = connection.exec_driver_sql(
+                f"SELECT competency_id FROM {_quote(table_name)} WHERE id=?",
+                (numeric_entity_id,),
+            ).first()
+            if link is not None:
+                references = [(int(link[0]), "competency")]
+        for competency_id, kind in references:
+            prerequisite = node_operations.get(competency_id, [])
+            if len(prerequisite) != 1 or prerequisite[0] == operation_id:
+                continue
+            connection.execute(insert(dependency).values(
+                operation_id=operation_id,
+                depends_on_operation_id=prerequisite[0],
+                dependency_kind=kind,
+                entity_type="competency",
+                entity_id=str(competency_id),
+                created_at=utc_now(),
+            ))
+
+
+def _seed_h4_projection_states(connection) -> None:
+    table = Base.metadata.tables["evidence_projection_states"]
+    empty_ledger_digest = hashlib.sha256(_canonical_json([])).hexdigest()
+    empty_projection: dict[str, Any] = {}
+    empty_projection_digest = hashlib.sha256(
+        _canonical_json(empty_projection)
+    ).hexdigest()
+    scopes = connection.exec_driver_sql(
+        """
+        SELECT DISTINCT owner_id, plan_id
+        FROM evidence_observations
+        WHERE plan_id IS NOT NULL
+        ORDER BY owner_id, plan_id
+        """
+    ).all()
+    for owner_id, plan_id in scopes:
+        connection.execute(insert(table).values(
+            owner_id=owner_id,
+            plan_id=int(plan_id),
+            watermark=0,
+            ledger_digest=empty_ledger_digest,
+            projection_digest=empty_projection_digest,
+            projection=empty_projection,
+            algorithm_version="evidence-projection-v1",
+            updated_at=utc_now(),
+        ))
+
+
+def _apply_h4_backfills(
+    source_path: Path,
+    connection,
+    counters: dict[str, int],
+) -> None:
+    source = sqlite3.connect(_sqlite_uri(source_path, mode="ro"), uri=True)
+    source.row_factory = sqlite3.Row
+    try:
+        source_tables = _source_tables(source_path)
+        if "evidence_observations" not in source_tables:
+            return
+        evidence_rows = _validate_legacy_evidence_targets(source)
+        original_hashes = (
+            _backfill_h4_artifacts(source, connection)
+            if "artifacts" in source_tables
+            else {}
+        )
+        _validate_h4_source_scopes(connection)
+        _backfill_h4_evidence_links(
+            source,
+            connection,
+            original_artifact_hashes=original_hashes,
+            source_tables=source_tables,
+        )
+        _append_h4_legacy_invalidations(connection, evidence_rows, counters)
+        _validate_and_seed_h4_graph(connection)
+        _backfill_h4_operation_links(connection)
+        _seed_h4_projection_states(connection)
+    finally:
+        source.close()
 
 
 def _apply_legacy_backfills(connection) -> None:
@@ -2241,9 +3021,21 @@ def _build_candidate(
             _call_fault(fault_injector, "before_copy")
             _copy_legacy_rows(source_path, connection, counters)
             _apply_legacy_backfills(connection)
+            source_schema_version = max(
+                (int(row["version"]) for row in (source_history or [])),
+                default=0,
+            )
+            if source_schema_version < 4:
+                _call_fault(fault_injector, "before_h4_semantic_backfill")
+                _apply_h4_backfills(source_path, connection, counters)
+                _call_fault(fault_injector, "after_h4_semantic_backfill")
             _call_fault(fault_injector, "after_copy")
             _call_fault(fault_injector, "before_indexes")
             _create_indexes(connection)
+            from app.models.schema_triggers import install_schema_triggers
+
+            install_schema_triggers(connection)
+            _call_fault(fault_injector, "after_h4_schema_triggers")
             _call_fault(fault_injector, "after_indexes")
         checksum = schema_checksum(target_path)
         if checksum != CANONICAL_SCHEMA_CHECKSUM:

@@ -18,6 +18,8 @@ from app.db.uow import (
     run_short_transaction,
 )
 from app.models import (
+    Achievement,
+    ActivityDay,
     AgentRun,
     LearningEvent,
     Operation,
@@ -306,6 +308,10 @@ async def task_patch(ctx: ToolContext, args: TaskPatchArgs) -> dict:
         ctx.run_id,
         session_id=ctx.session_id,
     )
+    forward_changes = {
+        key: json_safe(getattr(updated, key))
+        for key in before
+    }
     operation = Operation(
         owner_id=ctx.owner_id,
         invocation_id=ctx.invocation_id,
@@ -313,11 +319,20 @@ async def task_patch(ctx: ToolContext, args: TaskPatchArgs) -> dict:
         tool_name="task.patch",
         entity_type="task",
         entity_id=str(task.id),
-        forward_patch={"changes": json_safe(changes), "reason": args.reason},
+        forward_patch={
+            "evidence_protocol": 1,
+            "changes": forward_changes,
+            "reason": args.reason,
+        },
         inverse_patch={"changes": json_safe(before)},
     )
     ctx.db.add(operation)
     await flush_uow(ctx.db)
+    produced_evidence = list(getattr(updated, "_produced_evidence", []))
+    if produced_evidence:
+        from app.services.evidence import link_operation_observations
+
+        await link_operation_observations(ctx.db, operation, produced_evidence)
     return {"task_id": updated.id, "status": updated.status, "operation_id": operation.id, "undo_available": True}
 
 
@@ -540,16 +555,49 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         ctx.db.add(review)
     profile = await ctx.db.get(UserProfile, ctx.owner_id)
     profile_before = None
+    day = None
+    day_before = None
+    unlocked = []
     if profile:
-        profile_before = {"xp": profile.xp, "level": profile.level}
+        profile_before = {
+            "xp": profile.xp,
+            "level": profile.level,
+            "streak_days": profile.streak_days,
+        }
         earned_xp = (30 if args.score >= 70 else 10) if before["status"] == "open" else 0
         profile.xp += earned_xp
         profile.level = 1 + profile.xp // 100
+        day_key = utc_now().date().isoformat()
+        day = await ctx.db.scalar(
+            select(ActivityDay).where(
+                ActivityDay.owner_id == ctx.owner_id,
+                ActivityDay.date == day_key,
+            )
+        )
+        if day is None:
+            day = ActivityDay(owner_id=ctx.owner_id, date=day_key)
+            ctx.db.add(day)
+            await flush_uow(ctx.db)
+        else:
+            day_before = {
+                "xp": day.xp,
+                "completed_tasks": day.completed_tasks,
+                "passed_quizzes": day.passed_quizzes,
+            }
+        day.xp += earned_xp
+        day.passed_quizzes += int(args.score >= 70)
         from app.services.gamification import evaluate_achievements
 
-        await evaluate_achievements(ctx.db, ctx.owner_id)
+        unlocked = await evaluate_achievements(ctx.db, ctx.owner_id)
     await flush_uow(ctx.db)
-    from app.services.evidence import append_observation, artifact_ref, create_artifact
+    from app.services.evidence import (
+        append_observation,
+        artifact_ref,
+        create_artifact,
+        link_operation_observations,
+        normalize_percentage_score,
+        refresh_plan_evidence_projection,
+    )
 
     quiz_artifact, _ = await create_artifact(
         ctx.db,
@@ -566,7 +614,7 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         session_id=ctx.session_id,
     )
 
-    await append_observation(
+    observation, _ = await append_observation(
         ctx.db,
         owner_id=ctx.owner_id,
         source_type="quiz",
@@ -577,7 +625,7 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         session_id=ctx.session_id,
         plan_id=quiz.plan_id,
         task_id=quiz.task_id,
-        normalized_score=args.score / 100,
+        normalized_score=normalize_percentage_score(args.score),
         is_correct=quiz.status == "passed",
         rubric_snapshot=quiz.rubric,
         evaluator={"type": "agent", "run_id": ctx.run_id},
@@ -594,16 +642,80 @@ async def quiz_grade(ctx: ToolContext, args: QuizGradeArgs) -> dict:
         tool_name="quiz.grade",
         entity_type="quiz",
         entity_id=str(quiz.id),
-        forward_patch={"score": args.score, "status": quiz.status},
+        forward_patch={
+            "evidence_protocol": 1,
+            "changes": {
+                "answer": quiz.answer,
+                "score": quiz.score,
+                "feedback": quiz.feedback,
+                "evidence": quiz.evidence,
+                "status": quiz.status,
+                "graded_at": canonical_utc(quiz.graded_at),
+            },
+            "award": {
+                "profile": (
+                    {
+                        "xp": profile.xp,
+                        "level": profile.level,
+                        "streak_days": profile.streak_days,
+                    }
+                    if profile is not None
+                    else None
+                ),
+                "day": (
+                    {
+                        "id": day.id,
+                        "date": day.date,
+                        "xp": day.xp,
+                        "completed_tasks": day.completed_tasks,
+                        "passed_quizzes": day.passed_quizzes,
+                    }
+                    if day is not None
+                    else None
+                ),
+                "achievements": [
+                    {
+                        "id": item.id,
+                        "key": item.key,
+                        "title": item.title,
+                        "description": item.description,
+                        "badge_kind": item.badge_kind,
+                        "badge_image_url": item.badge_image_url,
+                        "unlocked_at": canonical_utc(item.unlocked_at),
+                    }
+                    for item in unlocked
+                ],
+            },
+            "review": (
+                {
+                    "id": review.id,
+                    "owner_id": review.owner_id,
+                    "plan_id": review.plan_id,
+                    "task_id": review.task_id,
+                    "due_at": canonical_utc(review.due_at),
+                    "review_type": review.review_type,
+                    "status": review.status,
+                }
+                if review is not None
+                else None
+            ),
+        },
         inverse_patch={
             "changes": before,
-            "profile": profile_before,
+            "award": {
+                "profile": profile_before,
+                "day_id": day.id if day is not None else None,
+                "day": day_before,
+                "delete_achievements": [item.id for item in unlocked],
+            },
             "delete_learning_event": learning_event.id,
             "delete_review": review.id if review else None,
         },
     )
     ctx.db.add(operation)
     await flush_uow(ctx.db)
+    await link_operation_observations(ctx.db, operation, [observation])
+    await refresh_plan_evidence_projection(ctx.db, ctx.owner_id, quiz.plan_id)
     return {
         "quiz_id": quiz.id,
         "score": quiz.score,

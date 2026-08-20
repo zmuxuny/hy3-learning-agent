@@ -1,9 +1,9 @@
-"""H0 failure baselines for the H4 competency/evidence hardening gate.
+"""H0 baselines promoted to durable H4 competency/evidence regressions.
 
-Every marked test describes desired H4 behavior and must fail on the reviewed
-implementation.  H4 removes the matching strict xfail when the implementation
-is corrected.  The tests use a fresh temporary SQLite database and never touch
-the configured application or user database.
+Each test independently captures one reviewed defect.  Its strict xfail was
+removed only after the H4 implementation made the corresponding assertion
+pass.  The tests use a fresh temporary SQLite database and never touch the
+configured application or user database.
 
 Defect mapping:
 
@@ -163,11 +163,6 @@ async def _list_evidence(
     return result["data"]["observations"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-COMP-001: plan-private keys are incorrectly unique across the owner",
-)
 @pytest.mark.asyncio
 async def test_plan_scoped_competency_key_is_unique_per_plan(isolated_db: AsyncSession):
     plan_a, _ = await _add_plan(isolated_db, "Plan A")
@@ -192,11 +187,6 @@ async def test_plan_scoped_competency_key_is_unique_per_plan(isolated_db: AsyncS
     assert second.get("ok") is True and second["data"]["competency_id"] != first["competency_id"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-COMP-002: competency_edge does not guard both plan-scoped endpoints",
-)
 @pytest.mark.parametrize("foreign_endpoint", ["source", "target"])
 @pytest.mark.asyncio
 async def test_edge_rejects_a_foreign_plan_endpoint(
@@ -229,11 +219,6 @@ async def test_edge_rejects_a_foreign_plan_endpoint(
     assert result.get("ok") is False and stored == 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-COMP-003: task link scope is inferred from the Run instead of the task row",
-)
 @pytest.mark.asyncio
 async def test_task_link_resolves_the_target_task_plan(isolated_db: AsyncSession):
     plan_a, _ = await _add_plan(isolated_db, "Plan A")
@@ -247,13 +232,15 @@ async def test_task_link_resolves_the_target_task_plan(isolated_db: AsyncSession
     run = await _add_run(isolated_db, plan_a.id)
     await isolated_db.commit()
     ctx = _context(isolated_db, run)
+    task_b_id = task_b.id
+    competency_id = global_competency.id
 
     result = await execute_tool(
         "competency_link",
         json.dumps(
             {
-                "competency_id": global_competency.id,
-                "task_id": task_b.id,
+                "competency_id": competency_id,
+                "task_id": task_b_id,
                 "relation": "assesses",
                 "target_stage": "demonstrated",
             }
@@ -262,19 +249,14 @@ async def test_task_link_resolves_the_target_task_plan(isolated_db: AsyncSession
     )
     stored = await isolated_db.scalar(
         select(func.count()).select_from(TaskCompetencyLink).where(
-            TaskCompetencyLink.task_id == task_b.id,
-            TaskCompetencyLink.competency_id == global_competency.id,
+            TaskCompetencyLink.task_id == task_b_id,
+            TaskCompetencyLink.competency_id == competency_id,
         )
     )
 
     assert result.get("ok") is False and stored == 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-COMP-004: resource link does not guard the competency endpoint scope",
-)
 @pytest.mark.asyncio
 async def test_resource_link_resolves_the_competency_plan(isolated_db: AsyncSession):
     plan_a, _ = await _add_plan(isolated_db, "Plan A")
@@ -290,13 +272,15 @@ async def test_resource_link_resolves_the_competency_plan(isolated_db: AsyncSess
     run = await _add_run(isolated_db, plan_a.id)
     await isolated_db.commit()
     ctx = _context(isolated_db, run)
+    competency_id = foreign_competency.id
+    resource_id = resource.id
 
     result = await execute_tool(
         "competency_link",
         json.dumps(
             {
-                "competency_id": foreign_competency.id,
-                "resource_id": resource.id,
+                "competency_id": competency_id,
+                "resource_id": resource_id,
                 "relation": "covers",
             }
         ),
@@ -304,19 +288,14 @@ async def test_resource_link_resolves_the_competency_plan(isolated_db: AsyncSess
     )
     stored = await isolated_db.scalar(
         select(func.count()).select_from(ResourceCompetencyLink).where(
-            ResourceCompetencyLink.resource_id == resource.id,
-            ResourceCompetencyLink.competency_id == foreign_competency.id,
+            ResourceCompetencyLink.resource_id == resource_id,
+            ResourceCompetencyLink.competency_id == competency_id,
         )
     )
 
     assert result.get("ok") is False and stored == 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-COMP-005: competency graph mutations do not advance a durable revision",
-)
 @pytest.mark.asyncio
 async def test_graph_revision_advances_after_a_mutation(isolated_db: AsyncSession):
     plan, _ = await _add_plan(isolated_db, "Revision plan")
@@ -339,11 +318,6 @@ async def test_graph_revision_advances_after_a_mutation(isolated_db: AsyncSessio
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-COMP-006: undoing a node silently cascades over later graph operations",
-)
 @pytest.mark.asyncio
 async def test_node_undo_rejects_later_edge_dependencies(isolated_db: AsyncSession):
     plan, _ = await _add_plan(isolated_db, "Dependency plan")
@@ -388,11 +362,6 @@ async def test_node_undo_rejects_later_edge_dependencies(isolated_db: AsyncSessi
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-EVID-007: Task assesses mappings are not attached to produced evidence",
-)
 @pytest.mark.asyncio
 async def test_task_assesses_mapping_is_applied_to_quiz_evidence(isolated_db: AsyncSession):
     plan, task = await _add_plan(isolated_db, "Assessment plan")
@@ -423,11 +392,6 @@ async def test_task_assesses_mapping_is_applied_to_quiz_evidence(isolated_db: As
     assert len(passed) == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-EVID-007: one observation cannot represent multiple assessed competencies",
-)
 @pytest.mark.asyncio
 async def test_one_quiz_observation_maps_to_multiple_assessed_competencies(
     isolated_db: AsyncSession,
@@ -477,11 +441,6 @@ async def test_one_quiz_observation_maps_to_multiple_assessed_competencies(
     assert len(primary) == 1 and first_ids == second_ids == [primary[0]["id"]]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-EVID-008: competency filtering happens after SQL pagination",
-)
 @pytest.mark.asyncio
 async def test_evidence_list_filters_competency_before_limit(isolated_db: AsyncSession):
     plan, task = await _add_plan(isolated_db, "Pagination plan")
@@ -546,11 +505,6 @@ def _resolve_local_ref(root: dict[str, Any], node: dict[str, Any]) -> dict[str, 
     return current
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-SCHEMA-001: evidence_list exposes untyped list/dict output items",
-)
 def test_evidence_list_contract_has_typed_nested_models():
     contract = next(item for item in tool_contracts() if item["name"] == "evidence_list")
     schema = contract["output_schema"]
@@ -583,11 +537,6 @@ def test_evidence_list_contract_has_typed_nested_models():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="H4-SCHEMA-002: evidence_list silently accepts undeclared input/output fields",
-)
 def test_evidence_list_contract_forbids_extra_fields():
     input_rejected = False
     output_rejected = False

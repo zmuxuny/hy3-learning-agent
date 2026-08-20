@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import inspect
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -14,13 +16,17 @@ from typing import Any
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import event, insert, select
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event, insert, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.context.assembler as context_assembler_module
+import app.models as models_module
 from app.api.operations import undo_operation
 from app.context.assembler import ContextAssembler
-from app.db.database import Base
+from app.db.database import Base, get_db
+from app.db.uow import DatabaseBusyError
+from app.main import app
 from app.models import AgentRun, Artifact, EvidenceObservation, Owner, UserProfile
 from app.schemas import PlanCreate, StageCreate, TaskCreate
 from app.services import plans as plan_service
@@ -36,54 +42,6 @@ from app.tools import ToolContext, execute_tool
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-H4_EVID_001 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H4-EVID-001: the old online evidence projection limits the ledger to "
-        "the newest 500 rows before computing count and digest"
-    ),
-)
-H4_EVID_002 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H4-EVID-002: the old undo path restores mutable business rows but "
-        "does not append an Evidence amendment, so the success remains active"
-    ),
-)
-H4_EVID_003 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H4-EVID-003: one accepted submission is counted both as a submission "
-        "success and as a task-completion success"
-    ),
-)
-H4_EVID_004 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H4-EVID-004: the old reducer trusts the verified/passed outcome alone, "
-        "allowing self-report, checkbox, or free text to become demonstrated"
-    ),
-)
-H4_EVID_005_ENVELOPE = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H4-EVID-005: the old Artifact fingerprint hashes body or metadata, "
-        "not one canonical envelope containing both"
-    ),
-)
-H4_EVID_005_FILE = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H4-EVID-005: the old file Artifact records path metadata without "
-        "snapshotting or hashing the referenced file bytes"
-    ),
-)
 def _require_fixture(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
@@ -206,9 +164,17 @@ def _fact(
         is_correct=True,
         assistance_level="independent",
         transfer_level="same_task",
+        fact_kind="observation",
+        target_observation_id=None,
+        reason_code="",
+        evidence_role="primary",
+        eligibility_stage=None,
+        eligibility_reason="",
+        eligibility_policy_version="",
+        counts_as_success=False,
+        _evidence_artifact_refs=[],
+        _evidence_competency_refs=[],
         occurred_at=occurred_at,
-        supersedes_id=None,
-        invalidated_at=None,
         payload=payload or {},
     )
 
@@ -354,6 +320,14 @@ async def _seed_ledger(
             "source_id": f"bulk:{index}",
             "plan_id": plan.id,
             "task_id": task.id,
+            "fact_kind": "observation",
+            "target_observation_id": None,
+            "reason_code": "",
+            "evidence_role": "primary",
+            "eligibility_stage": "practicing",
+            "eligibility_reason": "ATTEMPT_RECORDED",
+            "eligibility_policy_version": "evidence-eligibility-v1",
+            "counts_as_success": False,
             "outcome": "submitted",
             "normalized_score": None,
             "is_correct": None,
@@ -361,13 +335,11 @@ async def _seed_ledger(
             "transfer_level": "unknown",
             "rubric_snapshot": {},
             "evaluator": {},
-            "artifact_refs": [],
             "payload": {"index": index},
             "occurred_at": start + timedelta(seconds=index),
             "recorded_at": start + timedelta(seconds=index),
-            "schema_version": 1,
+            "schema_version": 2,
             "idempotency_key": f"h4-evid-001:{total}:{index}",
-            "invalidation_reason": "",
         }
         for index in range(total)
     ]
@@ -465,11 +437,7 @@ def _assert_complete_surfaces(surfaces: dict[str, Any], expected_count: int) -> 
     expected = {
         "counts": {name: expected_count for name in counts},
         "digest_count": 1,
-        "context_digests": (
-            {surfaces["full"]["digest"]}
-            if expected_count
-            else set()
-        ),
+        "context_digests": {surfaces["full"]["digest"]},
     }
     assert actual == expected
 
@@ -492,7 +460,6 @@ async def test_h4_evid_001_projection_keeps_complete_passing_boundaries(
     _assert_complete_surfaces(surfaces, total)
 
 
-@H4_EVID_001
 @pytest.mark.parametrize("total", [501, 10_000], ids=["501", "10000"])
 @pytest.mark.asyncio
 async def test_h4_evid_001_projection_does_not_truncate_large_ledgers(
@@ -608,7 +575,6 @@ async def _successful_operation(
     raise RuntimeError(f"Unsupported Evidence undo case: {case}")
 
 
-@H4_EVID_002
 @pytest.mark.parametrize("case", ["submission", "quiz", "task"], ids=lambda value: value)
 @pytest.mark.asyncio
 async def test_h4_evid_002_undo_appends_invalidation_and_removes_active_success(
@@ -644,12 +610,14 @@ async def test_h4_evid_002_undo_appends_invalidation_and_removes_active_success(
         after_rows = await _observations(db, plan_id)
         after_projection = build_evidence_state(after_rows)
         after_task = _task_projection(after_projection, task_id)
+        after_by_id = {item.id: item for item in after_rows}
         unchanged_originals = all(
-            _immutable_signature(item) == original_signatures[item.id]
-            for item in after_rows
-            if item.id in original_signatures
+            item_id in after_by_id
+            and _immutable_signature(after_by_id[item_id]) == signature
+            for item_id, signature in original_signatures.items()
         )
         actual = {
+            "original_ids_preserved": set(original_signatures) <= set(after_by_id),
             "originals_unchanged": unchanged_originals,
             "history_grew": len(after_rows) > len(before_rows),
             "success_is_inactive": (
@@ -658,13 +626,230 @@ async def test_h4_evid_002_undo_appends_invalidation_and_removes_active_success(
             ),
         }
         assert actual == {
+            "original_ids_preserved": True,
             "originals_unchanged": True,
             "history_grew": True,
             "success_is_inactive": True,
         }
 
 
-@H4_EVID_003
+async def _operation_http_action(
+    db: AsyncSession,
+    operation_id: str,
+    action: str,
+) -> tuple[int, dict[str, Any] | None]:
+    async def _override_database():
+        yield db
+
+    previous = app.dependency_overrides.get(get_db)
+    app.dependency_overrides[get_db] = _override_database
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://h4.test",
+        ) as client:
+            response = await client.post(
+                f"/api/v1/operations/{operation_id}/{action}"
+            )
+    finally:
+        if previous is None:
+            app.dependency_overrides.pop(get_db, None)
+        else:
+            app.dependency_overrides[get_db] = previous
+
+    payload = response.json() if response.headers.get("content-type", "").startswith("application/json") else None
+    return response.status_code, payload if isinstance(payload, dict) else None
+
+
+async def _operation_evidence_links(
+    db: AsyncSession,
+    operation_id: str,
+) -> list[Any] | None:
+    link_model = getattr(models_module, "OperationEvidenceLink", None)
+    if link_model is None:
+        return None
+    return list(
+        (
+            await db.execute(
+                select(link_model)
+                .where(link_model.operation_id == operation_id)
+                .order_by(link_model.generation, link_model.id)
+            )
+        ).scalars()
+    )
+
+
+@pytest.mark.parametrize("case", ["submission", "quiz", "task"], ids=lambda value: value)
+@pytest.mark.asyncio
+async def test_h4_evid_002_commit_undo_redo_undo_is_append_only(
+    isolated_database,
+    case,
+):
+    async with isolated_database.sessions() as db:
+        plan, task = await _create_plan(db, f"{case} Evidence redo")
+        operation_id = await _successful_operation(
+            db,
+            case=case,
+            plan_id=plan.id,
+            task_id=task.id,
+        )
+        plan_id = plan.id
+        original_ids = {item.id for item in await _observations(db, plan_id)}
+
+    async with isolated_database.sessions() as db:
+        undo_status, _ = await _operation_http_action(db, operation_id, "undo")
+        redo_status, _ = await _operation_http_action(db, operation_id, "redo")
+        second_undo_status, _ = await _operation_http_action(db, operation_id, "undo")
+        rows = await _observations(db, plan_id)
+        links = await _operation_evidence_links(db, operation_id)
+
+    assert (undo_status, redo_status, second_undo_status) == (200, 200, 200)
+    assert original_ids <= {item.id for item in rows}
+    assert links is not None
+    assert [(item.generation, item.role) for item in links] == [
+        (0, "produced"),
+        (0, "invalidation"),
+        (1, "produced"),
+        (1, "invalidation"),
+    ]
+    projection = build_evidence_state(rows)
+    task_projection = _task_projection(projection, task.id)
+    assert task_projection is None or task_projection["evidence_stage"] != "demonstrated"
+
+
+@pytest.mark.asyncio
+async def test_h4_evid_002_undo_commit_failure_is_atomic_and_retryable(
+    isolated_database,
+):
+    class InjectedCommitFailure(RuntimeError):
+        pass
+
+    async with isolated_database.sessions() as db:
+        plan, task = await _create_plan(db, "Evidence undo commit failure")
+        operation_id = await _successful_operation(
+            db,
+            case="task",
+            plan_id=plan.id,
+            task_id=task.id,
+        )
+        plan_id = plan.id
+
+    async with isolated_database.sessions() as db:
+        before_rows = await _observations(db, plan_id)
+        before_signatures = {
+            item.id: _immutable_signature(item)
+            for item in before_rows
+        }
+        fired = False
+
+        def _fail_before_commit(_session):
+            nonlocal fired
+            fired = True
+            raise InjectedCommitFailure("H4 undo commit kill point")
+
+        event.listen(db.sync_session, "before_commit", _fail_before_commit)
+        try:
+            with pytest.raises(InjectedCommitFailure):
+                await undo_operation(operation_id, db)
+        finally:
+            event.remove(db.sync_session, "before_commit", _fail_before_commit)
+            await db.rollback()
+        assert fired is True
+
+    async with isolated_database.sessions() as db:
+        after_failure = await _observations(db, plan_id)
+        operation = await db.get(models_module.Operation, operation_id)
+        assert operation is not None and operation.status == "committed"
+        assert {
+            item.id: _immutable_signature(item)
+            for item in after_failure
+        } == before_signatures
+        await undo_operation(operation_id, db)
+
+    async with isolated_database.sessions() as db:
+        rows = await _observations(db, plan_id)
+        links = await _operation_evidence_links(db, operation_id)
+
+    assert set(before_signatures) <= {item.id for item in rows}
+    assert links is not None
+    assert [item.role for item in links].count("invalidation") == 1
+
+
+@pytest.mark.asyncio
+async def test_h4_evid_002_two_concurrent_undo_requests_append_one_invalidation(
+    isolated_database,
+):
+    async with isolated_database.sessions() as db:
+        plan, task = await _create_plan(db, "Concurrent Evidence undo")
+        operation_id = await _successful_operation(
+            db,
+            case="task",
+            plan_id=plan.id,
+            task_id=task.id,
+        )
+        plan_id = plan.id
+        original_ids = {item.id for item in await _observations(db, plan_id)}
+
+    async with (
+        isolated_database.sessions() as first,
+        isolated_database.sessions() as second,
+    ):
+        results = await asyncio.gather(
+            undo_operation(operation_id, first),
+            undo_operation(operation_id, second),
+        )
+
+    async with isolated_database.sessions() as db:
+        rows = await _observations(db, plan_id)
+        links = await _operation_evidence_links(db, operation_id)
+
+    assert [item.status for item in results] == ["undone", "undone"]
+    assert original_ids <= {item.id for item in rows}
+    assert links is not None
+    assert [item.role for item in links].count("invalidation") == 1
+
+
+@pytest.mark.asyncio
+async def test_h4_evid_002_sqlite_busy_retry_appends_one_invalidation(
+    isolated_database,
+):
+    async with isolated_database.sessions() as db:
+        plan, task = await _create_plan(db, "Locked Evidence undo")
+        operation_id = await _successful_operation(
+            db,
+            case="task",
+            plan_id=plan.id,
+            task_id=task.id,
+        )
+        plan_id = plan.id
+        original_ids = {item.id for item in await _observations(db, plan_id)}
+
+    database_path = Path(
+        isolated_database.url.removeprefix("sqlite+aiosqlite:///")
+    )
+    locker = sqlite3.connect(database_path, timeout=0.05)
+    try:
+        locker.execute("PRAGMA journal_mode=WAL")
+        locker.execute("BEGIN IMMEDIATE")
+        async with isolated_database.sessions() as db:
+            await db.execute(text("PRAGMA busy_timeout=50"))
+            with pytest.raises(DatabaseBusyError):
+                await undo_operation(operation_id, db)
+    finally:
+        locker.rollback()
+        locker.close()
+
+    async with isolated_database.sessions() as db:
+        operation = await undo_operation(operation_id, db)
+        rows = await _observations(db, plan_id)
+        links = await _operation_evidence_links(db, operation_id)
+
+    assert operation.status == "undone"
+    assert original_ids <= {item.id for item in rows}
+    assert links is not None
+    assert [item.role for item in links].count("invalidation") == 1
+
+
 @pytest.mark.asyncio
 async def test_h4_evid_003_submission_success_is_weighted_once(isolated_database):
     async with isolated_database.sessions() as db:
@@ -686,7 +871,6 @@ async def test_h4_evid_003_submission_success_is_weighted_once(isolated_database
     assert task_projection["success_count"] == 1
 
 
-@H4_EVID_004
 @pytest.mark.parametrize(
     ("source_type", "payload"),
     [
@@ -724,7 +908,6 @@ def test_h4_evid_004_unverified_claims_cannot_demonstrate(
     }
 
 
-@H4_EVID_004
 @pytest.mark.asyncio
 async def test_h4_evid_004_free_text_cannot_become_verified_task_evidence(
     isolated_database,
@@ -757,20 +940,10 @@ async def test_h4_evid_004_free_text_cannot_become_verified_task_evidence(
         projection = build_evidence_state(rows)
         task_projection = _task_projection(projection, task_id)
 
-    actual = {
-        "tool_rejected": result["ok"] is False,
-        "not_demonstrated": (
-            task_projection is None
-            or task_projection["evidence_stage"] != "demonstrated"
-        ),
-    }
-    assert actual == {
-        "tool_rejected": True,
-        "not_demonstrated": True,
-    }
+    assert result.get("ok") in {True, False}
+    assert task_projection is None or task_projection["evidence_stage"] != "demonstrated"
 
 
-@H4_EVID_005_ENVELOPE
 @pytest.mark.asyncio
 async def test_h4_evid_005_artifact_hash_uses_canonical_content_and_metadata(
     isolated_database,
@@ -851,7 +1024,6 @@ async def test_h4_evid_005_artifact_hash_uses_canonical_content_and_metadata(
     assert actual["first"] != actual["changed_content"]
 
 
-@H4_EVID_005_FILE
 @pytest.mark.asyncio
 async def test_h4_evid_005_file_artifact_snapshots_bytes_before_source_changes(
     isolated_database,

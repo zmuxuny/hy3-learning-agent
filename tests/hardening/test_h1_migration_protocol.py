@@ -59,12 +59,19 @@ CANONICAL_TABLES = {
     "chat_messages",
     "competencies",
     "competency_edges",
+    "competency_graph_mutations",
+    "competency_graph_states",
     "context_snapshots",
+    "evidence_artifact_links",
+    "evidence_competency_links",
     "evidence_observations",
+    "evidence_projection_states",
     "learning_events",
     "learning_resources",
     "memories",
     "notifications",
+    "operation_dependencies",
+    "operation_evidence_links",
     "operations",
     "outbox_actions",
     "outbox_receipts",
@@ -152,8 +159,11 @@ KILL_PHASES = (
     "before_create",
     "after_create",
     "before_copy",
+    "before_h4_semantic_backfill",
+    "after_h4_semantic_backfill",
     "after_copy",
     "before_indexes",
+    "after_h4_schema_triggers",
     "after_indexes",
     "before_history",
     "after_history",
@@ -650,6 +660,30 @@ def _business_snapshot(
                 "\n".join(encoded_rows).encode("utf-8")
             )
     return BusinessSnapshot(resolved, cardinalities, content_digests)
+
+
+RETIRED_H4_EVIDENCE_COLUMNS = {
+    "artifact_refs",
+    "competency_id",
+    "competency_key",
+    "invalidated_at",
+    "invalidation_reason",
+    "supersedes_id",
+}
+
+
+def _migration_survivor_snapshot(path: Path) -> BusinessSnapshot:
+    """Project a legacy source onto columns retained by the H4 fact schema."""
+
+    source = _business_snapshot(path)
+    columns = dict(source.columns)
+    if "evidence_observations" in columns:
+        columns["evidence_observations"] = tuple(
+            column
+            for column in columns["evidence_observations"]
+            if column[0] not in RETIRED_H4_EVIDENCE_COLUMNS
+        )
+    return _business_snapshot(path, columns=columns)
 
 
 def _file_state(database_path: Path) -> dict[str, tuple[int, str]]:
@@ -1323,12 +1357,13 @@ def test_partial_m13_database_preserves_evidence_and_second_run_is_noop(
     database_path = _materialize_partial_m13(tmp_path / "partial-m13.sqlite3")
     backup_root = tmp_path / "migration-backups"
     before_business = _business_snapshot(database_path)
+    before_survivors = _migration_survivor_snapshot(database_path)
     assert before_business.cardinalities["evidence_observations"] == 1
 
     first = _migrate(database_path, backup_root)
     after_business = _business_snapshot(
         database_path,
-        columns=before_business.columns,
+        columns=before_survivors.columns,
     )
     first_state = _file_state(database_path)
     first_history = _history_rows(database_path)
@@ -1337,19 +1372,32 @@ def test_partial_m13_database_preserves_evidence_and_second_run_is_noop(
 
     assert first.applied is True
     assert first.source_kind == "partial_v2"
-    assert before_business.cardinalities == after_business.cardinalities
-    assert before_business.content_digests == after_business.content_digests
+    assert before_survivors.cardinalities == after_business.cardinalities
+    assert before_survivors.content_digests == after_business.content_digests
     with sqlite3.connect(database_path) as connection:
         migrated = connection.execute(
-            "SELECT id, competency_id, competency_key, idempotency_key "
+            "SELECT id, fact_kind, target_observation_id, evidence_role, "
+            "eligibility_stage, eligibility_reason, counts_as_success, "
+            "idempotency_key "
             "FROM evidence_observations"
         ).fetchone()
+        artifact_links = connection.execute(
+            "SELECT count(*) FROM evidence_artifact_links"
+        ).fetchone()[0]
+        competency_links = connection.execute(
+            "SELECT count(*) FROM evidence_competency_links"
+        ).fetchone()[0]
     assert migrated == (
         701,
+        "observation",
         None,
-        "fixture.legacy",
+        "primary",
+        "unknown",
+        "LEGACY_ELIGIBILITY_UNCLASSIFIED",
+        0,
         "fixture-partial-evidence-key",
     )
+    assert artifact_links == competency_links == 0
     assert second.applied is False
     assert second.source_kind == "versioned"
     assert second.backup_path is None
@@ -1559,7 +1607,7 @@ def test_canonical_schema_has_exact_current_table_inventory(
         actual_tables = _table_names(connection)
 
     assert actual_tables == CANONICAL_TABLES
-    assert len(actual_tables) == 41
+    assert len(actual_tables) == 48
 
 
 def test_learning_event_canonical_columns_defaults_and_partial_unique_index(
@@ -1688,8 +1736,14 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "session_id",
         "plan_id",
         "task_id",
-        "competency_id",
-        "competency_key",
+        "fact_kind",
+        "target_observation_id",
+        "reason_code",
+        "evidence_role",
+        "eligibility_stage",
+        "eligibility_reason",
+        "eligibility_policy_version",
+        "counts_as_success",
         "outcome",
         "normalized_score",
         "is_correct",
@@ -1697,7 +1751,6 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "transfer_level",
         "rubric_snapshot",
         "evaluator",
-        "artifact_refs",
         "payload",
         "occurred_at",
         "recorded_at",
@@ -1706,9 +1759,6 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "causation_id",
         "idempotency_key",
         "request_digest",
-        "supersedes_id",
-        "invalidated_at",
-        "invalidation_reason",
     ]
     defaults = {row[1]: row[4] for row in columns}
     assert defaults == {
@@ -1720,8 +1770,14 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "session_id": None,
         "plan_id": None,
         "task_id": None,
-        "competency_id": None,
-        "competency_key": None,
+        "fact_kind": "'observation'",
+        "target_observation_id": None,
+        "reason_code": "''",
+        "evidence_role": "'primary'",
+        "eligibility_stage": "'unknown'",
+        "eligibility_reason": "'UNCLASSIFIED'",
+        "eligibility_policy_version": "'evidence-eligibility-v1'",
+        "counts_as_success": "0",
         "outcome": None,
         "normalized_score": None,
         "is_correct": None,
@@ -1729,7 +1785,6 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "transfer_level": "'unknown'",
         "rubric_snapshot": "'{}'",
         "evaluator": "'{}'",
-        "artifact_refs": "'[]'",
         "payload": "'{}'",
         "occurred_at": None,
         "recorded_at": "CURRENT_TIMESTAMP",
@@ -1738,33 +1793,31 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "causation_id": None,
         "idempotency_key": None,
         "request_digest": None,
-        "supersedes_id": None,
-        "invalidated_at": None,
-        "invalidation_reason": "''",
     }
     assert {
         (row[3], row[2], row[4], row[5], row[6])
         for row in foreign_keys
     } == {
         ("owner_id", "owners", "id", "NO ACTION", "NO ACTION"),
-        ("run_id", "agent_runs", "id", "NO ACTION", "SET NULL"),
-        ("session_id", "sessions", "id", "NO ACTION", "SET NULL"),
-        ("plan_id", "plans", "id", "NO ACTION", "SET NULL"),
-        ("task_id", "tasks", "id", "NO ACTION", "SET NULL"),
-        ("competency_id", "competencies", "id", "NO ACTION", "SET NULL"),
+        ("run_id", "agent_runs", "id", "NO ACTION", "RESTRICT"),
+        ("session_id", "sessions", "id", "NO ACTION", "RESTRICT"),
+        ("plan_id", "plans", "id", "NO ACTION", "RESTRICT"),
+        ("task_id", "tasks", "id", "NO ACTION", "RESTRICT"),
         (
-            "supersedes_id",
+            "target_observation_id",
             "evidence_observations",
             "id",
             "NO ACTION",
-            "SET NULL",
+            "RESTRICT",
         ),
     }
     assert {row[1] for row in indexes} == {
         "ix_evidence_observations_causation_id",
-        "ix_evidence_observations_competency_id",
-        "ix_evidence_observations_competency_key",
         "ix_evidence_observations_correlation_id",
+        "ix_evidence_observations_counts_as_success",
+        "ix_evidence_observations_eligibility_stage",
+        "ix_evidence_observations_evidence_role",
+        "ix_evidence_observations_fact_kind",
         "ix_evidence_observations_idempotency_key",
         "ix_evidence_observations_occurred_at",
         "ix_evidence_observations_outcome",
@@ -1778,9 +1831,11 @@ def test_evidence_canonical_defaults_indexes_and_foreign_keys_are_literal(
         "ix_evidence_observations_source",
         "ix_evidence_observations_source_id",
         "ix_evidence_observations_source_type",
-        "ix_evidence_observations_supersedes_id",
+        "ix_evidence_observations_target_observation_id",
         "ix_evidence_observations_task",
         "ix_evidence_observations_task_id",
+        "sqlite_autoindex_evidence_observations_1",
+        "uq_evidence_observations_target",
     }
 
 
@@ -1807,31 +1862,51 @@ def test_evidence_defaults_and_competency_foreign_key_are_enforced(
             ),
         )
         defaulted = connection.execute(
-            "SELECT assistance_level, transfer_level, rubric_snapshot, evaluator, "
-            "artifact_refs, payload, recorded_at, schema_version, invalidation_reason "
+            "SELECT fact_kind, target_observation_id, reason_code, evidence_role, "
+            "eligibility_stage, eligibility_reason, eligibility_policy_version, "
+            "counts_as_success, assistance_level, transfer_level, rubric_snapshot, "
+            "evaluator, payload, recorded_at, schema_version "
             "FROM evidence_observations WHERE idempotency_key=?",
             ("evidence-defaults",),
         ).fetchone()
-        with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY"):
+        observation_id = connection.execute(
+            "SELECT id FROM evidence_observations WHERE idempotency_key=?",
+            ("evidence-defaults",),
+        ).fetchone()[0]
+        with pytest.raises(
+            sqlite3.IntegrityError,
+            match="FOREIGN KEY|evidence competency scope mismatch",
+        ):
             connection.execute(
-                "INSERT INTO evidence_observations "
-                "(owner_id, source_type, source_id, competency_id, outcome, "
-                "occurred_at, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO evidence_competency_links "
+                "(observation_id, competency_id, association_kind, "
+                "competency_key_snapshot) VALUES (?, ?, ?, ?)",
                 (
-                    "evidence-owner",
-                    "quiz",
-                    "quiz-invalid-competency",
+                    observation_id,
                     999_999,
-                    "passed",
-                    "2026-08-19 02:03:05.000006",
-                    "evidence-invalid-competency",
+                    "explicit",
+                    "missing.competency",
                 ),
             )
 
-    assert defaulted[:6] == ("unknown", "unknown", "{}", "{}", "[]", "{}")
-    assert defaulted[6] is not None
-    _canonical_datetime_token(defaulted[6])
-    assert defaulted[7:] == (1, "")
+    assert defaulted[:13] == (
+        "observation",
+        None,
+        "",
+        "primary",
+        "unknown",
+        "UNCLASSIFIED",
+        "evidence-eligibility-v1",
+        0,
+        "unknown",
+        "unknown",
+        "{}",
+        "{}",
+        "{}",
+    )
+    assert defaulted[13] is not None
+    _canonical_datetime_token(defaulted[13])
+    assert defaulted[14] == 1
 
 
 @pytest.mark.parametrize(
@@ -1989,6 +2064,7 @@ def test_sigkill_at_each_candidate_phase_preserves_source_and_retry_converges(
     backup_root = tmp_path / "migration-backups"
     source_state = _file_state(database_path)
     source_business = _business_snapshot(database_path)
+    source_survivors = _migration_survivor_snapshot(database_path)
     command = [
         sys.executable,
         "-c",
@@ -2023,10 +2099,10 @@ def test_sigkill_at_each_candidate_phase_preserves_source_and_retry_converges(
     assert not tuple(database_path.parent.glob(f".{database_path.name}.candidate-*"))
     migrated_business = _business_snapshot(
         database_path,
-        columns=source_business.columns,
+        columns=source_survivors.columns,
     )
-    assert migrated_business.cardinalities == source_business.cardinalities
-    assert migrated_business.content_digests == source_business.content_digests
+    assert migrated_business.cardinalities == source_survivors.cardinalities
+    assert migrated_business.content_digests == source_survivors.content_digests
     assert _history_rows(database_path)[0][:3] == (
         1,
         "h1_canonical_schema",
@@ -2048,6 +2124,7 @@ def test_caught_post_publish_directory_fsync_failure_restores_source_semantics(
     backup_root = tmp_path / "migration-backups"
     source_checksum = schema_checksum(database_path)
     source_business = _business_snapshot(database_path)
+    source_survivors = _migration_survivor_snapshot(database_path)
     source_evidence_digest = source_business.content_digests["evidence_observations"]
     real_fsync_directory = migration_module._fsync_directory
     failure_injected = False
@@ -2098,10 +2175,10 @@ def test_caught_post_publish_directory_fsync_failure_restores_source_semantics(
     assert report.source_kind == "partial_v2"
     migrated_business = _business_snapshot(
         database_path,
-        columns=source_business.columns,
+        columns=source_survivors.columns,
     )
-    assert migrated_business.cardinalities == source_business.cardinalities
-    assert migrated_business.content_digests == source_business.content_digests
+    assert migrated_business.cardinalities == source_survivors.cardinalities
+    assert migrated_business.content_digests == source_survivors.content_digests
     _assert_verified(database_path, report.target_schema_checksum)
 
 
@@ -2182,6 +2259,7 @@ def test_sigkill_at_rollback_replace_leaves_only_complete_old_or_verified_new(
     backup_root = tmp_path / "migration-backups"
     source_checksum = schema_checksum(database_path)
     source_business = _business_snapshot(database_path)
+    source_survivors = _migration_survivor_snapshot(database_path)
 
     completed = subprocess.run(
         [
@@ -2211,12 +2289,17 @@ def test_sigkill_at_rollback_replace_leaves_only_complete_old_or_verified_new(
         source_checksum,
         CANONICAL_SCHEMA_CHECKSUM,
     }
+    expected_after_kill = (
+        source_survivors
+        if observed["schema_checksum"] == CANONICAL_SCHEMA_CHECKSUM
+        else source_business
+    )
     after_kill_business = _business_snapshot(
         database_path,
-        columns=source_business.columns,
+        columns=expected_after_kill.columns,
     )
-    assert after_kill_business.cardinalities == source_business.cardinalities
-    assert after_kill_business.content_digests == source_business.content_digests
+    assert after_kill_business.cardinalities == expected_after_kill.cardinalities
+    assert after_kill_business.content_digests == expected_after_kill.content_digests
     with sqlite3.connect(database_path) as connection:
         is_new = "schema_migrations" in _table_names(connection)
     assert is_new is (observed["schema_checksum"] == CANONICAL_SCHEMA_CHECKSUM)
@@ -2228,10 +2311,10 @@ def test_sigkill_at_rollback_replace_leaves_only_complete_old_or_verified_new(
     _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
     converged_business = _business_snapshot(
         database_path,
-        columns=source_business.columns,
+        columns=source_survivors.columns,
     )
-    assert converged_business.cardinalities == source_business.cardinalities
-    assert converged_business.content_digests == source_business.content_digests
+    assert converged_business.cardinalities == source_survivors.cardinalities
+    assert converged_business.content_digests == source_survivors.content_digests
     assert not tuple(
         database_path.parent.glob(f".{database_path.name}.migration-work-*")
     )
@@ -2291,6 +2374,7 @@ def test_sigkill_after_publish_leaves_complete_old_or_new_database_then_converge
     backup_root = tmp_path / "migration-backups"
     source_checksum = schema_checksum(database_path)
     source_business = _business_snapshot(database_path)
+    source_survivors = _migration_survivor_snapshot(database_path)
 
     completed = subprocess.run(
         [
@@ -2318,10 +2402,10 @@ def test_sigkill_after_publish_leaves_complete_old_or_new_database_then_converge
     assert observed["foreign_key_violation_count"] == 0
     after_kill_business = _business_snapshot(
         database_path,
-        columns=source_business.columns,
+        columns=source_survivors.columns,
     )
-    assert after_kill_business.cardinalities == source_business.cardinalities
-    assert after_kill_business.content_digests == source_business.content_digests
+    assert after_kill_business.cardinalities == source_survivors.cardinalities
+    assert after_kill_business.content_digests == source_survivors.content_digests
     with sqlite3.connect(database_path) as connection:
         tables_after_kill = _table_names(connection)
 
@@ -2345,10 +2429,10 @@ def test_sigkill_after_publish_leaves_complete_old_or_new_database_then_converge
     assert report.source_kind in {"partial_v2", "versioned"}
     converged_business = _business_snapshot(
         database_path,
-        columns=source_business.columns,
+        columns=source_survivors.columns,
     )
-    assert converged_business.cardinalities == source_business.cardinalities
-    assert converged_business.content_digests == source_business.content_digests
+    assert converged_business.cardinalities == source_survivors.cardinalities
+    assert converged_business.content_digests == source_survivors.content_digests
     _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
@@ -2911,6 +2995,7 @@ def test_pre_migration_backup_restore_and_reupgrade_preserve_evidence_digest(
 ) -> None:
     database_path = _materialize_partial_m13(tmp_path / "roundtrip.sqlite3")
     source_business = _business_snapshot(database_path)
+    source_survivors = _migration_survivor_snapshot(database_path)
     source_evidence_digest = source_business.content_digests["evidence_observations"]
 
     first = _migrate(database_path, tmp_path / "first-backups")
@@ -2961,13 +3046,13 @@ def test_pre_migration_backup_restore_and_reupgrade_preserve_evidence_digest(
     assert second.target_schema_checksum == first.target_schema_checksum
     reupgraded_business = _business_snapshot(
         database_path,
-        columns=source_business.columns,
+        columns=source_survivors.columns,
     )
-    assert reupgraded_business.cardinalities == source_business.cardinalities
-    assert reupgraded_business.content_digests == source_business.content_digests
+    assert reupgraded_business.cardinalities == source_survivors.cardinalities
+    assert reupgraded_business.content_digests == source_survivors.content_digests
     assert (
         reupgraded_business.content_digests["evidence_observations"]
-        == source_evidence_digest
+        == source_survivors.content_digests["evidence_observations"]
     )
     _assert_verified(database_path, first.target_schema_checksum)
 
@@ -3024,6 +3109,7 @@ def test_managed_identity_backup_is_portable_across_checkout_roots(
         tmp_path / "checkout-a" / "data" / "learning_companion.db"
     )
     source_business = _business_snapshot(source_path)
+    source_survivors = _migration_survivor_snapshot(source_path)
     source_evidence_digest = source_business.content_digests["evidence_observations"]
     first = _migrate(
         source_path,
@@ -3072,13 +3158,13 @@ def test_managed_identity_backup_is_portable_across_checkout_roots(
     assert second.source_kind == "partial_v2"
     reupgraded = _business_snapshot(
         target_path,
-        columns=source_business.columns,
+        columns=source_survivors.columns,
     )
-    assert reupgraded.cardinalities == source_business.cardinalities
-    assert reupgraded.content_digests == source_business.content_digests
+    assert reupgraded.cardinalities == source_survivors.cardinalities
+    assert reupgraded.content_digests == source_survivors.content_digests
     assert (
         reupgraded.content_digests["evidence_observations"]
-        == source_evidence_digest
+        == source_survivors.content_digests["evidence_observations"]
     )
     _assert_verified(target_path, CANONICAL_SCHEMA_CHECKSUM)
 
@@ -3221,6 +3307,7 @@ def test_restore_sigkill_at_each_direct_publish_phase_converges_without_mixing(
 ) -> None:
     database_path = _materialize_partial_m13(tmp_path / "restore-publish.sqlite3")
     legacy_business = _business_snapshot(database_path)
+    legacy_survivors = _migration_survivor_snapshot(database_path)
     first = _migrate(database_path, tmp_path / "migration-backups")
     assert first.backup_path is not None
     backup_path = Path(first.backup_path)
@@ -3261,12 +3348,17 @@ def test_restore_sigkill_at_each_direct_publish_phase_converges_without_mixing(
             CANONICAL_SCHEMA_CHECKSUM,
             manifest["source"]["schema_checksum"],
         }
+        expected_after_kill = (
+            legacy_survivors
+            if observed["schema_checksum"] == CANONICAL_SCHEMA_CHECKSUM
+            else legacy_business
+        )
         after_kill_business = _business_snapshot(
             database_path,
-            columns=legacy_business.columns,
+            columns=expected_after_kill.columns,
         )
-        assert after_kill_business.cardinalities == legacy_business.cardinalities
-        assert after_kill_business.content_digests == legacy_business.content_digests
+        assert after_kill_business.cardinalities == expected_after_kill.cardinalities
+        assert after_kill_business.content_digests == expected_after_kill.content_digests
     else:
         assert live_present is False
 
@@ -3288,10 +3380,10 @@ def test_restore_sigkill_at_each_direct_publish_phase_converges_without_mixing(
     assert second.applied is True
     reupgraded = _business_snapshot(
         database_path,
-        columns=legacy_business.columns,
+        columns=legacy_survivors.columns,
     )
-    assert reupgraded.cardinalities == legacy_business.cardinalities
-    assert reupgraded.content_digests == legacy_business.content_digests
+    assert reupgraded.cardinalities == legacy_survivors.cardinalities
+    assert reupgraded.content_digests == legacy_survivors.content_digests
     _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
@@ -3370,6 +3462,7 @@ def test_restore_sigkill_at_rollback_replace_is_old_or_verified_payload(
 ) -> None:
     database_path = _materialize_partial_m13(tmp_path / "restore-rollback-kill.sqlite3")
     legacy_business = _business_snapshot(database_path)
+    legacy_survivors = _migration_survivor_snapshot(database_path)
     first = _migrate(database_path, tmp_path / "migration-backups")
     assert first.backup_path is not None
     backup_path = Path(first.backup_path)
@@ -3407,12 +3500,17 @@ def test_restore_sigkill_at_rollback_replace_is_old_or_verified_payload(
         CANONICAL_SCHEMA_CHECKSUM,
         manifest["source"]["schema_checksum"],
     }
+    expected_after_kill = (
+        legacy_survivors
+        if observed["schema_checksum"] == CANONICAL_SCHEMA_CHECKSUM
+        else legacy_business
+    )
     after_kill_business = _business_snapshot(
         database_path,
-        columns=legacy_business.columns,
+        columns=expected_after_kill.columns,
     )
-    assert after_kill_business.cardinalities == legacy_business.cardinalities
-    assert after_kill_business.content_digests == legacy_business.content_digests
+    assert after_kill_business.cardinalities == expected_after_kill.cardinalities
+    assert after_kill_business.content_digests == expected_after_kill.content_digests
 
     restored = restore_migration_backup(
         database_path,
@@ -3434,10 +3532,10 @@ def test_restore_sigkill_at_rollback_replace_is_old_or_verified_payload(
     assert second.applied is True
     reupgraded_business = _business_snapshot(
         database_path,
-        columns=legacy_business.columns,
+        columns=legacy_survivors.columns,
     )
-    assert reupgraded_business.cardinalities == legacy_business.cardinalities
-    assert reupgraded_business.content_digests == legacy_business.content_digests
+    assert reupgraded_business.cardinalities == legacy_survivors.cardinalities
+    assert reupgraded_business.content_digests == legacy_survivors.content_digests
     _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
 
 
@@ -3666,6 +3764,7 @@ def test_tampered_rollback_staging_never_claims_the_source_was_restored(
     database_path = _materialize_partial_m13(tmp_path / "rollback-tamper.sqlite3")
     backup_root = tmp_path / "migration-backups"
     source_business = _business_snapshot(database_path)
+    source_survivors = _migration_survivor_snapshot(database_path)
     source_checksum = schema_checksum(database_path)
     trusted_source_sha256 = migration_module._sha256_file(database_path)
     real_copy = migration_module._copy_file_secure
@@ -3729,10 +3828,10 @@ def test_tampered_rollback_staging_never_claims_the_source_was_restored(
         _assert_verified(database_path, CANONICAL_SCHEMA_CHECKSUM)
         migrated_business = _business_snapshot(
             database_path,
-            columns=source_business.columns,
+            columns=source_survivors.columns,
         )
-        assert migrated_business.cardinalities == source_business.cardinalities
-        assert migrated_business.content_digests == source_business.content_digests
+        assert migrated_business.cardinalities == source_survivors.cardinalities
+        assert migrated_business.content_digests == source_survivors.content_digests
     else:
         with pytest.raises(MigrationError) as live_error:
             verify_sqlite_database(database_path)

@@ -23,6 +23,7 @@ from hardening.h3_schema_fixture import FROZEN_H2_SCHEMA_CHECKSUM, materialize_f
 
 
 H3_CHECKSUM = "b69ed9f0844106e54936e008c22b4d4ebd7e089a8cb38989a4306ad25c7239de"
+H4_CHECKSUM = "851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -219,13 +220,13 @@ def test_revision_two_runtime_migrates_conservatively_and_repeatably(tmp_path: P
         database_identity=database.name,
     )
 
-    assert report.version == 3
-    assert report.target_schema_checksum == H3_CHECKSUM
-    assert verify_sqlite_database(database, expected_schema_checksum=H3_CHECKSUM) == {
+    assert report.version == 4
+    assert report.target_schema_checksum == H4_CHECKSUM
+    assert verify_sqlite_database(database, expected_schema_checksum=H4_CHECKSUM) == {
         "integrity": ["ok"],
         "foreign_key_violation_count": 0,
-        "user_version": 3,
-        "schema_checksum": H3_CHECKSUM,
+        "user_version": 4,
+        "schema_checksum": H4_CHECKSUM,
     }
     with sqlite3.connect(database) as connection:
         connection.row_factory = sqlite3.Row
@@ -461,7 +462,7 @@ def test_fresh_and_revision_two_upgrade_have_identical_sqlite_schema(tmp_path: P
                 "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
             ).fetchall()
 
-    assert schema_checksum(fresh) == schema_checksum(upgraded) == H3_CHECKSUM
+    assert schema_checksum(fresh) == schema_checksum(upgraded) == H4_CHECKSUM
     assert schema_rows(fresh) == schema_rows(upgraded)
 
 
@@ -504,13 +505,13 @@ def test_frozen_h2_sigkill_converges_with_history_and_classification(
         f"stderr={completed.stderr!r}"
     )
     observed = verify_sqlite_database(database)
-    assert observed["schema_checksum"] in {FROZEN_H2_SCHEMA_CHECKSUM, H3_CHECKSUM}
+    assert observed["schema_checksum"] in {FROZEN_H2_SCHEMA_CHECKSUM, H4_CHECKSUM}
     report = migrate_sqlite_database(
         database,
         backup_root=backup_root,
         database_identity=database.name,
     )
-    assert report.target_schema_checksum == H3_CHECKSUM
+    assert report.target_schema_checksum == H4_CHECKSUM
     with sqlite3.connect(database) as connection:
         final_history = connection.execute(
             "SELECT version, name, checksum, applied_at, result "

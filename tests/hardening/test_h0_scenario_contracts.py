@@ -5,9 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-import pytest
-
-from app.services.evidence_baseline import SCENARIOS, evaluate_baseline, records_for
+from app.services.evidence_baseline import SCENARIOS, evaluate_baseline
 
 
 CONTRACT_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "evidence_scenarios.json"
@@ -25,7 +23,7 @@ REQUIRED_FIELDS = {
 CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]+$")
 INVARIANT_PATTERN = re.compile(r"^EV-[A-Z0-9-]+$")
 FORBIDDEN_ORACLE_MARKERS = {"todo", "tbd", "placeholder", "computed at runtime"}
-LEGACY_GENERIC_CHECKS = {"deterministic_digest", "bounded_stage"}
+GENERIC_CHECKS = {"deterministic_digest"}
 
 
 def _load_contracts() -> list[dict[str, Any]]:
@@ -67,7 +65,7 @@ def test_h0_scenario_contracts_are_complete_and_structured():
         assert set(case) == REQUIRED_FIELDS, case_id
         assert type(case["legacy_index"]) is int, case_id
         assert 1 <= case["legacy_index"] <= 41, case_id
-        assert case["status"] == "pending_rewrite", case_id
+        assert case["status"] == "verified", case_id
 
         case_input = case["input"]
         assert set(case_input) == {"setup", "action"}, case_id
@@ -80,8 +78,7 @@ def test_h0_scenario_contracts_are_complete_and_structured():
         assert isinstance(projection, dict) and projection, case_id
         assert type(projection.get("observation_count")) is int, case_id
         assert projection["observation_count"] >= 0, case_id
-        assert isinstance(projection.get("reason_codes"), list), case_id
-        assert projection["reason_codes"], case_id
+        assert "reason_codes" not in projection, case_id
 
         assert type(case["expected_audit_ok"]) is bool, case_id
         assert CODE_PATTERN.fullmatch(case["failure_reason_code"]), case_id
@@ -122,28 +119,18 @@ def test_h0_scenario_contracts_have_independent_inputs_oracles_and_mutants():
     assert len(set(mutant_fingerprints)) == len(CONTRACTS)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H0-COV-001: legacy 41-case report reuses fixture inputs and generic checks; "
-        "it is not 41 independent domain regression scenarios"
-    ),
-)
-def test_h0_cov_001_legacy_suite_has_41_independent_inputs_and_specific_oracles():
+def test_h0_cov_001_suite_has_41_independent_inputs_and_specific_oracles():
     input_fingerprints = {
-        _fingerprint([vars(record) for record in records_for(item["id"])])
-        for item in SCENARIOS
+        _fingerprint(case["input"])
+        for case in CONTRACTS
     }
-    report_by_id = {item["id"]: item for item in evaluate_baseline()["results"]}
+    report = evaluate_baseline()
+    report_by_id = {item["id"]: item for item in report["results"]}
     scenario_specific_oracles = {
         scenario_id
         for scenario_id, result in report_by_id.items()
-        if set(result["checks"]) - LEGACY_GENERIC_CHECKS
+        if set(result["checks"]) - GENERIC_CHECKS
     }
 
-    assert (len(input_fingerprints), len(scenario_specific_oracles)) == (41, 41), (
-        "legacy baseline currently has "
-        f"{len(input_fingerprints)} distinct input fingerprints and "
-        f"{len(scenario_specific_oracles)} scenario-specific oracles"
-    )
+    assert report["ok"] is True
+    assert (len(input_fingerprints), len(scenario_specific_oracles)) == (41, 41)

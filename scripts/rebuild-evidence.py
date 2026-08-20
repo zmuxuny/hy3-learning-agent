@@ -42,6 +42,7 @@ from app.services.evidence import (  # noqa: E402
     audit_observations,
     backfill_legacy_observations,
     build_evidence_state,
+    list_observations,
 )
 
 
@@ -152,10 +153,12 @@ async def _run_uncoordinated(args: argparse.Namespace) -> int:
     # committed ledger, and the session is closed before any mkdir/write/fsync
     # or atomic replacement below.
     async with AsyncSessionLocal() as db:
-        query = select(EvidenceObservation).where(EvidenceObservation.owner_id == settings.DEFAULT_OWNER_ID)
-        if args.plan_id is not None:
-            query = query.where(EvidenceObservation.plan_id == args.plan_id)
-        observations = list((await db.execute(query.order_by(EvidenceObservation.id))).scalars())
+        observations = await list_observations(
+            db,
+            settings.DEFAULT_OWNER_ID,
+            plan_id=args.plan_id,
+            limit=None,
+        )
         artifact_query = select(Artifact).where(Artifact.owner_id == settings.DEFAULT_OWNER_ID)
         if args.plan_id is not None:
             artifact_query = artifact_query.where(Artifact.plan_id == args.plan_id)

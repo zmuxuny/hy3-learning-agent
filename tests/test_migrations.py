@@ -19,12 +19,15 @@ FROZEN_H2_SCHEMA_CHECKSUM = (
 FROZEN_H3_SCHEMA_CHECKSUM = (
     "b69ed9f0844106e54936e008c22b4d4ebd7e089a8cb38989a4306ad25c7239de"
 )
+FROZEN_H4_SCHEMA_CHECKSUM = (
+    "851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace"
+)
 
 
 def test_current_migration_identity_is_explicit_and_stable() -> None:
-    assert CURRENT_SCHEMA_VERSION == 3
-    assert CURRENT_MIGRATION_NAME == "h3_durable_runtime"
-    assert CANONICAL_SCHEMA_CHECKSUM == FROZEN_H3_SCHEMA_CHECKSUM
+    assert CURRENT_SCHEMA_VERSION == 4
+    assert CURRENT_MIGRATION_NAME == "h4_evidence_competency_facts"
+    assert CANONICAL_SCHEMA_CHECKSUM == FROZEN_H4_SCHEMA_CHECKSUM
 
 
 def test_migration_registry_is_literal_contiguous_and_unique() -> None:
@@ -37,6 +40,7 @@ def test_migration_registry_is_literal_contiguous_and_unique() -> None:
         (1, "h1_canonical_schema", FROZEN_H1_SCHEMA_CHECKSUM),
         (2, "h2_transaction_outbox", FROZEN_H2_SCHEMA_CHECKSUM),
         (3, "h3_durable_runtime", FROZEN_H3_SCHEMA_CHECKSUM),
+        (4, "h4_evidence_competency_facts", FROZEN_H4_SCHEMA_CHECKSUM),
     )
     versions = [revision.version for revision in MIGRATION_REGISTRY]
     names = [revision.name for revision in MIGRATION_REGISTRY]

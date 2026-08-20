@@ -37,7 +37,7 @@ OWNER_ID = "h1-time-owner"
 
 # This is intentionally an exact inventory rather than a count-only assertion:
 # exchanging one omitted datetime for a newly added one must not preserve a
-# misleading total of 70.
+# misleading aggregate count.
 DOMAIN_DATETIME_COLUMNS = {
     "owners": ("created_at",),
     "user_profiles": ("updated_at",),
@@ -74,13 +74,20 @@ DOMAIN_DATETIME_COLUMNS = {
     "run_steer_messages": ("applied_at", "disposed_at", "created_at"),
     "run_approvals": ("decided_at", "consumed_at", "created_at"),
     "learning_events": ("occurred_at", "invalidated_at", "created_at"),
-    "evidence_observations": ("occurred_at", "recorded_at", "invalidated_at"),
+    "evidence_observations": ("occurred_at", "recorded_at"),
     "artifacts": ("created_at",),
     "competencies": ("created_at", "updated_at"),
     "competency_edges": ("created_at",),
     "plan_competency_links": ("created_at",),
     "task_competency_links": ("created_at",),
     "resource_competency_links": ("created_at",),
+    "competency_graph_states": ("updated_at",),
+    "evidence_projection_states": ("updated_at",),
+    "evidence_artifact_links": ("created_at",),
+    "evidence_competency_links": ("created_at",),
+    "competency_graph_mutations": ("created_at",),
+    "operation_dependencies": ("created_at",),
+    "operation_evidence_links": ("created_at",),
     "memories": (
         "last_accessed_at",
         "last_reinforced_at",
@@ -172,8 +179,8 @@ def test_h1_time_002_all_persisted_datetime_columns_use_utc_datetime() -> None:
     ]
 
     assert actual_domain_columns == DOMAIN_DATETIME_COLUMNS
-    assert len(actual_domain_columns) == 38
-    assert sum(map(len, actual_domain_columns.values())) == 88
+    assert len(actual_domain_columns) == 45
+    assert sum(map(len, actual_domain_columns.values())) == 94
     assert tuple(
         column.name
         for column in Base.metadata.tables["schema_migrations"].columns
@@ -183,7 +190,7 @@ def test_h1_time_002_all_persisted_datetime_columns_use_utc_datetime() -> None:
         isinstance(column.type, UTCDateTime)
         for table in Base.metadata.sorted_tables
         for column in table.columns
-    ) == 89
+    ) == 95
     assert naked_datetime_columns == []
 
 

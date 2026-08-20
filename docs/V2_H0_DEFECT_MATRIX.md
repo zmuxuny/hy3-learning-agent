@@ -44,7 +44,7 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H0-COV-001 | 41 个领域场景必须各有独立输入、字面期望和特定回归断言；旧套件只有 27 个输入指纹、3 个场景专属 oracle。 | HP4, VR13 | COV（1 节点） | U | H4 | open · strict xfail / — |
+| H0-COV-001 | 41 个领域场景必须各有独立输入、字面期望和特定回归断言；旧套件只有 27 个输入指纹、3 个场景专属 oracle。 | HP4, VR13 | COV（1 节点） | U | H4 | fixed · passing / H4 阶段 |
 
 ## H1：迁移、时间与备份
 
@@ -98,22 +98,22 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H4-EVID-001 | 在线投影、Context、工具和 CLI 必须读取 0/1/500/501/10k 完整账本并得到同一 digest；旧在线路径截断 500。 | HP4, HP8, VR13 | EVID（501/10k；500 为 passing 边界） | U | H4 | open · strict xfail / — |
-| H4-EVID-002 | submission/quiz/task undo 必须追加 amendment/invalidation，并让旧成功退出 active projection；旧实现只回滚业务表。 | HP4, HP8, VR13 | EVID（3 节点） | U | H4 | open · strict xfail / — |
-| H4-EVID-003 | 一次 accepted submission 只能贡献一次主成功；旧 task completion 与 submission 双重计权。 | HP8, VR13 | EVID | U | H4 | open · strict xfail / — |
-| H4-EVID-004 | self-report、checkbox、自由文本不能仅凭 `verified/passed` 达到 demonstrated；旧 reducer 只信 outcome。 | HP8, VR13 | EVID（3 节点） | U | H4 | open · strict xfail / — |
-| H4-EVID-005 | Artifact 必须使用规范 envelope 指纹并耐久保存文件 bytes；旧实现 body/metadata 二选一且只记路径。 | HP8, VR13 | EVID（2 节点） | U | H4 | open · strict xfail / — |
+| H4-EVID-001 | 在线投影、Context、工具和 CLI 必须读取 0/1/500/501/10k 完整账本并得到同一 digest；旧在线路径截断 500。 | HP4, HP8, VR13 | EVID（501/10k；500 为 passing 边界） | U | H4 | fixed · passing / H4 阶段 |
+| H4-EVID-002 | submission/quiz/task undo 必须追加 amendment/invalidation，并让旧成功退出 active projection；旧实现只回滚业务表。 | HP4, HP8, VR13 | EVID（3 节点） | U | H4 | fixed · passing / H4 阶段 |
+| H4-EVID-003 | 一次 accepted submission 只能贡献一次主成功；旧 task completion 与 submission 双重计权。 | HP8, VR13 | EVID | U | H4 | fixed · passing / H4 阶段 |
+| H4-EVID-004 | self-report、checkbox、自由文本不能仅凭 `verified/passed` 达到 demonstrated；旧 reducer 只信 outcome。 | HP8, VR13 | EVID（3 节点） | U | H4 | fixed · passing / H4 阶段 |
+| H4-EVID-005 | Artifact 必须使用规范 envelope 指纹并耐久保存文件 bytes；旧实现 body/metadata 二选一且只记路径。 | HP8, VR13 | EVID（2 节点） | U | H4 | fixed · passing / H4 阶段 |
 | H4-EVID-006 | Observation/Artifact 同幂等键异内容必须稳定冲突且原行不变；旧实现静默复用。 | HP8, VR13 | EVID（2 节点）, H2TXN | U | H4 | fixed · passing / H2 提前关闭 |
-| H4-EVID-007 | `assesses` 必须自动关联 Evidence，且一条行为可映射多个技能；旧模型只有单 competency。 | HP8, VR14 | COMP（2 节点） | U | H4 | open · strict xfail / — |
-| H4-EVID-008 | competency 过滤必须在 limit/pagination 前完成；旧实现先取最新 N 条再在 Python 过滤。 | HP8, VR14 | COMP | U | H4 | open · strict xfail / — |
-| H4-COMP-001 | 计划私有 competency key 的唯一性必须包含 plan；旧 owner-wide unique 阻止不同计划复用同 key。 | HP8, VR14 | COMP | U | H4 | open · strict xfail / — |
-| H4-COMP-002 | edge source/target 两端都必须受 owner/plan Guard；旧计划 A 可连接计划 B 私有节点。 | HP4, HP8, VR14 | COMP（2 节点） | U | H4 | open · strict xfail / — |
-| H4-COMP-003 | task link 必须以目标 task 的 plan 为事实来源；旧实现错误信任 Run plan。 | HP4, HP8, VR14 | COMP | U | H4 | open · strict xfail / — |
-| H4-COMP-004 | resource link 也必须校验 competency plan；旧实现允许跨计划连接。 | HP8, VR14 | COMP | U | H4 | open · strict xfail / — |
-| H4-COMP-005 | 图的每次 mutation 必须推进 durable revision；旧图无版本。 | HP8, VR14 | COMP | U | H4 | open · strict xfail / — |
-| H4-COMP-006 | undo 节点不得静默级联删除后来 edge 并留下 committed Operation；旧 FK cascade 破坏依赖审计。 | HP8, VR14 | COMP | U | H4 | open · strict xfail / — |
-| H4-SCHEMA-001 | Evidence 工具嵌套输入/输出必须用具名 typed model；旧输出暴露裸 `list/dict`。 | HP8, VR13 | COMP | U | H4 | open · strict xfail / — |
-| H4-SCHEMA-002 | Evidence 契约必须 forbid extra fields；旧 schema 静默接受未声明字段。 | HP8, VR13 | COMP | U | H4 | open · strict xfail / — |
+| H4-EVID-007 | `assesses` 必须自动关联 Evidence，且一条行为可映射多个技能；旧模型只有单 competency。 | HP8, VR14 | COMP（2 节点） | U | H4 | fixed · passing / H4 阶段 |
+| H4-EVID-008 | competency 过滤必须在 limit/pagination 前完成；旧实现先取最新 N 条再在 Python 过滤。 | HP8, VR14 | COMP | U | H4 | fixed · passing / H4 阶段 |
+| H4-COMP-001 | 计划私有 competency key 的唯一性必须包含 plan；旧 owner-wide unique 阻止不同计划复用同 key。 | HP8, VR14 | COMP | U | H4 | fixed · passing / H4 阶段 |
+| H4-COMP-002 | edge source/target 两端都必须受 owner/plan Guard；旧计划 A 可连接计划 B 私有节点。 | HP4, HP8, VR14 | COMP（2 节点） | U | H4 | fixed · passing / H4 阶段 |
+| H4-COMP-003 | task link 必须以目标 task 的 plan 为事实来源；旧实现错误信任 Run plan。 | HP4, HP8, VR14 | COMP | U | H4 | fixed · passing / H4 阶段 |
+| H4-COMP-004 | resource link 也必须校验 competency plan；旧实现允许跨计划连接。 | HP8, VR14 | COMP | U | H4 | fixed · passing / H4 阶段 |
+| H4-COMP-005 | 图的每次 mutation 必须推进 durable revision；旧图无版本。 | HP8, VR14 | COMP | U | H4 | fixed · passing / H4 阶段 |
+| H4-COMP-006 | undo 节点不得静默级联删除后来 edge 并留下 committed Operation；旧 FK cascade 破坏依赖审计。 | HP8, VR14 | COMP | U | H4 | fixed · passing / H4 阶段 |
+| H4-SCHEMA-001 | Evidence 工具嵌套输入/输出必须用具名 typed model；旧输出暴露裸 `list/dict`。 | HP8, VR13 | COMP | U | H4 | fixed · passing / H4 阶段 |
+| H4-SCHEMA-002 | Evidence 契约必须 forbid extra fields；旧 schema 静默接受未声明字段。 | HP8, VR13 | COMP | U | H4 | fixed · passing / H4 阶段 |
 
 ## H5：Context、Memory 与 Intervention
 
@@ -174,11 +174,18 @@
 
 ## 41 场景重写登记
 
-[`evidence_scenarios.json`](../tests/fixtures/evidence_scenarios.json) 为原 41 个名称逐项登记了独立的 `setup + action`、字面 `expected_projection`、`expected_audit_ok`、唯一 failure reason code、不变量 ID 和可杀死的 mutant。当前每项状态均为 `pending_rewrite`：它们是 H4 可执行测试的规格输入，不是已经通过的 41 项领域测试。
+[`evidence_scenarios.json`](../tests/fixtures/evidence_scenarios.json) 的 41 项均为 `verified`：每项有独立 `setup + action`、字面 `expected_projection`、`expected_audit_ok`、不变量和 mutant。测试通过 production Evidence adapter、reducer 与 audit 先验证 41 条 baseline，再逐项施加 41 个真实输入变化或共享生产 seam mutant；每个 mutant 都由独立 failure-code registry 捕获，不从期望结果反推答案。
 
-H0 的 passing contract tests 只证明清单完整、输入/oracle/mutant 互不重复；`H0-COV-001` strict xfail 则持续证明旧 `evaluate_baseline()` 仍只有 27 个输入指纹和 3 个场景专属 oracle。H4 必须把 41 项逐条接入真实 reducer/audit，确保对应 mutant 会触发指定 reason code，才能删除 `H0-COV-001` 并宣称覆盖闭环。
+[`test_h4_scenario_matrix.py`](../tests/hardening/test_h4_scenario_matrix.py) 当前展开为 124 个 passing 节点（41 个 target、41 个 baseline、41 个 mutant、1 个 registry），`H0-COV-001` 已删除 strict xfail。幂等和百分比分数场景复用真实 Artifact/Observation request-digest 与 submission/quiz normalization 路径，不保留 baseline-only helper 或测试探针。
 
 ## 验收记录
+
+### H4 当前结果（2026-08-20）
+
+- H4-EVID-001–005/007/008、H4-COMP-001–006、H4-SCHEMA-001/002 与 H0-COV-001 均已删除原 strict xfail 并固定通过；H4 新关闭 16 个 ID，矩阵累计关闭 50 个 defect ID、剩余 37 个 open ID。下一门禁为 H5，M15–M20 继续冻结。
+- schema revision 4 冻结 append-only Evidence fact、Artifact snapshot、Evidence↔Competency/Artifact/Operation 关联、Competency scope、图 revision/mutation/dependency 与 projection watermark。fresh 和 frozen revision 3 升级结构等价；无法证明的历史关联不猜测，跨域、环和损坏来源 fail closed。
+- 0/1/500/501/10,000 条全量/增量/CLI/Context/tool/HTTP 投影、关闭重开和 SQLite backup restore digest 一致；submission/quiz/task undo/redo、kill-point、Artifact 篡改、图依赖撤销、跨计划 Guard 与 SQL-before-limit 均有独立回归。
+- 41 条领域 baseline 与 41 个对应 mutant 已逐项执行 production reducer/audit；完整 pytest、前端和其余最终门禁的唯一记录见 [`STATUS.md`](STATUS.md)。外部安装、连续使用和 7 日留存仍待真实用户验证。
 
 ### H3 当前结果（2026-08-20）
 

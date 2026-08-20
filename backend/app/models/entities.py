@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Index, Integer, LargeBinary, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -729,25 +729,100 @@ class EvidenceObservation(Base):
 
     __tablename__ = "evidence_observations"
     __table_args__ = (
-        Index("ix_evidence_observations_owner_plan", "owner_id", "plan_id", "recorded_at"),
-        Index("ix_evidence_observations_task", "owner_id", "task_id", "occurred_at"),
+        UniqueConstraint(
+            "owner_id",
+            "idempotency_key",
+            name="uq_evidence_observation_owner_idempotency",
+        ),
+        Index(
+            "ix_evidence_observations_owner_plan",
+            "owner_id",
+            "plan_id",
+            "occurred_at",
+            "id",
+        ),
+        Index(
+            "ix_evidence_observations_task",
+            "owner_id",
+            "task_id",
+            "occurred_at",
+            "id",
+        ),
+        Index(
+            "uq_evidence_observations_target",
+            "target_observation_id",
+            unique=True,
+            sqlite_where=text("target_observation_id IS NOT NULL"),
+        ),
         Index("ix_evidence_observations_source", "owner_id", "source_type", "source_id"),
         CheckConstraint(
             "request_digest IS NULL OR length(request_digest) = 64",
             name="ck_evidence_observation_request_digest",
         ),
+        CheckConstraint(
+            "fact_kind IN ('observation', 'amendment', 'invalidation', 'reinstatement')",
+            name="ck_evidence_observation_fact_kind",
+        ),
+        CheckConstraint(
+            "(fact_kind = 'observation' AND target_observation_id IS NULL) OR "
+            "(fact_kind <> 'observation' AND target_observation_id IS NOT NULL)",
+            name="ck_evidence_observation_target",
+        ),
+        CheckConstraint(
+            "target_observation_id IS NULL OR target_observation_id <> id",
+            name="ck_evidence_observation_not_self_target",
+        ),
+        CheckConstraint(
+            "fact_kind = 'observation' OR length(trim(reason_code)) > 0",
+            name="ck_evidence_observation_reason",
+        ),
+        CheckConstraint(
+            "((fact_kind IN ('observation', 'amendment') AND "
+            "evidence_role IN ('primary', 'supporting')) OR "
+            "(fact_kind IN ('invalidation', 'reinstatement') AND evidence_role = 'control'))",
+            name="ck_evidence_observation_role",
+        ),
+        CheckConstraint(
+            "eligibility_stage IN ('unknown', 'exposed', 'practicing', 'demonstrated')",
+            name="ck_evidence_observation_eligibility_stage",
+        ),
+        CheckConstraint(
+            "normalized_score IS NULL OR (normalized_score >= 0 AND normalized_score <= 1)",
+            name="ck_evidence_observation_score",
+        ),
+        CheckConstraint("schema_version >= 1", name="ck_evidence_observation_schema_version"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
     source_type: Mapped[str] = mapped_column(String(32), index=True)
     source_id: Mapped[str] = mapped_column(String(120), index=True)
-    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
-    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
-    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
-    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
-    competency_id: Mapped[int | None] = mapped_column(ForeignKey("competencies.id", ondelete="SET NULL"), nullable=True, index=True)
-    competency_key: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="RESTRICT"), nullable=True, index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="RESTRICT"), nullable=True, index=True)
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="RESTRICT"), nullable=True, index=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"), nullable=True, index=True)
+    fact_kind: Mapped[str] = mapped_column(
+        String(24), default="observation", server_default=text("'observation'"), index=True
+    )
+    target_observation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("evidence_observations.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    reason_code: Mapped[str] = mapped_column(String(80), default="", server_default=text("''"))
+    evidence_role: Mapped[str] = mapped_column(
+        String(24), default="primary", server_default=text("'primary'"), index=True
+    )
+    eligibility_stage: Mapped[str] = mapped_column(
+        String(24), default="unknown", server_default=text("'unknown'"), index=True
+    )
+    eligibility_reason: Mapped[str] = mapped_column(
+        String(120), default="UNCLASSIFIED", server_default=text("'UNCLASSIFIED'")
+    )
+    eligibility_policy_version: Mapped[str] = mapped_column(
+        String(64), default="evidence-eligibility-v1", server_default=text("'evidence-eligibility-v1'")
+    )
+    counts_as_success: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("0"), index=True
+    )
     outcome: Mapped[str] = mapped_column(String(40), index=True)
     normalized_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -759,20 +834,14 @@ class EvidenceObservation(Base):
     )
     rubric_snapshot: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
     evaluator: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
-    artifact_refs: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     payload: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
     occurred_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
     recorded_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), index=True)
     schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     correlation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     causation_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
-    idempotency_key: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(180), index=True)
     request_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    supersedes_id: Mapped[int | None] = mapped_column(
-        ForeignKey("evidence_observations.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
-    invalidation_reason: Mapped[str] = mapped_column(Text, default="", server_default=text("''"))
 
 
 class Artifact(Base):
@@ -786,6 +855,20 @@ class Artifact(Base):
             "request_digest IS NULL OR length(request_digest) = 64",
             name="ck_artifact_request_digest",
         ),
+        CheckConstraint("length(content_hash) = 64", name="ck_artifact_content_hash"),
+        CheckConstraint(
+            "storage_state IN ('stored', 'external_reference', 'legacy_unavailable')",
+            name="ck_artifact_storage_state",
+        ),
+        CheckConstraint(
+            "((storage_state = 'stored' AND snapshot_bytes IS NOT NULL "
+            "AND snapshot_sha256 IS NOT NULL AND length(snapshot_sha256) = 64 "
+            "AND size_bytes = length(snapshot_bytes)) OR "
+            "(storage_state <> 'stored' AND snapshot_bytes IS NULL "
+            "AND snapshot_sha256 IS NULL))",
+            name="ck_artifact_snapshot",
+        ),
+        CheckConstraint("envelope_version >= 0", name="ck_artifact_envelope_version"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -796,10 +879,16 @@ class Artifact(Base):
     content_hash: Mapped[str] = mapped_column(String(128), default="")
     size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     artifact_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
-    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True)
-    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
-    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True)
-    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    snapshot_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    snapshot_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    storage_state: Mapped[str] = mapped_column(
+        String(32), default="external_reference", server_default=text("'external_reference'"), index=True
+    )
+    envelope_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="RESTRICT"), nullable=True, index=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"), nullable=True, index=True)
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="RESTRICT"), nullable=True, index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="RESTRICT"), nullable=True, index=True)
     idempotency_key: Mapped[str] = mapped_column(String(180), index=True)
     request_digest: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now(), index=True)
@@ -810,8 +899,28 @@ class Competency(Base):
 
     __tablename__ = "competencies"
     __table_args__ = (
-        UniqueConstraint("owner_id", "key", name="uq_competency_owner_key"),
         Index("ix_competencies_owner_scope", "owner_id", "scope", "plan_id"),
+        Index(
+            "uq_competencies_global_key",
+            "owner_id",
+            "key",
+            unique=True,
+            sqlite_where=text("scope = 'global'"),
+        ),
+        Index(
+            "uq_competencies_plan_key",
+            "owner_id",
+            "plan_id",
+            "key",
+            unique=True,
+            sqlite_where=text("scope = 'plan'"),
+        ),
+        CheckConstraint(
+            "(scope = 'global' AND plan_id IS NULL) OR "
+            "(scope = 'plan' AND plan_id IS NOT NULL)",
+            name="ck_competency_scope",
+        ),
+        CheckConstraint("version >= 1", name="ck_competency_version"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -821,7 +930,7 @@ class Competency(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     competency_type: Mapped[str] = mapped_column(String(32), default="concept")
     scope: Mapped[str] = mapped_column(String(16), default="global", index=True)
-    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), nullable=True, index=True)
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id", ondelete="RESTRICT"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(24), default="active", index=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
@@ -832,12 +941,14 @@ class CompetencyEdge(Base):
     __tablename__ = "competency_edges"
     __table_args__ = (
         UniqueConstraint("owner_id", "source_id", "target_id", "relation", name="uq_competency_edge"),
+        CheckConstraint("source_id <> target_id", name="ck_competency_edge_distinct"),
+        CheckConstraint("version >= 1", name="ck_competency_edge_version"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
-    source_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
-    target_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="RESTRICT"), index=True)
+    target_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="RESTRICT"), index=True)
     relation: Mapped[str] = mapped_column(String(24), index=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
@@ -851,8 +962,8 @@ class PlanCompetencyLink(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
-    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id", ondelete="CASCADE"), index=True)
-    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id", ondelete="RESTRICT"), index=True)
+    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="RESTRICT"), index=True)
     target_stage: Mapped[str] = mapped_column(String(24), default="practicing")
     relation: Mapped[str] = mapped_column(String(24), default="targets")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
@@ -866,8 +977,8 @@ class TaskCompetencyLink(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
-    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), index=True)
-    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"), index=True)
+    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="RESTRICT"), index=True)
     relation: Mapped[str] = mapped_column(String(24), default="teaches")
     target_stage: Mapped[str] = mapped_column(String(24), default="practicing")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
@@ -881,11 +992,139 @@ class ResourceCompetencyLink(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id"), index=True)
-    resource_id: Mapped[int] = mapped_column(ForeignKey("learning_resources.id", ondelete="CASCADE"), index=True)
-    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="CASCADE"), index=True)
+    resource_id: Mapped[int] = mapped_column(ForeignKey("learning_resources.id", ondelete="RESTRICT"), index=True)
+    competency_id: Mapped[int] = mapped_column(ForeignKey("competencies.id", ondelete="RESTRICT"), index=True)
     depth: Mapped[str] = mapped_column(String(24), default="overview")
     relation: Mapped[str] = mapped_column(String(24), default="covers")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
+
+
+class EvidenceArtifactLink(Base):
+    __tablename__ = "evidence_artifact_links"
+    __table_args__ = (
+        UniqueConstraint("observation_id", "ordinal", name="uq_evidence_artifact_ordinal"),
+        UniqueConstraint(
+            "observation_id", "artifact_id", "kind", name="uq_evidence_artifact_kind"
+        ),
+        CheckConstraint("ordinal >= 0", name="ck_evidence_artifact_ordinal"),
+        CheckConstraint(
+            "length(content_hash_snapshot) = 64",
+            name="ck_evidence_artifact_hash",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    observation_id: Mapped[int] = mapped_column(
+        ForeignKey("evidence_observations.id", ondelete="RESTRICT"), index=True
+    )
+    artifact_id: Mapped[int] = mapped_column(
+        ForeignKey("artifacts.id", ondelete="RESTRICT"), index=True
+    )
+    kind: Mapped[str] = mapped_column(String(32))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    content_hash_snapshot: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class EvidenceCompetencyLink(Base):
+    __tablename__ = "evidence_competency_links"
+    __table_args__ = (
+        UniqueConstraint(
+            "observation_id", "competency_id", name="uq_evidence_competency_link"
+        ),
+        Index(
+            "ix_evidence_competency_filter",
+            "competency_id",
+            "observation_id",
+        ),
+        CheckConstraint(
+            "association_kind IN ('explicit', 'task_assesses', 'legacy')",
+            name="ck_evidence_competency_association",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    observation_id: Mapped[int] = mapped_column(
+        ForeignKey("evidence_observations.id", ondelete="RESTRICT"), index=True
+    )
+    competency_id: Mapped[int] = mapped_column(
+        ForeignKey("competencies.id", ondelete="RESTRICT"), index=True
+    )
+    association_kind: Mapped[str] = mapped_column(String(24), index=True)
+    task_competency_link_id_snapshot: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    competency_key_snapshot: Mapped[str] = mapped_column(String(160))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class CompetencyGraphState(Base):
+    __tablename__ = "competency_graph_states"
+    __table_args__ = (
+        CheckConstraint("revision >= 0", name="ck_competency_graph_revision"),
+    )
+
+    owner_id: Mapped[str] = mapped_column(
+        ForeignKey("owners.id", ondelete="RESTRICT"), primary_key=True
+    )
+    revision: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
+    )
+
+
+class CompetencyGraphMutation(Base):
+    __tablename__ = "competency_graph_mutations"
+    __table_args__ = (
+        UniqueConstraint("owner_id", "revision", name="uq_competency_graph_mutation_revision"),
+        UniqueConstraint("action_key", name="uq_competency_graph_mutation_action_key"),
+        CheckConstraint("revision >= 1", name="ck_competency_graph_mutation_revision"),
+        CheckConstraint(
+            "action IN ('baseline', 'apply', 'undo', 'redo')",
+            name="ck_competency_graph_mutation_action",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    revision: Mapped[int] = mapped_column(Integer)
+    operation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("operations.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    action_key: Mapped[str] = mapped_column(String(180), index=True)
+    action: Mapped[str] = mapped_column(String(16), index=True)
+    entity_type: Mapped[str] = mapped_column(String(64))
+    entity_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class EvidenceProjectionState(Base):
+    __tablename__ = "evidence_projection_states"
+    __table_args__ = (
+        UniqueConstraint("owner_id", "plan_id", name="uq_evidence_projection_owner_plan"),
+        CheckConstraint("watermark >= 0", name="ck_evidence_projection_watermark"),
+        CheckConstraint("length(ledger_digest) = 64", name="ck_evidence_projection_ledger_digest"),
+        CheckConstraint(
+            "length(projection_digest) = 64",
+            name="ck_evidence_projection_projection_digest",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("owners.id", ondelete="RESTRICT"), index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id", ondelete="RESTRICT"), index=True)
+    watermark: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    ledger_digest: Mapped[str] = mapped_column(String(64))
+    projection_digest: Mapped[str] = mapped_column(String(64))
+    projection: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    algorithm_version: Mapped[str] = mapped_column(String(80))
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
+    )
 
 
 class Memory(Base):
@@ -1053,6 +1292,73 @@ class Operation(Base):
     status: Mapped[str] = mapped_column(String(32), default="committed", index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, server_default=func.now())
     undone_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+
+class OperationEvidenceLink(Base):
+    __tablename__ = "operation_evidence_links"
+    __table_args__ = (
+        UniqueConstraint(
+            "operation_id",
+            "generation",
+            "observation_id",
+            "role",
+            name="uq_operation_evidence_generation_role",
+        ),
+        Index(
+            "uq_operation_evidence_producer",
+            "observation_id",
+            unique=True,
+            sqlite_where=text("role = 'produced'"),
+        ),
+        CheckConstraint("generation >= 0", name="ck_operation_evidence_generation"),
+        CheckConstraint(
+            "role IN ('produced', 'amendment', 'invalidation', 'reinstatement')",
+            name="ck_operation_evidence_role",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    operation_id: Mapped[str] = mapped_column(
+        ForeignKey("operations.id", ondelete="RESTRICT"), index=True
+    )
+    observation_id: Mapped[int] = mapped_column(
+        ForeignKey("evidence_observations.id", ondelete="RESTRICT"), index=True
+    )
+    generation: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), index=True)
+    role: Mapped[str] = mapped_column(String(24), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
+
+
+class OperationDependency(Base):
+    __tablename__ = "operation_dependencies"
+    __table_args__ = (
+        UniqueConstraint(
+            "operation_id",
+            "depends_on_operation_id",
+            "dependency_kind",
+            name="uq_operation_dependency",
+        ),
+        CheckConstraint(
+            "operation_id <> depends_on_operation_id",
+            name="ck_operation_dependency_distinct",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    operation_id: Mapped[str] = mapped_column(
+        ForeignKey("operations.id", ondelete="RESTRICT"), index=True
+    )
+    depends_on_operation_id: Mapped[str] = mapped_column(
+        ForeignKey("operations.id", ondelete="RESTRICT"), index=True
+    )
+    dependency_kind: Mapped[str] = mapped_column(String(40), index=True)
+    entity_type: Mapped[str] = mapped_column(String(64))
+    entity_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, server_default=func.now()
+    )
 
 
 class Notification(Base):

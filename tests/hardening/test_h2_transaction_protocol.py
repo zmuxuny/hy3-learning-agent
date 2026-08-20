@@ -161,6 +161,8 @@ ALLOWED_UOW_ALIAS_CALLS = {
     },
     ("backend/app/api/operations.py", "undo_operation", "commit"),
     ("backend/app/api/operations.py", "undo_operation", "rollback"),
+    ("backend/app/api/operations.py", "redo_operation", "commit"),
+    ("backend/app/api/operations.py", "redo_operation", "rollback"),
     *{
         ("backend/app/api/plans.py", name, "commit")
         for name in {"create_plan", "set_plan_archived", "update_task"}

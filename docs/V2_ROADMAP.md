@@ -4,9 +4,9 @@
 目标版本：2.0.0
 当前基线：1.1.1
 
-> 2026-08-20 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1–H3 已完成，累计关闭 34 个缺陷 ID，矩阵剩余 53 个 open ID，下一门禁是 H4；M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成完成声明。
+> 2026-08-20 硬化门禁：`develop` 中的 M13/M14 仍是实现候选。H1–H4 已完成，累计关闭 50 个缺陷 ID，矩阵剩余 37 个 open ID，下一门禁是 H5；M13 的 Evidence 事实层和 M14 的后端图协议已通过 H4，但 M14 最小前端仍属 H7。M15–M20 继续暂停，直到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 的 H0–H8 全部完成。逐项事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，下方“M13/M14 当前实现状态”只记录已有代码范围，不构成发布完成声明。
 
-H2 定向回归为 84 passed；当前 H0 跨阶段回归为 49 passed / 84 strict xfailed，普通非 hardening 回归为 139 passed；前端 Node 为 6 passed、生产构建成功、production audit 为 0。完整 pytest 结果及 H1 历史快照见 [`STATUS.md`](STATUS.md)；这些自动化证据不替代真实 SMTP/VAPID、外部安装、连续学习闭环和 7 日留存验证。
+H4 场景矩阵为 124 passed，覆盖 41 条 production baseline 与 41 个对应 mutant；0/1/500/501/10,000 投影、revision 4 migration/SIGKILL、关闭重开和备份恢复也已通过。完整 pytest 与前端结果及 H1–H3 历史快照见 [`STATUS.md`](STATUS.md)；这些自动化证据不替代真实 SMTP/VAPID、外部安装、连续学习闭环和 7 日留存验证。
 
 ## 1. 版本定义
 
@@ -385,18 +385,18 @@ M13 学习账本
 
 验收：相同输入幂等；历史修订不改写原证据；v1 数据迁移可回滚；固定场景形成可重复基线报告。
 
-#### M13 实现候选清单（2026-08-13，尚未通过 2026-08-18 审查门禁）
+#### M13 实现候选清单（H4 事实层已验收，尚未发布）
 
 `develop` 已完成第一条可运行纵向切片：
 
-- `LearningEvent` 增加 v2 公共信封字段；新增 `EvidenceObservation` 追加式事实表，包含来源、作用域、Rubric/评价者、评分、提示/迁移等级、因果链和幂等键。
-- 提交创建、提交验收、测验评分和带证据的任务完成已经双写；同一幂等键重试会复用原观察，原观察没有编辑或物理删除路径。
-- `study_state_get` 与当前计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；H1 已关闭 UTC/SQLite 时间往返差异，H2 已关闭 H4-EVID-006 的结果摘要冲突，完整账本与其余投影语义仍待 H4 修复。
-- 新增独立 `Artifact` 来源表，并在观察中保存 `artifact_id/content_hash`；H2 已固定同 key 异请求/结果摘要冲突语义，Artifact bytes 耐久性和文件指纹仍未通过 H4 验收。
+- revision 4 将 `EvidenceObservation` 固定为 append-only fact，包含来源、作用域、Rubric/评价者、评分、提示/迁移等级、因果链和幂等键；数据库 trigger 禁止更新/删除原事实。
+- submission/quiz/task producer 在同一 UoW 写一份 primary observation 及 Artifact/Competency/Operation 关联；undo/redo/correction 追加 amendment/invalidation/reinstatement，不重复计权。
+- `study_state_get`、Context、tool、HTTP API 和 CLI 已接入同一个无截断投影；增量 watermark 与 full oracle、0/1/500/501/10,000、关闭重开和备份恢复 digest 一致。
+- Artifact 保存 canonical envelope、耐久 bytes snapshot、size/hash 与 scope；同 key 异请求/结果稳定冲突，篡改或 legacy unavailable 不进入可计权 Evidence。
 - `scripts/rebuild-evidence.py` 已提供重建、审计、v1 回填和派生快照命令；H1 已使纯 audit 保持逐字节只读，并要求任何回填/重建写操作先取得协调 lease 和全量验证备份。
-- 新增 41 个网络无关场景名称和报告框架；多数场景尚未构造名称所代表的领域行为和独立断言。
+- 41 个网络无关场景均执行 production adapter/reducer/audit，并由 41 个对应 mutant 独立触发 failure code。
 
-尚未满足 M13 正式标签。H1 已关闭时间 canonicalization 与 audit/备份顺序，H2 已关闭事务原子性、幂等冲突、结果摘要与 Operation 基础逆向补偿；v1 回填失效/回滚、500 条之后的投影截断、重复成功计权、自由文本 `verified`、Artifact bytes/指纹和基线场景独立断言等阻塞项仍须按 H4 修复。
+H4 已关闭 M13 事实层的迁移、完整账本、撤销/重做、重复成功、保守 eligibility、Artifact snapshot/指纹和 41 场景独立断言阻塞项。M13 仍不单独打正式标签：项目保持 2.0.0-alpha.1 暂停发布，必须继续完成 H5–H8 和发布门禁。
 
 ### M14：技能图与计划映射
 
@@ -410,13 +410,13 @@ M13 学习账本
 
 验收：一个计划可解释每项任务训练或证明什么；跨计划相似技能不会静默合并；图修改可审计、可撤销。
 
-#### M14 实现候选清单（2026-08-13，尚未通过 2026-08-18 审查门禁）
+#### M14 实现候选清单（H4 后端协议已验收，H7 最小前端待完成）
 
 - 已新增 `Competency`、`CompetencyEdge`、`PlanCompetencyLink`、`TaskCompetencyLink` 和 `ResourceCompetencyLink` 增量表。
 - 已提供 `competency_create`、`competency_link`、`competency_edge`、`competency_graph_get`、`competency_get` 和 `evidence_list` 的第一版工具与顶层输出模型。
 - `prerequisite` 与 `part_of` 关系在写入前执行确定性环检测；同 key 不会根据标题相似度静默合并，重复调用按工具幂等键复用。
 
-H2 已证明当前图写入走同一 UoW、SQLite physical outer transaction 与幂等 CAS，不会因外层 savepoint 提前释放而局部提交；但 M14 仍未通过验收：edge/link 存在跨计划 Guard 缺口，计划级 key 唯一性不符合跨计划分离原则，Evidence 没有依据 `assesses` 映射连接技能，competency 过滤发生在 limit 之后，嵌套输出仍是裸 `list/dict`，图版本和语义撤销依赖也不完整；前端尚无最小只读视图。统一按硬化计划 H4/H7 修复，完成前不允许技能节点承载 M15 学习状态。
+H4 已关闭后端阻塞项：global/plan key 使用 scope-aware partial unique，edge/link 从数据库解析两端真实 owner/plan，Evidence 在同一 UoW 快照 task `assesses` 多技能关联，SQL 在 limit 前过滤，工具使用严格嵌套 Schema；graph revision/mutation/dependency 与 `RESTRICT` FK 使变更可审计且撤销不会静默级联。M14 仍缺 H7 的最小只读视图，因此不声明完整完成；H0–H8 关闭前也不允许技能节点承载 M15 学习状态。
 
 ### M15：学习者状态与复习引擎
 

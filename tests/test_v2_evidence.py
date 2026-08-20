@@ -1,13 +1,22 @@
 import json
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, Artifact, EvidenceObservation, LearningEvent, TaskSubmission
 from app.schemas import PlanCreate, StageCreate, TaskCreate
 from app.services import plans as plan_service
-from app.services.evidence import append_observation, audit_observations, backfill_legacy_observations, build_evidence_state
+from app.services.evidence import (
+    append_observation,
+    artifact_ref,
+    audit_observations,
+    backfill_legacy_observations,
+    build_evidence_state,
+    create_artifact,
+    list_observations,
+    observation_dict,
+)
 from app.tools import ToolContext, execute_tool
 
 
@@ -116,27 +125,35 @@ async def test_learning_loop_dual_writes_evidence_and_study_state():
         assert checked["ok"] is True
         assert checked["data"]["task_status"] == "completed"
 
-        observation_count = await db.scalar(
-            select(func.count()).select_from(EvidenceObservation).where(
-                EvidenceObservation.owner_id == "local",
-                EvidenceObservation.plan_id == plan.id,
-            )
+        observations = await list_observations(
+            db,
+            "local",
+            plan_id=plan.id,
+            limit=None,
         )
-        assert observation_count == 3  # submission, verdict, evidence-backed completion
+        serialized = [observation_dict(item) for item in observations]
+        # submission_create records the attempt; submission_check records one
+        # verdict. Task completion is only a business projection and must not
+        # add a third, independently weighted success observation.
+        assert len(serialized) == 2
+        assert sorted(item["outcome"] for item in serialized) == ["accepted", "submitted"]
+        assert sum(item["counts_as_success"] for item in serialized) == 1
         artifacts = list((await db.execute(
             select(Artifact).where(Artifact.plan_id == plan.id)
         )).scalars())
-        assert {item.artifact_type for item in artifacts} == {"submission", "task_evidence"}
-        observations = list((await db.execute(
-            select(EvidenceObservation).where(EvidenceObservation.plan_id == plan.id)
-        )).scalars())
+        assert {item.artifact_type for item in artifacts} == {"submission"}
         artifact_ids = {item.id for item in artifacts}
-        assert all(ref["artifact_id"] in artifact_ids for item in observations for ref in item.artifact_refs)
+        assert all(
+            ref["artifact_id"] in artifact_ids
+            for item in serialized
+            for ref in item["artifact_refs"]
+        )
 
         state = await execute_tool("study_state_get", json.dumps({"plan_id": plan.id}), ctx)
         assert state["ok"] is True
         evidence_state = state["data"]["evidence_state"]
-        assert evidence_state["observation_count"] == 3
+        assert evidence_state["observation_count"] == 2
+        assert evidence_state["by_task"][0]["success_count"] == 1
         assert evidence_state["by_task"][0]["task_id"] == task.id
         assert evidence_state["by_task"][0]["evidence_stage"] == "demonstrated"
         assert evidence_state["by_task"][0]["best_score"] == pytest.approx(0.86)
@@ -162,14 +179,17 @@ async def test_evidence_projection_isolated_by_plan_and_supersession_is_append_o
         second, _ = await append_observation(
             db,
             owner_id="local",
-            source_type="quiz",
+            source_type="manual_assessment",
             source_id="a-2",
-            outcome="passed",
+            outcome="verified",
             idempotency_key="evidence-test:a-2",
             plan_id=plan_a.id,
             task_id=task_a.id,
             normalized_score=0.9,
-            supersedes_id=first.id,
+            evaluator={"type": "human", "id": "mentor-a"},
+            fact_kind="amendment",
+            target_observation_id=first.id,
+            reason_code="MANUAL_REASSESSMENT",
         )
         await append_observation(
             db,
@@ -240,15 +260,15 @@ async def test_v1_backfill_is_conservative_and_repeatable():
 @pytest.mark.asyncio
 async def test_artifact_audit_validates_source_existence_and_hash():
     async with AsyncSessionLocal() as db:
-        artifact = Artifact(
+        artifact, _ = await create_artifact(
+            db,
             owner_id="local",
             artifact_type="submission",
             source_uri="submission:fixture",
-            content_hash="abc",
             idempotency_key="fixture:artifact",
+            content="answer",
+            metadata={"submission_type": "text"},
         )
-        db.add(artifact)
-        await db.flush()
         observation, _ = await append_observation(
             db,
             owner_id="local",
@@ -256,11 +276,27 @@ async def test_artifact_audit_validates_source_existence_and_hash():
             source_id="fixture",
             outcome="submitted",
             idempotency_key="fixture:observation",
-            artifact_refs=[{"artifact_id": artifact.id, "uri": artifact.source_uri, "content_hash": "wrong"}],
+            artifact_refs=[artifact_ref(artifact, kind="submission")],
         )
+        with pytest.raises(ValueError, match="content hash mismatch"):
+            await append_observation(
+                db,
+                owner_id="local",
+                source_type="submission",
+                source_id="fixture-mismatch",
+                outcome="submitted",
+                idempotency_key="fixture:observation-mismatch",
+                artifact_refs=[
+                    {
+                        **artifact_ref(artifact, kind="submission"),
+                        "content_hash": "f" * 64,
+                    }
+                ],
+            )
         await db.commit()
-        report = audit_observations([observation], [artifact])
-        assert report["ok"] is False
-        assert any("hash mismatch" in error for error in report["errors"])
-        missing = audit_observations([observation], [])
+        records = await list_observations(db, "local", limit=None)
+        assert [item.id for item in records] == [observation.id]
+        report = audit_observations(records, [artifact])
+        assert report["ok"] is True
+        missing = audit_observations(records, [])
         assert any("missing artifact" in error for error in missing["errors"])

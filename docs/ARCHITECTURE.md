@@ -1,12 +1,12 @@
 # 主动 Agent 与上下文架构
 
-> 状态说明（2026-08-20）：本文描述目标架构，并明确 develop 上已经验收的边界。H1 的迁移/UTC/备份、H2 的事务/幂等/outbox 与 H3 的耐久 Runtime/Queue/child 已完成；累计关闭 34 个缺陷 ID，矩阵剩余 53 个 open ID，下一门禁为 H4，M15–M20 继续冻结。Evidence、Context/Memory、Intervention、应用部署边界与完整前端仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-20）：本文描述目标架构，并明确 develop 上已经验收的边界。H1 的迁移/UTC/备份、H2 的事务/幂等/outbox、H3 的耐久 Runtime/Queue/child 与 H4 的 Evidence/Competency 事实层已完成；累计关闭 50 个缺陷 ID，矩阵剩余 37 个 open ID，下一门禁为 H5，M15–M20 继续冻结。Context/Memory、Intervention、应用部署边界与完整前端仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
 
 阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断全部门禁已经满足。H0 建立的失败基线会在对应门禁修复后删除 xfail；当前边界为：
 
 - 事务与副作用：H2-TXN-001–009 已关闭；统一 UoW、physical outer transaction、短 CAS、request digest 和 outbox/receipt 已验收。
 - Runtime：H3-RUN-001–011 已关闭；主/子 Run 统一使用版本化 checkpoint、lease/version fence、审批事实、耐久 retry/预算和原子终态/Queue/父投影。
-- Evidence / Competency：H1-TIME-001/002 已关闭；H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002 仍待修复。
+- Evidence / Competency：H1-TIME-001/002 与 H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002 已关闭；完整账本、追加式控制事实、Artifact snapshot、scope-aware graph 与严格工具 Schema 已验收。
 - Context / Intervention：H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002、H5-PRO-001–003。
 - 安全与 UI：H6-*、H7-UI-001–006。当前只允许受控 loopback Demo，不能作为无认证服务器或不可信代码沙箱。
 
@@ -72,9 +72,9 @@
 - Agent 的提醒决策，包括选择保持安静的决策
 - 用户对记忆或计划建议的确认与拒绝
 
-目标契约：V2 从这些运行事件中维护追加式 `EvidenceObservation` 账本。提交、提交验收、测验评分和带证据的任务完成写入结构化来源、评分、提示/迁移等级和幂等键；观察本身不编辑、不物理删除，修订通过后续观察的替代/失效关系表达。`study_state_get` 和计划 Context 必须读取同一个完整、确定性证据摘要。H1-TIME-001/002 已使 UTC instant 与 digest 在 SQLite 往返后稳定；旧在线投影仍会截断 500 条之后的账本，撤销后保留 active success，并重复计权（H4-EVID-001–003）。
+H4 已把 V2 Evidence 固定为追加式 fact ledger。提交、验收、测验评分和带证据的任务完成写入结构化来源、评分、提示/迁移等级和幂等键；修改、撤销与重做通过 amendment/invalidation/reinstatement 事实表达，原观察由数据库 trigger 禁止更新和删除。`study_state_get`、计划 Context、tool、HTTP API 与 CLI 读取同一个无截断投影，增量 watermark 持续和 full oracle 对比；0/1/500/501/10,000、关闭重开和备份恢复后的 digest 已一致。
 
-目标契约：每条实际证据先登记可重验的不可变 `Artifact`（规范内容指纹、耐久内容、作用域和元数据），观察只保存受限引用。H2 已为 Artifact/Observation 固定 request digest，同键异内容稳定冲突并保留原行（H4-EVID-006 提前关闭）；完整 envelope/文件 bytes 仍由 H4-EVID-005 阻塞。M14 的 `Competency` 只通过显式 key 和可审计映射关联计划、任务、资源，所有 endpoint 由后端校验 owner/plan；旧 Competency unique/edge/link 仍可破坏计划隔离（H4-COMP-001–004）。
+每条可计权证据先登记不可变 `Artifact` canonical envelope、耐久 bytes snapshot、size/hash、作用域和元数据，观察通过受约束关联表引用 Artifact 与一个或多个 Competency。task 的 `assesses` 映射在 Evidence 写入的同一 UoW 快照；SQL 在分页前过滤技能。Competency global/plan key 由 partial unique 区分，edge/link 的两端 owner/plan 从数据库解析；真实 graph mutation 原子推进 owner revision，Operation dependency 与 `RESTRICT` FK 阻止撤销静默级联。
 
 ### Conversation Window
 

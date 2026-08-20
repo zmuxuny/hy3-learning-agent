@@ -1,6 +1,6 @@
 # 产品定义
 
-> 状态说明（2026-08-20）：本文主要定义目标产品契约。H1–H3 已完成，累计关闭 34 个缺陷 ID、剩余 53 个 open ID，下一门禁是 H4；Evidence、Context、提醒、应用部署边界和完整前端仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前只建议受控 loopback Demo。
+> 状态说明（2026-08-20）：本文主要定义目标产品契约。H1–H4 已完成，累计关闭 50 个缺陷 ID、剩余 37 个 open ID，下一门禁是 H5；Context、提醒、应用部署边界和完整前端仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前只建议受控 loopback Demo。
 
 ## 一句话描述
 
@@ -58,7 +58,7 @@ Hy3 读取经过组装的上下文并自主决策。系统再经过冷却时间�
 
 ## 自主权模型
 
-目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制。H4 的领域语义与 H6 的应用部署边界仍未满足完整目标契约。
+目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制；H4 已让 Evidence eligibility、Artifact 完整性和 Competency scope/revision/dependency 由架构层强制。H5 的 Context/Intervention 与 H6 的应用部署边界仍未满足完整目标契约。
 
 - **自动执行**：提醒、抽查、安排复习、创建通知、生成临时学习材料。
 - **自动执行且可撤销**：调整任务时间、创建补救任务、重排低风险任务。
@@ -120,7 +120,7 @@ Plan
 
 ## Harness 体验
 
-Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用户消息、后台心跳、任务事件、复习到期和邮件回复进入同一个耐久 Runtime；Agent 自主选择工具，确定性 Guard 强制权限、频率、预算和安全边界。H2 已落实 UoW、幂等 CAS 与 outbox；统一 lease/phase、终态提交和崩溃后的 finalization 仍是 H3 债务，不能以 Prompt 或正常路径替代这些后端约束。
+Harness 不是一组“按钮 + Prompt + 固定工具流”。目标架构让用户消息、后台心跳、任务事件、复习到期和邮件回复进入同一个耐久 Runtime；Agent 自主选择工具，确定性 Guard 强制权限、频率、预算和安全边界。H2 已落实 UoW、幂等 CAS 与 outbox，H3 已落实统一 lease/phase、终态提交和崩溃恢复，H4 已落实 Evidence/Competency 事实约束；这些边界都不能以 Prompt 或正常路径替代。
 
 前端以 Session 为连续对话主画布和侧栏导航单位；这些交互已有正常路径候选。唯一根 Run 与 late steer 已由 H3 作为耐久后端事实恢复；实时事实顺序、SSE 断线对账、归档焦点清理和提醒 target 仍由 H7-UI-002–005 阻塞。
 

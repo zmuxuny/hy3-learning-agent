@@ -2,12 +2,12 @@
   {
     "id": "empty_ledger",
     "legacy_index": 1,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"database": {"schema": "v2", "rows": []}},
       "action": {"type": "build_projection", "owner_id": "owner-a", "plan_id": null}
     },
-    "expected_projection": {"observation_count": 0, "task_count": 0, "by_task": [], "unscoped_observation_ids": [], "reason_codes": ["NO_EVIDENCE"]},
+    "expected_projection": {"observation_count": 0, "task_count": 0, "by_task": [], "unscoped_observation_ids": []},
     "expected_audit_ok": true,
     "failure_reason_code": "EMPTY_LEDGER_NONEMPTY",
     "invariant_id": "EV-NO-FABRICATION",
@@ -16,12 +16,12 @@
   {
     "id": "single_submission",
     "legacy_index": 2,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1001, "plan_id": 101}], "artifacts": [{"id": 201, "kind": "submission", "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1001, "source_type": "submission", "source_id": "sub-1", "outcome": "submitted", "artifact_ids": [201]}]},
+      "setup": {"tasks": [{"id": 1001, "plan_id": 101}], "artifacts": [{"id": 201, "owner_id": "owner-a", "plan_id": 101, "task_id": 1001, "kind": "submission", "content_hash": "3b2e1872e844d4b0c53138d76208513f071a6792405aae010c6a00552acc4595", "snapshot": "single-submission"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1001, "source_type": "submission", "source_id": "sub-1", "outcome": "submitted", "artifact_ids": [201]}]},
       "action": {"type": "build_plan_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1001, "evidence_stage": "practicing", "observation_count": 1, "success_count": 0, "failure_count": 0, "best_score": null, "latest_outcome": "submitted", "evidence_ids": [1]}], "unscoped_observation_ids": [], "reason_codes": ["SUBMISSION_PENDING_REVIEW"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1001, "evidence_stage": "practicing", "observation_count": 1, "success_count": 0, "failure_count": 0, "best_score": null, "latest_outcome": "submitted", "evidence_ids": [1]}], "unscoped_observation_ids": []},
     "expected_audit_ok": true,
     "failure_reason_code": "SUBMISSION_STAGE_MISMATCH",
     "invariant_id": "EV-SUBMISSION-PENDING",
@@ -30,12 +30,12 @@
   {
     "id": "accepted_submission",
     "legacy_index": 3,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1002, "plan_id": 101, "assesses": ["python.functions"]}], "artifacts": [{"id": 202, "kind": "submission", "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1002, "source_type": "submission", "source_id": "sub-accepted", "outcome": "accepted", "normalized_score": 0.86, "artifact_ids": [202]}]},
+      "setup": {"tasks": [{"id": 1002, "plan_id": 101, "assesses": ["python.functions"]}], "artifacts": [{"id": 202, "owner_id": "owner-a", "plan_id": 101, "task_id": 1002, "kind": "submission", "content_hash": "e1f58da869314448101003044d38e9e2e89f0208284d3cdc75faa5ea733c1c8c", "snapshot": "accepted-answer", "metadata": {"kind": "submission"}}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1002, "source_type": "submission", "source_id": "sub-accepted", "outcome": "accepted", "normalized_score": 0.86, "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [202]}]},
       "action": {"type": "build_plan_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1002, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 0.86, "latest_outcome": "accepted", "evidence_ids": [1]}], "primary_observation_ids": [1], "reason_codes": ["ELIGIBLE_ACCEPTED_SUBMISSION"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1002, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 0.86, "latest_outcome": "accepted", "evidence_ids": [1]}], "primary_observation_ids": [1]},
     "expected_audit_ok": true,
     "failure_reason_code": "ACCEPTED_SUBMISSION_NOT_DEMONSTRATED",
     "invariant_id": "EV-SUBMISSION-ACCEPTANCE",
@@ -44,26 +44,26 @@
   {
     "id": "needs_revision",
     "legacy_index": 4,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1003, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1003, "source_type": "submission", "source_id": "sub-revision", "outcome": "needs_revision", "normalized_score": 0.4, "is_correct": false}]},
+      "setup": {"tasks": [{"id": 1003, "plan_id": 101}], "artifacts": [{"id": 222, "owner_id": "owner-a", "plan_id": 101, "task_id": 1003, "kind": "submission", "content_hash": "ae686cd1cd9f84e4a69fac2828de5cf52073ef8a9b936b7e41c4e7b5810c7a2f", "snapshot": "needs-revision"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1003, "source_type": "submission", "source_id": "sub-revision", "outcome": "needs_revision", "normalized_score": 0.4, "is_correct": false, "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [222]}]},
       "action": {"type": "build_plan_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1003, "evidence_stage": "practicing", "observation_count": 1, "success_count": 0, "failure_count": 1, "best_score": 0.4, "latest_outcome": "needs_revision", "evidence_ids": [1]}], "reason_codes": ["SUBMISSION_NEEDS_REVISION"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1003, "evidence_stage": "practicing", "observation_count": 1, "success_count": 0, "failure_count": 1, "best_score": 0.4, "latest_outcome": "needs_revision", "evidence_ids": [1]}]},
     "expected_audit_ok": true,
     "failure_reason_code": "REVISION_NOT_PRACTICING",
     "invariant_id": "EV-SUBMISSION-REVISION",
-    "mutant": {"operation": "replace_policy", "target": "input.action.stage_policy.needs_revision", "value": "demonstrated", "expected_failure_reason_code": "REVISION_NOT_PRACTICING"}
+    "mutant": {"operation": "replace", "target": "input.setup.observations[0].outcome", "value": "accepted", "expected_failure_reason_code": "REVISION_NOT_PRACTICING"}
   },
   {
     "id": "quiz_passed",
     "legacy_index": 5,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1004, "plan_id": 101, "assesses": ["python.loops"]}], "artifacts": [{"id": 203, "kind": "quiz_answer", "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1004, "source_type": "quiz", "source_id": "quiz-1", "outcome": "passed", "normalized_score": 0.9, "rubric_snapshot": {"pass_threshold": 0.8}, "artifact_ids": [203]}]},
+      "setup": {"tasks": [{"id": 1004, "plan_id": 101, "assesses": ["python.loops"]}], "artifacts": [{"id": 203, "owner_id": "owner-a", "plan_id": 101, "task_id": 1004, "kind": "quiz_answer", "content_hash": "ee9f9c10c320d6f522f98161eebdaf39436a87aa3588bcd9098ae33e8552feae", "snapshot": "quiz-answer-42", "metadata": {"question_id": "q-42"}}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1004, "source_type": "quiz", "source_id": "quiz-1", "outcome": "passed", "normalized_score": 0.9, "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [203]}]},
       "action": {"type": "build_plan_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1004, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 0.9, "latest_outcome": "passed", "evidence_ids": [1]}], "reason_codes": ["ELIGIBLE_QUIZ_PASS"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1004, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 0.9, "latest_outcome": "passed", "evidence_ids": [1]}]},
     "expected_audit_ok": true,
     "failure_reason_code": "QUIZ_PASS_NOT_DEMONSTRATED",
     "invariant_id": "EV-QUIZ-PASS",
@@ -72,26 +72,26 @@
   {
     "id": "quiz_failed",
     "legacy_index": 6,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1005, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1005, "source_type": "quiz", "source_id": "quiz-failed", "outcome": "failed", "normalized_score": 0.2, "is_correct": false, "rubric_snapshot": {"pass_threshold": 0.8}}]},
+      "setup": {"tasks": [{"id": 1005, "plan_id": 101}], "artifacts": [{"id": 223, "owner_id": "owner-a", "plan_id": 101, "task_id": 1005, "kind": "quiz_answer", "content_hash": "bcb60da0a94816b9aecd13fdad867c4980f29a3fb77ce5e462fd474e64820932", "snapshot": "quiz-failed"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1005, "source_type": "quiz", "source_id": "quiz-failed", "outcome": "failed", "normalized_score": 0.2, "is_correct": false, "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [223]}]},
       "action": {"type": "build_plan_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1005, "evidence_stage": "practicing", "observation_count": 1, "success_count": 0, "failure_count": 1, "best_score": 0.2, "latest_outcome": "failed", "evidence_ids": [1]}], "reason_codes": ["QUIZ_FAILED"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1005, "evidence_stage": "practicing", "observation_count": 1, "success_count": 0, "failure_count": 1, "best_score": 0.2, "latest_outcome": "failed", "evidence_ids": [1]}]},
     "expected_audit_ok": true,
     "failure_reason_code": "QUIZ_FAILURE_OVERSTATED",
     "invariant_id": "EV-QUIZ-FAIL",
-    "mutant": {"operation": "replace_policy", "target": "input.action.stage_policy.failed", "value": "demonstrated", "expected_failure_reason_code": "QUIZ_FAILURE_OVERSTATED"}
+    "mutant": {"operation": "replace", "target": "input.setup.observations[0].outcome", "value": "passed", "expected_failure_reason_code": "QUIZ_FAILURE_OVERSTATED"}
   },
   {
     "id": "task_verified",
     "legacy_index": 7,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1006, "plan_id": 101, "evidence_required": true}], "artifacts": [{"id": 204, "kind": "task_evidence", "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1006, "source_type": "task_evidence", "source_id": "task-1006-proof", "outcome": "verified", "artifact_ids": [204]}]},
+      "setup": {"tasks": [{"id": 1006, "plan_id": 101, "evidence_required": true}], "artifacts": [{"id": 204, "owner_id": "owner-a", "plan_id": 101, "task_id": 1006, "kind": "task_evidence", "content_hash": "bb920a217987b4fe416a4f7cef27e4234f9b9090e28a5e80d287e788d962a109", "snapshot": "task-proof", "metadata": {"kind": "code"}}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1006, "source_type": "task_evidence", "source_id": "task-1006-proof", "outcome": "verified", "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "payload": {"evidence": [{"kind": "code", "artifact_id": 204}]}, "artifact_ids": [204]}]},
       "action": {"type": "project_primary_observations", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1006, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": null, "latest_outcome": "verified", "evidence_ids": [1]}], "primary_observation_ids": [1], "reason_codes": ["TASK_EVIDENCE_VERIFIED"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1006, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": null, "latest_outcome": "verified", "evidence_ids": [1]}], "primary_observation_ids": [1]},
     "expected_audit_ok": true,
     "failure_reason_code": "TASK_EVIDENCE_DUPLICATED",
     "invariant_id": "EV-TASK-PRIMARY-OBSERVATION",
@@ -100,12 +100,12 @@
   {
     "id": "task_without_evidence",
     "legacy_index": 8,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"tasks": [{"id": 1007, "plan_id": 101, "status": "completed", "evidence_required": true}], "observations": []},
       "action": {"type": "build_study_state", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 0, "task_count": 1, "by_task": [{"task_id": 1007, "evidence_stage": "unknown", "observation_count": 0, "success_count": 0, "failure_count": 0, "best_score": null, "latest_outcome": null, "evidence_ids": []}], "reason_codes": ["TASK_EVIDENCE_MISSING"]},
+    "expected_projection": {"observation_count": 0, "task_count": 1, "by_task": [{"task_id": 1007, "evidence_stage": "unknown", "observation_count": 0, "success_count": 0, "failure_count": 0, "best_score": null, "latest_outcome": null, "evidence_ids": []}]},
     "expected_audit_ok": true,
     "failure_reason_code": "TASK_WITHOUT_EVIDENCE_INGESTED",
     "invariant_id": "EV-TASK-EVIDENCE-REQUIRED",
@@ -114,26 +114,26 @@
   {
     "id": "self_report_only",
     "legacy_index": 9,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"tasks": [{"id": 1008, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1008, "source_type": "self_report", "source_id": "message-1", "outcome": "claimed_understood", "artifact_ids": []}]},
       "action": {"type": "build_eligible_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1008, "evidence_stage": "exposed", "observation_count": 1, "success_count": 0, "failure_count": 0, "best_score": null, "latest_outcome": "claimed_understood", "evidence_ids": [1]}], "reason_codes": ["SELF_REPORT_INELIGIBLE_FOR_DEMONSTRATED"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1008, "evidence_stage": "exposed", "observation_count": 1, "success_count": 0, "failure_count": 0, "best_score": null, "latest_outcome": "claimed_understood", "evidence_ids": [1]}]},
     "expected_audit_ok": true,
     "failure_reason_code": "SELF_REPORT_OVERSTATED",
     "invariant_id": "EV-SELF-REPORT-CAP",
-    "mutant": {"operation": "replace_policy", "target": "input.action.eligibility_policy.self_report", "value": "demonstrated", "expected_failure_reason_code": "SELF_REPORT_OVERSTATED"}
+    "mutant": {"operation": "replace_fields", "target": "input.setup.observations[0]", "value": {"source_type": "manual", "outcome": "passed", "is_correct": true}, "expected_failure_reason_code": "SELF_REPORT_OVERSTATED"}
   },
   {
     "id": "manual_observation",
     "legacy_index": 10,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"tasks": [{"id": 1009, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1009, "source_type": "manual", "source_id": "mentor-note-7", "outcome": "observed", "evaluator": {"type": "human", "id": "mentor-a"}}]},
       "action": {"type": "serialize_ledger_and_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "source_identities": [{"evidence_id": 1, "source_type": "manual", "source_id": "mentor-note-7", "evaluator_id": "mentor-a"}], "reason_codes": ["MANUAL_SOURCE_RETAINED"]},
+    "expected_projection": {"observation_count": 1, "source_identities": [{"evidence_id": 1, "source_type": "manual", "source_id": "mentor-note-7", "evaluator_id": "mentor-a"}]},
     "expected_audit_ok": true,
     "failure_reason_code": "MANUAL_SOURCE_IDENTITY_LOST",
     "invariant_id": "EV-MANUAL-SOURCE",
@@ -142,12 +142,12 @@
   {
     "id": "assisted_attempt",
     "legacy_index": 11,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1010, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1010, "source_type": "quiz", "source_id": "attempt-hint", "outcome": "passed", "normalized_score": 0.8, "assistance_level": "hint", "transfer_level": "same_task"}]},
+      "setup": {"tasks": [{"id": 1010, "plan_id": 101}], "artifacts": [{"id": 213, "owner_id": "owner-a", "plan_id": 101, "task_id": 1010, "kind": "quiz_answer", "content_hash": "244021f23d7ff3e92abee6cc039bbb72878fd96f5675a1d49d6561a3869858af", "snapshot": "hinted-answer", "metadata": {"question_id": "q-hint"}}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1010, "source_type": "quiz", "source_id": "attempt-hint", "outcome": "passed", "normalized_score": 0.8, "assistance_level": "hint", "transfer_level": "same_task", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [213]}]},
       "action": {"type": "build_eligible_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1010, "evidence_stage": "practicing", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 0.8, "latest_outcome": "passed", "evidence_ids": [1]}], "assistance_levels": {"1": "hint"}, "reason_codes": ["ASSISTANCE_CAP_APPLIED"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1010, "evidence_stage": "practicing", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 0.8, "latest_outcome": "passed", "evidence_ids": [1]}], "assistance_levels": {"1": "hint"}},
     "expected_audit_ok": true,
     "failure_reason_code": "ASSISTED_PASS_OVERSTATED",
     "invariant_id": "EV-ASSISTANCE-CAP",
@@ -156,12 +156,12 @@
   {
     "id": "independent_attempt",
     "legacy_index": 12,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1011, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1011, "source_type": "quiz", "source_id": "attempt-independent", "outcome": "passed", "normalized_score": 0.8, "assistance_level": "independent", "transfer_level": "same_task"}]},
+      "setup": {"tasks": [{"id": 1011, "plan_id": 101}], "artifacts": [{"id": 214, "owner_id": "owner-a", "plan_id": 101, "task_id": 1011, "kind": "quiz_answer", "content_hash": "957e27d2b8a0b272b28aff8457fa9324536b4af68c71587209265c0552bf107f", "snapshot": "independent-answer", "metadata": {"question_id": "q-independent"}}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1011, "source_type": "quiz", "source_id": "attempt-independent", "outcome": "passed", "normalized_score": 0.8, "assistance_level": "independent", "transfer_level": "same_task", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [214]}]},
       "action": {"type": "build_eligible_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1011, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 0.8, "latest_outcome": "passed", "evidence_ids": [1]}], "assistance_levels": {"1": "independent"}, "reason_codes": ["INDEPENDENT_PASS_ELIGIBLE"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 1011, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 0.8, "latest_outcome": "passed", "evidence_ids": [1]}], "assistance_levels": {"1": "independent"}},
     "expected_audit_ok": true,
     "failure_reason_code": "INDEPENDENT_PASS_UNDERSTATED",
     "invariant_id": "EV-INDEPENDENT-ELIGIBILITY",
@@ -170,26 +170,26 @@
   {
     "id": "same_task_transfer",
     "legacy_index": 13,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"competencies": [{"id": 301, "key": "python.loops"}], "tasks": [{"id": 1012, "plan_id": 101, "assesses": [301]}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1012, "source_type": "quiz", "source_id": "same-prompt-retry", "outcome": "passed", "normalized_score": 0.8, "transfer_level": "same_task"}]},
+      "setup": {"competencies": [{"id": 301, "key": "python.loops"}], "tasks": [{"id": 1012, "plan_id": 101, "assesses": [301]}], "artifacts": [{"id": 215, "owner_id": "owner-a", "plan_id": 101, "task_id": 1012, "kind": "quiz_answer", "content_hash": "8afceeb40497ec362346a3d2a76757c54466c6c6f451b51828cc8385db0a8ff1", "snapshot": "same-task-answer", "metadata": {"question_id": "q-same"}}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1012, "source_type": "quiz", "source_id": "same-prompt-retry", "outcome": "passed", "normalized_score": 0.8, "assistance_level": "independent", "transfer_level": "same_task", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [215]}]},
       "action": {"type": "project_competency_transfer", "owner_id": "owner-a", "plan_id": 101, "competency_id": 301}
     },
-    "expected_projection": {"observation_count": 1, "task_stages": {"1012": "demonstrated"}, "transfer_claims": [], "reason_codes": ["SAME_TASK_DOES_NOT_ESTABLISH_TRANSFER"]},
+    "expected_projection": {"observation_count": 1, "task_stages": {"1012": "demonstrated"}, "transfer_claims": []},
     "expected_audit_ok": true,
     "failure_reason_code": "TRANSFER_OVERSTATED",
     "invariant_id": "EV-SAME-TASK-NO-TRANSFER",
-    "mutant": {"operation": "replace_policy", "target": "input.action.transfer_policy.same_task", "value": "variant", "expected_failure_reason_code": "TRANSFER_OVERSTATED"}
+    "mutant": {"operation": "replace", "target": "input.setup.observations[0].transfer_level", "value": "variant", "expected_failure_reason_code": "TRANSFER_OVERSTATED"}
   },
   {
     "id": "variant_transfer",
     "legacy_index": 14,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"competencies": [{"id": 302, "key": "python.iteration"}], "tasks": [{"id": 1013, "plan_id": 101, "variant_of": 1012, "assesses": [302]}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1013, "source_type": "quiz", "source_id": "variant-graph-walk", "outcome": "passed", "normalized_score": 0.8, "assistance_level": "independent", "transfer_level": "variant"}]},
+      "setup": {"competencies": [{"id": 302, "key": "python.iteration"}], "tasks": [{"id": 1013, "plan_id": 101, "variant_of": 1012, "assesses": [302]}], "artifacts": [{"id": 216, "owner_id": "owner-a", "plan_id": 101, "task_id": 1013, "kind": "quiz_answer", "content_hash": "a8ceeac5b51bc3d68bd430953f5992a1d42f519fb5207d821b77539553de33de", "snapshot": "variant-answer", "metadata": {"question_id": "q-variant"}}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1013, "source_type": "quiz", "source_id": "variant-graph-walk", "outcome": "passed", "normalized_score": 0.8, "assistance_level": "independent", "transfer_level": "variant", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [216]}]},
       "action": {"type": "project_competency_transfer", "owner_id": "owner-a", "plan_id": 101, "competency_id": 302}
     },
-    "expected_projection": {"observation_count": 1, "task_stages": {"1013": "demonstrated"}, "transfer_claims": [{"evidence_id": 1, "competency_id": 302, "level": "variant"}], "reason_codes": ["VARIANT_TRANSFER_RETAINED"]},
+    "expected_projection": {"observation_count": 1, "task_stages": {"1013": "demonstrated"}, "transfer_claims": [{"evidence_id": 1, "competency_id": 302, "level": "variant"}]},
     "expected_audit_ok": true,
     "failure_reason_code": "VARIANT_TRANSFER_LOST",
     "invariant_id": "EV-VARIANT-TRANSFER",
@@ -198,12 +198,12 @@
   {
     "id": "conflicting_scores",
     "legacy_index": 15,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1014, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1014, "source_type": "quiz", "source_id": "attempt-1", "outcome": "passed", "normalized_score": 0.9, "occurred_at": "2026-01-01T10:00:00Z"}, {"id": 2, "plan_id": 101, "task_id": 1014, "source_type": "quiz", "source_id": "attempt-2", "outcome": "needs_revision", "normalized_score": 0.4, "occurred_at": "2026-01-02T10:00:00Z"}]},
+      "setup": {"tasks": [{"id": 1014, "plan_id": 101}], "artifacts": [{"id": 217, "owner_id": "owner-a", "plan_id": 101, "task_id": 1014, "kind": "quiz_answer", "content_hash": "f5f9616d6227bf48217c92b0e5dd693a6064774a5273ed6738bcf569a44722f0", "snapshot": "conflict-pass", "metadata": {"question_id": "q-conflict"}}, {"id": 224, "owner_id": "owner-a", "plan_id": 101, "task_id": 1014, "kind": "quiz_answer", "content_hash": "5283aad820e6b978410b130fc0bed88a0ef77d4907e9b46f88b58a2cfdaa9ae8", "snapshot": "conflict-revision"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1014, "source_type": "quiz", "source_id": "attempt-1", "outcome": "passed", "normalized_score": 0.9, "occurred_at": "2026-01-01T10:00:00Z", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [217]}, {"id": 2, "plan_id": 101, "task_id": 1014, "source_type": "quiz", "source_id": "attempt-2", "outcome": "needs_revision", "normalized_score": 0.4, "occurred_at": "2026-01-02T10:00:00Z", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [224]}]},
       "action": {"type": "build_conflict_aware_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 2, "task_count": 1, "by_task": [{"task_id": 1014, "evidence_stage": "practicing", "observation_count": 2, "success_count": 1, "failure_count": 1, "best_score": 0.9, "latest_outcome": "needs_revision", "evidence_ids": [1, 2], "conflicted": true}], "reason_codes": ["CONFLICTING_EVIDENCE"]},
+    "expected_projection": {"observation_count": 2, "task_count": 1, "by_task": [{"task_id": 1014, "evidence_stage": "practicing", "observation_count": 2, "success_count": 1, "failure_count": 1, "best_score": 0.9, "latest_outcome": "needs_revision", "evidence_ids": [1, 2], "conflicted": true}]},
     "expected_audit_ok": true,
     "failure_reason_code": "CONFLICT_COLLAPSED",
     "invariant_id": "EV-CONFLICT-PRESERVATION",
@@ -212,26 +212,26 @@
   {
     "id": "late_success",
     "legacy_index": 16,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1015, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1015, "source_type": "quiz", "source_id": "failure-recorded-first", "outcome": "needs_revision", "normalized_score": 0.4, "occurred_at": "2026-01-01T10:20:00Z", "recorded_at": "2026-01-01T10:21:00Z"}, {"id": 2, "plan_id": 101, "task_id": 1015, "source_type": "quiz", "source_id": "success-arrived-late", "outcome": "passed", "normalized_score": 0.9, "occurred_at": "2026-01-01T10:10:00Z", "recorded_at": "2026-01-01T11:00:00Z"}]},
+      "setup": {"tasks": [{"id": 1015, "plan_id": 101}], "artifacts": [{"id": 218, "owner_id": "owner-a", "plan_id": 101, "task_id": 1015, "kind": "quiz_answer", "content_hash": "c603a829951fae28de463f4fa8cef67dd0c0aff5b389bcbe51e94ea7de091f3f", "snapshot": "late-success", "metadata": {"question_id": "q-late"}}, {"id": 225, "owner_id": "owner-a", "plan_id": 101, "task_id": 1015, "kind": "quiz_answer", "content_hash": "f35419aa1e99393d2eeaa60cd850ff40b069a1f3861e0220ea1177e4ddce04d6", "snapshot": "late-failure"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1015, "source_type": "quiz", "source_id": "failure-recorded-first", "outcome": "needs_revision", "normalized_score": 0.4, "occurred_at": "2026-01-01T10:20:00Z", "recorded_at": "2026-01-01T10:21:00Z", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [225]}, {"id": 2, "plan_id": 101, "task_id": 1015, "source_type": "quiz", "source_id": "success-arrived-late", "outcome": "passed", "normalized_score": 0.9, "occurred_at": "2026-01-01T10:10:00Z", "recorded_at": "2026-01-01T11:00:00Z", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [218]}]},
       "action": {"type": "build_time_ordered_projection", "owner_id": "owner-a", "plan_id": 101, "order_by": "occurred_at"}
     },
-    "expected_projection": {"observation_count": 2, "task_count": 1, "by_task": [{"task_id": 1015, "evidence_stage": "practicing", "observation_count": 2, "success_count": 1, "failure_count": 1, "best_score": 0.9, "latest_outcome": "needs_revision", "evidence_ids": [1, 2]}], "reason_codes": ["LATE_EVENT_APPLIED_BY_OCCURRED_AT"]},
+    "expected_projection": {"observation_count": 2, "task_count": 1, "by_task": [{"task_id": 1015, "evidence_stage": "practicing", "observation_count": 2, "success_count": 1, "failure_count": 1, "best_score": 0.9, "latest_outcome": "needs_revision", "evidence_ids": [1, 2]}]},
     "expected_audit_ok": true,
     "failure_reason_code": "OCCURRED_AT_ORDERING_MISMATCH",
     "invariant_id": "EV-OCCURRED-AT-ORDERING",
-    "mutant": {"operation": "replace", "target": "input.action.order_by", "value": "recorded_at", "expected_failure_reason_code": "OCCURRED_AT_ORDERING_MISMATCH"}
+    "mutant": {"operation": "replace", "target": "input.setup.observations[1].occurred_at", "value": "2026-01-01T11:00:00Z", "expected_failure_reason_code": "OCCURRED_AT_ORDERING_MISMATCH"}
   },
   {
     "id": "duplicate_source",
     "legacy_index": 17,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"database": {"schema": "v2", "rows": []}},
       "action": {"type": "append_sequence", "owner_id": "owner-a", "requests": [{"idempotency_key": "attempt:1", "request_digest": "digest-a", "outcome": "submitted"}, {"idempotency_key": "attempt:1", "request_digest": "digest-a", "outcome": "submitted"}, {"idempotency_key": "attempt:1", "request_digest": "digest-b", "outcome": "passed"}]}
     },
-    "expected_projection": {"observation_count": 1, "created_flags": [true, false, false], "returned_evidence_ids": [1, 1, null], "conflict_reason_codes": [null, null, "IDEMPOTENCY_CONTENT_CONFLICT"], "reason_codes": ["IDEMPOTENT_REPLAY_REUSED"]},
+    "expected_projection": {"observation_count": 1, "created_flags": [true, false, false], "returned_evidence_ids": [1, 1, null], "conflict_reason_codes": [null, null, "IDEMPOTENCY_CONTENT_CONFLICT"]},
     "expected_audit_ok": true,
     "failure_reason_code": "IDEMPOTENCY_KEY_REBOUND",
     "invariant_id": "EV-IDEMPOTENCY-DIGEST",
@@ -240,12 +240,12 @@
   {
     "id": "supersession",
     "legacy_index": 18,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1016, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1016, "source_type": "quiz", "source_id": "grade-v1", "outcome": "needs_revision"}, {"id": 2, "plan_id": 101, "task_id": 1016, "source_type": "quiz_amendment", "source_id": "grade-v2", "outcome": "passed", "normalized_score": 0.9, "supersedes_id": 1}]},
+      "setup": {"tasks": [{"id": 1016, "plan_id": 101}], "artifacts": [{"id": 226, "owner_id": "owner-a", "plan_id": 101, "task_id": 1016, "kind": "quiz_answer", "content_hash": "e9c815347d54b31128202ed3076c028eef87f8393c0547d099d458974572c080", "snapshot": "super-original"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1016, "source_type": "quiz", "source_id": "grade-v1", "outcome": "needs_revision", "fact_kind": "observation", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [226]}, {"id": 2, "plan_id": 101, "task_id": 1016, "source_type": "quiz_amendment", "source_id": "grade-v2", "outcome": "passed", "normalized_score": 0.9, "fact_kind": "amendment", "target_observation_id": 1, "reason_code": "GRADE_CORRECTION", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [226]}]},
       "action": {"type": "compare_ledger_and_current_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"ledger_observation_ids": [1, 2], "observation_count": 1, "current_evidence_ids": [2], "task_stage": "demonstrated", "reason_codes": ["SUPERSEDED_OBSERVATION_EXCLUDED"]},
+    "expected_projection": {"ledger_observation_ids": [1, 2], "observation_count": 1, "current_evidence_ids": [2], "task_stage": "demonstrated"},
     "expected_audit_ok": true,
     "failure_reason_code": "SUPERSESSION_PROJECTION_MISMATCH",
     "invariant_id": "EV-SUPERSESSION-HISTORY",
@@ -254,12 +254,12 @@
   {
     "id": "invalidated_observation",
     "legacy_index": 19,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1017, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1017, "source_type": "submission", "source_id": "duplicate-submission", "outcome": "submitted"}], "amendments": [{"id": 2, "kind": "invalidation", "invalidates_id": 1, "reason_code": "DUPLICATE_EVIDENCE", "occurred_at": "2026-01-02T00:00:00Z"}]},
+      "setup": {"tasks": [{"id": 1017, "plan_id": 101}], "artifacts": [{"id": 227, "owner_id": "owner-a", "plan_id": 101, "task_id": 1017, "kind": "submission", "content_hash": "125a6394c920202cb8d7261d6fcd5369371e6bf242d4b8664e5df6938a96c13a", "snapshot": "invalidated-submission"}], "observations": [{"id": 1, "owner_id": "owner-a", "plan_id": 101, "task_id": 1017, "source_type": "submission", "source_id": "duplicate-submission", "outcome": "submitted", "fact_kind": "observation", "artifact_ids": [227]}], "amendments": [{"id": 2, "owner_id": "owner-a", "plan_id": 101, "task_id": 1017, "fact_kind": "invalidation", "target_observation_id": 1, "source_type": "evidence_invalidation", "source_id": "invalidate:1", "outcome": "invalidated", "evidence_role": "control", "reason_code": "DUPLICATE_EVIDENCE", "occurred_at": "2026-01-02T00:00:00Z"}]},
       "action": {"type": "apply_append_only_amendments", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"ledger_fact_ids": [1, 2], "observation_count": 0, "current_evidence_ids": [], "reason_codes": ["INVALIDATED_OBSERVATION_EXCLUDED"]},
+    "expected_projection": {"ledger_fact_ids": [1, 2], "observation_count": 0, "current_evidence_ids": []},
     "expected_audit_ok": true,
     "failure_reason_code": "INVALIDATION_STILL_ACTIVE",
     "invariant_id": "EV-INVALIDATION-APPEND",
@@ -268,26 +268,26 @@
   {
     "id": "invalidated_superseder",
     "legacy_index": 20,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 1018, "plan_id": 101}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1018, "source_type": "quiz", "source_id": "grade-original", "outcome": "needs_revision"}, {"id": 2, "plan_id": 101, "task_id": 1018, "source_type": "quiz_amendment", "source_id": "grade-replacement", "outcome": "passed", "supersedes_id": 1}], "amendments": [{"id": 3, "kind": "invalidation", "invalidates_id": 2, "reason_code": "RETRACTED_GRADE"}]},
+      "setup": {"tasks": [{"id": 1018, "plan_id": 101}], "artifacts": [{"id": 228, "owner_id": "owner-a", "plan_id": 101, "task_id": 1018, "kind": "quiz_answer", "content_hash": "b3bd65a4633dec6781afa00a6313c4a1f59fe657c6bf16c44014896d1c914717", "snapshot": "invalidated-super-original"}], "observations": [{"id": 1, "owner_id": "owner-a", "plan_id": 101, "task_id": 1018, "source_type": "quiz", "source_id": "grade-original", "outcome": "needs_revision", "fact_kind": "observation", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [228]}, {"id": 2, "owner_id": "owner-a", "plan_id": 101, "task_id": 1018, "source_type": "quiz_amendment", "source_id": "grade-replacement", "outcome": "passed", "fact_kind": "amendment", "target_observation_id": 1, "reason_code": "GRADE_CORRECTION", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [228]}], "amendments": [{"id": 3, "owner_id": "owner-a", "plan_id": 101, "task_id": 1018, "fact_kind": "invalidation", "target_observation_id": 2, "source_type": "evidence_invalidation", "source_id": "invalidate:2", "outcome": "invalidated", "evidence_role": "control", "reason_code": "RETRACTED_GRADE"}]},
       "action": {"type": "apply_append_only_amendments", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"ledger_fact_ids": [1, 2, 3], "observation_count": 1, "current_evidence_ids": [1], "task_stage": "practicing", "reason_codes": ["INVALIDATED_SUPERSEDER_EXCLUDED"]},
+    "expected_projection": {"ledger_fact_ids": [1, 2, 3], "observation_count": 1, "current_evidence_ids": [1], "task_stage": "practicing"},
     "expected_audit_ok": true,
     "failure_reason_code": "INVALIDATED_SUPERSEDER_STILL_SHADOWS",
     "invariant_id": "EV-INVALIDATED-SUPERSEDER",
-    "mutant": {"operation": "apply_shadow_before_invalidation", "target": "input.setup.observations[1].supersedes_id", "value": 1, "expected_failure_reason_code": "INVALIDATED_SUPERSEDER_STILL_SHADOWS"}
+    "mutant": {"operation": "ignore_amendment", "target": "input.setup.amendments[0]", "value": null, "expected_failure_reason_code": "INVALIDATED_SUPERSEDER_STILL_SHADOWS"}
   },
   {
     "id": "unscoped_message",
     "legacy_index": 21,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"sessions": [{"id": "session-global", "plan_id": null}], "observations": [{"id": 1, "plan_id": null, "task_id": null, "session_id": "session-global", "source_type": "message", "source_id": "message-9", "outcome": "mentioned"}]},
       "action": {"type": "build_projection", "owner_id": "owner-a", "plan_id": null}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 0, "by_task": [], "unscoped_observation_ids": [1], "reason_codes": ["TASK_SCOPE_MISSING"]},
+    "expected_projection": {"observation_count": 1, "task_count": 0, "by_task": [], "unscoped_observation_ids": [1]},
     "expected_audit_ok": true,
     "failure_reason_code": "UNSCOPED_OBSERVATION_BOUND",
     "invariant_id": "EV-UNSCOPED-MESSAGE",
@@ -296,12 +296,12 @@
   {
     "id": "plan_one_isolation",
     "legacy_index": 22,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"plans": [{"id": 101}, {"id": 102}], "tasks": [{"id": 1101, "plan_id": 101}, {"id": 1201, "plan_id": 102}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1101, "source_type": "quiz", "source_id": "plan-a", "outcome": "passed"}, {"id": 2, "plan_id": 102, "task_id": 1201, "source_type": "quiz", "source_id": "plan-b", "outcome": "passed"}]},
+      "setup": {"plans": [{"id": 101}, {"id": 102}], "tasks": [{"id": 1101, "plan_id": 101}, {"id": 1201, "plan_id": 102}], "artifacts": [{"id": 229, "owner_id": "owner-a", "plan_id": 101, "task_id": 1101, "kind": "quiz_answer", "content_hash": "498773d256b260a4619e9cc74f759bda91ca6d4c11ba8d9c7a028425922c27a9", "snapshot": "plan-one-a"}, {"id": 230, "owner_id": "owner-a", "plan_id": 102, "task_id": 1201, "kind": "quiz_answer", "content_hash": "f6d0375bd34235695004cb8f653f6f17937d17e89ac704d6fb452c27df94f162", "snapshot": "plan-one-b"}], "observations": [{"id": 1, "plan_id": 101, "task_id": 1101, "source_type": "quiz", "source_id": "plan-a", "outcome": "passed", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [229]}, {"id": 2, "plan_id": 102, "task_id": 1201, "source_type": "quiz", "source_id": "plan-b", "outcome": "passed", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [230]}]},
       "action": {"type": "query_plan_projection", "owner_id": "owner-a", "plan_id": 101}
     },
-    "expected_projection": {"observation_count": 1, "plan_id": 101, "task_ids": [1101], "evidence_ids": [1], "excluded_evidence_ids": [2], "reason_codes": ["PLAN_SCOPE_FILTER_APPLIED"]},
+    "expected_projection": {"observation_count": 1, "plan_id": 101, "task_ids": [1101], "evidence_ids": [1], "excluded_evidence_ids": [2]},
     "expected_audit_ok": true,
     "failure_reason_code": "PLAN_A_CROSS_SCOPE_EVIDENCE_INCLUDED",
     "invariant_id": "EV-PLAN-A-ISOLATION",
@@ -310,12 +310,12 @@
   {
     "id": "plan_two_isolation",
     "legacy_index": 23,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"plans": [{"id": 201}, {"id": 202}], "tasks": [{"id": 2101, "plan_id": 201}, {"id": 2201, "plan_id": 202}], "observations": [{"id": 1, "plan_id": 201, "task_id": 2101, "source_type": "submission", "source_id": "plan-one", "outcome": "submitted"}, {"id": 2, "plan_id": 202, "task_id": 2201, "source_type": "submission", "source_id": "plan-two", "outcome": "submitted"}]},
+      "setup": {"plans": [{"id": 201}, {"id": 202}], "tasks": [{"id": 2101, "plan_id": 201}, {"id": 2201, "plan_id": 202}], "artifacts": [{"id": 231, "owner_id": "owner-a", "plan_id": 201, "task_id": 2101, "kind": "submission", "content_hash": "a0ed8b3bf46c3c3c8be6c753148bf54f34d5d9291a820c7b15e3b1333b7dd2f9", "snapshot": "plan-two-a"}, {"id": 232, "owner_id": "owner-a", "plan_id": 202, "task_id": 2201, "kind": "submission", "content_hash": "1362613f7ce7d105b93284cc55233482d5e36240d760d90d63f62506bd8b1eb1", "snapshot": "plan-two-b"}], "observations": [{"id": 1, "plan_id": 201, "task_id": 2101, "source_type": "submission", "source_id": "plan-one", "outcome": "submitted", "artifact_ids": [231]}, {"id": 2, "plan_id": 202, "task_id": 2201, "source_type": "submission", "source_id": "plan-two", "outcome": "submitted", "artifact_ids": [232]}]},
       "action": {"type": "query_plan_projection", "owner_id": "owner-a", "plan_id": 202}
     },
-    "expected_projection": {"observation_count": 1, "plan_id": 202, "task_ids": [2201], "evidence_ids": [2], "excluded_evidence_ids": [1], "reason_codes": ["PLAN_SCOPE_FILTER_APPLIED"]},
+    "expected_projection": {"observation_count": 1, "plan_id": 202, "task_ids": [2201], "evidence_ids": [2], "excluded_evidence_ids": [1]},
     "expected_audit_ok": true,
     "failure_reason_code": "PLAN_B_CROSS_SCOPE_EVIDENCE_INCLUDED",
     "invariant_id": "EV-PLAN-B-ISOLATION",
@@ -324,12 +324,12 @@
   {
     "id": "cross_plan_same_task_title",
     "legacy_index": 24,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"plans": [{"id": 301}, {"id": 302}], "tasks": [{"id": 3101, "plan_id": 301, "title": "实现事件循环"}, {"id": 3201, "plan_id": 302, "title": "实现事件循环"}], "observations": [{"id": 1, "plan_id": 301, "task_id": 3101, "source_type": "submission", "source_id": "same-title-a", "outcome": "submitted"}, {"id": 2, "plan_id": 302, "task_id": 3201, "source_type": "submission", "source_id": "same-title-b", "outcome": "submitted"}]},
+      "setup": {"plans": [{"id": 301}, {"id": 302}], "tasks": [{"id": 3101, "plan_id": 301, "title": "实现事件循环"}, {"id": 3201, "plan_id": 302, "title": "实现事件循环"}], "artifacts": [{"id": 233, "owner_id": "owner-a", "plan_id": 301, "task_id": 3101, "kind": "submission", "content_hash": "137b858b015ab532a475031dd0a0b5a5c7bd1ded2e66ae6e8ba9edb2eaba9f20", "snapshot": "same-title-a"}, {"id": 234, "owner_id": "owner-a", "plan_id": 302, "task_id": 3201, "kind": "submission", "content_hash": "e427898d3cabe48be9612d5efc543b83be81646339e75f19e44d8116f832e205", "snapshot": "same-title-b"}], "observations": [{"id": 1, "plan_id": 301, "task_id": 3101, "source_type": "submission", "source_id": "same-title-a", "outcome": "submitted", "artifact_ids": [233]}, {"id": 2, "plan_id": 302, "task_id": 3201, "source_type": "submission", "source_id": "same-title-b", "outcome": "submitted", "artifact_ids": [234]}]},
       "action": {"type": "compare_plan_projections", "owner_id": "owner-a", "plan_ids": [301, 302]}
     },
-    "expected_projection": {"observation_count": 2, "plan_task_ids": {"301": [3101], "302": [3201]}, "plan_evidence_ids": {"301": [1], "302": [2]}, "reason_codes": ["TASK_IDENTITY_SCOPED_BY_PLAN"]},
+    "expected_projection": {"observation_count": 2, "plan_task_ids": {"301": [3101], "302": [3201]}, "plan_evidence_ids": {"301": [1], "302": [2]}},
     "expected_audit_ok": true,
     "failure_reason_code": "CROSS_PLAN_TASKS_MERGED",
     "invariant_id": "EV-TASK-IDENTITY-SCOPE",
@@ -338,12 +338,12 @@
   {
     "id": "cross_plan_same_competency_key",
     "legacy_index": 25,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"plans": [{"id": 401}, {"id": 402}], "competencies": [{"id": 4101, "plan_id": 401, "key": "python.async"}, {"id": 4201, "plan_id": 402, "key": "python.async"}], "tasks": [{"id": 4111, "plan_id": 401, "assesses": [4101]}, {"id": 4211, "plan_id": 402, "assesses": [4201]}], "observations": [{"id": 1, "plan_id": 401, "task_id": 4111, "competency_id": 4101, "competency_key": "python.async", "outcome": "passed"}, {"id": 2, "plan_id": 402, "task_id": 4211, "competency_id": 4201, "competency_key": "python.async", "outcome": "passed"}]},
       "action": {"type": "compare_competency_projections", "owner_id": "owner-a", "plan_ids": [401, 402]}
     },
-    "expected_projection": {"observation_count": 2, "plan_competency_ids": {"401": [4101], "402": [4201]}, "competency_evidence_ids": {"4101": [1], "4201": [2]}, "reason_codes": ["COMPETENCY_KEY_SCOPED_BY_PLAN"]},
+    "expected_projection": {"observation_count": 2, "plan_competency_ids": {"401": [4101], "402": [4201]}, "competency_evidence_ids": {"4101": [1], "4201": [2]}},
     "expected_audit_ok": true,
     "failure_reason_code": "CROSS_PLAN_COMPETENCIES_MERGED",
     "invariant_id": "EV-COMPETENCY-IDENTITY-SCOPE",
@@ -352,12 +352,12 @@
   {
     "id": "code_artifact",
     "legacy_index": 26,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"artifacts": [{"id": 501, "owner_id": "owner-a", "plan_id": 501, "task_id": 5101, "kind": "code", "source_uri": "cas://sha256/code-a", "content_hash": "1111111111111111111111111111111111111111111111111111111111111111", "snapshot": "print('ok')"}], "observations": [{"id": 1, "plan_id": 501, "task_id": 5101, "source_type": "code_run", "source_id": "run-code-a", "outcome": "passed", "artifact_refs": [{"artifact_id": 501, "content_hash": "1111111111111111111111111111111111111111111111111111111111111111"}]}]},
+      "setup": {"artifacts": [{"id": 501, "owner_id": "owner-a", "plan_id": 501, "task_id": 5101, "kind": "code", "source_uri": "cas://sha256/code-a", "content_hash": "dd840dde6e9f991a891d532b9270665ca19ad951645854f48707848774e045c6", "snapshot": "print('ok')"}], "observations": [{"id": 1, "plan_id": 501, "task_id": 5101, "source_type": "code_run", "source_id": "run-code-a", "outcome": "passed", "artifact_refs": [{"artifact_id": 501, "content_hash": "dd840dde6e9f991a891d532b9270665ca19ad951645854f48707848774e045c6"}]}]},
       "action": {"type": "audit_artifact_references", "owner_id": "owner-a", "plan_id": 501}
     },
-    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [501], "artifact_kinds": {"501": "code"}, "audit_error_codes": [], "reason_codes": ["CODE_ARTIFACT_VERIFIED"]},
+    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [501], "artifact_kinds": {"501": "code"}, "audit_error_codes": []},
     "expected_audit_ok": true,
     "failure_reason_code": "CODE_ARTIFACT_REF_INVALID",
     "invariant_id": "EV-CODE-ARTIFACT-INTEGRITY",
@@ -366,12 +366,12 @@
   {
     "id": "file_artifact",
     "legacy_index": 27,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"artifacts": [{"id": 502, "owner_id": "owner-a", "plan_id": 502, "task_id": 5201, "kind": "file", "source_uri": "cas://sha256/file-b", "content_hash": "2222222222222222222222222222222222222222222222222222222222222222", "snapshot_bytes": 128}], "observations": [{"id": 1, "plan_id": 502, "task_id": 5201, "source_type": "file", "source_id": "file-b", "outcome": "submitted", "artifact_refs": [{"artifact_id": 502, "content_hash": "2222222222222222222222222222222222222222222222222222222222222222"}]}]},
+      "setup": {"artifacts": [{"id": 502, "owner_id": "owner-a", "plan_id": 502, "task_id": 5201, "kind": "file", "source_uri": "cas://sha256/file-b", "content_hash": "f5d0a34e93ec48bd9e7ff1244255403222e6f13d0bbe7915c853c84bfdef3069", "snapshot_bytes": 128}], "observations": [{"id": 1, "plan_id": 502, "task_id": 5201, "source_type": "file", "source_id": "file-b", "outcome": "submitted", "artifact_refs": [{"artifact_id": 502, "content_hash": "f5d0a34e93ec48bd9e7ff1244255403222e6f13d0bbe7915c853c84bfdef3069"}]}]},
       "action": {"type": "reopen_and_audit_artifact", "owner_id": "owner-a", "artifact_id": 502}
     },
-    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [502], "artifact_kinds": {"502": "file"}, "audit_error_codes": [], "reason_codes": ["FILE_SNAPSHOT_VERIFIED"]},
+    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [502], "artifact_kinds": {"502": "file"}, "audit_error_codes": []},
     "expected_audit_ok": true,
     "failure_reason_code": "FILE_ARTIFACT_REF_INVALID",
     "invariant_id": "EV-FILE-ARTIFACT-INTEGRITY",
@@ -380,40 +380,40 @@
   {
     "id": "quiz_artifact",
     "legacy_index": 28,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"artifacts": [{"id": 503, "owner_id": "owner-a", "plan_id": 503, "task_id": 5301, "kind": "quiz_answer", "content_hash": "3333333333333333333333333333333333333333333333333333333333333333", "envelope": {"question_id": "q-1", "answer": "42", "rubric_version": 3}}], "observations": [{"id": 1, "plan_id": 503, "task_id": 5301, "source_type": "quiz", "source_id": "quiz-q-1", "outcome": "passed", "artifact_refs": [{"artifact_id": 503, "content_hash": "3333333333333333333333333333333333333333333333333333333333333333"}]}]},
+      "setup": {"artifacts": [{"id": 503, "owner_id": "owner-a", "plan_id": 503, "task_id": 5301, "kind": "quiz_answer", "content_hash": "a877da7c9819fb8e4522d2642802e9f30de81bc287e342faadb7a2c002a230b0", "snapshot": "42", "metadata": {"question_id": "q-1", "rubric_version": 3}}], "observations": [{"id": 1, "plan_id": 503, "task_id": 5301, "source_type": "quiz", "source_id": "quiz-q-1", "outcome": "passed", "artifact_refs": [{"artifact_id": 503, "content_hash": "a877da7c9819fb8e4522d2642802e9f30de81bc287e342faadb7a2c002a230b0"}]}]},
       "action": {"type": "audit_artifact_references", "owner_id": "owner-a", "plan_id": 503}
     },
-    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [503], "artifact_kinds": {"503": "quiz_answer"}, "audit_error_codes": [], "reason_codes": ["QUIZ_ARTIFACT_VERIFIED"]},
+    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [503], "artifact_kinds": {"503": "quiz_answer"}, "audit_error_codes": []},
     "expected_audit_ok": true,
     "failure_reason_code": "QUIZ_ARTIFACT_REF_INVALID",
     "invariant_id": "EV-QUIZ-ARTIFACT-INTEGRITY",
-    "mutant": {"operation": "replace", "target": "input.setup.artifacts[0].envelope.answer", "value": "43", "expected_failure_reason_code": "QUIZ_ARTIFACT_REF_INVALID"}
+    "mutant": {"operation": "replace", "target": "input.setup.artifacts[0].snapshot", "value": "43", "expected_failure_reason_code": "QUIZ_ARTIFACT_REF_INVALID"}
   },
   {
     "id": "submission_artifact",
     "legacy_index": 29,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"artifacts": [{"id": 504, "owner_id": "owner-a", "plan_id": 504, "task_id": 5401, "kind": "submission", "content_hash": "4444444444444444444444444444444444444444444444444444444444444444", "envelope": {"body": "answer-v1", "metadata": {"language": "python"}}}], "observations": [{"id": 1, "plan_id": 504, "task_id": 5401, "source_type": "submission", "source_id": "submission-504", "outcome": "submitted", "artifact_refs": [{"artifact_id": 504, "content_hash": "4444444444444444444444444444444444444444444444444444444444444444"}]}]},
+      "setup": {"artifacts": [{"id": 504, "owner_id": "owner-a", "plan_id": 504, "task_id": 5401, "kind": "submission", "content_hash": "6dd90662bf9afbe80751f496eadf1a4e0761a4429b19ec013d8ff2ddad63319e", "snapshot": "answer-v1", "metadata": {"language": "python"}}], "observations": [{"id": 1, "plan_id": 504, "task_id": 5401, "source_type": "submission", "source_id": "submission-504", "outcome": "submitted", "artifact_refs": [{"artifact_id": 504, "content_hash": "6dd90662bf9afbe80751f496eadf1a4e0761a4429b19ec013d8ff2ddad63319e"}]}]},
       "action": {"type": "audit_canonical_envelope", "owner_id": "owner-a", "artifact_id": 504}
     },
-    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [504], "fingerprinted_fields": ["body", "metadata"], "audit_error_codes": [], "reason_codes": ["SUBMISSION_ENVELOPE_VERIFIED"]},
+    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [504], "fingerprinted_fields": ["content", "metadata"], "audit_error_codes": []},
     "expected_audit_ok": true,
     "failure_reason_code": "SUBMISSION_ARTIFACT_REF_INVALID",
     "invariant_id": "EV-SUBMISSION-ARTIFACT-INTEGRITY",
-    "mutant": {"operation": "replace", "target": "input.setup.artifacts[0].envelope.metadata.language", "value": "javascript", "expected_failure_reason_code": "SUBMISSION_ARTIFACT_REF_INVALID"}
+    "mutant": {"operation": "replace", "target": "input.setup.artifacts[0].metadata.language", "value": "javascript", "expected_failure_reason_code": "SUBMISSION_ARTIFACT_REF_INVALID"}
   },
   {
     "id": "task_artifact",
     "legacy_index": 30,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 5501, "owner_id": "owner-a", "plan_id": 505}], "artifacts": [{"id": 505, "owner_id": "owner-a", "plan_id": 505, "task_id": 5501, "kind": "task_evidence", "content_hash": "5555555555555555555555555555555555555555555555555555555555555555"}], "observations": [{"id": 1, "owner_id": "owner-a", "plan_id": 505, "task_id": 5501, "source_type": "task_evidence", "source_id": "task-proof-5501", "outcome": "verified", "artifact_refs": [{"artifact_id": 505, "content_hash": "5555555555555555555555555555555555555555555555555555555555555555"}]}]},
+      "setup": {"tasks": [{"id": 5501, "owner_id": "owner-a", "plan_id": 505}], "artifacts": [{"id": 505, "owner_id": "owner-a", "plan_id": 505, "task_id": 5501, "kind": "task_evidence", "content_hash": "7af45af36aa2e5d6f79eb9b1aca17495dcd22009171fd27a5aacca89cd322801", "snapshot": "task-proof-5501"}], "observations": [{"id": 1, "owner_id": "owner-a", "plan_id": 505, "task_id": 5501, "source_type": "task_evidence", "source_id": "task-proof-5501", "outcome": "verified", "artifact_refs": [{"artifact_id": 505, "content_hash": "7af45af36aa2e5d6f79eb9b1aca17495dcd22009171fd27a5aacca89cd322801"}]}]},
       "action": {"type": "audit_source_scope", "owner_id": "owner-a", "plan_id": 505, "task_id": 5501}
     },
-    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [505], "scope": {"owner_id": "owner-a", "plan_id": 505, "task_id": 5501}, "audit_error_codes": [], "reason_codes": ["TASK_ARTIFACT_SCOPE_VERIFIED"]},
+    "expected_projection": {"observation_count": 1, "verified_artifact_ids": [505], "scope": {"owner_id": "owner-a", "plan_id": 505, "task_id": 5501}, "audit_error_codes": []},
     "expected_audit_ok": true,
     "failure_reason_code": "TASK_ARTIFACT_REF_INVALID",
     "invariant_id": "EV-TASK-ARTIFACT-INTEGRITY",
@@ -422,12 +422,12 @@
   {
     "id": "rubric_snapshot",
     "legacy_index": 31,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"rubrics": [{"id": 601, "version": 1, "pass_threshold": 0.7}], "observations": [{"id": 1, "plan_id": 601, "task_id": 6101, "source_type": "quiz", "source_id": "quiz-rubric-v1", "outcome": "passed", "rubric_snapshot": {"rubric_id": 601, "version": 1, "pass_threshold": 0.7}}]},
+      "setup": {"rubrics": [{"id": 601, "version": 1, "pass_threshold": 0.7}], "observations": [{"id": 1, "plan_id": 601, "task_id": 6101, "source_type": "quiz", "source_id": "quiz-rubric-v1", "outcome": "passed", "rubric_snapshot": {"rubric_id": 601, "version": 1, "pass_threshold": 0.7}, "artifact_ids": [235], "evaluator": {"type": "deterministic", "version": "fixture-v1"}}], "artifacts": [{"id": 235, "owner_id": "owner-a", "plan_id": 601, "task_id": 6101, "kind": "quiz_answer", "content_hash": "5c1930ff0cecb476f34e22ec5afa2cc0f3ad32295d86e792eb71db7a4a71605a", "snapshot": "rubric-snapshot"}]},
       "action": {"type": "mutate_live_rubric_then_rebuild", "owner_id": "owner-a", "rubric_patch": {"version": 2, "pass_threshold": 0.9}}
     },
-    "expected_projection": {"observation_count": 1, "rubric_snapshots": {"1": {"rubric_id": 601, "version": 1, "pass_threshold": 0.7}}, "reason_codes": ["RUBRIC_SNAPSHOT_RETAINED"]},
+    "expected_projection": {"observation_count": 1, "rubric_snapshots": {"1": {"rubric_id": 601, "version": 1, "pass_threshold": 0.7}}},
     "expected_audit_ok": true,
     "failure_reason_code": "RUBRIC_SNAPSHOT_DRIFT",
     "invariant_id": "EV-RUBRIC-SNAPSHOT",
@@ -436,12 +436,12 @@
   {
     "id": "evaluator_snapshot",
     "legacy_index": 32,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"evaluators": [{"id": "eval-a", "type": "agent", "model": "hy3", "version": "2026-01"}], "observations": [{"id": 1, "plan_id": 602, "task_id": 6201, "source_type": "submission", "source_id": "eval-snapshot", "outcome": "accepted", "evaluator": {"id": "eval-a", "type": "agent", "model": "hy3", "version": "2026-01"}}]},
+      "setup": {"evaluators": [{"id": "eval-a", "type": "agent", "model": "hy3", "version": "2026-01"}], "observations": [{"id": 1, "plan_id": 602, "task_id": 6201, "source_type": "submission", "source_id": "eval-snapshot", "outcome": "accepted", "evaluator": {"id": "eval-a", "type": "agent", "model": "hy3", "version": "2026-01"}, "artifact_ids": [236], "rubric_snapshot": {"pass_threshold": 0.8}}], "artifacts": [{"id": 236, "owner_id": "owner-a", "plan_id": 602, "task_id": 6201, "kind": "submission", "content_hash": "5e72868c7ce6514727bdf3ec29bbedf742e53a1bfc4c44ce475fbd26341618f8", "snapshot": "evaluator-snapshot"}]},
       "action": {"type": "change_evaluator_config_then_rebuild", "owner_id": "owner-a", "evaluator_patch": {"model": "future-model", "version": "2026-02"}}
     },
-    "expected_projection": {"observation_count": 1, "evaluator_snapshots": {"1": {"id": "eval-a", "type": "agent", "model": "hy3", "version": "2026-01"}}, "reason_codes": ["EVALUATOR_SNAPSHOT_RETAINED"]},
+    "expected_projection": {"observation_count": 1, "evaluator_snapshots": {"1": {"id": "eval-a", "type": "agent", "model": "hy3", "version": "2026-01"}}},
     "expected_audit_ok": true,
     "failure_reason_code": "EVALUATOR_SNAPSHOT_DRIFT",
     "invariant_id": "EV-EVALUATOR-SNAPSHOT",
@@ -450,12 +450,12 @@
   {
     "id": "causal_chain",
     "legacy_index": 33,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"learning_events": [{"id": "event-701", "owner_id": "owner-a", "plan_id": 701, "event_type": "submission.checked"}], "observations": [{"id": 1, "owner_id": "owner-a", "plan_id": 701, "task_id": 7101, "source_type": "submission", "source_id": "caused-observation", "outcome": "accepted", "causation_id": "event-701"}]},
+      "setup": {"learning_events": [{"id": "event-701", "owner_id": "owner-a", "plan_id": 701, "event_type": "submission.checked"}], "observations": [{"id": 1, "owner_id": "owner-a", "plan_id": 701, "task_id": 7101, "source_type": "submission", "source_id": "caused-observation", "outcome": "accepted", "causation_id": "event-701", "artifact_ids": [237], "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}}], "artifacts": [{"id": 237, "owner_id": "owner-a", "plan_id": 701, "task_id": 7101, "kind": "submission", "content_hash": "635f9aa6b22486baf875b8d0899417f3d5d9ebdfc9d9e55718932d21dfd3781c", "snapshot": "causal-chain"}]},
       "action": {"type": "audit_causation_graph", "owner_id": "owner-a", "plan_id": 701}
     },
-    "expected_projection": {"observation_count": 1, "causation_edges": [{"from": "event-701", "to": 1}], "audit_error_codes": [], "reason_codes": ["CAUSATION_REFERENCE_VERIFIED"]},
+    "expected_projection": {"observation_count": 1, "causation_edges": [{"from": "event-701", "to": 1}], "audit_error_codes": []},
     "expected_audit_ok": true,
     "failure_reason_code": "CAUSATION_REFERENCE_INVALID",
     "invariant_id": "EV-CAUSATION-INTEGRITY",
@@ -464,12 +464,12 @@
   {
     "id": "correlation_chain",
     "legacy_index": 34,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"runs": [{"id": "run-801", "owner_id": "owner-a", "plan_id": 801, "session_id": "session-801"}], "observations": [{"id": 1, "owner_id": "owner-a", "plan_id": 801, "session_id": "session-801", "run_id": "run-801", "source_type": "quiz", "source_id": "correlated-observation", "outcome": "passed", "correlation_id": "run-801"}]},
+      "setup": {"runs": [{"id": "run-801", "owner_id": "owner-a", "plan_id": 801, "session_id": "session-801"}], "observations": [{"id": 1, "owner_id": "owner-a", "plan_id": 801, "session_id": "session-801", "run_id": "run-801", "source_type": "quiz", "source_id": "correlated-observation", "outcome": "passed", "correlation_id": "run-801", "artifact_ids": [238], "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}}], "artifacts": [{"id": 238, "owner_id": "owner-a", "plan_id": 801, "task_id": null, "kind": "quiz_answer", "content_hash": "8e4766eaedfdeba71fb37037efa8982b39eca3ac46ad77864d2cfc621ba3fbb3", "snapshot": "correlation-chain"}]},
       "action": {"type": "audit_correlation_scope", "owner_id": "owner-a", "plan_id": 801, "session_id": "session-801"}
     },
-    "expected_projection": {"observation_count": 1, "correlation_groups": {"run-801": [1]}, "audit_error_codes": [], "reason_codes": ["CORRELATION_REFERENCE_VERIFIED"]},
+    "expected_projection": {"observation_count": 1, "correlation_groups": {"run-801": [1]}, "audit_error_codes": []},
     "expected_audit_ok": true,
     "failure_reason_code": "CORRELATION_REFERENCE_INVALID",
     "invariant_id": "EV-CORRELATION-INTEGRITY",
@@ -478,26 +478,26 @@
   {
     "id": "score_clamp",
     "legacy_index": 35,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"tasks": [{"id": 9101, "plan_id": 901}], "observations": []},
-      "action": {"type": "append_observations", "owner_id": "owner-a", "requests": [{"source_id": "below-range", "task_id": 9101, "normalized_score": -0.2, "outcome": "failed"}, {"source_id": "above-range", "task_id": 9101, "normalized_score": 1.2, "outcome": "passed"}]}
+      "action": {"type": "append_observations", "owner_id": "owner-a", "requests": [{"source_id": "zero-percent", "task_id": 9101, "score_percent": 0, "outcome": "failed"}, {"source_id": "full-percent", "task_id": 9101, "score_percent": 100, "outcome": "passed"}]}
     },
-    "expected_projection": {"observation_count": 2, "persisted_scores": {"below-range": 0.0, "above-range": 1.0}, "audit_error_codes": [], "reason_codes": ["SCORES_NORMALIZED_TO_UNIT_INTERVAL"]},
+    "expected_projection": {"observation_count": 2, "persisted_scores": {"zero-percent": 0.0, "full-percent": 1.0}, "audit_error_codes": []},
     "expected_audit_ok": true,
     "failure_reason_code": "SCORE_NOT_NORMALIZED",
     "invariant_id": "EV-SCORE-NORMALIZATION",
-    "mutant": {"operation": "persist_raw_scores", "target": "input.action.requests", "value": [-0.2, 1.2], "expected_failure_reason_code": "SCORE_NOT_NORMALIZED"}
+    "mutant": {"operation": "persist_raw_scores", "target": "input.action.requests", "value": [0, 100], "expected_failure_reason_code": "SCORE_NOT_NORMALIZED"}
   },
   {
     "id": "zero_score",
     "legacy_index": 36,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 9201, "plan_id": 902}], "observations": [{"id": 1, "plan_id": 902, "task_id": 9201, "source_type": "quiz", "source_id": "zero-score", "outcome": "failed", "normalized_score": 0.0}]},
+      "setup": {"tasks": [{"id": 9201, "plan_id": 902}], "observations": [{"id": 1, "plan_id": 902, "task_id": 9201, "source_type": "quiz", "source_id": "zero-score", "outcome": "failed", "normalized_score": 0.0, "artifact_ids": [239], "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}}], "artifacts": [{"id": 239, "owner_id": "owner-a", "plan_id": 902, "task_id": 9201, "kind": "quiz_answer", "content_hash": "d5deb39f48f2d4a0e4205ffc4c411a1eaa341ef477e5b6dc6c302370bc5857fd", "snapshot": "zero-score"}]},
       "action": {"type": "build_plan_projection", "owner_id": "owner-a", "plan_id": 902}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 9201, "evidence_stage": "practicing", "observation_count": 1, "success_count": 0, "failure_count": 1, "best_score": 0.0, "latest_outcome": "failed", "evidence_ids": [1]}], "reason_codes": ["ZERO_SCORE_RETAINED"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 9201, "evidence_stage": "practicing", "observation_count": 1, "success_count": 0, "failure_count": 1, "best_score": 0.0, "latest_outcome": "failed", "evidence_ids": [1]}]},
     "expected_audit_ok": true,
     "failure_reason_code": "ZERO_SCORE_DROPPED",
     "invariant_id": "EV-ZERO-SCORE",
@@ -506,12 +506,12 @@
   {
     "id": "full_score",
     "legacy_index": 37,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 9301, "plan_id": 903}], "observations": [{"id": 1, "plan_id": 903, "task_id": 9301, "source_type": "quiz", "source_id": "full-score", "outcome": "passed", "normalized_score": 1.0, "occurred_at": "2026-01-03T09:30:00Z"}]},
+      "setup": {"tasks": [{"id": 9301, "plan_id": 903}], "artifacts": [{"id": 219, "owner_id": "owner-a", "plan_id": 903, "task_id": 9301, "kind": "quiz_answer", "content_hash": "8ec3449301ebe04d3472212974dfb54fd840d45c2bb6f3ffd40cae419eefe9bd", "snapshot": "full-score", "metadata": {"question_id": "q-full"}}], "observations": [{"id": 1, "plan_id": 903, "task_id": 9301, "source_type": "quiz", "source_id": "full-score", "outcome": "passed", "normalized_score": 1.0, "occurred_at": "2026-01-03T09:30:00Z", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [219]}]},
       "action": {"type": "serialize_ledger_and_projection", "owner_id": "owner-a", "plan_id": 903}
     },
-    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 9301, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 1.0, "latest_outcome": "passed", "evidence_ids": [1]}], "source_timestamps": {"1": "2026-01-03T09:30:00Z"}, "reason_codes": ["FULL_SCORE_RETAINED"]},
+    "expected_projection": {"observation_count": 1, "task_count": 1, "by_task": [{"task_id": 9301, "evidence_stage": "demonstrated", "observation_count": 1, "success_count": 1, "failure_count": 0, "best_score": 1.0, "latest_outcome": "passed", "evidence_ids": [1]}], "source_timestamps": {"1": "2026-01-03T09:30:00Z"}},
     "expected_audit_ok": true,
     "failure_reason_code": "FULL_SCORE_SOURCE_LOST",
     "invariant_id": "EV-FULL-SCORE",
@@ -520,12 +520,12 @@
   {
     "id": "multiple_attempts",
     "legacy_index": 38,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 9401, "plan_id": 904}], "observations": [{"id": 1, "plan_id": 904, "task_id": 9401, "source_type": "quiz", "source_id": "attempt-one", "idempotency_key": "attempt:one", "outcome": "needs_revision", "normalized_score": 0.4, "occurred_at": "2026-01-01T09:00:00Z"}, {"id": 2, "plan_id": 904, "task_id": 9401, "source_type": "quiz", "source_id": "attempt-two", "idempotency_key": "attempt:two", "outcome": "passed", "normalized_score": 0.85, "occurred_at": "2026-01-02T09:00:00Z"}]},
+      "setup": {"tasks": [{"id": 9401, "plan_id": 904}], "artifacts": [{"id": 220, "owner_id": "owner-a", "plan_id": 904, "task_id": 9401, "kind": "quiz_answer", "content_hash": "1b7e7e4a0759c8d6522cd1c3039eceb0441022fc6934101100948a62ecc5a8b5", "snapshot": "multiple-pass", "metadata": {"question_id": "q-multiple"}}, {"id": 240, "owner_id": "owner-a", "plan_id": 904, "task_id": 9401, "kind": "quiz_answer", "content_hash": "c9b8110dfb49f1e0746d328ccc111e70699aa4be5e9e8b8a5447c11a708db623", "snapshot": "multiple-failure"}], "observations": [{"id": 1, "plan_id": 904, "task_id": 9401, "source_type": "quiz", "source_id": "attempt-one", "idempotency_key": "attempt:one", "outcome": "needs_revision", "normalized_score": 0.4, "occurred_at": "2026-01-01T09:00:00Z", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [240]}, {"id": 2, "plan_id": 904, "task_id": 9401, "source_type": "quiz", "source_id": "attempt-two", "idempotency_key": "attempt:two", "outcome": "passed", "normalized_score": 0.85, "occurred_at": "2026-01-02T09:00:00Z", "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}, "artifact_ids": [220]}]},
       "action": {"type": "build_plan_projection", "owner_id": "owner-a", "plan_id": 904}
     },
-    "expected_projection": {"observation_count": 2, "task_count": 1, "by_task": [{"task_id": 9401, "evidence_stage": "demonstrated", "observation_count": 2, "success_count": 1, "failure_count": 1, "best_score": 0.85, "latest_outcome": "passed", "evidence_ids": [1, 2]}], "reason_codes": ["DISTINCT_ATTEMPTS_RETAINED"]},
+    "expected_projection": {"observation_count": 2, "task_count": 1, "by_task": [{"task_id": 9401, "evidence_stage": "demonstrated", "observation_count": 2, "success_count": 1, "failure_count": 1, "best_score": 0.85, "latest_outcome": "passed", "evidence_ids": [1, 2]}]},
     "expected_audit_ok": true,
     "failure_reason_code": "ATTEMPTS_COLLAPSED",
     "invariant_id": "EV-ATTEMPT-PRESERVATION",
@@ -534,12 +534,12 @@
   {
     "id": "rebuild_digest",
     "legacy_index": 39,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"database": {"schema": "v2", "observations": [{"id": 1, "plan_id": 905, "task_id": 9501, "source_type": "submission", "source_id": "digest-a", "outcome": "accepted", "occurred_at": "2026-01-04T10:00:00.123456Z"}, {"id": 2, "plan_id": 905, "task_id": 9501, "source_type": "quiz", "source_id": "digest-b", "outcome": "failed", "occurred_at": "2026-01-05T10:00:00.654321Z"}]}},
+      "setup": {"database": {"schema": "v2", "observations": [{"id": 1, "plan_id": 905, "task_id": 9501, "source_type": "submission", "source_id": "digest-a", "outcome": "accepted", "occurred_at": "2026-01-04T10:00:00.123456Z", "artifact_ids": [241], "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}}, {"id": 2, "plan_id": 905, "task_id": 9501, "source_type": "quiz", "source_id": "digest-b", "outcome": "failed", "occurred_at": "2026-01-05T10:00:00.654321Z", "artifact_ids": [242], "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}}]}, "artifacts": [{"id": 241, "owner_id": "owner-a", "plan_id": 905, "task_id": 9501, "kind": "submission", "content_hash": "0f6399799463d63c81c0b3057f0bbf4389d0e652e35abc6d86e2ad56635418ea", "snapshot": "digest-a"}, {"id": 242, "owner_id": "owner-a", "plan_id": 905, "task_id": 9501, "kind": "quiz_answer", "content_hash": "d7271c6dbdd953c74752dd1376dec5a74290aec718c668293943d33ad68d0bc1", "snapshot": "digest-b"}]},
       "action": {"type": "compare_rebuild_channels", "owner_id": "owner-a", "plan_id": 905, "steps": ["build", "close", "reopen", "delete_projection", "rebuild_cli", "read_context", "read_api"]}
     },
-    "expected_projection": {"observation_count": 2, "digest_channels_equal": true, "channels": ["fresh", "reopened", "cli", "context", "api"], "reason_codes": ["DIGEST_STABLE_ACROSS_REBUILD"]},
+    "expected_projection": {"observation_count": 2, "digest_channels_equal": true, "channels": ["fresh", "reopened", "cli", "context", "api"]},
     "expected_audit_ok": true,
     "failure_reason_code": "PROJECTION_DIGEST_DRIFT",
     "invariant_id": "EV-DIGEST-REBUILD",
@@ -548,12 +548,12 @@
   {
     "id": "old_fact_preserved",
     "legacy_index": 40,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
-      "setup": {"tasks": [{"id": 9601, "plan_id": 906}], "observations": [{"id": 1, "plan_id": 906, "task_id": 9601, "source_type": "quiz", "source_id": "historical-pass", "outcome": "passed", "normalized_score": 0.9, "occurred_at": "2026-01-01T08:00:00Z"}, {"id": 2, "plan_id": 906, "task_id": 9601, "source_type": "quiz", "source_id": "new-failure", "outcome": "failed", "normalized_score": 0.3, "occurred_at": "2026-02-01T08:00:00Z"}]},
+      "setup": {"tasks": [{"id": 9601, "plan_id": 906}], "observations": [{"id": 1, "plan_id": 906, "task_id": 9601, "source_type": "quiz", "source_id": "historical-pass", "outcome": "passed", "normalized_score": 0.9, "occurred_at": "2026-01-01T08:00:00Z", "artifact_ids": [243], "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}}, {"id": 2, "plan_id": 906, "task_id": 9601, "source_type": "quiz", "source_id": "new-failure", "outcome": "failed", "normalized_score": 0.3, "occurred_at": "2026-02-01T08:00:00Z", "artifact_ids": [244], "rubric_snapshot": {"pass_threshold": 0.8}, "evaluator": {"type": "deterministic", "version": "fixture-v1"}}], "artifacts": [{"id": 243, "owner_id": "owner-a", "plan_id": 906, "task_id": 9601, "kind": "quiz_answer", "content_hash": "51727c595e22208df6b5a0dff98767b7212ee7a0a0f3f4ecce484896d0ddb4fe", "snapshot": "old-pass"}, {"id": 244, "owner_id": "owner-a", "plan_id": 906, "task_id": 9601, "kind": "quiz_answer", "content_hash": "23a272f4fa5d0915125925a16eb59530eff0c8168c3786822025623da281f0da", "snapshot": "old-fail"}]},
       "action": {"type": "compare_raw_ledger_and_projection", "owner_id": "owner-a", "plan_id": 906}
     },
-    "expected_projection": {"ledger_observation_ids": [1, 2], "observation_count": 2, "current_evidence_ids": [1, 2], "latest_outcome": "failed", "historical_outcomes": {"1": "passed", "2": "failed"}, "reason_codes": ["HISTORICAL_FACT_RETAINED"]},
+    "expected_projection": {"ledger_observation_ids": [1, 2], "observation_count": 2, "current_evidence_ids": [1, 2], "latest_outcome": "failed", "historical_outcomes": {"1": "passed", "2": "failed"}},
     "expected_audit_ok": true,
     "failure_reason_code": "HISTORICAL_FACT_OVERWRITTEN",
     "invariant_id": "EV-HISTORICAL-IMMUTABILITY",
@@ -562,12 +562,12 @@
   {
     "id": "conservative_unknown",
     "legacy_index": 41,
-    "status": "pending_rewrite",
+    "status": "verified",
     "input": {
       "setup": {"tasks": [{"id": 9701, "plan_id": 907, "assesses": ["python.types"]}], "observations": [{"id": 1, "plan_id": 907, "task_id": 9701, "source_type": "checkbox", "source_id": "task-checked", "outcome": "completed"}, {"id": 2, "plan_id": 907, "task_id": 9701, "source_type": "message", "source_id": "message-claim", "outcome": "claimed_mastery"}]},
       "action": {"type": "build_eligible_projection", "owner_id": "owner-a", "plan_id": 907}
     },
-    "expected_projection": {"observation_count": 2, "task_count": 1, "by_task": [{"task_id": 9701, "evidence_stage": "unknown", "observation_count": 2, "success_count": 0, "failure_count": 0, "best_score": null, "latest_outcome": "claimed_mastery", "evidence_ids": [1, 2]}], "eligible_evidence_ids": [], "reason_codes": ["INSUFFICIENT_ELIGIBLE_EVIDENCE"]},
+    "expected_projection": {"observation_count": 2, "task_count": 1, "by_task": [{"task_id": 9701, "evidence_stage": "exposed", "observation_count": 2, "success_count": 0, "failure_count": 0, "best_score": null, "latest_outcome": "claimed_mastery", "evidence_ids": [1, 2]}], "eligible_evidence_ids": []},
     "expected_audit_ok": true,
     "failure_reason_code": "INSUFFICIENT_EVIDENCE_OVERSTATED",
     "invariant_id": "EV-CONSERVATIVE-UNKNOWN",

@@ -456,7 +456,7 @@ async def test_v1_1_1_upgrade_schema_matches_fresh_schema(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_partial_m13_upgrade_adds_competency_foreign_key(tmp_path: Path):
+async def test_partial_m13_upgrade_normalizes_competency_foreign_key(tmp_path: Path):
     database_path = _materialize_sql(
         "v1_1_1_full",
         tmp_path / "partial-m13.sqlite3",
@@ -473,7 +473,7 @@ async def test_partial_m13_upgrade_adds_competency_foreign_key(tmp_path: Path):
                 tuple(row)
                 for row in (
                     await connection.execute(text(
-                        'PRAGMA foreign_key_list("evidence_observations")'
+                        'PRAGMA foreign_key_list("evidence_competency_links")'
                     ))
                 ).all()
             ]
@@ -485,32 +485,46 @@ async def test_partial_m13_upgrade_adds_competency_foreign_key(tmp_path: Path):
                     ))
                 ).all()
             }
-            if "competency_id" not in evidence_columns:
-                raise RuntimeError("partial M13 migration did not add competency_id")
+            if "competency_id" in evidence_columns:
+                raise RuntimeError("partial M13 migration retained singular competency_id")
+            await connection.execute(text(
+                """
+                INSERT INTO evidence_observations
+                    (id, owner_id, source_type, source_id, outcome,
+                     occurred_at, idempotency_key)
+                VALUES
+                    (1, 'fixture-owner', 'quiz', 'invalid-competency', 'passed',
+                     '2026-08-18 09:23:45.123456', 'invalid-competency-write')
+                """
+            ))
             invalid_write_rejected = False
             try:
                 await connection.execute(text(
                     """
-                    INSERT INTO evidence_observations
-                        (id, owner_id, source_type, source_id, competency_id, outcome,
-                         occurred_at, idempotency_key)
+                    INSERT INTO evidence_competency_links
+                        (observation_id, competency_id, association_kind,
+                         competency_key_snapshot)
                     VALUES
-                        (1, 'fixture-owner', 'quiz', 'invalid-competency', 999999,
-                         'passed', '2026-08-18 09:23:45.123456',
-                         'invalid-competency-write')
+                        (1, 999999, 'explicit', 'missing.competency')
                     """
                 ))
             except IntegrityError as exc:
-                if "FOREIGN KEY constraint failed" not in str(exc):
+                if not any(
+                    marker in str(exc)
+                    for marker in (
+                        "FOREIGN KEY constraint failed",
+                        "evidence competency scope mismatch",
+                    )
+                ):
                     raise RuntimeError(
-                        "invalid competency write failed for a non-FK reason"
+                        "invalid competency write bypassed normalized FK/scope guards"
                     ) from exc
                 invalid_write_rejected = True
             invalid_row_present = (
                 await connection.execute(text(
                     """
-                    SELECT count(*) FROM evidence_observations
-                    WHERE idempotency_key = 'invalid-competency-write'
+                    SELECT count(*) FROM evidence_competency_links
+                    WHERE observation_id = 1 AND competency_id = 999999
                     """
                 ))
             ).scalar_one() == 1
@@ -518,7 +532,7 @@ async def test_partial_m13_upgrade_adds_competency_foreign_key(tmp_path: Path):
         await engine.dispose()
 
     observation = {
-        "declared_competency_fk": any(
+        "normalized_competency_fk": any(
             row[2] == "competencies" and row[3] == "competency_id" and row[4] == "id"
             for row in foreign_keys
         ),
@@ -526,7 +540,7 @@ async def test_partial_m13_upgrade_adds_competency_foreign_key(tmp_path: Path):
         "invalid_row_present": invalid_row_present,
     }
     assert observation == {
-        "declared_competency_fk": True,
+        "normalized_competency_fk": True,
         "invalid_write_rejected": True,
         "invalid_row_present": False,
     }

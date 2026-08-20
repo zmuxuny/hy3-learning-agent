@@ -6,6 +6,7 @@ import sqlite3
 from pathlib import Path
 
 from app.db.migrations import migrate_sqlite_database, schema_checksum
+from hardening.h4_schema_fixture import downgrade_current_to_frozen_h3
 
 
 FROZEN_H2_SCHEMA_CHECKSUM = (
@@ -323,5 +324,6 @@ def materialize_frozen_h2(path: Path, backup_root: Path) -> None:
         database_identity=path.name,
     )
     with sqlite3.connect(path) as connection:
+        downgrade_current_to_frozen_h3(connection)
         connection.executescript(FROZEN_H2_RUNTIME_SQL)
     assert schema_checksum(path) == FROZEN_H2_SCHEMA_CHECKSUM

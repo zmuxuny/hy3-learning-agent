@@ -11,6 +11,7 @@ from app.models import AgentRun, LearningResource, Operation, Plan, QueuedMessag
 from app.runtime.state import NONTERMINAL_RUN_STATUSES
 from app.schemas import LearningResourceRead, PlanArchiveUpdate, PlanCreate, PlanRead, TaskRead, TaskUpdate
 from app.services import plans as plan_service
+from app.services.evidence import build_plan_evidence_state
 
 
 router = APIRouter()
@@ -37,6 +38,15 @@ async def read_plan_resources(plan_id: int, db: AsyncSession = Depends(get_db)):
         .limit(50)
     )
     return list(result.scalars())
+
+
+@router.get("/{plan_id}/evidence")
+@router.get("/{plan_id}/evidence-state")
+async def read_plan_evidence(plan_id: int, db: AsyncSession = Depends(get_db)):
+    plan = await db.get(Plan, plan_id)
+    if not plan or plan.owner_id != settings.DEFAULT_OWNER_ID:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return await build_plan_evidence_state(db, settings.DEFAULT_OWNER_ID, plan_id)
 
 
 @router.get("/{plan_id}", response_model=PlanRead)

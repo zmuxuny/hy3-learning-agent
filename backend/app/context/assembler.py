@@ -272,6 +272,13 @@ class ContextAssembler:
                         )
                 manifest.append({"type": "plan", "id": plan.id, "version": plan.version})
                 evidence_state = await build_plan_evidence_state(self.db, owner_id, plan.id)
+                manifest.append({
+                    "type": "evidence_state",
+                    "plan_id": plan.id,
+                    "task_id": None,
+                    "digest": evidence_state["digest"],
+                    "observation_count": evidence_state["observation_count"],
+                })
                 if evidence_state["observation_count"]:
                     sections.append("## Evidence state (v2)")
                     sections.append(

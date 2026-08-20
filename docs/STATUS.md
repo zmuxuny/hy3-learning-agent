@@ -19,8 +19,8 @@
 - 已新增 113 个 strict-xfail 测试节点以及迁移、夹具安全、0/1/500 条 Evidence、IMAP commit-before-Seen 等 20 个 passing gate；`xfail_strict=true`，实现修复后必须删除对应 xfail。
 - 全局 pytest 数据库已从仓库内固定文件迁到进程独占的系统临时目录；大型迁移、Evidence、并发和故障注入用例进一步使用每用例 `tmp_path`。三类 SQL 夹具均为公开合成数据并由 manifest 固定 hash、schema digest 和行数。
 - 测试现会把 Context、workspace、upload 与配置写入重定向到每用例临时目录，并在 session 前后用不输出内容的单向指纹守卫正式 `.env`、SQLite 与运行目录。保护夹具落地前的基线试跑曾触发旧测试对 Git 忽略的 `data/context` / `data/workspace` 写路径；为避免误删预存数据，H0 没有自动清理或恢复这些歧义文件，后续测试已被禁止再次写入。
-- 原 41 个场景已逐项登记独立输入、字面期望、reason code、不变量和 mutant，但仍标为 `pending_rewrite`。旧执行器只有 27 个输入指纹和 3 个场景专属 oracle；在 H4 逐条变成可执行领域断言前，不得宣称“41 项覆盖”。
-- H0 阶段没有修改生产代码，当时 87 项缺陷全部 open。H1/H2/H3 已累计关闭 34 个 ID、剩余 53 个 open ID；M15–M20 继续冻结，下一实现门禁为 H4。
+- 原 41 个场景在 H0 已逐项登记独立输入、字面期望、不变量和 mutant；H4 已将其全部标为 `verified`，逐项执行 production reducer/audit，并由 41 个对应 mutant 独立证明回归灵敏度。
+- H0 阶段没有修改生产代码，当时 87 项缺陷全部 open。H1–H4 已累计关闭 50 个 ID、剩余 37 个 open ID；M15–M20 继续冻结，下一实现门禁为 H5。
 
 ## H1：迁移、时间与备份基础（已完成）
 
@@ -39,7 +39,7 @@
   - 全量回归为 `441 passed, 98 strict xfailed`，0 unexpected failure、0 XPASS；`python -m compileall backend tests scripts`、`pip check`、前端生产构建、完整与 production-only `npm audit` 以及 `git diff --check` 均通过，npm audit 为 0 vulnerabilities。
 
 - 尚未实现：
-  - H4 Evidence/Competency 事实层、H5 Context/Intervention、H6 应用部署边界、H7 完整前端状态架构、H8 首启与发布工程。H3 已完成，详见下方 H3 节。
+  - H5 Context/Intervention、H6 应用部署边界、H7 完整前端状态架构、H8 首启与发布工程。H3/H4 已完成，详见下方对应章节。
 
 - 已知限制：
   - 历史 naive 时间会按 UTC 解释；旧数据若原本丢失本地偏移，H1 不会伪造恢复不存在的时区信息。
@@ -66,13 +66,13 @@
   - 全量 pytest：`551 passed, 84 xfailed, 0 failed, 0 XPASS`，耗时 `953.38s (0:15:53)`；唯一 warning 为上游 Starlette `TestClient` 的 `httpx` 弃用提示。
 
 - 尚未实现与已知限制：
-  - H3 已完成；本节收口时登记的 Run 状态机缺口不再是当前阻塞项。H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整 UI/浏览器和 H8 发布工程仍未完成。
+  - H3/H4 已完成；本节收口时登记的 Run 状态机和 Evidence/Competency 缺口不再是当前阻塞项。H5 Context/Intervention、H6 应用部署边界、H7 完整 UI/浏览器和 H8 发布工程仍未完成。
   - SMTP、Web Push 与子进程在“外部已接受、receipt 未提交”时只能停止重放并等待人工或 provider 对账；只有 workspace effect 能依据本地 hash 自动恢复，不能把 `needs_reconciliation` 写成 exactly-once 成功。
   - SQLite 是 Context 的事实来源；Markdown 投影使用原子替换，但数据库提交后、投影发布前崩溃尚无跨重启 durable outbox，只能从数据库重建。
-  - Evidence amendment/invalidation、完整账本 reducer、Competency scope/revision/undo 仍属 H4；`.env` 控制字符与复杂值往返仍属 H6-CONFIG-001；没有调用真实 SMTP/VAPID，也没有完成外部安装、连续学习闭环或 7 日真人验证。
+  - Evidence amendment/invalidation、完整账本 reducer、Competency scope/revision/undo 已由 H4 验收；`.env` 控制字符与复杂值往返仍属 H6-CONFIG-001；没有调用真实 SMTP/VAPID，也没有完成外部安装、连续学习闭环或 7 日真人验证。
 
 - 下一门禁：
-  - H3 已完成，按固定顺序进入 H4：Evidence 与 Competency 事实层；H4–H8 全部关闭及真人门槛完成前，不恢复 M15–M20。
+  - H4 已完成，按固定顺序进入 H5：Context、Memory 与 Intervention；H5–H8 全部关闭及真人门槛完成前，不恢复 M15–M20。
 
 ## H3：耐久 Run、Queue 与子 Agent（已完成）
 
@@ -92,7 +92,7 @@
   - 前端 Node `9 passed`、`npm run build` 通过、`npm audit` 为 0 vulnerabilities。最终全量 pytest 为 `605 passed, 74 xfailed, 0 failed, 0 XPASS`，耗时 `1104.08s (0:18:24)`；唯一 warning 为上游 Starlette `TestClient` 的 `httpx` 弃用提示。
 
 - 尚未实现：
-  - H4 的 Evidence 完整账本、amendment/invalidation、Artifact 内容耐久与 Competency scope/revision/undo；H5 Context/Memory/Intervention；H6 应用部署边界；H7 完整 UI/真实 Chrome；H8 首启、Release 与真人观察。
+  - H5 Context/Memory/Intervention；H6 应用部署边界；H7 完整 UI/真实 Chrome；H8 首启、Release 与真人观察。
 
 - 已知限制：
   - SQLite lease/CAS 是共享单库的执行 fence，不是多节点 scheduler、leader election 或分布式数据库协议；部署仍以单机进程生命周期为边界。
@@ -101,16 +101,46 @@
   - 外部用户安装完成率、连续学习闭环和 7 日留存仍为**待真实用户验证**，不能由本阶段自动化或 Hy3 演示替代。
 
 - 下一门禁：
-  - H4：Evidence 与 Competency 事实层。H4 关闭前不得继续 M15 learner state、FSRS、自适应动作或复杂技能 UI。
+  - H5：Context、Memory 与 Intervention。H5–H8 关闭前不得继续 M15 learner state、FSRS、自适应动作或复杂技能 UI。
+
+## H4：Evidence 与 Competency 事实层（已完成）
+
+- 已实现：
+  - schema revision 4 建立不可更新/删除的 Evidence fact ledger、不可变 Artifact snapshot、Evidence↔Artifact/Competency/Operation 关联、Competency graph revision/mutation/dependency 与增量 projection watermark；canonical checksum 为 `851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace`。
+  - migration 仅回填源库能够证明的旧 Evidence、Artifact、assesses 与 Operation 关联；不读取可变文件 URI，不按标题/Run 猜测身份。跨 scope、环、多分支、悬空 FK 与 hash 损坏 fail closed；fresh、frozen revision 3 和 partial-M13 升级收敛到同一 schema。
+  - submission/quiz/task 每次行为只产生一份 primary observation；undo/redo/correction 以 amendment/invalidation/reinstatement 追加事实表达，旧事实保留审计且退出 active projection。Artifact 保存 canonical envelope、bytes、size、hash 和来源 scope。
+  - 全量与增量 reducer 读取完整账本，持久化 watermark 并用 full oracle 自检；CLI、Context、tool 和 HTTP API 复用相同 projection/digest。0/1/500/501/10,000、关闭重开与 SQLite backup restore 均覆盖。
+  - Evidence 根据 task 的 `assesses` 在同一 UoW 快照多个 Competency；SQL 在 pagination/limit 前过滤。Competency global/plan key、edge/link scope、图 revision 与依赖撤销均由数据库约束和后端 Guard 强制。
+  - Evidence/Competency 工具使用具名严格嵌套 Schema 并拒绝额外字段；只读 merge candidate 不静默合并或写图。
+  - 41 个场景均为 `verified`，逐项运行 production adapter/reducer/audit；41 个 mutant 各自改变真实输入或共享生产 seam，并由独立 failure code 捕获。
+
+- 已验证：
+  - H4 场景矩阵 `124 passed`；H0 contract、V2 baseline 与场景矩阵合集 `131 passed`。
+  - revision 4 migration contract `11 passed`，覆盖 H4 semantic backfill、history、main replace 与 publish verify 的真实 SIGKILL；11 个 migration candidate kill-point 也已通过。
+  - Evidence projection 边界 `6 passed`，覆盖 0/1/500/501/10,000、全量/增量/CLI/Context/tool/HTTP、重开与备份恢复。
+  - H4 最终非迁移定向集合 `230 passed in 205.63s`；文档与相对链接 `3 passed`。Python compileall 与 `pip check` 通过；前端 Node `9 passed`、生产构建成功，完整与 production-only `npm audit` 均为 0 vulnerabilities。
+  - H0/H1/revision 1–4 迁移全链 `237 passed in 1026.53s`，包含 11 个 candidate kill-point 与 H4 semantic/history/publish SIGKILL。临时 fresh revision-4 数据库为 `user_version=4`、4 条不可变 migration history、`integrity_check=ok`、0 FK violation，schema checksum 精确为 `851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace`。
+  - 最终完整 pytest 为 `822 passed, 50 xfailed, 0 failed, 0 XPASS`，耗时 `1470.71s (0:24:30)`；50 个 strict xfail 全部属于 H5–H8 的已登记门禁。唯一 warning 为上游 Starlette `TestClient` 的 `httpx` 弃用提示。
+
+- 尚未实现：
+  - H5 Context/Memory/Intervention，H6 应用部署边界，H7 复杂技能只读视图与真实 Chrome 矩阵，H8 首启/Release/真人验收。H4 只完成 M13/M14 的事实与后端闭环，不恢复 M15–M20。
+
+- 已知限制：
+  - migration 对不可证明的旧关联选择 fail closed 或保留未关联事实，不伪造历史；`legacy_unavailable` Artifact 不会被当作 durable evidence。
+  - graph revision 为单 owner 的可靠递增失效标记，不是跨节点共识协议；SQLite 仍是单机共享数据库边界。
+  - 外部安装、连续学习闭环与 7 日留存仍为**待真实用户验证**。
+
+- 下一门禁：
+  - H5：Context、Memory 与 Intervention。
 
 ## V2 当前实现候选（develop，尚未验收）
 
 - `EvidenceObservation` 是追加式事实层，带来源、计划/任务/Run/Session、评分、提示/迁移等级、Rubric 快照、因果链和幂等键；没有编辑或物理删除路径。
 - `submission_create`、`submission_check`、`quiz_grade` 和带证据的 `task_patch` 会双写账本；同一幂等键重试只返回原观察。
-- `study_state_get` 与计划 Context 已接入同一个 `evidence-summary-v1` 投影候选；H1 已关闭 UTC/SQLite 往返稳定性，完整账本、撤销和重复计权语义仍待 H4 验收。
+- `study_state_get`、计划 Context、CLI、tool 和 HTTP API 已接入同一个无截断 Evidence projection；全量/增量 digest、撤销和一次行为一份主观察语义已由 H4 验收。
 - `scripts/rebuild-evidence.py` 已提供重建、审计、回填和派生快照命令；H1 已证明纯 audit 不建表、不迁移、不写入，任何回填/重建写操作都会先取得协调 lease 并完成全量验证备份。
-- Artifact 表和 `artifact_id + content_hash` 引用已经存在；H2 已关闭同键异内容冲突，内容耐久性、文件指纹和作用域审计仍待 H4 验收。
-- 当前仓库存在 41 个场景名称和第一版实现，但多数场景尚未形成独立领域断言，不能用“41/41”证明覆盖；M13/M14 均需按硬化计划重新验收。
+- Artifact 保存 canonical envelope、耐久 bytes snapshot、size、hash 和 scope；H2 request identity 与 H4 完整性审计共同覆盖同键冲突、源文件删除、篡改和不可用 legacy 来源。
+- 当前 41 个场景均有独立 production baseline 与对应 mutant；这证明 H4 事实层回归灵敏度，不替代 H5–H8、M14 前端或真实用户验收。
 
 ## 当前结论
 
@@ -123,17 +153,17 @@ Learning Agent 已形成真实可运行的个人学习 Harness 原型，而不�
 以下条目描述可运行能力，不代表其崩溃恢复、并发、迁移和长期上下文不变量已经通过 H0–H8：
 
 - 对话式计划制定：需求不充分时由 Agent 生成结构化提问卡；充分后可委派只读子 Agent 调研，汇总成可审阅提案，用户采用后才创建正式计划。
-- 计划执行与调整：Agent 能读取学习位置、计划版本、资源、事件和提交，教学下一步、修改阶段/任务、安排复习和日历；H2 已验收 action identity 与统一 UoW，作用域 Guard、Evidence invalidation 和图依赖撤销仍由 H4 重新验收。
+- 计划执行与调整：Agent 能读取学习位置、计划版本、资源、事件和提交，教学下一步、修改阶段/任务、安排复习和日历；H2 已验收 action identity 与统一 UoW，H4 已验收 Evidence/Competency 作用域 Guard、invalidation 和图依赖撤销。
 - 学习证据与考核：支持文字、文件、代码和链接提交；Agent 可读取文件、运行有界代码、按标准验收、评分并安排下一轮复习。
 - 主动性：正常路径中，单实例心跳先筛选候选，再启动计划级 Hy3 Run 决定是否干预；提醒可投影到收件箱、浏览器和可选邮件。活动 Run 回复目标、多渠道唯一 Intervention、IMAP ack 与冷却语义仍由 H5-INT/MAIL/PRO 缺陷阻塞。
 - Session 管理：对话自动语义命名，支持手动改名、归档、恢复和非破坏式消息编辑。全局 Session 创建计划后通过 `SessionPlanLink + handoff_summary` 显式过渡到新的计划 Session，不静默改绑。
 - Harness 可观察性：每条 Agent 消息内包含可折叠 Run；工具、审批、子 Agent、失败和预算可以逐项展开。H3 已验收主/子 Run 的版本化 checkpoint、lease、耐久 retry、原子终态/父投影和共享预算；H5 的提醒线程与 H7 的完整 UI 恢复仍待关闭。
-- 产品状态一致性：同一 Session/计划根 Run 由统一 scope 仲裁，Queue/late steer/审批和终态 successor 已耐久闭环。提醒 reply target、归档派生 Context 和 Evidence 终态约束仍分别由 H5/H4 复验。
+- 产品状态一致性：同一 Session/计划根 Run 由统一 scope 仲裁，Queue/late steer/审批和终态 successor 已耐久闭环。Evidence 终态与 graph dependency 已由 H4 验收；提醒 reply target 和归档派生 Context 仍由 H5 复验。
 
 ## Context 与 Memory 1.1
 
 - Context 有 Global/Profile/Plan/Session 分层组装候选，但 H5-CTX-001 已证明 global Session 的 discussed link 会解锁计划私有事件、测验、提醒、复习和日历；当前不能宣称严格隔离。
-- V2 第一批新增 `EvidenceObservation` 账本与统一投影候选；H1-TIME-001/002 已关闭 SQLite 时间往返差异，但 H4-EVID-001 仍证明 501/10,000 条账本会被在线路径截断，因此当前仍不能宣称完整账本 digest 稳定。
+- V2 Evidence 账本与统一投影已通过 H4：0/1/500/501/10,000 条在在线、Context、CLI、tool、HTTP、关闭重开和备份恢复后具有一致 digest。
 - 长 Session 会保留原文并写 `SessionSummary` 候选；H5-CTX-002–004 已证明压缩会遗漏输入或在失败后错误推进 coverage，尚不具备长期连续性保证。
 - 长期记忆先以 proposal 存在；确认后才进入检索。重复内容会强化原记录而不是复制；用户纠正会建立 `supersedes_id / superseded_by_id` 替代链，旧认识保留为历史。
 - 记忆归档已有软归档/恢复候选；H5-CTX-011 已证明恢复会清空未来 `expires_at`，生命周期语义尚未通过。
@@ -162,4 +192,4 @@ Learning Agent 已形成真实可运行的个人学习 Harness 原型，而不�
 - 子 Agent v1 默认只读；业务写操作回到主 Agent，避免多个执行体竞争修改计划和长期记忆。
 - 外部用户安装完成率、连续学习闭环和 7 日留存均为**待真实用户验证**；H0 的合成夹具、自动化测试和 Chrome 冷启动不能替代 H8 的真实样本记录，也不能由 Agent 自行宣布完成。
 
-上述边界不影响受控本机 Demo；H2/H3 已关闭工具事务、幂等、外部副作用围栏和 Run 恢复，但 Evidence 正确性、Context 连续性、提醒线程、移动导航和应用部署边界仍会阻塞 V2 Alpha、无人值守运行和对陌生用户公开推广。后续执行以 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 为准，不能在界面或文档中把待修能力写成已完成。
+上述边界不影响受控本机 Demo；H2–H4 已关闭工具事务、幂等、外部副作用围栏、Run 恢复和 Evidence/Competency 事实正确性，但 Context 连续性、提醒线程、移动导航和应用部署边界仍会阻塞 V2 Alpha、无人值守运行和对陌生用户公开推广。后续执行以 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md) 为准，不能在界面或文档中把待修能力写成已完成。

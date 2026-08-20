@@ -139,10 +139,10 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 ### H0 实施记录（2026-08-18）
 
 - 生产代码未改；全局测试数据库已移出仓库 `data/`，所有故障注入使用临时 SQLite 或确定性 SQL 副本。
-- 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景已登记独立 contract，但仍为 `pending_rewrite`，不会被当作 41 项已覆盖。
+- 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景在 H0 只登记独立 contract，H4 已把它们逐项改为 production reducer/audit baseline 与 mutant 门禁。
 - 定向套件登记 87 个 open defect ID、113 个 strict-xfail 节点和 20 个 passing gate。实现门禁修复每一项时必须删除对应 xfail，并在矩阵写入修复提交。
 - 最终全量回归为 146 passed、113 xfailed、0 XPASS、0 failed；Python compileall、pip check、前端生产构建与完整/production-only npm audit 均通过。五尺寸 Chrome 使用独立临时数据库和精确合成 Session 令牌，得到 3 个已登记 H7-UI-001 XFAIL，未产生非预期失败或 API 写请求。
-- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H3 已于后续阶段关闭，当前下一门禁为 H4。
+- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H4 已于后续阶段关闭，当前下一门禁为 H5。
 
 ## 5. H1：迁移、时间与备份基础
 
@@ -270,7 +270,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 主/子 Run 共享 model/tool/network/elapsed/token/cost 预算、耐久有界 retry 和只读 child Guard。child finalizing checkpoint 冻结报告，父终态取消覆盖所有非终态 child，child 终态与父 `subagent.completed` 在同一事务投影或可幂等修复。
 - 真实进程故障覆盖 claim/checkpoint/finalizing、同一 Run 连续三次中断、双进程 claim、SQLite busy 与 frozen-H2 migration publish；固定种子 100 轮逐轮比较无故障 baseline、恢复运行与手写语义 oracle。另有两工具测试在第二个数据库副作用已提交、Run checkpoint 尚未推进时中断，恢复后只保留两份领域事实与两个 completion。
 - H3 定向为 40 passed；前端状态契约为 9 passed，生产构建和 npm audit 通过。真实 Hy3 临时库演示完成两次 SIGKILL、三次 claim，最终只有一条 assistant message 与一个 completed event，正文和凭据未输出。完整结果只在 [`STATUS.md`](STATUS.md) 维护。
-- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4–H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H4。
+- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4 已完成，H5–H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H5。
 
 ## 8. H4：Evidence 与 Competency 事实层
 
@@ -308,6 +308,16 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 跨计划泄漏和越权写入为零。
 - 每个基线场景都能在破坏对应规则时独立失败。
 - M14 最小闭环能回答“这个任务训练什么、证明什么、依据是什么”。
+
+### H4 实施记录（2026-08-20，已完成）
+
+- schema revision 4 `h4_evidence_competency_facts` 冻结 append-only Evidence fact、不可变 Artifact snapshot、规范化 Evidence↔Artifact/Competency/Operation 关联、scope-aware Competency、owner-wide graph revision/mutation/dependency 与计划投影 watermark；canonical checksum 为 `851f34b9c3d455208b73c6815856da70edc57e52d5676f8b6b391e8ddf1b0ace`。
+- revision 3 与 partial-M13 来源升级均为 source-aware：只回填可由原库证明的 Artifact、Competency、assesses 和 Operation 关联，不读取 `file://` 源文件，不按标题或 Run 猜测身份；跨 owner/plan/task、supersession 环/分支、图环、损坏 FK 或 hash 一律 fail closed。fresh 与升级后的 `sqlite_schema` 精确等价，H4 semantic backfill/history/publish 的真实 SIGKILL 重试收敛且不重复派生事实。
+- Evidence writer 在同一 UoW 持久化 primary observation 与来源/技能/Operation 关联；undo/redo/correction 追加 invalidation/amendment/reinstatement 事实，不更新或删除原观察。Artifact 保存 canonical envelope、bytes snapshot、size 与 hash；eligibility 后端 Guard 校验 owner/plan/task、Rubric、evaluator、source 类型与 `assesses`。
+- 全量 reducer 不再截断，增量投影持久化 watermark 并持续和 full oracle 对比；0/1/500/501/10,000 条在全量、增量、CLI、Context、tool 与 HTTP API 上得到同一 digest，关闭重开和 SQLite backup restore 后仍一致。
+- Competency key 由数据库 partial unique 区分 global 与 plan scope；edge/link 从数据库解析两端真实 owner/plan，SQL 在 limit 前按 Evidence↔Competency 关联过滤。每次真实图 mutation 原子推进 durable revision；Operation dependency 与 `RESTRICT` FK 防止 undo 静默级联，失败保持原 Operation committed。
+- 41 个 `verified` 场景各自运行 production adapter/reducer/audit；41 个唯一 mutant 均先验证 baseline，再由独立 failure code 捕获。场景矩阵为 124 passed，未保留 `pending_rewrite`、synthetic oracle、测试专用规则或 strict xfail。
+- H4 新关闭 16 个 defect ID，累计关闭 50 个、剩余 37 个。外部安装、连续使用与 7 日留存仍为待真实用户验证；M14 的复杂前端属于 H7，M15–M20 继续冻结。下一门禁为 H5。
 
 ## 9. H5：Context、Memory 与 Intervention
 
