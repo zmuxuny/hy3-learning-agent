@@ -56,6 +56,7 @@ export const useShellStore = defineStore('shell', () => {
 
     const results = await Promise.allSettled([
       settings.loadProfile(),
+      settings.loadOnboardingStatus(),
       plan.loadActivePlans(),
       session.loadActiveSessions(),
       run.loadRuns(),
@@ -66,6 +67,11 @@ export const useShellStore = defineStore('shell', () => {
     coreLoading.value = false;
     const failed = results.find((result) => result.status === 'rejected');
     if (failed && !settings.profile && !plan.plans.length && !session.sessions.length) setError(failed.reason);
+    if (settings.onboardingStatus?.requires_onboarding && router.currentRoute.value.name !== 'onboarding') {
+      await router.replace({ name: 'onboarding' });
+    } else if (!settings.onboardingStatus?.requires_onboarding && router.currentRoute.value.name === 'onboarding') {
+      await router.replace({ name: 'home' });
+    }
     await hydrateRoute(router.currentRoute.value, { force: true });
   }
 

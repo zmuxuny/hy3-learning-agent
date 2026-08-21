@@ -1,12 +1,12 @@
 # 产品定义
 
-> 状态说明（2026-08-21）：本文主要定义目标产品契约。H1–H7 已完成，累计关闭 83 个缺陷 ID、剩余 4 个 open ID，下一门禁是 H8；Context/Memory/Intervention、应用部署边界和前端最小闭环已验收，首启与发布工程仍有阻塞缺陷。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。H0–H8 完成前不作 V2 Alpha 发布声明。
+> 状态说明（2026-08-21）：本文主要定义目标产品契约。H1–H8 工程门禁已完成，累计关闭 87 个缺陷 ID、剩余 0 个 open ID；Context/Memory/Intervention、应用部署边界、前端闭环、首次配置与发布工程均已验收。外部真人采用验证未执行，M15–M20 与新功能冻结，等待独立第三阶段参赛计划。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。本轮不作 V2 Alpha 发布声明。
 
 ## 一句话描述
 
 Learning Agent 是一个会持续维护学习上下文、主动判断是否需要介入，并通过资源、计划、证据检查、提醒和复习帮助用户真正执行计划的个人 AI Harness。
 
-产品只面向个人电脑或个人服务器持续运行，不建设账号、组织和租户系统。单用户服务器仍必须有认证；H6 已提供失败关闭的高级 server 边界，但浏览器登录产品化和发布安装仍由 H8 阻塞。首要场景是编程和技术学习。
+产品只面向个人电脑或个人服务器持续运行，不建设账号、组织和租户系统。单用户服务器仍必须有认证；H6 已提供失败关闭的高级 server 边界，H8 已完成 local 首次设置与发布安装。普通用户 server 登录页仍不是当前能力。首要场景是编程和技术学习。
 
 ## 核心问题
 
@@ -58,13 +58,13 @@ Hy3 读取经过组装的上下文并自主决策。系统再经过冷却时间�
 
 ## 自主权模型
 
-目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制；H4 已让 Evidence eligibility、Artifact 完整性和 Competency scope/revision/dependency 由架构层强制；H5 已让 Context 来源、预算、Memory 生命周期和 Intervention 身份由后端协议强制；H6 又让部署认证、外部来源 authority、Web fetch 和高风险能力可用性由后端边界强制；H7 已完成前端事实对账和真实浏览器矩阵。H8 仍需完成浏览器登录、首启和可安装发布工程。
+目标自治模型允许 Agent 通过基础工具操作计划，但权限、scope、审批、幂等和副作用状态必须由后端 Guard/UoW 强制，而不是 System Prompt。H2 已将数据库写入、幂等状态与 outbox intent 纳入同一 UoW；H3 已让审批、Runtime finalization、Queue 和 child 预算由统一状态机强制；H4 已让 Evidence eligibility、Artifact 完整性和 Competency scope/revision/dependency 由架构层强制；H5 已让 Context 来源、预算、Memory 生命周期和 Intervention 身份由后端协议强制；H6 又让部署认证、外部来源 authority、Web fetch 和高风险能力可用性由后端边界强制；H7 已完成前端事实对账和真实浏览器矩阵；H8 已完成 local 首启和可安装发布工程。普通用户 server 登录页不是当前能力。
 
 - **自动执行**：提醒、抽查、安排复习、创建通知、生成临时学习材料。
 - **自动执行且可撤销**：调整任务时间、创建补救任务、重排低风险任务。
 - **执行前确认**：删除数据、跨计划大规模重排、改变最终目标、写入全局长期记忆、向外部服务发送敏感内容。
 
-用户以后可以提高自治等级，但不能关闭操作审计。
+用户以后可以提高自治等级，但不能关闭操作审计。H8 后的新能力暂不开发，后续范围由独立第三阶段计划决定。
 
 ## 学习计划
 

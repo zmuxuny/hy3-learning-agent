@@ -8,6 +8,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const dashboard = ref({ activity: [], achievements: [], due_review_count: 0, open_quiz_count: 0 });
   const emailConfiguration = ref(null);
   const appSettings = ref(null);
+  const onboardingStatus = ref(null);
   const emailTestResult = ref(null);
   const schedulerStatus = ref(null);
   const followUpBehavior = ref('steer');
@@ -46,6 +47,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const loadDashboard = () => load('dashboard', '/dashboard', (data) => { dashboard.value = data; });
   const loadEmailConfiguration = () => load('email', '/settings/email', (data) => { emailConfiguration.value = data; });
   const loadAppSettings = () => load('app', '/settings', (data) => { appSettings.value = data; });
+  const loadOnboardingStatus = () => load('onboarding', '/settings/onboarding', (data) => {
+    onboardingStatus.value = data;
+  });
   const loadSchedulerStatus = () => load('proactive', '/settings/proactive', (data) => { schedulerStatus.value = data; });
   const loadFollowUpBehavior = () => load('followup', '/settings/followup', (data) => {
     followUpBehavior.value = data?.follow_up_behavior || 'steer';
@@ -113,6 +117,18 @@ export const useSettingsStore = defineStore('settings', () => {
   async function updateModelSettings(payload) {
     const response = await api.put('/settings/model', payload);
     appSettings.value = { ...(appSettings.value || {}), ...response.data };
+    onboardingStatus.value = {
+      ...(onboardingStatus.value || {}),
+      api_key_configured: Boolean(response.data.api_key_configured),
+      requires_onboarding: !response.data.api_key_configured,
+      model: response.data.model,
+      base_url: response.data.base_url,
+    };
+    return response.data;
+  }
+
+  async function verifyModelConnection(payload) {
+    const response = await api.post('/settings/model/test', payload);
     return response.data;
   }
 
@@ -127,6 +143,7 @@ export const useSettingsStore = defineStore('settings', () => {
     dashboard,
     emailConfiguration,
     appSettings,
+    onboardingStatus,
     emailTestResult,
     schedulerStatus,
     followUpBehavior,
@@ -136,6 +153,7 @@ export const useSettingsStore = defineStore('settings', () => {
     loadDashboard,
     loadEmailConfiguration,
     loadAppSettings,
+    loadOnboardingStatus,
     loadSchedulerStatus,
     loadFollowUpBehavior,
     loadOptional,
@@ -145,6 +163,7 @@ export const useSettingsStore = defineStore('settings', () => {
     updateEmailSettings,
     deleteEmailCredentials,
     updateModelSettings,
+    verifyModelConnection,
     updateNotificationPolicy,
   };
 });

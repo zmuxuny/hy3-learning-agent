@@ -727,14 +727,6 @@ def test_demo_restore_rejects_corrupt_source_and_preserves_live_database(tmp_pat
     assert _database_integrity(live_database) == [("ok",)]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H8-BOOT-001: a fresh workspace with no model key opens the normal chat "
-        "screen instead of entering the required first-run onboarding flow"
-    ),
-)
 def test_fresh_workspace_enters_model_onboarding_before_first_session() -> None:
     _require_harness(FRONTEND_ROUTER.is_file(), "frontend router contract is missing")
     source = FRONTEND_ROUTER.read_text(encoding="utf-8")
@@ -746,14 +738,6 @@ def test_fresh_workspace_enters_model_onboarding_before_first_session() -> None:
         "fresh/no-key workspaces still have no dedicated onboarding route"
     )
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H8-REL-001: the worktree has no callable release builder or runtime-asset "
-        "packaging entrypoint"
-    ),
-)
 def test_release_archive_starts_without_node_when_python_runtime_is_ready(tmp_path: Path):
     contract = _materialize_worktree_release(tmp_path)
     assert contract["builder_present"], "release builder entrypoint is missing"
@@ -799,14 +783,6 @@ def test_release_archive_starts_without_node_when_python_runtime_is_ready(tmp_pa
     assert (release_path / "runtime-started").is_file()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H8-REL-002: start.sh invokes npm during release startup when the packaged "
-        "frontend asset is missing"
-    ),
-)
 def test_release_start_never_builds_a_missing_frontend_asset(tmp_path: Path):
     repository, environment = _synthetic_repository(tmp_path, "start.sh")
     npm_marker = repository / "npm-was-invoked"
@@ -844,14 +820,6 @@ def test_release_start_never_builds_a_missing_frontend_asset(tmp_path: Path):
     assert not runtime_marker.exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "H8-CI-001: there is no executable release-gate entrypoint that can "
-        "reject a candidate repository missing the mandatory CI gates"
-    ),
-)
 def test_release_gate_rejects_repository_missing_mandatory_ci_checks(tmp_path: Path):
     gate = PROJECT_ROOT / "scripts" / "release-gate.py"
     assert gate.is_file(), "missing callable release gate: scripts/release-gate.py"

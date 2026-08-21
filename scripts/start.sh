@@ -9,7 +9,7 @@ if [[ ! -x .venv/bin/python ]]; then
   exit 1
 fi
 if [[ ! -f .env ]]; then
-  echo "Missing .env. Copy .env.example to .env and configure OPENAI_API_KEY." >&2
+  echo "Missing .env. Copy .env.example to .env; the browser onboarding flow can configure OPENAI_API_KEY." >&2
   exit 1
 fi
 if curl --silent --fail --max-time 2 http://127.0.0.1:8000/api/v1/health >/dev/null 2>&1; then
@@ -18,7 +18,8 @@ if curl --silent --fail --max-time 2 http://127.0.0.1:8000/api/v1/health >/dev/n
   exit 2
 fi
 if [[ ! -f frontend/dist/index.html ]]; then
-  npm --prefix frontend run build
+  echo "missing_release_asset: frontend/dist/index.html is required; rebuild the release artifact." >&2
+  exit 3
 fi
 
 exec .venv/bin/python backend/run.py

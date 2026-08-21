@@ -23,8 +23,8 @@ onBeforeUnmount(() => inbox.stopProactiveSync());
 </script>
 
 <template>
-  <div class="app-shell">
-    <Sidebar />
+  <div :class="['app-shell', { 'onboarding-shell': route.name === 'onboarding' }]">
+    <Sidebar v-if="route.name !== 'onboarding'" />
     <main class="workspace">
       <WorkspaceHeader v-if="!shell.coreLoading && ['home', 'session', 'inbox-intervention'].includes(route.name)" />
       <div v-if="shell.coreLoading" class="page-loader"><span></span><p>正在恢复学习上下文…</p></div>

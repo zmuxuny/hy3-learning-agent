@@ -1,6 +1,6 @@
 # 主动 Agent 与上下文架构
 
-> 状态说明（2026-08-21）：本文描述目标架构，并明确 develop 上已经验收的边界。H1–H7 已完成迁移/UTC/备份、事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention、应用安全边界与前端最小闭环；累计关闭 83 个缺陷 ID，矩阵剩余 4 个 open ID，下一门禁为 H8，M15–M20 继续冻结。发布工程仍未验收；当前真实状态见 [`STATUS.md`](STATUS.md)，逐项缺陷见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)，修复顺序见 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-21）：本文描述目标架构，并明确 develop 上已经验收的边界。H1–H8 工程门禁已完成迁移/UTC/备份、事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention、应用安全、前端闭环、首次设置与发布工程；累计关闭 87 个缺陷 ID，矩阵剩余 0 个 open ID。外部真人采用验证和 M15–M20 继续冻结；当前真实状态见 [`STATUS.md`](STATUS.md)。
 
 阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断全部门禁已经满足。H0 建立的失败基线会在对应门禁修复后删除 xfail；当前边界为：
 
@@ -9,7 +9,7 @@
 - Evidence / Competency：H1-TIME-001/002 与 H4-EVID-001–008、H4-COMP-001–006、H4-SCHEMA-001/002 已关闭；完整账本、追加式控制事实、Artifact snapshot、scope-aware graph 与严格工具 Schema 已验收。
 - Context / Intervention：H5-CTX-001–012、H5-INT-001–003、H5-MAIL-001/002、H5-PRO-001–003 已关闭；来源图、generation fence、typed blocks、逻辑 Intervention、mail job 与 ProactiveDecision 已验收。
 - 安全：H6-AUTH/CODE/TRUST/WEB/ENV/CONFIG/REDACT 均已关闭；local 默认 loopback，server API 必须认证，外部来源不能自行获得写权限，没有 sandbox Provider 时 `code_execute` 不可用。
-- UI：H7-UI-001–006 已关闭；分域 Store、正式路由、移动导航、前端事实对账与五宽真实 Chrome 已验收。浏览器登录、首启和发布资产仍属于 H8。
+- UI/发布：H7-UI-001–006 与 H8 四项均已关闭；分域 Store、正式路由、移动导航、前端事实对账、五宽真实 Chrome、local 首次设置和内置发布资产已验收。普通用户 server 登录页仍是明确限制。
 
 ## 1. 总体架构
 
@@ -117,7 +117,7 @@ H5 追加 schema revision 5：`ContextState` 为所有 Context 相关语义变�
 
 应用事务统一由 `app.db.uow` 协调。SQLite 写路径在创建嵌套 savepoint 前显式建立 physical outer transaction，避免 release 最外层 savepoint 时提前提交；service/tool handler 默认只 flush，API/Runtime coordinator 提交完整原子集。短事务退避只包住可安全重放的 claim/CAS、事件和 receipt callback，不重跑隐藏任意业务工作的 ORM session。
 
-H3 定向为 40 passed，前端状态契约为 9 passed；真实 Hy3 临时库已完成双 SIGKILL 恢复。完整验证结果统一见 [`STATUS.md`](STATUS.md)。外部安装、连续学习闭环和 7 日留存仍须在 H8 由真人记录验证。
+H3 定向为 40 passed，前端状态契约为 9 passed；真实 Hy3 临时库已完成双 SIGKILL 恢复。完整验证结果统一见 [`STATUS.md`](STATUS.md)。外部安装、连续学习闭环和 7 日留存仍须由真人记录，当前按项目决定冻结。
 
 当前生成：
 

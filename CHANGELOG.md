@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased · H8 engineering freeze
+
+### First run and release engineering
+
+- Added a three-step TokenHub/Hy3 onboarding flow for fresh, keyless, zero-Session installations. Connection checks use a minimal request, never persist model output or echo credentials, and successful settings apply without restarting before the first Run.
+- Added a worktree-aware deterministic release builder with a per-file manifest and SHA-256 sidecar. Release archives contain built frontend assets and exclude local env files, databases, Context/workspace data, Node dependencies, caches and logs.
+- Release startup never invokes npm; missing frontend assets fail with `missing_release_asset`. Packaged setup installs only Python runtime dependencies when the built frontend is present.
+- Split runtime and development requirements so packaged setup does not install pytest, Ruff or dependency-audit tooling.
+- Added eight mandatory executable release gates for static checks, Python dependency audit, historical migration, Evidence, Context isolation, real-browser matrices, secret scanning and frontend tests/build/audit.
+- Closed all four H8 defect IDs. External user installation, continuous-use and seven-day retention validation remain explicitly unperformed; M15–M20 and new features are frozen pending a separate third-stage competition plan.
+
 ## Unreleased · 2.0 M13
 
 ### 学习证据账本第一条纵向切片

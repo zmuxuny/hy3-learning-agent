@@ -76,6 +76,10 @@ async def test_delete_email_credentials_clears_all_keys(monkeypatch):
 async def test_update_model_settings_writes_api_key_without_echoing(monkeypatch):
     captured = {}
     monkeypatch.setattr("app.api.settings.update_env_file", lambda values: captured.update(values))
+    monkeypatch.setattr(settings, "OPENAI_API_BASE", "https://tokenhub.tencentmaas.com/v1")
+    monkeypatch.setattr(settings, "MODEL_NAME", "hy3")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
+    monkeypatch.setattr(settings, "MODEL_TEMPERATURE", 0.9)
     result = await update_model_settings(ModelSettingsUpdate(
         base_url="https://tokenhub.tencentmaas.com/v1",
         model="hy3",
@@ -85,6 +89,7 @@ async def test_update_model_settings_writes_api_key_without_echoing(monkeypatch)
     assert captured["OPENAI_API_KEY"] == "sk-test-secret"
     assert captured["MODEL_TEMPERATURE"] == "0.5"
     assert result["api_key_configured"] is True
+    assert result["restart_required"] is False
     assert "sk-test-secret" not in str(result)
 
 

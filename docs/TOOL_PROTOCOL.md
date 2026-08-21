@@ -1,6 +1,6 @@
 # Agent 工具与运行协议
 
-> 状态说明（2026-08-21）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算；H4 已验收 Evidence/Competency 领域作用域、事实语义与严格嵌套 Schema；H5/H6 已验收 Context、Intervention、邮件回复、信任传播与应用部署边界；H7 已验收这些事实的前端投影。当前剩余 H8 发布工程，逐项以 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
+> 状态说明（2026-08-21）：H2 已验收工具 effect 分类、统一 UoW、请求身份、CAS claim 与外部写 outbox；H3 已验收审批、Run/Queue/child 恢复和完整运行预算；H4 已验收 Evidence/Competency 领域作用域、事实语义与严格嵌套 Schema；H5/H6 已验收 Context、Intervention、邮件回复、信任传播与应用部署边界；H7 已验收这些事实的前端投影，H8 已验收首次设置与发布工程。87 个登记缺陷均已关闭；真人采用验证与后续功能保持冻结。
 
 ## 设计原则
 

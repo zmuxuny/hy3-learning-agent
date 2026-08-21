@@ -1,55 +1,107 @@
-name: CI
+name: Release gates
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, develop]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  backend:
-    name: Backend tests
+  lint_typecheck:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: pip install -r backend/requirements-dev.txt
+      - run: python scripts/release-check.py lint_typecheck
 
-      - name: Install backend dependencies
-        run: pip install -r backend/requirements.txt
-
-      - name: Run tests
-        run: pytest -q
-
-  frontend:
-    name: Frontend build and audit
+  python_dependency_audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - run: python scripts/release-check.py python_dependency_audit
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+  historical_migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - run: python scripts/release-check.py historical_migration
+
+  evidence_audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - run: python scripts/release-check.py evidence_audit
+
+  context_isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - run: python scripts/release-check.py context_isolation
+
+  browser_matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - run: pip install -r backend/requirements-dev.txt
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run build
+      - run: python scripts/release-check.py browser_matrix
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
+  secret_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/release-check.py secret_scan
 
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-
-      - name: Audit production dependencies
-        working-directory: frontend
-        run: npm audit --omit=dev
+  frontend_build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm --prefix frontend ci
+      - run: python scripts/release-check.py frontend_build

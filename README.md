@@ -4,7 +4,11 @@
 
 当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
 
-> 安全与开发状态：`develop` 已完成 H1–H7，累计关闭 83 个缺陷 ID，矩阵剩余 4 个 open ID，下一门禁是 H8。默认 `local` 模式只接受 loopback；高级 `server` 模式在缺少认证或精确 HTTPS Origin 时拒绝启动。仓库不提供真实代码沙箱，因此 `code_execute` 默认不可用。M15–M20 继续冻结，H8 与真人验收完成前仍不具备 V2 Alpha 发布条件。详见[安全边界](SECURITY.md)和[前置硬化计划](docs/V2_HARDENING_PLAN.md)。
+> 安全与开发状态：`develop` 已完成 H1–H8 工程门禁，87 个登记缺陷 ID 全部关闭且无保留 xfail。默认 `local` 模式只接受 loopback；高级 `server` 模式在缺少认证或精确 HTTPS Origin 时拒绝启动。仓库不提供真实代码沙箱，因此 `code_execute` 默认不可用。外部安装/连续使用/7 日留存没有被自动化冒充为通过；按当前项目决策，M15–M20 与其他新功能保持冻结，等待另行制定第三阶段参赛计划。详见[安全边界](SECURITY.md)和[前置硬化计划](docs/V2_HARDENING_PLAN.md)。
+
+## 项目缘起
+
+Learning Agent 最初为 2026 腾讯犀牛鸟开源人才培养计划的混元大语言模型实战方向而创建，核心一直是：让 Hy3 在可审计、可恢复的个人学习 Harness 中持续理解目标、使用工具并依据真实学习事实行动。当前拟继续选择该项目第一项课题；本提交只完成既定 H8 工程硬化，不展开第三阶段的评测集、评分规则、结果报告或参赛材料。后续工作会以一份独立、完整的参赛计划重新启动，避免把比赛准备混入产品硬化历史。
 
 ## Demo
 
@@ -54,7 +58,7 @@ flowchart LR
 
 ## 已实现的正常路径候选
 
-以下条目说明当前能力范围。H1–H7 已分别验收迁移、事务、Runtime、Evidence、长期 Context/提醒线程、应用安全边界与前端最小闭环；当前只剩 H8 首启、发布和真人门禁：
+以下条目说明当前能力范围。H1–H8 工程门禁已分别验收迁移、事务、Runtime、Evidence、长期 Context/提醒线程、应用安全边界、前端闭环、首次设置和发布工程；外部采用指标单独冻结为未验证事实：
 
 - 完整 `Plan → Stage → Task` 计划模型与多计划工作台
 - `AgentRun / RunEvent` 生命周期、SSE 实时轨迹和停止请求
@@ -84,14 +88,14 @@ flowchart LR
 
 ## 快速开始
 
-要求 Python 3.11+ 与 Node.js 20+。
+源码安装要求 Python 3.11+ 与 Node.js 20+；正式 release tar 已包含前端资产，目标机无需 Node/npm，只需 Python 3.11+ 以及常见的 Bash/curl 运行环境。
 
 ```bash
 ./scripts/setup.sh
 cp .env.example .env
 ```
 
-只在本机 `.env` 中填写 TokenHub Key：
+`.env` 可以保持空 Key。首次打开浏览器会进入三步向导，先用最小请求验证 TokenHub/Hy3，再把 Key 原子写入本机 `.env` 并创建第一条 Session。也可预先手工填写：
 
 ```dotenv
 OPENAI_API_KEY=你的密钥
@@ -114,7 +118,7 @@ npm run dev
 
 Vite 会把 `/api` 代理到 `127.0.0.1:8000`。
 
-如需高级个人服务器模式，先完整阅读 [SECURITY.md](SECURITY.md)。必须设置 `DEPLOYMENT_MODE=server`、至少 32 字节的 `SERVER_AUTH_TOKEN`、精确 `https://` 的 `SERVER_PUBLIC_ORIGIN`，并令 `CORS_ORIGINS` 与之完全一致；缺少任一项都会失败关闭。浏览器登录与安装产品化仍属于 H8，不能把本机模式经端口转发直接暴露到公网。
+如需高级个人服务器模式，先完整阅读 [SECURITY.md](SECURITY.md)。必须设置 `DEPLOYMENT_MODE=server`、至少 32 字节的 `SERVER_AUTH_TOKEN`、精确 `https://` 的 `SERVER_PUBLIC_ORIGIN`，并令 `CORS_ORIGINS` 与之完全一致；缺少任一项都会失败关闭。当前仍没有面向普通用户的 server 登录页面，不能把本机模式经端口转发直接暴露到公网。
 
 站内提醒完全不需要邮箱：应用运行时，前端每 15 秒同步后台通知并在页面内弹出新提醒。只有希望离开应用后仍收到邮件或直接回复邮件时，才需要在 `.env` 配置 SMTP/IMAP 凭据；独立 Agent 邮箱是推荐方案而不是硬性要求，完整选择、字段和测试方法见 [邮箱配置](docs/EMAIL.md)。
 
@@ -127,7 +131,18 @@ npm --prefix frontend test
 npm --prefix frontend run build
 npm --prefix frontend audit --omit=dev
 python scripts/check_doc_links.py .
+python scripts/release-gate.py --repository . --format json
 ```
+
+从已构建 worktree 生成带逐文件 manifest 和旁路校验值、无需目标机安装 Node 的运行包：
+
+```bash
+npm --prefix frontend run build
+python scripts/build-release.py --source . --output /tmp/learning-agent-1.1.1.tar
+sha256sum -c /tmp/learning-agent-1.1.1.tar.sha256
+```
+
+release 中的 `setup.sh` 检测到已打包的 `frontend/dist` 后不会调用 npm；`start.sh` 缺少该资产会以稳定 `missing_release_asset` 失败，而不会在目标机临时构建。
 
 本地数据管理：
 
@@ -154,9 +169,9 @@ V2 学习证据账本、完整 reducer 和 Artifact/Competency 关联已通过 H
 PYTHONPATH=backend ./.venv/bin/python scripts/evidence-baseline.py
 ```
 
-自动化测试使用临时数据库和模拟模型响应，不冒充真实 Hy3 调用。历史 TokenHub/搜索/页面验证只证明当时的正常路径；当前事实以缺陷矩阵逐项状态、仍保留的 strict xfail 和各门禁修复后的 passing 回归为准，不能用历史场景数、截图数或构建通过替代领域验收。
+自动化测试使用临时数据库和模拟模型响应，不冒充真实 Hy3 调用。历史 TokenHub/搜索/页面验证只证明当时的正常路径；当前事实以缺陷矩阵逐项状态和各门禁的 passing 回归为准，不能用历史场景数、截图数或构建通过替代真人采用验证。
 
-各门禁的完整命令、精确测试数量和历史快照只在[当前状态](docs/STATUS.md)维护。自动化安全测试使用合成凭据、临时数据库、mock DNS/HTTP 和假 provider，不调用真实 SMTP/IMAP、公网或模型，也不替代 H8 的外部安装、连续使用和 7 日真人留存记录。
+各门禁的完整命令、精确测试数量和历史快照只在[当前状态](docs/STATUS.md)维护。自动化安全测试使用合成凭据、临时数据库、mock DNS/HTTP 和假 provider，不调用真实 SMTP/IMAP、公网或模型，也不替代被冻结的外部安装、连续使用和 7 日真人留存记录。
 
 ## 数据与安全
 

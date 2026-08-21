@@ -1,10 +1,10 @@
 # Learning Agent 2.0 前置硬化实施计划
 
-更新时间：2026-08-19（Asia/Shanghai）
+更新时间：2026-08-21（Asia/Shanghai）
 适用分支：`develop`  
 稳定基线：`v1.1.1` / `fe3db33`  
 审查基线：`1c5ff50`  
-状态：必须在继续 M15 前完成
+状态：H0–H8 工程门禁已完成；外部真人验证与后续功能冻结
 
 ## 1. 决策与目标
 
@@ -16,7 +16,7 @@
 - M13、M14 重新标记为“实现候选，尚未验收”；
 - `2.0.0-alpha.1` 暂不发布；
 - 不把现有 126 项测试通过等同于 V2 领域不变量通过；
-- 先完成 H0–H8，再决定是否恢复 M15；
+- H0–H8 工程门禁完成后仍不自动恢复 M15；后续范围等待独立第三阶段参赛计划；
 - `main` 和 `v1.1.1` 保持稳定，不用清空数据或重写 Git 历史换取通过。
 
 本计划的目标不是继续堆功能，而是把项目修到以下标准：
@@ -93,8 +93,8 @@ H0 失败基线与冻结
           → H5 Context / Memory / Intervention
             → H6 安全运行边界
               → H7 前端状态架构与 V2 最小闭环
-                → H8 首启、发布工程与外部用户验收
-                  → 重新评审是否进入 M15
+                → H8 首启与发布工程（已完成）
+                  → 外部真人验证与 M15–M20（冻结，等待独立计划）
 ```
 
 H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的文档和默认关闭策略可以提前，涉及 Runtime Guard 的实现必须基于 H2/H3 的统一状态机。
@@ -142,7 +142,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 三类只读公开夹具与 hash/count/schema manifest 已建立；原 41 场景在 H0 只登记独立 contract，H4 已把它们逐项改为 production reducer/audit baseline 与 mutant 门禁。
 - 定向套件登记 87 个 open defect ID、113 个 strict-xfail 节点和 20 个 passing gate。实现门禁修复每一项时必须删除对应 xfail，并在矩阵写入修复提交。
 - 最终全量回归为 146 passed、113 xfailed、0 XPASS、0 failed；Python compileall、pip check、前端生产构建与完整/production-only npm audit 均通过。五尺寸 Chrome 使用独立临时数据库和精确合成 Session 令牌，得到 3 个已登记 H7-UI-001 XFAIL，未产生非预期失败或 API 写请求。
-- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H7 已于后续阶段关闭，当前下一门禁为 H8。
+- H0 当时只关闭“失败基线缺失”这一准备工作，不关闭任何生产缺陷；H1–H8 工程门禁已于后续阶段关闭。
 
 ## 5. H1：迁移、时间与备份基础
 
@@ -183,7 +183,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 已提供 `scripts/data-maintenance.py` / `app.db.maintenance` 的安全维护协议，`reset-data.sh`、`seed-fixture.sh`、`demo-data.sh` 与 `rebuild-evidence.py` 已接入该协议。restore 会在加锁和写入前拒绝把目标数据库或安全备份根目录放在 source backup 本身或其子路径中；source backup 位于安全备份根目录下仍是正常布局。共享 lexical normalization 消除 `.`/`..` 别名但不跟随 symlink，SQLite URI 对空格、`%`、`#`、`?` 等路径字符安全。
 - H1 收口历史快照为 281 passed：`test_h1_time_contracts.py` 10、`test_h1_migration_protocol.py` 183、`test_h1_maintenance.py` 79、`test_h1_rebuild_coordinator.py` 5、`tests/test_migrations.py` 4；当时 H0 跨阶段为 27 passed / 17 strict xfailed，全仓为 441 passed / 98 strict xfailed，0 unexpected failure、0 XPASS。该组数字只记录 H1 收口时点，不是当前 H2 结果。
 - H1 关闭 13 个缺陷 ID、15 个基线节点；其收口时矩阵剩余 74 个 open ID、下一门禁为 H2。H2 的当前状态见下一节。
-- H1 收口时前端尚无独立自动化 `test` 脚本；H2 后续补了 Node contract，H7 又补齐 Vitest 与 system-Chromium Playwright 前端门禁。H8 的完整发布 gate 尚未完成。legacy naive 时间不会恢复不存在的原始 offset；受控 lease 不能约束绕过 Runtime/maintenance 的外部原始 SQLite writer；外部安装、连续学习闭环和 7 日留存仍待真实用户在 H8 验证。
+- H1 收口时前端尚无独立自动化 `test` 脚本；H2 后续补了 Node contract，H7 又补齐 Vitest 与 system-Chromium Playwright 前端门禁，H8 现已完成完整发布 gate。legacy naive 时间不会恢复不存在的原始 offset；受控 lease 不能约束绕过 Runtime/maintenance 的外部原始 SQLite writer；外部安装、连续学习闭环和 7 日留存保持冻结且未验证。
 
 ## 6. H2：事务、幂等与 Outbox（已完成）
 
@@ -270,7 +270,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 主/子 Run 共享 model/tool/network/elapsed/token/cost 预算、耐久有界 retry 和只读 child Guard。child finalizing checkpoint 冻结报告，父终态取消覆盖所有非终态 child，child 终态与父 `subagent.completed` 在同一事务投影或可幂等修复。
 - 真实进程故障覆盖 claim/checkpoint/finalizing、同一 Run 连续三次中断、双进程 claim、SQLite busy 与 frozen-H2 migration publish；固定种子 100 轮逐轮比较无故障 baseline、恢复运行与手写语义 oracle。另有两工具测试在第二个数据库副作用已提交、Run checkpoint 尚未推进时中断，恢复后只保留两份领域事实与两个 completion。
 - H3 定向为 40 passed；前端状态契约为 9 passed，生产构建和 npm audit 通过。真实 Hy3 临时库演示完成两次 SIGKILL、三次 claim，最终只有一条 assistant message 与一个 completed event，正文和凭据未输出。完整结果只在 [`STATUS.md`](STATUS.md) 维护。
-- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4–H7 已完成；H8、外部安装、连续使用和 7 日留存未完成，M15–M20 继续冻结。下一门禁为 H8。
+- 已知限制：SQLite lease 保证同一共享数据库上的 fenced executor，不提供多节点调度、leader election 或分布式数据库承诺；`needs_reconciliation` 仍要求人工/provider 对账；SSE delta 仍是进程内瞬时投影。H4–H8 工程门禁已完成；外部安装、连续使用和 7 日留存被冻结且未验证，M15–M20 继续冻结。
 
 ## 8. H4：Evidence 与 Competency 事实层
 
@@ -368,7 +368,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - 一次逻辑 Intervention 拥有唯一 canonical message 与 reply token，多渠道 Notification 只是 delivery。reply target 与 read-only execution mode 耐久贯穿 Queue、Run、Message 和 child；Run 终态与 Intervention outcome 同一 UoW 收口。IMAP 使用 `BODY.PEEK[]`，先持久化唯一 UID/UIDVALIDITY inbound job，再以 lease/CAS ack Seen；归档计划回复产生可见只读回执和 SMTP outbox。
 - 心跳候选与终态 ProactiveDecision 分离；success 才消耗长期冷却，quiet hours 保存精确 `next_eligible_at`，model/runtime/Guard 失败使用短退避。Scheduler 的学习活动只读取有效 Evidence `occurred_at`，不再用晚写入或已失效事件刷新活动。
 - H5/H0 Context/Intervention 联合为 120 passed；revision 1–5 migration bridge 为 48 passed，H5 migration 7 个和 runtime 9 个真实 SIGKILL 节点通过。最终完整 pytest 为 941 passed / 30 strict xfailed / 0 failed，前端 9 tests、生产构建、compileall、依赖审计、数据库完整性和文档链接均通过；精确命令与限制见 [`STATUS.md`](STATUS.md)。
-- H5 新关闭 20 个 defect ID，累计关闭 70 个、剩余 17 个。H6/H7 后续再关闭 13 个，当前累计关闭 83 个、剩余 4 个。没有真实 SMTP/IMAP/VAPID 账户验收；外部安装、连续使用与 7 日留存仍待真实用户验证。M15–M20 继续冻结，下一门禁为 H8。
+- H5 新关闭 20 个 defect ID，累计关闭 70 个、剩余 17 个。H6/H7 后续再关闭 13 个，H8 最后关闭 4 个；当前累计关闭 87 个、剩余 0 个。没有真实 SMTP/IMAP/VAPID 账户验收；外部安装、连续使用与 7 日留存冻结且未验证。M15–M20 继续冻结。
 
 ## 10. H6：安全运行边界
 
@@ -401,7 +401,7 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - Web/File/Email 形成耐久 `external_untrusted` authority；外部来源后的写操作必须绑定精确 durable approval，结构损坏不可被 boolean approval 覆盖。配置凭据和脱敏占位符不能进入工具 invocation。
 - Web fetch 在发送前固定验证过的 public IP，保留逻辑 Host/SNI、复核真实 peer，每跳重做；wire/decoded bytes、gzip、总 deadline 和 exact MIME 分别受限。
 - `.env` 全量预校验、0600 原子写、复杂值 round-trip，以及事件/Context/checkpoint/诊断/日志统一脱敏均已落地。新增 [`../SECURITY.md`](../SECURITY.md) 记录真实支持边界。
-- 7 个 H6 defect ID 的原 strict xfail 均已删除；H6 收口时累计关闭 77 个、剩余 10 个，下一门禁为 H7。H7 现已完成；当前累计关闭 83 个、剩余 4 个，下一门禁为 H8。真实外部账户、外部安装、连续使用和 7 日留存仍待真人验证。
+- 7 个 H6 defect ID 的原 strict xfail 均已删除；H6 收口时累计关闭 77 个、剩余 10 个，下一门禁为 H7。H7/H8 工程门禁现已完成；当前累计关闭 87 个、剩余 0 个。真实外部账户、外部安装、连续使用和 7 日留存冻结且未验证。
 
 ## 11. H7：前端状态架构与 V2 最小闭环
 
@@ -447,44 +447,48 @@ H4 与 H5 可以在 H3 稳定后分支开发，但必须按顺序集成。H6 的
 - H7 最终单次完整 pytest 为 `1048 passed / 4 strict xfailed / 0 failed / 0 XPASS`；4 项预期失败精确属于 H8。前端 Node `9 passed`、Vitest `32 passed`、生产构建和完整/production-only audit 均通过，audit 为 0 vulnerabilities。
 - H7 新关闭 6 个 defect ID，累计关闭 83 个、剩余 4 个；下一门禁为 H8。真实外部安装、连续使用和 7 日留存未由自动化代替，M15–M20 继续冻结。
 
-## 12. H8：首启、发布工程与真实用户验收
+## 12. H8：首启与发布工程（工程已完成；真人验证冻结）
 
-目标：从“开发者能跑”升级为“陌生用户能安装、信任并持续使用”。
+目标：把已有 Harness 从开发 worktree 收敛成可首次配置、可离线打包且由统一 release gate 验证的工程候选。2026-08-21 用户明确要求本阶段只完成 H8 开发和文档冻结，不执行外部用户测试，也不提前制定第三阶段参赛方案。
 
-### 实施任务
+### H8 工程收口（2026-08-21）
 
-- 首次打开提供短向导：模型配置/连接测试 → 学习目标 → 第一条 Session；邮箱、Push、代码执行可跳过。
-- 模型 Provider 建立适配边界；Hy3 保持一等支持，同时允许明确兼容的 OpenAI-compatible Provider。
-- 提供不污染真实数据的 Demo 模式和样例计划。
-- 发布包包含已构建前端，普通用户不应为运行 Release 安装 Node。
-- 至少提供一种真正持续运行的一键方案，并明确支持平台；若选择 Docker，代码执行必须使用单独、低权限 sandbox，而不是共享主服务秘密。
-- 提供 doctor、脱敏诊断、JSON/Markdown 导出、备份和恢复。
-- README 明确哪些数据会发送给云模型、如何检查 Context、如何关闭高风险能力。
-- CI 加入 lint/typecheck、Python 依赖审计、真实历史库迁移、Evidence audit、Context 隔离、浏览器矩阵、secret scan 和构建。
-- 仓库补齐 description、homepage、topics、双语入口、真实截图、90 秒 Demo、CONTRIBUTING、SECURITY、Issue/PR 模板和 Good First Issue。
-- Release 提供源码/运行资产、校验值、迁移说明、已知限制和准确的能力矩阵。
+- [x] 首次打开提供三步向导：TokenHub/Hy3 最小连接验证 → 学习目标 → 第一条 Session。只有 no-key/zero-Session 安装被引导；失败不保存模型回复、不回显密钥、不创建注定失败的 Run。
+- [x] 模型配置在验证成功后以既有 0600 原子 `.env` 协议持久化，并同步到当前进程，无需为了第一条 Session 重启。
+- [x] `scripts/build-release.py` 从显式 worktree 生成确定性 tar、逐文件 `RELEASE-MANIFEST.json` 和 `.sha256`；只打包公开运行时文件与已构建前端，排除 `.env`、数据库、Context/workspace、Node 依赖、缓存和日志，并拒绝 symlink 输入。
+- [x] release 的 `setup.sh` 检测到内置 `frontend/dist` 后不需要 Node，并只安装 runtime requirements；源码工作区使用独立 development requirements。`start.sh` 从不动态调用 npm，缺资产稳定返回 `missing_release_asset`。
+- [x] `release-gates.json`、`scripts/release-gate.py`、`scripts/release-check.py` 与 CI 共同强制 lint/static check、Python dependency audit、历史迁移/完整 Python 回归、Evidence audit、Context 隔离、真实浏览器矩阵、secret scan 和前端测试/构建。
+- [x] H8 首启真实 Chrome 使用临时公开数据，在 375/768/1280/1440 首次导航前设置 viewport；H7 既有 5 尺寸/43 检查继续作为完整产品浏览器 gate。所有数据库与产物均在临时副本，不读取正式用户数据。
+- [x] H8-BOOT-001、H8-REL-001/002、H8-CI-001 原 strict xfail 全部删除；87 个缺陷 ID 均为 `fixed · passing`。
 
-### 外部验收
+### 明确冻结、未宣称完成
+
+- 不在本阶段扩展通用 Provider、Demo 样例、Docker/守护进程、doctor/export、仓库运营模板或普通用户 server 登录页；这些不是四个已登记 H8 阻塞缺陷，若第三阶段需要，将由后续独立计划重新取舍。
+- 不恢复 M15 learner state、FSRS、M16 自适应动作或 M17–M20；不借 H8 收口增加其他新功能。
+- 不在本阶段创建比赛评测集、评分规则、运行结果、报告或新 Demo；第三阶段参赛计划将在 H8 提交后另行制定。
+
+### 外部真人验收（冻结、未执行）
 
 - 至少 10 名外部用户尝试安装；至少 8 人无需维护者远程操作完成首启。
 - 至少 5 人完成“创建计划 → 学习 → 提交证据 → 收到跟进”。
 - 至少 3 人连续使用 7 天。
 - 观察期内数据丢失、重复提醒、跨计划泄漏、默认批准和不可恢复 Run 均为 0。
-- 外部用户阶段不能由 Codex 自行标记完成，必须由真实记录确认。
+- 外部用户阶段不能由 Codex 自行标记完成，必须由真实记录确认。按用户当前决定，该阶段暂停且不作为 H8 工程提交的伪阻塞或伪通过项。
 
-### 发布门槛
+### 工程门槛与发布边界
 
 - H0–H7 全部完成且无 P0/P1。
 - 三类数据库夹具完成升级、回退和再次升级。
 - pytest、前端测试/构建、依赖审计、浏览器、安全和秘密扫描全绿。
-- 完成 7 天本地 dogfooding；外部验收达到上述最低样本。
-- 只有此时才能重新评审 `2.0.0-alpha.1`、恢复 M15，或合并 `main`。
+- H8 工程门槛要求上述自动化、临时数据库、浏览器、依赖和制品校验全部通过；结果统一记录在 [`STATUS.md`](STATUS.md)。
+- 7 天 dogfooding 与外部验收仍未执行，因此本次不创建 tag/GitHub Release、不合并 `main`、不宣称外部采用成功。
+- 即使工程门槛完成，M15–M20 仍按用户决定冻结；何时恢复由后续第三阶段计划重新决定，不从 H8 自动推导。
 
 Star 数量不是质量门槛。先用安装完成率、首个学习闭环完成率、7 日持续使用和有效 Issue 证明真实采用，再安排公开传播。
 
 ## 13. 明确推迟
 
-在 H0–H8 完成前不实现：
+按 H8 收口后的项目冻结决定，暂不实现：
 
 - M15 learner-state、FSRS 个性化和 M16 自适应动作；
 - 无限画布技能图、复杂图动画和视觉重做；
@@ -526,7 +530,7 @@ Git：单独提交，工作区干净；未经授权不 push
 
 ## 16. 交给执行 Codex 的完成定义
 
-执行 Codex 不能因为 token、时间或工作量自行缩小范围，也不能一次声称完成 H0–H8。它应从 H0 开始，按门禁推进；如果一次会话无法完成全部工作，应留下真实、可继续的 `STATUS.md` 和计划状态，而不是伪造完成。
+本节记录从 H0 启动时冻结的执行纪律。H0–H8 已按独立门禁依次实施并留下测试与提交记录；完成事实以 [`STATUS.md`](STATUS.md) 和缺陷矩阵为准，而不是由单次会话或一句声明产生。执行过程不能因为 token、时间或工作量自行缩小范围；无法完成时必须留下真实、可继续的状态，不得伪造完成。
 
 最终完成必须同时满足：
 

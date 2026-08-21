@@ -2,11 +2,13 @@ import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from './components/HomeView.vue';
 import InboxView from './components/InboxView.vue';
 import MemoryView from './components/MemoryView.vue';
+import OnboardingView from './components/OnboardingView.vue';
 import PlansView from './components/PlansView.vue';
 import SettingsView from './components/SettingsView.vue';
 
 export const routes = [
   { path: '/', name: 'home', component: HomeView },
+  { path: '/onboarding', name: 'onboarding', component: OnboardingView },
   { path: '/sessions/:sessionId', name: 'session', component: HomeView, props: true },
   { path: '/plans', name: 'plans', component: PlansView },
   { path: '/plans/:planId', name: 'plan', component: PlansView, props: true },

@@ -24,9 +24,9 @@ writes additionally require the exact Origin plus the matching CSRF cookie and
 header. Server-mode ASGI requests must also arrive with an HTTPS request scope;
 a trusted TLS-terminating proxy must therefore forward the original scheme.
 The static application shell is public, but it contains no user data;
-all data requests remain authenticated. The current frontend does not yet
-provide a polished server login screen, so server deployment remains an
-advanced setup until the H8 product and release gate is complete.
+all data requests remain authenticated. The current frontend does not provide
+a polished server login screen, so server deployment remains an advanced setup
+even though the H8 local onboarding and release gate are complete.
 
 Never expose local mode through port forwarding or a reverse proxy. In server
 mode, terminate TLS at a trusted proxy, preserve the exact public Host header,
@@ -78,6 +78,7 @@ security-reporting channel when available. Otherwise open a minimal issue that
 contains no credentials, personal data, database contents, email bodies, or
 private paths, and ask the maintainer for a private handoff method.
 
-H6 establishes the runtime boundary described above. Packaging, secret
-scanning in the release gate, external installation, continuous-use evidence
-and seven-day retention remain H8 work and must not be inferred from this file.
+H6 establishes the runtime boundary described above. H8 adds deterministic
+packaging and a mandatory secret-scanning release gate. External installation,
+continuous-use evidence and seven-day retention are explicitly deferred human
+validation and must not be inferred from this file or from automated tests.

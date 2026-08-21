@@ -167,10 +167,10 @@
 
 | ID | 不变量与旧实现失败原因 | 来源 | 基线测试 | 优先级来源 | 修复门禁 | 状态 / 修复提交 |
 | --- | --- | --- | --- | --- | --- | --- |
-| H8-BOOT-001 | fresh/no-key/zero-Session 首启必须先进入模型连接向导，不能持久化一个注定失败的 Run；旧 store 仍打开普通 Home。 | HP12 | REL | U | H8 | open · strict xfail / — |
-| H8-REL-001 | 必须有 worktree-aware release builder/runtime-asset packaging 入口；旧仓库没有可调用 builder。其后续验收同时要求产物含已构建前端并可在无 Node 主机启动。 | HP12 | REL | U | H8 | open · strict xfail / — |
-| H8-REL-002 | Release 启动入口不得在目标机动态调用 npm；缺 runtime asset 时应返回稳定 `missing_release_asset`。旧 `start.sh` 在 `dist` 缺失时直接运行 npm。 | HP12 | REL | U | H8 | open · strict xfail / — |
-| H8-CI-001 | 必须有可执行 release gate：完整候选通过，逐项缺 lint/typecheck、Python audit、历史迁移、Evidence audit、Context 隔离、浏览器、secret scan 或前端构建时精确拒绝；旧仓库无入口。 | HP12 | REL | U | H8 | open · strict xfail / — |
+| H8-BOOT-001 | fresh/no-key/zero-Session 首启必须先进入模型连接向导，不能持久化一个注定失败的 Run；旧 store 仍打开普通 Home。 | HP12 | REL | U | H8 | fixed · passing / H8 工程阶段 |
+| H8-REL-001 | 必须有 worktree-aware release builder/runtime-asset packaging 入口；旧仓库没有可调用 builder。其后续验收同时要求产物含已构建前端并可在无 Node 主机启动。 | HP12 | REL | U | H8 | fixed · passing / H8 工程阶段 |
+| H8-REL-002 | Release 启动入口不得在目标机动态调用 npm；缺 runtime asset 时应返回稳定 `missing_release_asset`。旧 `start.sh` 在 `dist` 缺失时直接运行 npm。 | HP12 | REL | U | H8 | fixed · passing / H8 工程阶段 |
+| H8-CI-001 | 必须有可执行 release gate：完整候选通过，逐项缺 lint/typecheck、Python audit、历史迁移、Evidence audit、Context 隔离、浏览器、secret scan 或前端构建时精确拒绝；旧仓库无入口。 | HP12 | REL | U | H8 | fixed · passing / H8 工程阶段 |
 
 ## 41 场景重写登记
 
@@ -180,7 +180,14 @@
 
 ## 验收记录
 
-### H7 当前结果（2026-08-21）
+### H8 工程收口结果（2026-08-21）
+
+- H8-BOOT-001、H8-REL-001/002 与 H8-CI-001 的原 strict xfail 已全部删除。首次设置、无 Node release、确定性 manifest/checksum 和八项可执行 release gate 均有普通 passing 回归。
+- H8 工程阶段新关闭 4 个 defect ID，矩阵累计关闭 87 个、剩余 0 个 open ID；测试树不再保留 strict xfail。
+- 外部安装完成率、连续学习和 7 日留存从缺陷矩阵中明确分离为**未执行的真人采用验证**。按用户决定该工作被冻结，不由自动化补写结论，也不阻止本次 H8 工程提交完成。
+- M15–M20 与其他新功能继续冻结；后续将另行制定第三阶段参赛计划，本矩阵不提前定义或执行该计划。
+
+### H7 历史收口结果（2026-08-21）
 
 - H7-UI-001–006 均已删除原 strict xfail/expected-failure 并固定通过；H7 新关闭 6 个 ID，矩阵累计关闭 83 个 defect ID、剩余 4 个 open ID。下一门禁为 H8，M15–M20 继续冻结。
 - 前端删除单体 workspace Store，改为 session/run/plan/inbox/memory/settings/shell 分域 Store 与 9 条正式路由。核心首屏和可降级域独立提交，generation fence、last-known-good 与归档 tombstone 阻止迟到响应污染当前状态。
@@ -216,7 +223,7 @@
 - H3-RUN-001–011 均已删除原 strict xfail 并固定通过；H3 新关闭 10 个 ID（H3-RUN-008 已在 H2 提前关闭），矩阵累计关闭 34 个 defect ID、剩余 53 个 open ID。下一门禁为 H4，M15–M20 继续冻结。
 - H3 定向套件为 40 passed，覆盖 revision 3、真实进程 SIGKILL、双进程 claim、SQLite 锁、审批、原子 finalization/queue successor、late steer、父子投影、耐久 retry、共享预算、tool/model wait 分类、多工具副作用 replay 和固定种子 100 轮语义恢复。
 - 真实 Hy3 临时库演示在同一 Run 上执行两次 SIGKILL 和三次 claim，最终只有一条 assistant message 与一个 completed event；未输出模型正文、秘密或用户数据。前端状态契约为 9 passed，生产构建通过，npm audit 为 0 vulnerabilities。
-- H3 收口时 H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成；H4–H7 现已关闭，当前结果见上方记录与 [`STATUS.md`](STATUS.md)。
+- H3 收口时 H4 Evidence/Competency、H5 Context/Intervention、H6 应用部署边界、H7 完整前端/浏览器和 H8 发布/真人验收仍未完成；H4–H8 工程门禁现已关闭，真人采用验证单独冻结，当前结果见上方记录与 [`STATUS.md`](STATUS.md)。
 
 ### H2 当前结果（2026-08-19）
 

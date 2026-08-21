@@ -2,7 +2,8 @@ from typing import Literal
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, model_validator
+from openai import AsyncOpenAI
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.envfile import clear_env_keys, update_env_file
@@ -66,10 +67,48 @@ class EmailSettingsUpdate(BaseModel):
 
 
 class ModelSettingsUpdate(BaseModel):
-    base_url: str | None = Field(default=None, max_length=500)
-    model: str | None = Field(default=None, max_length=200)
-    api_key: str | None = Field(default=None, max_length=500)
+    model_config = ConfigDict(extra="forbid")
+
+    base_url: AnyHttpUrl | None = None
+    model: str | None = Field(default=None, min_length=1, max_length=200)
+    api_key: SecretStr | None = Field(default=None, min_length=1, max_length=500)
     temperature: float | None = Field(default=None, ge=0, le=2)
+
+    @field_validator("model")
+    @classmethod
+    def validate_model_name(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("model must not be blank")
+        return value
+
+    @field_validator("api_key")
+    @classmethod
+    def validate_api_key(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not value.get_secret_value().strip():
+            raise ValueError("api_key must not be blank")
+        return value
+
+
+class ModelConnectionTestRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    base_url: AnyHttpUrl
+    model: str = Field(min_length=1, max_length=200)
+    api_key: SecretStr = Field(min_length=1, max_length=500)
+
+    @field_validator("model")
+    @classmethod
+    def validate_model_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("model must not be blank")
+        return value
+
+    @field_validator("api_key")
+    @classmethod
+    def validate_api_key(cls, value: SecretStr) -> SecretStr:
+        if not value.get_secret_value().strip():
+            raise ValueError("api_key must not be blank")
+        return value
 
 
 class NotificationPolicyUpdate(BaseModel):
@@ -155,6 +194,21 @@ async def read_settings(db: AsyncSession = Depends(get_db)):
         "vapid_public_key": settings.VAPID_PUBLIC_KEY,
         "notification_cooldown_minutes": _notification_cooldown(profile),
         "timezone": settings.DEFAULT_TIMEZONE,
+    }
+
+
+@router.get("/onboarding", response_model=dict)
+async def read_onboarding_status(db: AsyncSession = Depends(get_db)):
+    session_count = int((await db.scalar(
+        select(func.count(Session.id)).where(Session.owner_id == settings.DEFAULT_OWNER_ID)
+    )) or 0)
+    return {
+        "api_key_configured": bool(settings.OPENAI_API_KEY),
+        "session_count": session_count,
+        "requires_onboarding": not settings.OPENAI_API_KEY and session_count == 0,
+        "provider": "tencent-tokenhub",
+        "model": settings.MODEL_NAME,
+        "base_url": settings.OPENAI_API_BASE,
     }
 
 
@@ -310,21 +364,53 @@ async def delete_email_credentials():
 async def update_model_settings(data: ModelSettingsUpdate):
     values: dict[str, str] = {}
     if data.base_url is not None:
-        values["OPENAI_API_BASE"] = data.base_url
+        values["OPENAI_API_BASE"] = str(data.base_url).rstrip("/")
     if data.model is not None:
-        values["MODEL_NAME"] = data.model
-    if data.api_key:
-        values["OPENAI_API_KEY"] = data.api_key
+        values["MODEL_NAME"] = data.model.strip()
+    if data.api_key is not None and data.api_key.get_secret_value():
+        values["OPENAI_API_KEY"] = data.api_key.get_secret_value()
     if data.temperature is not None:
         values["MODEL_TEMPERATURE"] = str(data.temperature)
     if values:
         update_env_file(values)
+        for env_key, value in values.items():
+            setattr(settings, env_key, float(value) if env_key == "MODEL_TEMPERATURE" else value)
     return {
-        "restart_required": True,
-        "model": data.model or settings.MODEL_NAME,
-        "base_url": data.base_url or settings.OPENAI_API_BASE,
-        "api_key_configured": bool(settings.OPENAI_API_KEY or data.api_key),
-        "temperature": data.temperature if data.temperature is not None else settings.MODEL_TEMPERATURE,
+        "restart_required": False,
+        "model": settings.MODEL_NAME,
+        "base_url": settings.OPENAI_API_BASE,
+        "api_key_configured": bool(settings.OPENAI_API_KEY),
+        "temperature": settings.MODEL_TEMPERATURE,
+    }
+
+
+@router.post("/model/test", response_model=dict)
+async def test_model_connection(data: ModelConnectionTestRequest):
+    client = AsyncOpenAI(
+        api_key=data.api_key.get_secret_value(),
+        base_url=str(data.base_url).rstrip("/"),
+        timeout=min(settings.AGENT_MODEL_TIMEOUT_SECONDS, 30),
+        max_retries=0,
+    )
+    try:
+        await client.chat.completions.create(
+            model=data.model.strip(),
+            messages=[{"role": "user", "content": "Reply with OK."}],
+            max_tokens=1,
+            temperature=0,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "model_connection_failed", "error_type": type(exc).__name__},
+        ) from exc
+    finally:
+        await client.close()
+    return {
+        "ok": True,
+        "provider": "tencent-tokenhub",
+        "model": data.model.strip(),
+        "base_url": str(data.base_url).rstrip("/"),
     }
 
 

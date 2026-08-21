@@ -1,6 +1,6 @@
 # 开发路线图
 
-> 状态口径（2026-08-21）：M0–M12 的勾选是对应历史版本“代码路径/正常路径曾完成”的记录，不是当前 `develop` 的完整硬化或发布验收。H1–H7 已通过新的硬化实现和回归，累计关闭 83 个缺陷 ID、剩余 4 个 open ID，下一门禁是 H8；当前事实以 [`STATUS.md`](STATUS.md) 和 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准，历史勾选不能关闭仍在 H8 登记的缺陷。
+> 状态口径（2026-08-21）：M0–M12 的勾选是对应历史版本记录。H1–H8 工程门禁现已通过，累计关闭 87 个缺陷 ID、剩余 0 个 open ID；外部真人采用验证没有执行。M15–M20 与其他新功能按项目决定冻结，等待独立第三阶段参赛计划。当前事实以 [`STATUS.md`](STATUS.md) 和 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 为准。
 
 ## 项目管理规则
 
@@ -118,7 +118,7 @@
 
 > 2026-08-18 复审说明：下列勾选表示对应第一版代码和正常路径曾完成，不表示崩溃恢复、事务一致性和长期产品不变量已经通过。复审重新打开的问题统一迁移到 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)，不得继续用本节的历史勾选作为发布证据。
 
-其中数据迁移与备份恢复已由 H1 重新验收，事务、幂等、outbox、Operation 基础逆向补偿与 planning delegate checkpoint 已由 H2 重新验收；Run 的恢复/finalization 与 child 预算已由 H3 重新验收，配置写入与脱敏已由 H6-CONFIG-001/H6-REDACT-001 重新验收，发布工程仍待 H8 重新验收。下列“恢复”“不回传”等文字仅记录当时目标和正常路径候选。
+其中数据迁移与备份恢复已由 H1 重新验收，事务、幂等、outbox、Operation 基础逆向补偿与 planning delegate checkpoint 已由 H2 重新验收；Run 的恢复/finalization 与 child 预算已由 H3 重新验收，配置写入与脱敏已由 H6 重新验收，发布工程已由 H8 重新验收。下列“恢复”“不回传”等文字仅记录当时目标和正常路径候选。
 
 1. [x] **混合语义检索**：建立 Embedding Provider 接口和本地向量表；关键词/BM25、向量相似度、作用域、置信度与时间衰减分别产出分数，再使用可解释的加权融合或 RRF。用固定问题集验证召回率、跨计划隔离和无 Embedding 时的关键词回退。
 2. [x] **可恢复 Run 状态机**：为模型轮次、待执行工具、审批请求和上下文版本保存 Checkpoint；实现 `waiting_approval → queued → running`，启动时扫描并恢复未完成 Run。

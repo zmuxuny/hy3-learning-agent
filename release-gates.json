@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "gates": {
+    "lint_typecheck": ["{python}", "scripts/release-check.py", "lint_typecheck"],
+    "python_dependency_audit": ["{python}", "scripts/release-check.py", "python_dependency_audit"],
+    "historical_migration": ["{python}", "scripts/release-check.py", "historical_migration"],
+    "evidence_audit": ["{python}", "scripts/release-check.py", "evidence_audit"],
+    "context_isolation": ["{python}", "scripts/release-check.py", "context_isolation"],
+    "browser_matrix": ["{python}", "scripts/release-check.py", "browser_matrix"],
+    "secret_scan": ["{python}", "scripts/release-check.py", "secret_scan"],
+    "frontend_build": ["{python}", "scripts/release-check.py", "frontend_build"]
+  }
+}
