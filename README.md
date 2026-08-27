@@ -1,14 +1,66 @@
 # Learning Agent · Hy3
 
-一个在个人电脑上持续运行的主动式学习 Agent Harness。它不是只会聊天的问答框：用户对话和后台心跳进入同一套 Agent Runtime，Hy3 可以读取计划与分层上下文、调用原子工具、主动提醒或抽查，并把每次行动作为可审计事件实时展示。
+### 一个持续理解学习状态、主动判断并推动目标完成的个人学习 Agent
 
-当前版本聚焦编程与技术学习，只做个人本地部署或个人服务器部署，不建设多用户平台。
+[在线 Demo](https://zmuxuny.github.io/hy3-learning-agent/) · [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md) · [产品定义](docs/PRODUCT.md) · [系统架构](docs/ARCHITECTURE.md)
 
-> 安全与开发状态：`develop` 已完成 H1–H8 工程门禁，87 个登记缺陷 ID 全部关闭且无保留 xfail。默认 `local` 模式只接受 loopback；高级 `server` 模式在缺少认证或精确 HTTPS Origin 时拒绝启动。仓库不提供真实代码沙箱，因此 `code_execute` 默认不可用。外部安装/连续使用/7 日留存没有被自动化冒充为通过；按当前项目决策，M15–M20 与其他新功能保持冻结，等待另行制定第三阶段参赛计划。详见[安全边界](SECURITY.md)和[前置硬化计划](docs/V2_HARDENING_PLAN.md)。
+Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩展为贯穿目标、计划、执行、验收与调整的持续学习伙伴。
 
-## 项目缘起
+用户可以从一句并不完整的目标开始，例如：“我有 C++ 基础，希望两个月内学会 CUDA，并完成一个矩阵乘优化项目。”Hy3 会澄清真正影响路径的条件、调研并核验资源、提出可审阅的计划；当学习开始后，它继续跟踪任务与证据、验收成果，并根据新的学习事实选择保持安静、教学、抽查、提醒或调整计划。
 
-Learning Agent 最初为 2026 腾讯犀牛鸟开源人才培养计划的混元大语言模型实战方向而创建，核心一直是：让 Hy3 在可审计、可恢复的个人学习 Harness 中持续理解目标、使用工具并依据真实学习事实行动。当前拟继续选择该项目第一项课题；本提交只完成既定 H8 工程硬化，不展开第三阶段的评测集、评分规则、结果报告或参赛材料。后续工作会以一份独立、完整的参赛计划重新启动，避免把比赛准备混入产品硬化历史。
+> **让 AI 从一次性回答走向持续行动：理解目标、跟踪进度、验证掌握，并在恰当的时机主动介入。**
+
+![Learning Agent · Hy3 整体架构](assets/proposal/architecture/learning-agent-system-architecture.svg)
+
+## 核心体验
+
+| 能力 | Hy3 如何工作 | 用户获得什么 |
+| --- | --- | --- |
+| 目标澄清与规划 | 围绕基础、期限、时间预算和期望作品提出高信息量问题，生成可讨论、可修改、可采用的计划提案 | 从模糊愿望走向一条真正可执行的学习路径 |
+| 资源调研与教学 | 搜索、打开并核验课程与资料，结合当前任务提供讲解和练习 | 资源与目标、难度和阶段相匹配 |
+| 学习成果验收 | 依据任务 Rubric 检查回答、代码、文件和项目作品，记录结论、证据与反馈 | “完成任务”建立在可查看的学习证据上 |
+| 主动介入 | 综合截止时间、近期活动、复习安排、历史提醒和用户偏好决定 `WAIT` 或行动 | 需要帮助时得到具体支持，不需要时保持安静 |
+| 计划调整 | 在进度、能力或现实条件变化后提出范围合适的修改，并保留用户确认边界 | 计划随真实学习过程持续演进 |
+| 连续上下文 | 分层维护对话、计划、任务、事件、证据、记忆和运行轨迹 | 每一次决策都基于可追溯的最新状态 |
+
+## 主动学习闭环
+
+Learning Agent 不把计划视为静态日程，也不把一次对话当作任务终点。系统围绕六个阶段持续运行：
+
+```text
+目标与约束 → 规划与资源 → 学习与提交 → 成果验收
+     ↑                                  ↓
+主动判断 ← 提醒 / 抽查 / 调整 ← 学习状态与证据
+```
+
+用户消息、后台心跳、任务事件与复习到期进入同一个 Agent Runtime。Hy3 读取与当前目标相关的上下文，选择工具、观察结果并继续决策；确定性的权限、频率、冷却、免打扰和审批规则负责守住行动边界。
+
+这里的“主动”不以通知数量衡量。`WAIT` 是与提醒、抽查和调整同等重要的决策：系统追求的是一次有依据、及时、可执行的介入。
+
+## 系统设计
+
+整体系统由五部分组成：
+
+- **交互工作台**：连续对话、计划工作区、学习任务与收件箱共同呈现目标、过程和下一步。
+- **Hy3 Agent Runtime**：统一处理用户请求与后台主动任务，通过多轮工具调用完成真实操作。
+- **学习能力层**：覆盖规划、资源调研、教学、成果验收、复习、提醒与计划调整。
+- **学习事实层**：持久化画像、计划、任务、证据、事件、记忆和可审计操作，为后续决策提供连续状态。
+- **离线评测平面**：从关键决策导出可回放样本，在隔离环境中完成评分、有效性验证和结果归因，不进入用户运行时。
+
+架构图提供 [draw.io 可编辑源文件](assets/proposal/architecture/learning-agent-system-architecture.drawio) 与 [PNG 版本](assets/proposal/architecture/learning-agent-system-architecture.png)。
+
+## 第三阶段：评测 Agent 的关键决策
+
+本项目参加 2026 腾讯犀牛鸟开源人才培养计划混元大语言模型实战题目一。第三阶段围绕开放式输出建立统一的关键决策评测框架，覆盖完整的主动学习价值链：
+
+- `P · Planning`：规划是否满足目标、约束、顺序、时间预算与成果要求；
+- `I · Intervention`：此刻应该保持安静还是介入，时机、强度与内容是否合适；
+- `A · Assessment`：成果验收结论是否正确，证据是否充分，反馈是否有效；
+- `R · Revision`：计划是否需要改变，修改是否解决问题且不过度。
+
+评测单元采用可回放的 `Decision Episode`，保存决策所需的状态、触发、可见上下文、工具轨迹、结构化结果与状态差异。规则检查负责硬约束，Hy3 Judge 评价开放语义，人工盲标用于校准与分歧复核；反事实、对抗样本、重复评测和人工一致性共同验证评测方法本身。
+
+产品内的“学习成果验收”判断用户是否学会；第三阶段评测判断 Hy3 的规划、介入、验收和调整是否做得正确。两者共享可观察事实，但职责清晰分离。完整设计见[第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md)。
 
 ## Demo
 
@@ -16,86 +68,26 @@ Learning Agent 最初为 2026 腾讯犀牛鸟开源人才培养计划的混元�
 
 [▶ 在线播放完整 Demo（92.6 秒 · 1080p）](https://zmuxuny.github.io/hy3-learning-agent/)
 
-同一段视频包含两条真实端到端流程：
+Demo 展示两条真实端到端流程：
 
-1. 模糊目标 → 结构化澄清 → 规划调研 → 可审阅提案 → 用户采用 → 带交接摘要的计划 Session；
-2. 读取真实进度 → 当前任务教学 → 文件与代码检查 → 证据验收 → 进度更新 → 心跳自主提醒。
+1. 模糊目标 → 结构化澄清 → 规划调研 → 可审阅提案 → 用户采用 → 计划 Session；
+2. 读取真实进度 → 当前任务教学 → 文件与代码检查 → 证据验收 → 进度更新 → 心跳主动提醒。
 
-视频中的模型决策均来自 TokenHub Hy3 API，工具调用、计划进度、验收结果和站内通知均为真实运行状态；剪辑仅移除了模型与网络等待时间。
-
-## 为什么是 Harness
-
-```mermaid
-flowchart LR
-    U[用户消息] --> R[Agent Runtime]
-    H[定时心跳] --> R
-    R --> C[Context Assembler]
-    C --> M[Hy3]
-    M --> T[类型化工具]
-    T --> Q[UoW + 幂等 CAS]
-    Q --> D[(SQLite + Markdown 快照)]
-    T --> O[耐久 Outbox]
-    O --> N[收件箱 / 浏览器 / 邮件]
-    R --> E[SSE 运行事件]
-    E --> W[Codex 风格工作台]
-```
-
-- 同一个统一 Agent 处理对话、心跳、计划与考核，按任务切换角色。
-- 界面展示上下文组装、行动摘要、工具调用、结果和失败，不展示模型私有思维链。
-- 长期记忆只生成候选，用户确认后生效；低风险写操作留下逆向 Patch，可撤销。
-- 后台提醒受免打扰、每日上限和冷却时间等确定性 Guard 约束。
-- 原始对话、学习事件、分层记忆和每次 Run 的上下文快照分别保存。
-
-工具不是预先写死的业务流程。它们是 Agent 的基础系统调用：Runtime 可以根据当前目标多轮读取状态、选择工具、观察返回、修正参数并继续，直到完成、失败、取消或达到预算。用户消息、后台心跳和复习事件不会进入三套 Prompt 流程，而是共享这一个执行内核。
-
-## 工作台体验
-
-- 主画布与侧栏都以连续 Session 为中心，多轮用户消息和 Agent 答复不会被最新 Run 冒充为多个对话；首轮完成后生成语义标题，用户可以手动改名。
-- 每轮 Agent 工作以内联 `已处理/处理中` 记录呈现；整轮可折叠，每个工具操作也能单独展开结构化输入与结果。子 Agent 标签归入所属 Run，展开后可复盘调查任务、搜索词、读取来源、工具结果和最终报告。
-- 学习计划先以完整卡片列表呈现，点击后进入单一计划工作区；它不是独立的 CRUD 后台，而是 Agent 可观察、可操作的环境。
-- 输入框始终标明“综合学习上下文”或具体计划名称。综合对话协调多个计划，计划对话只装配该计划的任务、事件、记忆、证据与复习状态。
-- 长流程默认折叠为关键动作，用户可以展开全部步骤、即时停止实际执行协程，或在原位置处理阻塞审批。
-
-## 已实现的正常路径候选
-
-以下条目说明当前能力范围。H1–H8 工程门禁已分别验收迁移、事务、Runtime、Evidence、长期 Context/提醒线程、应用安全边界、前端闭环、首次设置和发布工程；外部采用指标单独冻结为未验证事实：
-
-- 完整 `Plan → Stage → Task` 计划模型与多计划工作台
-- `AgentRun / RunEvent` 生命周期、SSE 实时轨迹和停止请求
-- Run 检查点、审批暂停/恢复、Queue successor、finalization、重试与父子投影均由统一 lease/state machine 强制并通过 H3 故障恢复门禁
-- 48 个已安装工具契约按 `pure_read / database_write / external_read / external_write` 分类；默认模型 surface 为 47 个，缺少真实 sandbox Provider 时不会暴露 `code_execute`
-- Session 列表、原始消息恢复、语义命名、手动改名与多轮连续对话画布
-- Session/计划手动归档与恢复、归档列表，以及全局对话到计划对话的可追溯交接
-- 持久化计划共创：需求充分性判断、结构化提问卡、受限规划子 Agent、可审阅提案与显式采用
-- 用户消息复制与非破坏式编辑；旧版本、旧 Run 和工具操作保留，当前 Session 从修订处重新运行
-- Hy3 多轮 Function Calling，以及 TokenHub 交错式思考字段回填
-- 全局/计划/Session 分层记忆、版本化来源、候选确认、纠正替代链、归档/恢复与可重建 Markdown 投影；跨计划隔离、expiry 与来源失效已通过 H5
-- 长会话压缩、摘要版本、连续 coverage、完整 PromptEnvelope 预算、相关性阈值/层级配额与编辑来源闭包已通过 H5
-- Run 内联上下文检查器：实际来源构成、命中记忆分数、Token 估算和送入模型的 Markdown
-- 单实例全局心跳、ProactiveDecision、唯一 Intervention/canonical message、活动 Run reply target、多渠道 delivery 与 IMAP durable ack 已通过 H5
-- 收件箱显示上次判断、下次检查与当前状态，并支持消息归档、恢复和批量归档已读；归档不删除对话中的提醒
-- 默认站内收件箱、Service Worker 浏览器通知、可选 VAPID Web Push、可选 SMTP 发送与 IMAP 回复；外部发送先提交 outbox intent，进程在 provider 响应前后中断时会进入人工/provider 对账而不是盲目重发
-- 简答测验、证据化评分、复习调度、XP 与可撤销操作基础
-- 核心任务证据门槛、真实计划进度和真实学习事件热力图
-- 对话优先的响应式工作台、消息内可收起工作记录、纵向计划时间线，以及热力图、连续天数、XP/等级和规则成就数据等轻游戏化基础
-- 正式深链路由与 session/run/plan/inbox/memory/settings 分域状态；核心首屏和可降级请求独立提交，提醒 target、SSE 断线对账、计划归档焦点和实时 steer 顺序均有浏览器/组件回归
-- 计划详情提供只读技能—训练/证明—Evidence 解释；375/768/1280/1440/2560 五种首次导航尺寸已用公开合成临时库完成真实 Chrome 验收
-- “设置”页提供模型连接、SMTP/IMAP 与主动策略；`.env` 更新会预校验全部字段、拒绝控制字符/非普通文件，并以 0600 原子发布且复杂值可无损往返
-- 48 个已安装工具契约：需求澄清、规划分工与提案、通用只读子 Agent、学习位置快照、课程资源搜索/核验/策展、计划修改、提交验收、复习处置、文件、代码、日历、记忆维护和显式技能图映射；当前模型 surface 为 47 个，`code_execute` 因无可信 sandbox Provider 而不可用
-- Web 搜索主源失败时自动降级到 Bing HTML 备选源；每跳固定公有 IP 并复核 peer，wire/解压大小、总时间和精确 MIME 均受限，所有结果标记为外部不可信
-
-当前构建没有 capability-attested sandbox Provider，`code_execute` 在模型、直接调用和旧 outbox 恢复边界均失败关闭。仓库内保留的有界宿主 runner 只是内部兼容原语，不是可启用的安全沙箱。
+模型决策来自 TokenHub Hy3 API，工具调用、计划进度、验收结果和站内通知均来自真实运行状态；视频剪辑移除了模型与网络等待时间。
 
 ## 快速开始
 
-源码安装要求 Python 3.11+ 与 Node.js 20+；正式 release tar 已包含前端资产，目标机无需 Node/npm，只需 Python 3.11+ 以及常见的 Bash/curl 运行环境。
+源码运行需要 Python 3.11+ 与 Node.js 20+。
 
 ```bash
+git clone https://github.com/zmuxuny/hy3-learning-agent.git
+cd hy3-learning-agent
 ./scripts/setup.sh
 cp .env.example .env
+./scripts/start.sh
 ```
 
-`.env` 可以保持空 Key。首次打开浏览器会进入三步向导，先用最小请求验证 TokenHub/Hy3，再把 Key 原子写入本机 `.env` 并创建第一条 Session。也可预先手工填写：
+打开 <http://127.0.0.1:8000>，首次设置向导会验证模型连接并创建第一条 Session。也可以提前在 `.env` 中配置：
 
 ```dotenv
 OPENAI_API_KEY=你的密钥
@@ -103,24 +95,12 @@ OPENAI_API_BASE=https://tokenhub.tencentmaas.com/v1
 MODEL_NAME=hy3
 ```
 
-密钥不得提交到 Git。启动后端；它会同时托管已构建的前端：
-
-```bash
-./scripts/start.sh
-```
-
-打开 <http://127.0.0.1:8000>。开发前端时可另开终端：
+开发前端时运行：
 
 ```bash
 cd frontend
 npm run dev
 ```
-
-Vite 会把 `/api` 代理到 `127.0.0.1:8000`。
-
-如需高级个人服务器模式，先完整阅读 [SECURITY.md](SECURITY.md)。必须设置 `DEPLOYMENT_MODE=server`、至少 32 字节的 `SERVER_AUTH_TOKEN`、精确 `https://` 的 `SERVER_PUBLIC_ORIGIN`，并令 `CORS_ORIGINS` 与之完全一致；缺少任一项都会失败关闭。当前仍没有面向普通用户的 server 登录页面，不能把本机模式经端口转发直接暴露到公网。
-
-站内提醒完全不需要邮箱：应用运行时，前端每 15 秒同步后台通知并在页面内弹出新提醒。只有希望离开应用后仍收到邮件或直接回复邮件时，才需要在 `.env` 配置 SMTP/IMAP 凭据；独立 Agent 邮箱是推荐方案而不是硬性要求，完整选择、字段和测试方法见 [邮箱配置](docs/EMAIL.md)。
 
 ## 验证
 
@@ -129,73 +109,29 @@ source .venv/bin/activate
 pytest -q
 npm --prefix frontend test
 npm --prefix frontend run build
-npm --prefix frontend audit --omit=dev
 python scripts/check_doc_links.py .
 python scripts/release-gate.py --repository . --format json
 ```
 
-从已构建 worktree 生成带逐文件 manifest 和旁路校验值、无需目标机安装 Node 的运行包：
-
-```bash
-npm --prefix frontend run build
-python scripts/build-release.py --source . --output /tmp/learning-agent-1.1.1.tar
-sha256sum -c /tmp/learning-agent-1.1.1.tar.sha256
-```
-
-release 中的 `setup.sh` 检测到已打包的 `frontend/dist` 后不会调用 npm；`start.sh` 缺少该资产会以稳定 `missing_release_asset` 失败，而不会在目标机临时构建。
-
-本地数据管理：
-
-```bash
-./scripts/reset-data.sh
-./scripts/seed-fixture.sh
-./scripts/demo-data.sh reset
-./scripts/demo-data.sh restore <backup-directory>
-python3 scripts/data-maintenance.py preflight
-python3 scripts/data-maintenance.py backup --purpose manual
-```
-
-H1 已把维护协议收敛到 `preflight / backup / verify / restore / recover` 与显式 migration backup verify/restore。它们使用受控 lifecycle lease 和验证过的备份发布流程；但仍不支持绕过 Runtime/maintenance 直接写 SQLite 的外部进程。
-
-H2 已把数据库写入收敛到统一 UoW，并在最外层 SQLite savepoint 前显式开启 physical outer transaction，防止释放最外层 savepoint 时提前提交。数据库变更、幂等状态和 outbox intent 在同一事务落盘；`file_write` 可凭已持久化 hash 自动判断是否安全复用，SMTP、Web Push 和外部 subprocess 的不确定结果则必须人工或向 provider 对账。旧 schema 数据默认 fail-closed，不能假装已经具备 H2 语义。
-
-迁移和恢复会在交接边界复核固定的路径、目录描述符/inode 与内容摘要，只把复验通过的候选库、备份 payload 或工作快照作为 trusted snapshot；目标数据库或安全备份根目录若指向 source backup 本身或其子路径，会在写入前失败关闭。source backup 位于安全备份根目录下仍是正常布局。共享路径规范化会消除 `.`/`..` 别名而不跟随 symlink，并正确编码含空格、`%`、`#`、`?` 的 SQLite 路径。旧 `_write_probe` 也只按精确的空单列表识别，近似或被污染的同名 schema 不会被静默接受。
-
-V2 学习证据账本、完整 reducer 和 Artifact/Competency 关联已通过 H4。H1 回归证明 `rebuild-evidence --audit` 逐字节只读，任何回填/重建写操作都会先取得协调 lease 并完成全量验证备份；首次真实用户大规模回填、外部安装、连续学习闭环与 7 日留存仍待后续门禁和真人样本，因此以下写命令仍建议先在显式副本或临时根目录验证：
-
-```bash
-./.venv/bin/python scripts/rebuild-evidence.py --audit
-./.venv/bin/python scripts/rebuild-evidence.py --backfill-v1 --audit --write
-PYTHONPATH=backend ./.venv/bin/python scripts/evidence-baseline.py
-```
-
-自动化测试使用临时数据库和模拟模型响应，不冒充真实 Hy3 调用。历史 TokenHub/搜索/页面验证只证明当时的正常路径；当前事实以缺陷矩阵逐项状态和各门禁的 passing 回归为准，不能用历史场景数、截图数或构建通过替代真人采用验证。
-
-各门禁的完整命令、精确测试数量和历史快照只在[当前状态](docs/STATUS.md)维护。自动化安全测试使用合成凭据、临时数据库、mock DNS/HTTP 和假 provider，不调用真实 SMTP/IMAP、公网或模型，也不替代被冻结的外部安装、连续使用和 7 日真人留存记录。
+测试覆盖持久化迁移、事务与副作用、Runtime 恢复、学习证据、上下文与记忆、主动介入、安全边界、前端状态对账、响应式浏览器路径和首次设置。详细结果与复现入口见[当前状态](docs/STATUS.md)。
 
 ## 数据与安全
 
-- SQLite 默认位于 `data/learning_companion.db`，上下文快照位于 `data/context/`，两者都被 Git 忽略。
-- Agent 文件工作区位于 `data/workspace/`；文件工具拒绝路径穿越。
-- SMTP/IMAP、TokenHub、server auth 与 VAPID 凭据来自本地 `.env`；事件、Context、checkpoint、日志和诊断错误统一脱敏，含配置凭据或脱敏占位符的工具参数在耐久 claim 前拒绝。仍不要把真实秘密放入对话、Artifact 或 Issue。
-- 浏览器通知只有在用户授予权限后显示；VAPID Web Push 需要在 `.env` 配置密钥，电脑关机或浏览器完全退出时无法唤醒。
-- 本地服务或电脑停止时无法主动提醒。
-- 当前没有真实 sandbox Provider，代码执行能力保持关闭；不要通过内部 runner 绕过该边界。
+- 默认 `local` 模式只监听本机回环地址；个人服务器部署需要认证令牌、精确 HTTPS Origin 与一致的 CORS 配置，详见[安全与部署边界](SECURITY.md)。
+- SQLite、上下文快照、工作区文件和备份位于本地 `data/`，不会进入 Git。
+- 长期记忆保留来源与生命周期，用户可以确认、纠正、归档和恢复。
+- 外部内容始终作为不可信输入处理；没有可信沙箱 Provider 时，代码执行能力不会开放。
+- 低风险数据库操作保留审计与撤销信息，外部发送通过耐久 Outbox 记录意图和结果。
 
 ## 项目文档
 
-- 分支约定：`develop` 集成并完成发布验收，稳定版本合并到 `main` 后从 `main` 创建标签与 GitHub Release。
-
+- [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md)
 - [产品定义](docs/PRODUCT.md)
-- [架构与上下文](docs/ARCHITECTURE.md)
+- [系统架构与上下文](docs/ARCHITECTURE.md)
 - [Harness 完整性标准](docs/HARNESS.md)
 - [工具与权限协议](docs/TOOL_PROTOCOL.md)
 - [安全与部署边界](SECURITY.md)
-- [邮箱配置与收发](docs/EMAIL.md)
 - [路线图](docs/ROADMAP.md)
-- [Learning Agent 2.0 路线图](docs/V2_ROADMAP.md)
-- [V2 前置硬化实施计划](docs/V2_HARDENING_PLAN.md)
-- [V2 H0 缺陷—测试—门禁矩阵](docs/V2_H0_DEFECT_MATRIX.md)
 - [当前状态](docs/STATUS.md)
 
 ## License

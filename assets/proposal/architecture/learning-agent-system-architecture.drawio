@@ -1,0 +1,217 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.9" pages="1">
+  <diagram id="learning-agent-architecture" name="Learning Agent Architecture">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" background="#E8ECF1" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Learning Agent · Hy3 整体架构" style="text;html=1;strokeColor=none;fillColor=none;whiteSpace=wrap;overflow=hidden;align=center;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=34;fontStyle=1;fontColor=#20242A;" vertex="1" parent="1">
+          <mxGeometry x="350" y="12" width="900" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="interaction_region" value="用户触点区域" style="rounded=0;container=1;collapsible=0;pointerEvents=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#545B66;strokeWidth=0.9;dashed=1;dashPattern=5 7;fontSize=8;textOpacity=0;opacity=42;" vertex="1" parent="1">
+          <mxGeometry x="30" y="82" width="1540" height="136" as="geometry" />
+        </mxCell>
+        <mxCell id="product_region" value="主动学习运行时" style="rounded=0;container=1;collapsible=0;pointerEvents=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#545B66;strokeWidth=0.9;dashed=1;dashPattern=5 7;fontSize=8;textOpacity=0;opacity=42;" vertex="1" parent="1">
+          <mxGeometry x="30" y="236" width="1540" height="414" as="geometry" />
+        </mxCell>
+        <mxCell id="evaluation_region" value="离线评测区域" style="rounded=0;container=1;collapsible=0;pointerEvents=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#545B66;strokeWidth=0.9;dashed=1;dashPattern=5 7;fontSize=8;textOpacity=0;opacity=42;" vertex="1" parent="1">
+          <mxGeometry x="30" y="680" width="1540" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="interaction_header" value="&lt;b&gt;(a) 用户触点&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#5B6570&quot;&gt;USER TOUCHPOINTS · MULTI-ENTRY&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;whiteSpace=wrap;overflow=hidden;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=21;fontColor=#20242A;spacing=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="93" width="205" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="product_header" value="&lt;b&gt;(b) 主动学习运行时&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#5B6570&quot;&gt;ACTIVE LEARNING RUNTIME&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;whiteSpace=wrap;overflow=hidden;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=21;fontColor=#20242A;spacing=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="250" width="255" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="evaluation_header" value="&lt;b&gt;(c) 离线决策评测&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#5B6570&quot;&gt;OFFLINE · READ-ONLY REPLAY&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;whiteSpace=wrap;overflow=hidden;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=21;fontColor=#20242A;spacing=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="689" width="215" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="surface_chat" value="&lt;div style=&quot;border-left:3px solid #3F88C5;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#3F88C5&quot;&gt;CHAT&lt;/font&gt;&lt;br&gt;&lt;b&gt;连续对话&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="270" y="120" width="270" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="surface_plan" value="&lt;div style=&quot;border-left:3px solid #3F88C5;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#3F88C5&quot;&gt;PLAN&lt;/font&gt;&lt;br&gt;&lt;b&gt;计划工作台&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="570" y="120" width="270" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="surface_task" value="&lt;div style=&quot;border-left:3px solid #3F88C5;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#3F88C5&quot;&gt;TASK&lt;/font&gt;&lt;br&gt;&lt;b&gt;学习任务&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="870" y="120" width="270" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="surface_inbox" value="&lt;div style=&quot;border-left:3px solid #3F88C5;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#3F88C5&quot;&gt;INBOX&lt;/font&gt;&lt;br&gt;&lt;b&gt;学习收件箱&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="120" width="270" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="goal" value="&lt;div style=&quot;border-left:3px solid #3F88C5;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#3F88C5&quot;&gt;01 · GOAL&lt;/font&gt;&lt;br&gt;&lt;b&gt;目标与约束&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.45;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="660" y="260" width="310" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="planning" value="&lt;div style=&quot;border-left:3px solid #D19A32;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#B87818&quot;&gt;02 · PLAN&lt;/font&gt;&lt;br&gt;&lt;b&gt;规划与资源&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.45;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="306" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="learning" value="&lt;div style=&quot;border-left:3px solid #4E9B68;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#4E8F62&quot;&gt;03 · LEARN&lt;/font&gt;&lt;br&gt;&lt;b&gt;学习与提交&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.45;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="482" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="assessment" value="&lt;div style=&quot;border-left:3px solid #D45D52;padding-left:12px;line-height:1.18;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#C6534B&quot;&gt;04 · ASSESS&lt;/font&gt;&lt;br&gt;&lt;b&gt;成果验收&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot; color=&quot;#66707A&quot;&gt;判断用户学习证据&lt;/font&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.45;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="660" y="552" width="310" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="state" value="&lt;div style=&quot;border-left:3px solid #4C98A5;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#3F8793&quot;&gt;05 · STATE&lt;/font&gt;&lt;br&gt;&lt;b&gt;学习状态&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.45;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="340" y="482" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="proactive" value="&lt;div style=&quot;border-left:3px solid #D48239;padding-left:12px;line-height:1.22;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#BC6F2C&quot;&gt;06 · DECIDE&lt;/font&gt;&lt;br&gt;&lt;b&gt;主动判断&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.45;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="340" y="306" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="wait" value="&lt;font style=&quot;font-size:11px&quot; color=&quot;#5B6570&quot;&gt;WAIT&lt;/font&gt;&lt;br&gt;&lt;b&gt;保持安静&lt;/b&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.05;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="185" y="330" width="135" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="action" value="&lt;font style=&quot;font-size:11px&quot; color=&quot;#D45D52&quot;&gt;ACT&lt;/font&gt;&lt;br&gt;&lt;b&gt;提醒 · 抽查&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot; color=&quot;#D45D52&quot;&gt;计划调整&lt;/font&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F6DDD7;strokeColor=#D45D52;strokeWidth=1.7;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="185" y="516" width="135" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="hy3_core" value="&lt;font style=&quot;font-size:11px&quot; color=&quot;#6F75A4&quot;&gt;HY3 CONTROLLER&lt;/font&gt;&lt;br&gt;&lt;b&gt;Hy3 Learning Agent&lt;/b&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=top;fillColor=#DDD9EB;strokeColor=#545B66;strokeWidth=1.7;shadow=0;fontFamily=Noto Sans CJK SC;fontSize=23;fontStyle=1;fontColor=#20242A;spacing=7;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="640" y="374" width="350" height="132" as="geometry" />
+        </mxCell>
+        <mxCell id="hy3_sense" value="SENSE" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#4C98A5;strokeWidth=1.3;fontFamily=Noto Sans CJK SC;fontSize=11;fontStyle=1;fontColor=#3F8793;" vertex="1" parent="hy3_core">
+          <mxGeometry x="45" y="82" width="78" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="hy3_decide" value="DECIDE" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#D48239;strokeWidth=1.3;fontFamily=Noto Sans CJK SC;fontSize=11;fontStyle=1;fontColor=#BC6F2C;" vertex="1" parent="hy3_core">
+          <mxGeometry x="136" y="82" width="78" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="hy3_act" value="ACT" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#D45D52;strokeWidth=1.3;fontFamily=Noto Sans CJK SC;fontSize=11;fontStyle=1;fontColor=#C6534B;" vertex="1" parent="hy3_core">
+          <mxGeometry x="227" y="82" width="78" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="hy3_caption" value="持续感知 · 主动决策" style="text;html=1;strokeColor=none;fillColor=none;whiteSpace=wrap;overflow=hidden;align=center;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=11;fontColor=#66707A;" vertex="1" parent="hy3_core">
+          <mxGeometry x="60" y="111" width="230" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="support_group" value="RUNTIME GROUNDING" style="rounded=1;arcSize=8;container=1;collapsible=0;pointerEvents=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;spacingTop=13;fillColor=none;strokeColor=#545B66;strokeWidth=1.2;dashed=1;dashPattern=4 6;opacity=82;fontFamily=Noto Sans CJK SC;fontSize=13;fontStyle=1;fontColor=#20242A;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="286" width="225" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="support_context" value="&lt;div style=&quot;border-left:3px solid #4C98A5;padding-left:10px;line-height:1.2;&quot;&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#3F8793&quot;&gt;CONTEXT&lt;/font&gt;&lt;br&gt;&lt;b&gt;分层上下文&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=7;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.2;fontFamily=Noto Sans CJK SC;fontSize=14;fontStyle=1;fontColor=#20242A;spacing=4;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="1342" y="338" width="181" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="support_tools" value="&lt;div style=&quot;border-left:3px solid #3F88C5;padding-left:10px;line-height:1.2;&quot;&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#3F88C5&quot;&gt;TOOLS&lt;/font&gt;&lt;br&gt;&lt;b&gt;工具调用&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=7;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.2;fontFamily=Noto Sans CJK SC;fontSize=14;fontStyle=1;fontColor=#20242A;spacing=4;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="1342" y="426" width="181" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="support_audit" value="&lt;div style=&quot;border-left:3px solid #777CB8;padding-left:10px;line-height:1.2;&quot;&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#6F75A4&quot;&gt;TRACE&lt;/font&gt;&lt;br&gt;&lt;b&gt;可审计事件与状态&lt;/b&gt;&lt;/div&gt;" style="rounded=1;arcSize=7;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.2;fontFamily=Noto Sans CJK SC;fontSize=14;fontStyle=1;fontColor=#20242A;spacing=4;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="1342" y="514" width="181" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="decision_source_p" value="P · 规划" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#3F88C5;strokeColor=#3F88C5;strokeWidth=1.05;fontFamily=Noto Sans CJK SC;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="345" y="653" width="88" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="decision_source_i" value="I · 介入" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#D48239;strokeColor=#D48239;strokeWidth=1.05;fontFamily=Noto Sans CJK SC;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="433" y="653" width="88" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="decision_source_a" value="A · 验收" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#D45D52;strokeColor=#D45D52;strokeWidth=1.05;fontFamily=Noto Sans CJK SC;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="521" y="653" width="88" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="decision_source_r" value="R · 调整" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#4E9B68;strokeColor=#4E9B68;strokeWidth=1.05;fontFamily=Noto Sans CJK SC;fontSize=11;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="609" y="653" width="88" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="episode" value="Decision Episode" style="rounded=1;arcSize=8;container=1;collapsible=0;pointerEvents=0;whiteSpace=wrap;html=1;align=center;verticalAlign=bottom;spacingBottom=8;fillColor=none;strokeColor=#545B66;strokeWidth=1.05;dashed=1;dashPattern=4 5;opacity=78;fontFamily=Noto Sans CJK SC;fontSize=13;fontStyle=1;fontColor=#373A40;" vertex="1" parent="1">
+          <mxGeometry x="335" y="712" width="370" height="136" as="geometry" />
+        </mxCell>
+        <mxCell id="p_cell" value="&lt;font style=&quot;font-size:10px&quot; color=&quot;#3F88C5&quot;&gt;P&lt;/font&gt;&lt;br&gt;&lt;b&gt;规划&lt;/b&gt;" style="rounded=1;arcSize=7;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#3F88C5;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=14;fontStyle=1;fontColor=#20242A;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="350" y="758" width="78" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="i_cell" value="&lt;font style=&quot;font-size:10px&quot; color=&quot;#BC6F2C&quot;&gt;I&lt;/font&gt;&lt;br&gt;&lt;b&gt;主动介入&lt;/b&gt;" style="rounded=1;arcSize=7;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#D48239;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=14;fontStyle=1;fontColor=#20242A;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="438" y="758" width="78" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="a_cell" value="&lt;font style=&quot;font-size:10px&quot; color=&quot;#C6534B&quot;&gt;A&lt;/font&gt;&lt;br&gt;&lt;b&gt;成果验收&lt;/b&gt;" style="rounded=1;arcSize=7;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#D45D52;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=14;fontStyle=1;fontColor=#20242A;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="526" y="758" width="78" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="r_cell" value="&lt;font style=&quot;font-size:10px&quot; color=&quot;#4E8F62&quot;&gt;R&lt;/font&gt;&lt;br&gt;&lt;b&gt;计划调整&lt;/b&gt;" style="rounded=1;arcSize=7;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#4E9B68;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=14;fontStyle=1;fontColor=#20242A;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="614" y="758" width="78" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="rules_judge" value="&lt;div style=&quot;border-left:3px solid #3F88C5;padding-left:12px;line-height:1.15;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#3F88C5&quot;&gt;SCORING&lt;/font&gt;&lt;br&gt;&lt;b&gt;规则 × Hy3 Judge&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#66707A&quot;&gt;RULES · SEMANTIC JUDGE&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot; color=&quot;#66707A&quot;&gt;七维决策质量评分&lt;/font&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=16;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="730" y="724" width="230" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="validity" value="&lt;div style=&quot;border-left:3px solid #4C98A5;padding-left:12px;line-height:1.15;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#3F8793&quot;&gt;VALIDATION&lt;/font&gt;&lt;br&gt;&lt;b&gt;可靠性验证&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot; color=&quot;#66707A&quot;&gt;判别力 · 一致性&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot; color=&quot;#66707A&quot;&gt;反事实 · 对抗&lt;/font&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=16;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="1005" y="718" width="280" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="results" value="&lt;div style=&quot;border-left:3px solid #4E9B68;padding-left:12px;line-height:1.15;&quot;&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#4E8F62&quot;&gt;REPORT&lt;/font&gt;&lt;br&gt;&lt;b&gt;结果报告&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#66707A&quot;&gt;METRICS · CASES&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#66707A&quot;&gt;ATTRIBUTION&lt;/font&gt;&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#545B66;strokeWidth=1.35;fontFamily=Noto Sans CJK SC;fontSize=16;fontStyle=1;fontColor=#20242A;spacing=6;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="724" width="200" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="interaction_to_goal" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#545B66;strokeWidth=2.0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="interaction_region" target="goal">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="218" as="sourcePoint" />
+            <mxPoint x="815" y="258" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="loop_goal_planning" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#545B66;strokeWidth=2.0;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" edge="1" parent="1" source="goal" target="planning">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1010" y="293" />
+              <mxPoint x="1165" y="293" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="loop_planning_learning" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#545B66;strokeWidth=2.0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="planning" target="learning">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="loop_learning_assessment" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#545B66;strokeWidth=2.0;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" edge="1" parent="1" source="learning" target="assessment">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1165" y="588" />
+              <mxPoint x="1010" y="588" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="loop_assessment_state" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#545B66;strokeWidth=2.0;exitX=0;exitY=0.5;entryX=0.5;entryY=1;" edge="1" parent="1" source="assessment" target="state">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="588" />
+              <mxPoint x="465" y="588" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="loop_state_proactive" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#545B66;strokeWidth=2.0;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="state" target="proactive">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="loop_proactive_goal" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#545B66;strokeWidth=2.0;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="proactive" target="goal">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="339" />
+              <mxPoint x="620" y="293" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="branch_wait" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#545B66;strokeWidth=1.5;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="proactive" target="wait">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="branch_action" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#D45D52;strokeWidth=2.0;exitX=0.22;exitY=1;entryX=0.75;entryY=0;" edge="1" parent="1" source="proactive" target="action">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="395" y="410" />
+              <mxPoint x="286" y="410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="action_return" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#D45D52;strokeWidth=2.0;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" parent="1" source="action" target="learning">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="252" y="630" />
+              <mxPoint x="1165" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="extract_p" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#3F88C5;strokeWidth=1.3;dashed=1;dashPattern=4 5;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="decision_source_p" target="p_cell">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="extract_i" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#D48239;strokeWidth=1.3;dashed=1;dashPattern=4 5;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="decision_source_i" target="i_cell">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="extract_a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#D45D52;strokeWidth=1.3;dashed=1;dashPattern=4 5;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="decision_source_a" target="a_cell">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="extract_r" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#4E9B68;strokeWidth=1.3;dashed=1;dashPattern=4 5;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="decision_source_r" target="r_cell">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eval_episode_rules" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#5B9FE3;strokeWidth=1.8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="episode" target="rules_judge">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="705" y="780" as="sourcePoint" />
+            <mxPoint x="730" y="780" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eval_rules_validity" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#5B9FE3;strokeWidth=1.8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="rules_judge" target="validity">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eval_validity_results" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;endSize=7;strokeColor=#5B9FE3;strokeWidth=1.8;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="validity" target="results">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

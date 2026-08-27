@@ -57,6 +57,7 @@ data/workspace/
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/.learning_companion.db.migration.lock
 
 # JavaScript dependencies and generated frontend assets
 node_modules/
