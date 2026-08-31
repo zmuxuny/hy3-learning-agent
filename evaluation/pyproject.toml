@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "learning-agent-eval"
+version = "0.1.0"
+description = "Offline Decision Episode protocol validation for Learning Agent"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.10,<3",
+]
+
+[project.scripts]
+learning-agent-eval = "learning_agent_eval.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

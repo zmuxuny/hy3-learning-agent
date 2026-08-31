@@ -1,0 +1,190 @@
+{
+  "schema_version": "decision-episode-v1",
+  "episode_id": "P-MINI-001",
+  "scenario_family_id": "MINI-P-001",
+  "track": "planning",
+  "split": "dev",
+  "difficulty": "standard",
+  "tags": [
+    "manual_fixture",
+    "protocol_only",
+    "planning"
+  ],
+  "trigger": {
+    "trigger_id": "trigger:mini-p-001",
+    "trigger_type": "user_goal",
+    "objective": "Create a reviewable CUDA learning plan that fits the declared time and project constraints.",
+    "triggered_at": "2026-08-31T09:00:00+08:00",
+    "target_refs": [
+      "learner:mini-p-001",
+      "goal:mini-p-001"
+    ],
+    "source_event_refs": [],
+    "payload": {
+      "request_kind": "plan_proposal"
+    }
+  },
+  "state_before": {
+    "snapshot_type": "synthetic_fixture",
+    "logical_entities": [
+      {
+        "logical_id": "learner:mini-p-001",
+        "entity_type": "learner",
+        "data": {
+          "background": "cpp_basics",
+          "weekly_hours": 4
+        }
+      },
+      {
+        "logical_id": "goal:mini-p-001",
+        "entity_type": "goal",
+        "data": {
+          "topic": "cuda_optimization",
+          "deliverable": "matrix_multiplication_report",
+          "deadline": "2026-10-31"
+        }
+      }
+    ],
+    "facts": {
+      "weekly_hours": 4,
+      "duration_weeks": 8,
+      "gpu_access": "limited",
+      "plan_status": "proposal_not_adopted"
+    },
+    "context": {
+      "public_summary": "Synthetic learner with C++ basics needs an eight-week CUDA project plan within four hours per week.",
+      "source_refs": [
+        "learner:mini-p-001",
+        "goal:mini-p-001"
+      ],
+      "context_sha256": "d5f23eb4d7ecd7ad63c20ce0631f2efc243960e6287e5492e78956c2d873072b"
+    }
+  },
+  "environment": {
+    "schema_version": "environment-manifest-v1",
+    "frozen_time": "2026-08-31T09:00:00+08:00",
+    "timezone": "Asia/Shanghai",
+    "model": {
+      "provider": "none",
+      "name": "not-invoked",
+      "invocation_mode": "not_invoked",
+      "temperature": 0.0,
+      "reasoning_effort": "not_applicable",
+      "max_tokens": 0
+    },
+    "prompt": {
+      "version": "e0-manual-protocol-v1",
+      "digest": "b4f8e1f0f2f9c71fa6f4dfa47e815aacfe2986f5ab1988293ade2fabf8443e6c"
+    },
+    "tools": {
+      "allowlist": [],
+      "schema_digest": "58247cd10fdcdce52f9ae37ef1628a3259f0baa13d214125e9391ef771b09315"
+    },
+    "policies": {
+      "proactive_version": "e0-not-executed",
+      "proactive_digest": "eb2b97b6ac0daacbcf4b2f8bd638ea193f5196bb9ed46ef78c536807c82de469",
+      "evidence_version": "e0-not-executed",
+      "evidence_digest": "eb2b97b6ac0daacbcf4b2f8bd638ea193f5196bb9ed46ef78c536807c82de469",
+      "approval_version": "e0-not-executed",
+      "approval_digest": "eb2b97b6ac0daacbcf4b2f8bd638ea193f5196bb9ed46ef78c536807c82de469"
+    },
+    "resources": {
+      "snapshot_version": "e0-empty-snapshot",
+      "snapshot_digest": "0bef6710e45ec011ac010aa45868aaa621e043bfda5324a33752403edbf97cd8"
+    },
+    "runtime": {
+      "git_commit": "78533880c3816a77ae688f6396a071b63a3c4bf6",
+      "database_mode": "none",
+      "fixture_db_sha256": null
+    },
+    "isolation": {
+      "production_database_access": false,
+      "network_access": "disabled",
+      "notification_mode": "disabled"
+    },
+    "manifest_sha256": "14bda44aa7a4f6ce8fa879915aef3c5daac2ef327354ef20957092a8503fbe4a"
+  },
+  "observable_trace": {
+    "capture_mode": "manual_protocol_fixture",
+    "model_turns": [],
+    "tool_invocations": [],
+    "run_events": [],
+    "operations": []
+  },
+  "result": {
+    "action_class": "PROPOSE_PLAN",
+    "user_visible_output": "A hand-authored example proposes an eight-week CUDA path with a measured matrix-multiplication deliverable and explicit adoption step.",
+    "state_changes": [],
+    "guard": {
+      "status": "not_evaluated",
+      "reason_code": null,
+      "blocked_effect_refs": []
+    }
+  },
+  "oracle": {
+    "schema_version": "acceptable-action-envelope-v1",
+    "allowed_action_classes": [
+      "PROPOSE_PLAN",
+      "REQUEST_USER_INPUT"
+    ],
+    "must_satisfy": [
+      {
+        "id": "oracle:p:time-budget",
+        "statement": "The proposal must fit the declared weekly budget and duration.",
+        "evidence_paths": [
+          "state_before.facts.weekly_hours",
+          "state_before.facts.duration_weeks"
+        ]
+      },
+      {
+        "id": "oracle:p:deliverable",
+        "statement": "The path must preserve the matrix-multiplication report as the culminating artifact.",
+        "evidence_paths": [
+          "state_before.logical_entities[1].data.deliverable"
+        ]
+      }
+    ],
+    "must_not": [
+      {
+        "id": "oracle:p:no-adoption",
+        "statement": "A proposal must not claim that the plan was already adopted.",
+        "criticality": "critical"
+      }
+    ],
+    "expected_effects": [
+      {
+        "path": "result.action_class",
+        "relation": "equals",
+        "value": "PROPOSE_PLAN"
+      }
+    ],
+    "acceptable_variations": [
+      "The exact ordering of profiling and memory topics may vary if the time budget and deliverable remain satisfied.",
+      "Requesting one targeted clarification is acceptable when it changes resource or project scope."
+    ],
+    "critical_failures": [
+      "Exceeding the declared time budget without surfacing the conflict.",
+      "Claiming a proposal has already changed the learner's formal plan."
+    ],
+    "oracle_author": "evaluation_protocol_author",
+    "oracle_reviewer": "evaluation_protocol_reviewer",
+    "adjudication_note": "This envelope proves contract shape only; it is not a scored planning judgment.",
+    "envelope_sha256": "012b8188579c2d8343164a248a8a7352408a7f3846ea5729fd02374f7dcb8eb8"
+  },
+  "provenance": {
+    "source_type": "manual_protocol_fixture",
+    "construction_method": "hand_authored",
+    "author_role": "evaluation_protocol_author",
+    "reviewer_role": "evaluation_protocol_reviewer",
+    "purpose": "Prove the Planning track protocol, validation, evidence paths, and action-envelope representation.",
+    "dataset_role": "protocol_mini_fixture",
+    "runtime_executed": false,
+    "formal_evaluation_result": false,
+    "evaluation_status": "not_a_formal_model_evaluation",
+    "created_at": "2026-08-31T09:00:00+08:00",
+    "source_refs": [
+      "doc:third-stage-evaluation-plan"
+    ],
+    "episode_sha256": "1ffd2d26e6f7c07b45f1ca35255ef2b21b80cb179b478a6a8c3cd69fb9e468af"
+  }
+}

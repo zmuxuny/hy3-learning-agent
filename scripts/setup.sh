@@ -11,6 +11,9 @@ if [[ -f frontend/package.json ]]; then
   requirements_file="backend/requirements-dev.txt"
 fi
 .venv/bin/pip install -r "$requirements_file"
+if [[ -f evaluation/pyproject.toml ]]; then
+  .venv/bin/pip install --no-deps --editable evaluation
+fi
 if [[ ! -f frontend/dist/index.html ]]; then
   if ! command -v npm >/dev/null 2>&1; then
     echo "missing_release_asset: source checkout requires Node/npm to build frontend/dist." >&2

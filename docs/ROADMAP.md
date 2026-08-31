@@ -14,13 +14,15 @@
 
 - [x] 确定四条轨道：Planning / Intervention / Assessment / Revision。
 - [x] 确定 Decision Episode、七维 Rubric、Rule + Hy3 Judge、48 Primary + 24 Calibration 的总体方案。
-- [ ] E0：落地版本化协议、离线包骨架、四轨 Mini Episode 与确定性校验。
+- [x] E0：落地版本化协议、离线包骨架、四轨 Mini Episode 与确定性校验。
 - [ ] E1：完成临时库、冻结时钟、资源快照、假 Outbox 与 Evaluation Model Recorder。
 - [ ] E2：完成 Episode Exporter、State Delta、规则包和完整性检查。
 - [ ] E3：完成 Hy3 Judge、聚合、标签盲化与结构化错误处理。
 - [ ] E4：完成 DecisionBench v1、有效性实验、正式评测、版本回归和发布材料。
 
 每个 E 里程碑必须同时提交代码、测试、数据说明和状态更新；Mock 只能验证工程链路，不能替代正式 Hy3 结果。首个开发切片和禁止事项见 [`第三阶段开发交接.md`](第三阶段开发交接.md)。
+
+E0 收口边界：三份 v1 Schema、递归校验 CLI、统一 canonical JSON/SHA-256、P/I/A/R 四个手工协议夹具和 34 项定向测试已经完成；完整 Python 回归为 `1096 passed, 2 warnings`。四个样本均非 Runtime/Hy3 结果，Recorder、Runner、Exporter、Rules、Judge 和正式 DecisionBench 仍从 E1 起按顺序实施。
 
 ## M0：工程基线
 

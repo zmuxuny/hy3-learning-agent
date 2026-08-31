@@ -74,11 +74,13 @@ def _tracked_files() -> list[Path]:
 def lint_typecheck() -> None:
     if not compileall.compile_dir(PROJECT_ROOT / "backend", quiet=1):
         raise RuntimeError("python_compile_failed")
+    if not compileall.compile_dir(PROJECT_ROOT / "evaluation" / "src", quiet=1):
+        raise RuntimeError("evaluation_compile_failed")
     if not compileall.compile_dir(PROJECT_ROOT / "scripts", quiet=1):
         raise RuntimeError("script_compile_failed")
     _run([
         sys.executable, "-m", "ruff", "check", "--select", "E9,F63,F7,F82",
-        "backend", "scripts", "tests",
+        "backend", "evaluation/src", "evaluation/tests", "scripts", "tests",
     ])
     for relative in _tracked_files():
         if relative.suffix in {".js", ".mjs"}:

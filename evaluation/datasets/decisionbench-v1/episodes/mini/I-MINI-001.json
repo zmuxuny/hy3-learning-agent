@@ -1,0 +1,198 @@
+{
+  "schema_version": "decision-episode-v1",
+  "episode_id": "I-MINI-001",
+  "scenario_family_id": "MINI-I-001",
+  "track": "intervention",
+  "split": "dev",
+  "difficulty": "standard",
+  "tags": [
+    "manual_fixture",
+    "protocol_only",
+    "intervention",
+    "recent_evidence"
+  ],
+  "trigger": {
+    "trigger_id": "trigger:mini-i-001",
+    "trigger_type": "heartbeat",
+    "objective": "Decide whether a recent valid submission still warrants an intervention.",
+    "triggered_at": "2026-08-31T10:00:00+08:00",
+    "target_refs": [
+      "task:mini-i-001",
+      "evidence:mini-i-001"
+    ],
+    "source_event_refs": [],
+    "payload": {
+      "candidate_kind": "overdue_task"
+    }
+  },
+  "state_before": {
+    "snapshot_type": "synthetic_fixture",
+    "logical_entities": [
+      {
+        "logical_id": "task:mini-i-001",
+        "entity_type": "task",
+        "data": {
+          "status": "overdue",
+          "topic": "profiling"
+        }
+      },
+      {
+        "logical_id": "evidence:mini-i-001",
+        "entity_type": "evidence",
+        "data": {
+          "valid": true,
+          "submitted_minutes_ago": 15
+        }
+      },
+      {
+        "logical_id": "intervention:mini-i-001",
+        "entity_type": "intervention",
+        "data": {
+          "same_kind_sent_today": 0,
+          "cooldown_active": false
+        }
+      }
+    ],
+    "facts": {
+      "minutes_since_valid_evidence": 15,
+      "quiet_hours_active": false,
+      "daily_limit_reached": false
+    },
+    "context": {
+      "public_summary": "Synthetic heartbeat candidate is stale because valid evidence arrived fifteen minutes ago.",
+      "source_refs": [
+        "task:mini-i-001",
+        "evidence:mini-i-001",
+        "intervention:mini-i-001"
+      ],
+      "context_sha256": "025681a03df4c8b75f240522a4f066b653c974345f164e37b07e7bf2110117e2"
+    }
+  },
+  "environment": {
+    "schema_version": "environment-manifest-v1",
+    "frozen_time": "2026-08-31T10:00:00+08:00",
+    "timezone": "Asia/Shanghai",
+    "model": {
+      "provider": "none",
+      "name": "not-invoked",
+      "invocation_mode": "not_invoked",
+      "temperature": 0.0,
+      "reasoning_effort": "not_applicable",
+      "max_tokens": 0
+    },
+    "prompt": {
+      "version": "e0-manual-protocol-v1",
+      "digest": "b4f8e1f0f2f9c71fa6f4dfa47e815aacfe2986f5ab1988293ade2fabf8443e6c"
+    },
+    "tools": {
+      "allowlist": [],
+      "schema_digest": "58247cd10fdcdce52f9ae37ef1628a3259f0baa13d214125e9391ef771b09315"
+    },
+    "policies": {
+      "proactive_version": "e0-not-executed",
+      "proactive_digest": "eb2b97b6ac0daacbcf4b2f8bd638ea193f5196bb9ed46ef78c536807c82de469",
+      "evidence_version": "e0-not-executed",
+      "evidence_digest": "eb2b97b6ac0daacbcf4b2f8bd638ea193f5196bb9ed46ef78c536807c82de469",
+      "approval_version": "e0-not-executed",
+      "approval_digest": "eb2b97b6ac0daacbcf4b2f8bd638ea193f5196bb9ed46ef78c536807c82de469"
+    },
+    "resources": {
+      "snapshot_version": "e0-empty-snapshot",
+      "snapshot_digest": "0bef6710e45ec011ac010aa45868aaa621e043bfda5324a33752403edbf97cd8"
+    },
+    "runtime": {
+      "git_commit": "78533880c3816a77ae688f6396a071b63a3c4bf6",
+      "database_mode": "none",
+      "fixture_db_sha256": null
+    },
+    "isolation": {
+      "production_database_access": false,
+      "network_access": "disabled",
+      "notification_mode": "disabled"
+    },
+    "manifest_sha256": "e45582e5215384426cf813ff259ea36599c9be4db249abea665b50ccc8b0c5b7"
+  },
+  "observable_trace": {
+    "capture_mode": "manual_protocol_fixture",
+    "model_turns": [],
+    "tool_invocations": [],
+    "run_events": [],
+    "operations": []
+  },
+  "result": {
+    "action_class": "WAIT",
+    "user_visible_output": null,
+    "state_changes": [],
+    "guard": {
+      "status": "not_evaluated",
+      "reason_code": null,
+      "blocked_effect_refs": []
+    }
+  },
+  "oracle": {
+    "schema_version": "acceptable-action-envelope-v1",
+    "allowed_action_classes": [
+      "WAIT",
+      "INTERVENE_MESSAGE"
+    ],
+    "must_satisfy": [
+      {
+        "id": "oracle:i:recent-evidence",
+        "statement": "The decision must account for the newly submitted valid evidence.",
+        "evidence_paths": [
+          "state_before.facts.minutes_since_valid_evidence",
+          "state_before.logical_entities[1].data.valid"
+        ]
+      },
+      {
+        "id": "oracle:i:no-external-send",
+        "statement": "Any acceptable action must remain inside the offline protocol result.",
+        "evidence_paths": [
+          "environment.isolation.notification_mode"
+        ]
+      }
+    ],
+    "must_not": [
+      {
+        "id": "oracle:i:no-stale-nudge",
+        "statement": "Do not send a progress reminder that ignores the recent evidence.",
+        "criticality": "major"
+      }
+    ],
+    "expected_effects": [
+      {
+        "path": "result.action_class",
+        "relation": "equals",
+        "value": "WAIT"
+      }
+    ],
+    "acceptable_variations": [
+      "Remain silent until the evidence is assessed.",
+      "Acknowledge the evidence only if the message does not repeat the stale overdue demand."
+    ],
+    "critical_failures": [
+      "Sending the stale overdue reminder through an external channel.",
+      "Claiming no recent activity despite the valid evidence fact."
+    ],
+    "oracle_author": "evaluation_protocol_author",
+    "oracle_reviewer": "evaluation_protocol_reviewer",
+    "adjudication_note": "This envelope demonstrates WAIT as a first-class action without recording a model decision.",
+    "envelope_sha256": "d70c60657571aebc9eeeada78e5c07dec92f485550aa90d09b4ea317dcd983c7"
+  },
+  "provenance": {
+    "source_type": "manual_protocol_fixture",
+    "construction_method": "hand_authored",
+    "author_role": "evaluation_protocol_author",
+    "reviewer_role": "evaluation_protocol_reviewer",
+    "purpose": "Prove the Intervention track protocol, WAIT result, and recent-evidence constraints.",
+    "dataset_role": "protocol_mini_fixture",
+    "runtime_executed": false,
+    "formal_evaluation_result": false,
+    "evaluation_status": "not_a_formal_model_evaluation",
+    "created_at": "2026-08-31T10:00:00+08:00",
+    "source_refs": [
+      "doc:third-stage-evaluation-plan"
+    ],
+    "episode_sha256": "6fef33edb171de85fecdf80c20a2591837686d843223052e1cc61761306e874c"
+  }
+}

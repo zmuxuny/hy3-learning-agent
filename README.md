@@ -62,7 +62,7 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 产品内的“学习成果验收”判断用户是否学会；第三阶段评测判断 Hy3 的规划、介入、验收和调整是否做得正确。两者共享可观察事实，但职责清晰分离。整体构思见[第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md)，工程协议见[第三阶段评测实施方案](docs/腾讯犀牛鸟开源实习第三阶段评测实施方案.md)。
 
-第三阶段现已进入实施：从版本化 Episode 协议与离线校验骨架出发，依次建设隔离回放、规则与 Judge、DecisionBench 和有效性实验。实时里程碑见[当前状态](docs/STATUS.md)。
+第三阶段 E0 已完成版本化 Episode / Oracle / Environment Manifest、离线校验 CLI 和四轨手工协议 Mini Episode；这些夹具不代表正式 Hy3 结果。下一步依次建设隔离回放、规则与 Judge、DecisionBench 和有效性实验。运行入口见[评测包说明](evaluation/README.md)，实时里程碑见[当前状态](docs/STATUS.md)。
 
 ## Demo
 
@@ -109,6 +109,7 @@ npm run dev
 ```bash
 source .venv/bin/activate
 pytest -q
+python -m learning_agent_eval validate-dataset --dataset evaluation/datasets/decisionbench-v1
 npm --prefix frontend test
 npm --prefix frontend run build
 python scripts/check_doc_links.py .
@@ -129,6 +130,7 @@ python scripts/release-gate.py --repository . --format json
 
 - [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md)
 - [第三阶段评测实施方案](docs/腾讯犀牛鸟开源实习第三阶段评测实施方案.md)
+- [离线评测包与 E0 运行说明](evaluation/README.md)
 - [第三阶段开发交接](docs/第三阶段开发交接.md)
 - [产品定义](docs/PRODUCT.md)
 - [系统架构与上下文](docs/ARCHITECTURE.md)

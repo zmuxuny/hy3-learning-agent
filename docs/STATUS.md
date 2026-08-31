@@ -3,11 +3,11 @@
 更新时间：2026-08-31（Asia/Shanghai）
 当前版本：1.1.1
 
-H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”已进入开发；M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议与离线骨架已经完成，下一切片为 E1 隔离执行；M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
 
-## 2026-08-31 第三阶段开发起点
+## 2026-08-31 第三阶段 E0 收口
 
-当前仓库已经满足继续推进第三阶段的条件，但评测系统尚未实现，状态必须区分为“底座就绪、评测待建”。
+当前仓库已经完成 E0 的版本化评测协议、纯离线校验器和四轨手工协议夹具；状态必须区分为“E0 协议可运行”和“正式评测系统/DecisionBench 尚未实现”。
 
 | 检查项 | 当前结论 | 证据或入口 |
 | --- | --- | --- |
@@ -16,7 +16,8 @@ H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布
 | CI 基线 | 已就绪 | 产品基线的八项远端 CI 门禁全部通过；本节不把未来评测代码视为已通过 |
 | 对外方案 | 已冻结 | [`腾讯犀牛鸟开源实习第三阶段项目方案.md`](腾讯犀牛鸟开源实习第三阶段项目方案.md) |
 | 评测设计 | 已形成可执行版本 | [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) |
-| 评测代码与数据 | 尚未开始 | 仓库当前没有 `evaluation/`；DecisionBench、Recorder、Exporter、Rules 与 Judge 均不得写成现有能力 |
+| E0 评测代码与数据 | 已完成 | [`../evaluation/README.md`](../evaluation/README.md)：三份 v1 Schema、递归校验 CLI、确定性摘要和四轨 Mini Episode |
+| 正式评测系统与数据 | 尚未开始 | Recorder、临时库 Runner、Exporter、Rules、Judge、48 Primary 和 24 Calibration 均不得写成现有能力 |
 
 当前执行边界：
 
@@ -25,7 +26,24 @@ H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布
 - 评测只保存模型可见输入、公开输出、工具调用与状态差异，不保存或评价 `reasoning_content`。
 - 正式样本只使用合成 Fixture 与公开资源快照；真实通知进入假 Outbox，真实用户库和外部渠道必须保持零变化。
 
-下一个里程碑是 **E0：评测协议落地与离线骨架**。完成标准是：建立 `evaluation/` 包和入口文档，落地版本化 DecisionEpisode / Oracle / Environment Manifest 契约，实现确定性校验与摘要，为四条轨道各提供一个通过验证的手工 Mini Episode，并用自动化测试证明无秘密、无私有思维链、无生产数据库或外部副作用。E0 不修改生产 Runtime，不接真实 Hy3，不实现正式 Judge，也不宣称完成 DecisionBench。
+E0 已完成：
+
+- 建立独立 `evaluation/` Python 包，冻结 `DecisionEpisode v1`、`Acceptable Action Envelope v1` 和 `Environment Manifest v1` 三份严格 JSON Schema；合同对象拒绝未知字段，只在明确的 JSON 载荷映射中允许领域扩展。
+- 实现唯一的 canonical JSON / SHA-256 路径，统一校验 Context、Environment、Oracle 与 Episode 自摘要；实现结构化错误码、字段路径、稳定排序、逻辑 ID/引用、Evidence Path、摘要和场景族 Split 检查。
+- `python -m learning_agent_eval validate-dataset --dataset <path>` 递归校验 JSON；成功稳定输出样本总数与四轨统计，失败返回非零且不回显被拒绝的载荷。
+- P/I/A/R 各新增一个 `manual_protocol_fixture`；四例均声明手工构造、作者/复核角色、协议验证用途、未运行 Runtime 且不属于正式模型评测结果。每例使用 Acceptable Action Envelope，不伪造唯一标准答案。
+- 隐私守卫在 Schema 前拒绝 `reasoning_content`/私有推理、凭据字段或疑似值、认证 Token、非保留域邮箱和个人身份字段；隔离测试证明校验不创建生产 SQLite、不调用网络，也不触发 SMTP、IMAP、Web Push 或生产 Outbox。
+- 常规 pytest 已发现 `evaluation/tests`；现有 `lint_typecheck` 同时编译并检查评测源码/测试，源码安装会以 editable 模式安装评测 CLI，无新增第三方依赖。
+
+E0 收口验证（均为本次实际执行，不沿用历史结果）：
+
+- `.venv/bin/pytest -q evaluation/tests`：`34 passed in 0.69s`；
+- `.venv/bin/pytest -q`：`1096 passed, 2 warnings in 1860.73s (0:31:00)`；0 failed、0 xfailed；两条 warning 分别为上游 FastAPI TestClient/Starlette 弃用提示和 Python 3.14 tar 提取行为预告；
+- `.venv/bin/python scripts/check_doc_links.py`：`Markdown relative links: OK`；
+- `.venv/bin/python scripts/release-check.py lint_typecheck`：`All checks passed!`；
+- `git diff --check`：通过；提交前工作树只包含本次 E0 代码、Schema、手工夹具、测试、安装/CI 接入与文档改动。
+
+下一个里程碑是 **E1：隔离执行**。E1 才允许增加临时 SQLite、冻结时钟、公开资源快照、假 Outbox 与 Evaluation Model Recorder；Recorder 仍不得保存 `reasoning_content`，不得接触真实用户库、通知目标或应用主流程。E0 没有修改生产 Runtime、调用真实 Hy3、实现 Judge、生成分数或宣称完成 DecisionBench。
 
 另一个开发进程应先阅读 [`第三阶段开发交接.md`](第三阶段开发交接.md)，一次只推进一个可验收切片；完成后同步本文件、相关实施方案与测试证据。
 
