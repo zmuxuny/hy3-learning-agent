@@ -4,25 +4,32 @@ from datetime import datetime, time, timezone
 from email.message import EmailMessage
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import String, cast, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import settings
+from app.core.time import utc_now
 from app.db.uow import flush as flush_uow
-from app.models import AgentRun, Intervention, Notification, Plan, PushSubscription, UserProfile
-from app.outbox import enqueue_action
+from app.models import (
+    AgentRun,
+    Intervention,
+    Notification,
+    Plan,
+    PushSubscription,
+    UserProfile,
+)
 from app.notifications.conversation import (
     materialize_intervention_message,
     resolve_notification_session,
 )
 from app.notifications.diagnostics import smtp_connection
 from app.notifications.push import push_service
+from app.outbox import enqueue_action
+from app.runtime.interventions import accept_intervention_reply
 from app.runtime.proactive import (
     create_proactive_decision,
     finalize_proactive_decision,
     next_quiet_hours_end,
 )
-from app.runtime.interventions import accept_intervention_reply
+from sqlalchemy import String, cast, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class NotificationService:
@@ -221,7 +228,7 @@ class NotificationService:
 
             if channel == "in_app":
                 notification.status = "sent"
-                notification.sent_at = datetime.now(timezone.utc)
+                notification.sent_at = utc_now()
             elif channel == "browser":
                 subscriptions = list(
                     (
@@ -352,7 +359,7 @@ class NotificationService:
 
         profile = await self.db.get(UserProfile, owner_id)
         timezone_name = settings.DEFAULT_TIMEZONE
-        now_local = datetime.now(ZoneInfo(timezone_name))
+        now_local = utc_now().astimezone(ZoneInfo(timezone_name))
         quiet_hours = profile.quiet_hours if profile else {"start": "23:00", "end": "08:00"}
         if _within_quiet_hours(now_local.time(), quiet_hours):
             return False, "quiet hours"
@@ -387,7 +394,7 @@ class NotificationService:
                 and 0 <= configured_cooldown <= 1440
             ):
                 cooldown_minutes = configured_cooldown
-        cooldown_start = datetime.now(timezone.utc).timestamp() - cooldown_minutes * 60
+        cooldown_start = utc_now().timestamp() - cooldown_minutes * 60
         cooldown_dt = datetime.fromtimestamp(cooldown_start, tz=timezone.utc)
         cooldown_query = select(Notification.id).where(
             Notification.owner_id == owner_id,
@@ -419,7 +426,7 @@ class NotificationService:
                 else {"start": "23:00", "end": "08:00"}
             )
             next_eligible_at = next_quiet_hours_end(
-                datetime.now(timezone.utc),
+                utc_now(),
                 quiet_hours,
                 timezone_name=settings.DEFAULT_TIMEZONE,
             )

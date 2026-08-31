@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime
-from uuid import uuid4
 
 from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Index, Integer, LargeBinary, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.db.database import Base
+from app.core.identity import new_uuid_string
 from app.core.time import utc_now
 from app.db.types import UTCDateTime
 
 
 def uuid_string() -> str:
-    return str(uuid4())
+    return new_uuid_string()
 
 
 class SchemaMigration(Base):

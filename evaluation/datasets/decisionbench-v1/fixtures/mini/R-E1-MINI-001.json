@@ -1,0 +1,74 @@
+{
+  "schema_version": "e1-runtime-mini-fixture-v1",
+  "episode_id": "R-E1-MINI-001",
+  "scenario_family_id": "E1-MINI-R-001",
+  "track": "revision",
+  "split": "dev",
+  "difficulty": "standard",
+  "frozen_time": "2026-08-31T09:45:00+08:00",
+  "timezone": "Asia/Shanghai",
+  "owner_id": "fixture-owner-r",
+  "run_id": "run:e1:r:001",
+  "session_id": "session:e1:r:001",
+  "trigger": {
+    "trigger_id": "trigger:e1:r:001",
+    "trigger_type": "constraint_change",
+    "objective": "Apply the synthetic learner's weekly-time change as a reversible plan patch.",
+    "triggered_at": "2026-08-31T09:45:00+08:00",
+    "target_refs": ["plan:e1:r:001", "constraint:e1:r:001"],
+    "source_event_refs": [],
+    "payload": {"new_weekly_minutes": 300}
+  },
+  "state_before": {
+    "snapshot_type": "runtime_snapshot",
+    "logical_entities": [
+      {
+        "logical_id": "plan:e1:r:001",
+        "entity_type": "plan",
+        "data": {"title": "Synthetic Runtime Study", "weekly_minutes": 180, "version": 1}
+      },
+      {
+        "logical_id": "constraint:e1:r:001",
+        "entity_type": "constraint",
+        "data": {"kind": "weekly_time", "new_value": 300, "confirmed": true}
+      }
+    ],
+    "facts": {"change_scope": "weekly_minutes_only", "reversibility_required": true},
+    "context": {
+      "public_summary": "A fully synthetic confirmed constraint raises the plan budget from 180 to 300 minutes per week.",
+      "source_refs": ["plan:e1:r:001", "constraint:e1:r:001"],
+      "context_sha256": "4daa4ff676fd510576ba9974f381ea18fb1474dad7d57be981d9e3d3f06ee587"
+    }
+  },
+  "seed_kind": "revision",
+  "seed": {"plan_title": "Synthetic Runtime Study", "weekly_minutes": 180, "plan_version": 1},
+  "scripted_turns": [
+    {
+      "ordinal": 1,
+      "delivery": "nonstream",
+      "assistant_text": "I will apply only the confirmed weekly-time constraint through a reversible patch.",
+      "tool_calls": [
+        {
+          "call_id": "call:e1:r:patch",
+          "name": "plan_patch",
+          "arguments": {
+            "plan_id": 1,
+            "expected_version": 1,
+            "weekly_minutes": 300,
+            "reason": "Apply the confirmed synthetic weekly-time constraint."
+          }
+        }
+      ]
+    },
+    {
+      "ordinal": 2,
+      "delivery": "stream",
+      "assistant_text": "The weekly budget is now 300 minutes and the operation remains reversible.",
+      "tool_calls": []
+    }
+  ],
+  "oracle_file": "oracles/mini/R-E1-MINI-001.json",
+  "resource_snapshot_version": "decisionbench-e1-mini-resources-v1",
+  "engineering_only": true,
+  "fixture_sha256": "31cafcf8aff33f36f690b5b93f40481a9476fbeaab63a80925a0046d229232b0"
+}

@@ -8,11 +8,18 @@ from collections.abc import Mapping, Sequence
 from .errors import ValidationIssue
 
 _PRIVATE_REASONING_KEYS = {
+    "analysis",
     "chain_of_thought",
     "cot",
+    "deliberation",
+    "internal_analysis",
+    "internal_thoughts",
+    "model_thoughts",
     "private_reasoning",
     "reasoning",
     "reasoning_content",
+    "scratchpad",
+    "thought_process",
     "thinking_content",
 }
 _CREDENTIAL_KEYS = {
@@ -78,6 +85,15 @@ _IDENTITY_PATTERNS = (
     re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)"),
     re.compile(r"(?<!\d)\d{17}[0-9Xx](?!\d)"),
 )
+_PRIVATE_REASONING_VALUE_PATTERNS = (
+    re.compile(r"(?i)\breasoning(?:[_ -]content)?\b"),
+    re.compile(r"(?i)\bchain[-_ ]of[-_ ]thought\b"),
+    re.compile(
+        r"(?i)\b(?:internal|private)[-_ ](?:analysis|deliberation|thoughts?)\b"
+    ),
+    re.compile(r"(?i)\b(?:scratchpad|thought[-_ ]process)\b"),
+    re.compile(r"思维链|推理过程|内部推理"),
+)
 _RESERVED_EMAIL_DOMAINS = {
     "example.com",
     "example.net",
@@ -87,6 +103,12 @@ _RESERVED_EMAIL_DOMAINS = {
 
 def _normalized_key(key: object) -> str:
     return re.sub(r"[^a-z0-9]+", "_", str(key).casefold()).strip("_")
+
+
+def is_private_reasoning_field(key: object) -> bool:
+    """Identify private-reasoning field names without inspecting their values."""
+
+    return _normalized_key(key) in _PRIVATE_REASONING_KEYS
 
 
 def _child_path(path: str, key: str) -> str:
@@ -116,7 +138,7 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
                 key = str(raw_key)
                 child_path = _child_path(path, key)
                 normalized = _normalized_key(key)
-                if normalized in _PRIVATE_REASONING_KEYS:
+                if is_private_reasoning_field(key):
                     issues.append(
                         ValidationIssue(
                             code="privacy.private_reasoning",
@@ -156,6 +178,15 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
             return
         if not isinstance(item, str):
             return
+        if any(pattern.search(item) for pattern in _PRIVATE_REASONING_VALUE_PATTERNS):
+            issues.append(
+                ValidationIssue(
+                    code="privacy.private_reasoning_value",
+                    path=path,
+                    message="Private model-work text is prohibited.",
+                    file=file,
+                )
+            )
         if any(pattern.search(item) for pattern in _SECRET_PATTERNS):
             issues.append(
                 ValidationIssue(

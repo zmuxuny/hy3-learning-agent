@@ -16,17 +16,15 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
-
-from sqlalchemy import delete, select, update
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.redaction import redact_data
 from app.core.time import utc_now
 from app.db.database import AsyncSessionLocal
-
+from sqlalchemy import delete, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 ACTIVE_DELIVERY_STALE_SECONDS = 60
 ACTIVE_DELIVERY_RECEIPT_GRACE_SECONDS = 5.0
@@ -74,6 +72,51 @@ class DeliveryOutcome:
     provider_id: str | None = None
     response: dict[str, Any] = field(default_factory=dict)
     dead_subscription_ids: tuple[int, ...] = ()
+
+
+@runtime_checkable
+class DeliveryAdapter(Protocol):
+    """Typed final-hop adapter for SMTP and Web Push transports."""
+
+    async def send_smtp(self, action: ClaimedAction) -> DeliveryOutcome: ...
+
+    async def send_web_push(
+        self,
+        action: ClaimedAction,
+        *,
+        payload: str,
+    ) -> DeliveryOutcome: ...
+
+
+class ProductionDeliveryAdapter:
+    """Preserve the pre-E1 SMTP/Web Push implementations by default."""
+
+    async def send_smtp(self, action: ClaimedAction) -> DeliveryOutcome:
+        from app.notifications.service import NotificationService
+
+        service = NotificationService(None)  # type: ignore[arg-type]
+        await asyncio.to_thread(
+            service._send_email,
+            str(action.payload["reply_token"]),
+            str(action.payload["title"]),
+            str(action.payload["body"]),
+        )
+        return DeliveryOutcome(status="accepted", response={"transport": "smtp"})
+
+    async def send_web_push(
+        self,
+        action: ClaimedAction,
+        *,
+        payload: str,
+    ) -> DeliveryOutcome:
+        from app.notifications.push import push_service
+
+        subscription = SimpleNamespace(
+            endpoint=str(action.payload["endpoint"]),
+            keys=dict(action.payload.get("keys") or {}),
+        )
+        await asyncio.to_thread(push_service._send_one, subscription, payload)
+        return DeliveryOutcome(response={"transport": "web_push", "delivered": 1})
 
 
 @dataclass(frozen=True)
@@ -571,11 +614,16 @@ async def _dispatch_claimed(
     action: ClaimedAction,
     *,
     session_factory: async_sessionmaker[AsyncSession],
+    delivery_adapter: DeliveryAdapter | None = None,
 ) -> dict[str, Any]:
     """Run one already-fenced adapter and persist its single durable outcome."""
 
     try:
-        outcome = await _deliver(action, session_factory=session_factory)
+        outcome = await _deliver(
+            action,
+            session_factory=session_factory,
+            delivery_adapter=delivery_adapter,
+        )
     except OutboxPreflightUnavailable as exc:
         await _record_retry_pending(
             action,
@@ -636,13 +684,18 @@ async def _dispatch_claimed(
 async def dispatch_once(
     *,
     session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal,
+    delivery_adapter: DeliveryAdapter | None = None,
 ) -> dict[str, Any]:
     """Deliver at most one action without holding a database writer lock."""
 
     action = await _claim_next(session_factory)
     if action is None:
         return {"status": "idle", "delivered": False}
-    return await _dispatch_claimed(action, session_factory=session_factory)
+    return await _dispatch_claimed(
+        action,
+        session_factory=session_factory,
+        delivery_adapter=delivery_adapter,
+    )
 
 
 # Compatibility name used by the architecture/fault-injection harness.
@@ -654,6 +707,7 @@ async def dispatch_action(
     action_key: str,
     session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal,
     wait_for_active_seconds: float | None = None,
+    delivery_adapter: DeliveryAdapter | None = None,
 ) -> dict[str, Any]:
     """Target one queued action, primarily for deterministic operators/tests."""
 
@@ -681,7 +735,11 @@ async def dispatch_action(
             if current.get("status") != "in_progress":
                 return current
         return current
-    return await _dispatch_claimed(action, session_factory=session_factory)
+    return await _dispatch_claimed(
+        action,
+        session_factory=session_factory,
+        delivery_adapter=delivery_adapter,
+    )
 
 
 async def _current_action_result(
@@ -888,11 +946,25 @@ async def _deliver(
     action: ClaimedAction,
     *,
     session_factory: async_sessionmaker[AsyncSession],
+    delivery_adapter: DeliveryAdapter | None = None,
 ) -> DeliveryOutcome:
     if action.destination == "smtp":
-        return await _deliver_smtp(action)
+        if delivery_adapter is None:
+            return await _deliver_smtp(action)
+        return await _deliver_smtp(action, delivery_adapter=delivery_adapter)
     if action.destination == "web_push":
-        return await _deliver_web_push(action, session_factory=session_factory)
+        if delivery_adapter is None:
+            return await _deliver_web_push(
+                action,
+                session_factory=session_factory,
+            )
+        return await _deliver_web_push(
+            action,
+            session_factory=session_factory,
+            delivery_adapter=delivery_adapter,
+        )
+    if delivery_adapter is not None:
+        raise UnsupportedOutboxDestination(action.destination)
     if action.destination == "workspace_file":
         return await _deliver_workspace_file(action)
     if action.destination == "subprocess":
@@ -900,7 +972,11 @@ async def _deliver(
     raise UnsupportedOutboxDestination(action.destination)
 
 
-async def _deliver_smtp(action: ClaimedAction) -> DeliveryOutcome:
+async def _deliver_smtp(
+    action: ClaimedAction,
+    *,
+    delivery_adapter: DeliveryAdapter | None = None,
+) -> DeliveryOutcome:
     # Local import avoids a NotificationService -> outbox import cycle and
     # preserves the existing injectable transport seam for deterministic tests.
     from app.notifications.service import NotificationService
@@ -911,13 +987,8 @@ async def _deliver_smtp(action: ClaimedAction) -> DeliveryOutcome:
         raise OutboxPreflightUnavailable("SMTP transport is not configured")
     if payload.get("route_digest") != NotificationService._smtp_route_digest():
         raise OutboxPreflightUnavailable("SMTP route changed after enqueue")
-    await asyncio.to_thread(
-        service._send_email,
-        str(payload["reply_token"]),
-        str(payload["title"]),
-        str(payload["body"]),
-    )
-    return DeliveryOutcome(status="accepted", response={"transport": "smtp"})
+    adapter = delivery_adapter or ProductionDeliveryAdapter()
+    return await adapter.send_smtp(action)
 
 
 async def _deliver_subprocess(action: ClaimedAction) -> DeliveryOutcome:
@@ -948,6 +1019,7 @@ async def _deliver_web_push(
     action: ClaimedAction,
     *,
     session_factory: async_sessionmaker[AsyncSession],
+    delivery_adapter: DeliveryAdapter | None = None,
 ) -> DeliveryOutcome:
     from app.models import PushSubscription
     from app.notifications.push import push_service
@@ -975,12 +1047,9 @@ async def _deliver_web_push(
         str(action.payload["body"]),
         dict(action.payload.get("data") or {}),
     )
-    subscription = SimpleNamespace(
-        endpoint=str(action.payload["endpoint"]),
-        keys=dict(action.payload.get("keys") or {}),
-    )
     try:
-        await asyncio.to_thread(push_service._send_one, subscription, payload)
+        adapter = delivery_adapter or ProductionDeliveryAdapter()
+        return await adapter.send_web_push(action, payload=payload)
     except Exception as exc:
         response = getattr(exc, "response", None)
         if getattr(response, "status_code", None) in {404, 410}:
@@ -991,9 +1060,6 @@ async def _deliver_web_push(
                 dead_subscription_ids=(subscription_id,),
             )
         raise
-    return DeliveryOutcome(
-        response={"transport": "web_push", "delivered": 1},
-    )
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -1611,6 +1677,7 @@ async def drain_outbox(
     session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal,
     idle_seconds: float = 1.0,
     reconcile_interval_seconds: float = 30.0,
+    delivery_adapter: DeliveryAdapter | None = None,
 ) -> None:
     """Bounded lifespan worker; cancellation never widens delivery semantics."""
 
@@ -1630,7 +1697,10 @@ async def drain_outbox(
                 float(reconcile_interval_seconds), 1.0
             )
         try:
-            result = await dispatch_once(session_factory=session_factory)
+            result = await dispatch_once(
+                session_factory=session_factory,
+                delivery_adapter=delivery_adapter,
+            )
         except asyncio.CancelledError:
             raise
         except Exception:

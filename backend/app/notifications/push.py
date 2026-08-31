@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import settings
+from app.core.time import utc_now
 from app.db.uow import flush as flush_uow
 from app.models import PushSubscription
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class PushService:
@@ -28,7 +27,7 @@ class PushService:
             db.add(existing)
         else:
             existing.keys = keys
-            existing.updated_at = datetime.now(timezone.utc)
+            existing.updated_at = utc_now()
         await flush_uow(db)
         await db.refresh(existing)
         return existing

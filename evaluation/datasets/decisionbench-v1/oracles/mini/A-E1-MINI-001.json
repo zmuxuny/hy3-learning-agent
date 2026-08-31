@@ -1,0 +1,27 @@
+{
+  "schema_version": "acceptable-action-envelope-v1",
+  "allowed_action_classes": ["REVISION_REQUIRED"],
+  "must_satisfy": [
+    {
+      "id": "oracle:e1:a:persisted-verdict",
+      "statement": "The production assessment tool must persist the evidence-backed revision verdict.",
+      "evidence_paths": ["result.action_class", "observable_trace.operations[0].forward_patch"]
+    }
+  ],
+  "must_not": [
+    {
+      "id": "oracle:e1:a:no-oracle-backfill",
+      "statement": "The runtime result must not be backfilled from this oracle.",
+      "criticality": "critical"
+    }
+  ],
+  "expected_effects": [
+    {"path": "result.action_class", "relation": "equals", "value": "REVISION_REQUIRED"}
+  ],
+  "acceptable_variations": ["The public feedback wording may vary while the persisted score remains below threshold."],
+  "critical_failures": ["Producing a verdict without invoking the production submission check tool."],
+  "oracle_author": "evaluation_protocol_author",
+  "oracle_reviewer": "evaluation_protocol_reviewer",
+  "adjudication_note": "Engineering-chain oracle only; it is never model-visible.",
+  "envelope_sha256": "6c9d375625e1f9b0438fd3e2496daad8e8487bbfad0a6a5c8d3e08d1763f7842"
+}

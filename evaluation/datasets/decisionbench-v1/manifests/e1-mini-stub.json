@@ -1,0 +1,14 @@
+{
+  "schema_version": "e1-run-manifest-v1",
+  "dataset_version": "decisionbench-v1-e1-mini",
+  "fixture_files": [
+    "fixtures/mini/P-E1-MINI-001.json",
+    "fixtures/mini/I-E1-MINI-001.json",
+    "fixtures/mini/A-E1-MINI-001.json",
+    "fixtures/mini/R-E1-MINI-001.json"
+  ],
+  "resource_snapshot_file": "resources/e1-mini/snapshot.json",
+  "default_model_mode": "stub",
+  "formal_evaluation_result": false,
+  "manifest_sha256": "5c730c4d78688d7fff540e8f1d006d8cd8002914a43612695522702351b4e66a"
+}

@@ -8,13 +8,19 @@ reliable local timezone can be reconstructed afterwards.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Annotated
 
 from pydantic import AfterValidator, PlainSerializer
 
-
 UTC = timezone.utc
+_frozen_utc: ContextVar[datetime | None] = ContextVar(
+    "learning_agent_frozen_utc",
+    default=None,
+)
 
 
 def require_aware_utc(value: datetime) -> datetime:
@@ -53,7 +59,20 @@ def parse_legacy_datetime(value: datetime | str) -> datetime:
 def utc_now() -> datetime:
     """Return the current aware UTC instant."""
 
-    return datetime.now(UTC)
+    frozen = _frozen_utc.get()
+    return frozen if frozen is not None else datetime.now(UTC)
+
+
+@contextmanager
+def frozen_utc(value: datetime) -> Iterator[datetime]:
+    """Scope application time to one aware instant without changing globals."""
+
+    instant = require_aware_utc(value)
+    token = _frozen_utc.set(instant)
+    try:
+        yield instant
+    finally:
+        _frozen_utc.reset(token)
 
 
 def canonical_utc(value: datetime | None) -> str | None:

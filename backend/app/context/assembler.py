@@ -1274,7 +1274,8 @@ class ContextAssembler:
         snapshot.validity_state = "valid"
         await flush_uow(self.db)
 
-        context_root = PROJECT_ROOT / "data" / "context"
+        runtime_root = settings.RUNTIME_STATE_ROOT if settings.EVALUATION_MODE else PROJECT_ROOT
+        context_root = runtime_root / "data" / "context"
         if run_id:
             _stage_context_projection(
                 self.db,

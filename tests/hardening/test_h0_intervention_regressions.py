@@ -16,6 +16,7 @@ from app.api.agent import enqueue_message
 from app.context import assembler as context_assembler_module
 from app.context.assembler import ContextAssembler
 from app.core.config import settings
+from app.core.time import frozen_utc
 from app.db.database import Base
 from app.models import (
     AgentRun,
@@ -31,7 +32,6 @@ from app.models import (
     UserProfile,
 )
 from app.notifications import email as email_module
-from app.notifications import service as notification_service_module
 from app.notifications.conversation import open_notification_in_conversation
 from app.notifications.email import EmailReplyPoller
 from app.notifications.service import NotificationService
@@ -555,22 +555,17 @@ async def test_quiet_hours_rejection_does_not_consume_success_cooldown(
 
     fixed_local = datetime(2026, 8, 18, 23, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
 
-    class FrozenDateTime(datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return fixed_local.replace(tzinfo=None) if tz is None else fixed_local.astimezone(tz)
-
-    monkeypatch.setattr(notification_service_module, "datetime", FrozenDateTime)
-    blocked = await NotificationService(db).send(
-        owner_id="local",
-        run_id=run.id,
-        session_id=None,
-        trigger="heartbeat",
-        title="Quiet-hours attempt",
-        body="This must be deferred, not treated as a successful intervention.",
-        plan_id=plan.id,
-        channels=["in_app"],
-    )
+    with frozen_utc(fixed_local):
+        blocked = await NotificationService(db).send(
+            owner_id="local",
+            run_id=run.id,
+            session_id=None,
+            trigger="heartbeat",
+            title="Quiet-hours attempt",
+            body="This must be deferred, not treated as a successful intervention.",
+            plan_id=plan.id,
+            channels=["in_app"],
+        )
     _require_precondition(
         blocked.get("blocked") is True and blocked.get("reason") == "quiet hours",
         "the frozen clock and quiet-hours Guard did not produce a quiet-hours rejection",

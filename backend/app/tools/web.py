@@ -1,17 +1,24 @@
-from datetime import datetime, timezone
 from html.parser import HTMLParser
 from typing import Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-
 from app.core.config import settings
+from app.core.time import utc_now
 from app.db.uow import flush as flush_uow
 from app.models import LearningEvent, LearningResource, Operation, Plan
-from app.search import fetch_with_safe_redirects, get_search_provider
-from app.search.security import normalized_media_type, secure_http_client, validate_public_url
+from app.search import (
+    current_snapshot_provider,
+    fetch_with_safe_redirects,
+    get_search_provider,
+)
+from app.search.security import (
+    normalized_media_type,
+    secure_http_client,
+    validate_public_url,
+)
 from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 
 class WebSearchArgs(BaseModel):
@@ -74,6 +81,24 @@ async def web_search(ctx: ToolContext, args: WebSearchArgs) -> dict:
             )
         }
 
+    snapshot_provider = current_snapshot_provider()
+    if snapshot_provider is not None:
+        results = await snapshot_provider.search(args.query, args.limit)
+        result_rows = []
+        for result in results:
+            row = result.as_dict()
+            row.update(_catalog_metadata(result.url, result.title))
+            row["external_untrusted"] = True
+            result_rows.append(row)
+        return {
+            "provider": snapshot_provider.name,
+            "query": args.query,
+            "results": result_rows,
+            "saved_resource_ids": [],
+            "fallback_used": False,
+            "external_untrusted": True,
+        }
+
     primary_name = settings.WEB_SEARCH_PROVIDER
     fallback_name = settings.WEB_SEARCH_FALLBACK_PROVIDER
     provider = get_search_provider(primary_name)
@@ -111,7 +136,11 @@ async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
         return {"error": "Plan-focused runs cannot save resources to another plan"}
     # DNS/redirect validation is external I/O and must finish before this
     # handler opens its domain-write transaction.
-    await validate_public_url(args.url)
+    snapshot_provider = current_snapshot_provider()
+    if snapshot_provider is not None:
+        await snapshot_provider.validate(args.url)
+    else:
+        await validate_public_url(args.url)
     await ctx.enter_database_write_phase()
     plan = await ctx.db.get(Plan, args.plan_id)
     if not plan or plan.owner_id != ctx.owner_id:
@@ -154,7 +183,7 @@ async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
         "summary": args.summary,
         "why_recommended": args.why_recommended,
         "source": "agent_curated",
-        "verified_at": datetime.now(timezone.utc),
+        "verified_at": utc_now(),
     }
     for field, value in changes.items():
         setattr(resource, field, value)
@@ -190,6 +219,9 @@ async def resource_save(ctx: ToolContext, args: ResourceSaveArgs) -> dict:
 
 
 async def web_open(_: ToolContext, args: WebOpenArgs) -> dict:
+    snapshot_provider = current_snapshot_provider()
+    if snapshot_provider is not None:
+        return await snapshot_provider.open(args.url, args.max_chars)
     headers = {"User-Agent": "Mozilla/5.0 LearningAgent/0.4"}
     async with secure_http_client(headers=headers) as client:
         response, redirect_count = await fetch_with_safe_redirects(client, args.url)

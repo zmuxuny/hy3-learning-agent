@@ -1,0 +1,102 @@
+{
+  "schema_version": "e1-runtime-mini-fixture-v1",
+  "episode_id": "P-E1-MINI-001",
+  "scenario_family_id": "E1-MINI-P-001",
+  "track": "planning",
+  "split": "dev",
+  "difficulty": "standard",
+  "frozen_time": "2026-08-31T09:00:00+08:00",
+  "timezone": "Asia/Shanghai",
+  "owner_id": "fixture-owner-p",
+  "run_id": "run:e1:p:001",
+  "session_id": "session:e1:p:001",
+  "trigger": {
+    "trigger_id": "trigger:e1:p:001",
+    "trigger_type": "user_goal",
+    "objective": "Create a reviewable eight-week CUDA learning proposal within four hours per week.",
+    "triggered_at": "2026-08-31T09:00:00+08:00",
+    "target_refs": ["learner:e1:p:001", "goal:e1:p:001"],
+    "source_event_refs": [],
+    "payload": {"request_kind": "runtime_plan_proposal"}
+  },
+  "state_before": {
+    "snapshot_type": "runtime_snapshot",
+    "logical_entities": [
+      {
+        "logical_id": "learner:e1:p:001",
+        "entity_type": "learner",
+        "data": {"background": "cpp_basics", "weekly_minutes": 240}
+      },
+      {
+        "logical_id": "goal:e1:p:001",
+        "entity_type": "goal",
+        "data": {"topic": "cuda_optimization", "duration_weeks": 8, "deliverable": "measured_kernel_report"}
+      }
+    ],
+    "facts": {"planning_intake": "ready", "formal_plan_exists": false},
+    "context": {
+      "public_summary": "A fully synthetic learner requests a bounded CUDA proposal that remains subject to explicit adoption.",
+      "source_refs": ["learner:e1:p:001", "goal:e1:p:001"],
+      "context_sha256": "d9908923baf7740d7793c19380ec49afdbdc8334e62b217a354f8acdd739a07b"
+    }
+  },
+  "seed_kind": "planning",
+  "seed": {"planning_readiness": "ready", "weekly_minutes": 240},
+  "scripted_turns": [
+    {
+      "ordinal": 1,
+      "delivery": "stream",
+      "assistant_text": "I will persist a reviewable proposal through the planning protocol.",
+      "tool_calls": [
+        {
+          "call_id": "call:e1:p:proposal",
+          "name": "plan_proposal_create",
+          "arguments": {
+            "plan": {
+              "title": "Eight-week CUDA Optimization Lab",
+              "description": "A synthetic, bounded project path.",
+              "goal": "Measure and improve one CUDA matrix multiplication kernel.",
+              "current_level": "C++ basics",
+              "deadline": "2026-10-31T16:00:00Z",
+              "weekly_minutes": 240,
+              "preferences": {"project_first": true},
+              "expected_outcome": "A reproducible before-and-after kernel report.",
+              "available_resources": ["Synthetic local snapshot"],
+              "avoid_methods": ["Unbounded survey"],
+              "stages": [
+                {
+                  "title": "Baseline and optimization",
+                  "description": "Profile, change one bottleneck, and report evidence.",
+                  "objectives": ["Create a measured baseline", "Explain one optimization"],
+                  "tasks": [
+                    {
+                      "title": "Profile the baseline kernel",
+                      "description": "Record fixed synthetic benchmark inputs and timing.",
+                      "kind": "project",
+                      "is_core": true,
+                      "evidence_required": true,
+                      "estimated_minutes": 180,
+                      "resource_url": "https://cuda.example.test/profiling-guide",
+                      "metadata": {"fixture": "e1-mini"}
+                    }
+                  ]
+                }
+              ]
+            },
+            "rationale": "The proposal fits the declared budget and preserves an explicit adoption boundary."
+          }
+        }
+      ]
+    },
+    {
+      "ordinal": 2,
+      "delivery": "nonstream",
+      "assistant_text": "The CUDA proposal is ready for review and has not been adopted.",
+      "tool_calls": []
+    }
+  ],
+  "oracle_file": "oracles/mini/P-E1-MINI-001.json",
+  "resource_snapshot_version": "decisionbench-e1-mini-resources-v1",
+  "engineering_only": true,
+  "fixture_sha256": "9c1b069f8f73ca2fb2c89b6d3970c388cf2c1da4aabaa629be9c402459593f1b"
+}

@@ -1,13 +1,12 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
 from app.core.deployment import DeploymentPolicy
 from app.version import APPLICATION_VERSION
-
+from pydantic import Field, SecretStr, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -24,6 +23,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEFAULT_OWNER_ID: str = "local"
     DEFAULT_TIMEZONE: str = "Asia/Shanghai"
+    RUNTIME_STATE_ROOT: Path = PROJECT_ROOT
+    EVALUATION_MODE: bool = False
 
     DEPLOYMENT_MODE: Literal["local", "server"] = "local"
     SERVER_AUTH_TOKEN: SecretStr = SecretStr("")
@@ -112,6 +113,26 @@ class Settings(BaseSettings):
         if self.WEB_MAX_DECODED_BYTES < self.WEB_MAX_WIRE_BYTES:
             raise ValueError("WEB_MAX_DECODED_BYTES must be at least WEB_MAX_WIRE_BYTES")
         DeploymentPolicy.from_settings(self)
+        if self.EVALUATION_MODE:
+            state_root = self.RUNTIME_STATE_ROOT.expanduser()
+            if not state_root.is_absolute():
+                raise ValueError("evaluation RUNTIME_STATE_ROOT must be absolute")
+            state_root = state_root.resolve()
+            project_root = PROJECT_ROOT.resolve()
+            if state_root == project_root or project_root in state_root.parents:
+                raise ValueError(
+                    "evaluation RUNTIME_STATE_ROOT must be outside the repository"
+                )
+            prefix = "sqlite+aiosqlite:///"
+            if not self.DATABASE_URL.startswith(prefix):
+                raise ValueError("evaluation DATABASE_URL must use sqlite+aiosqlite")
+            database_path = Path(self.DATABASE_URL.removeprefix(prefix)).resolve()
+            if state_root not in database_path.parents:
+                raise ValueError("evaluation DATABASE_URL must be inside RUNTIME_STATE_ROOT")
+            if self.ENABLE_SCHEDULER:
+                raise ValueError("evaluation workers must disable the scheduler")
+            if self.ENABLE_EMAIL_REPLY_POLLING:
+                raise ValueError("evaluation workers must disable email reply polling")
         return self
 
     @property
@@ -125,6 +146,10 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    # Evaluation workers set this flag in a minimal environment before any
+    # ``app.*`` import.  Normal production construction keeps its .env rules.
+    if os.environ.get("EVALUATION_MODE") == "1":
+        return Settings(_env_file=None)
     return Settings()
 
 

@@ -1,0 +1,80 @@
+{
+  "schema_version": "e1-runtime-mini-fixture-v1",
+  "episode_id": "A-E1-MINI-001",
+  "scenario_family_id": "E1-MINI-A-001",
+  "track": "assessment",
+  "split": "dev",
+  "difficulty": "standard",
+  "frozen_time": "2026-08-31T09:30:00+08:00",
+  "timezone": "Asia/Shanghai",
+  "owner_id": "fixture-owner-a",
+  "run_id": "run:e1:a:001",
+  "session_id": "session:e1:a:001",
+  "trigger": {
+    "trigger_id": "trigger:e1:a:001",
+    "trigger_type": "submission",
+    "objective": "Assess the synthetic submission against the declared threshold and persist the verdict.",
+    "triggered_at": "2026-08-31T09:30:00+08:00",
+    "target_refs": ["task:e1:a:001", "submission:e1:a:001"],
+    "source_event_refs": [],
+    "payload": {"pass_threshold": 70}
+  },
+  "state_before": {
+    "snapshot_type": "runtime_snapshot",
+    "logical_entities": [
+      {
+        "logical_id": "plan:e1:a:001",
+        "entity_type": "plan",
+        "data": {"title": "Synthetic Evidence Practice", "status": "active"}
+      },
+      {
+        "logical_id": "task:e1:a:001",
+        "entity_type": "task",
+        "data": {"title": "Explain the benchmark", "status": "pending", "evidence_required": true}
+      },
+      {
+        "logical_id": "submission:e1:a:001",
+        "entity_type": "submission",
+        "data": {"status": "submitted", "content_kind": "synthetic_text"}
+      }
+    ],
+    "facts": {"score": null, "pass_threshold": 70},
+    "context": {
+      "public_summary": "A fully synthetic submission omits the required measurement evidence and awaits a persisted assessment.",
+      "source_refs": ["task:e1:a:001", "submission:e1:a:001"],
+      "context_sha256": "da87a5485050dea009f69a3e37d41da98c989fc8259e2ba35de3059054a17e49"
+    }
+  },
+  "seed_kind": "assessment",
+  "seed": {"plan_title": "Synthetic Evidence Practice", "task_title": "Explain the benchmark", "submission_status": "submitted"},
+  "scripted_turns": [
+    {
+      "ordinal": 1,
+      "delivery": "stream",
+      "assistant_text": "I will persist the evidence-based assessment through the production tool.",
+      "tool_calls": [
+        {
+          "call_id": "call:e1:a:check",
+          "name": "submission_check",
+          "arguments": {
+            "submission_id": 1,
+            "score": 45,
+            "feedback": "Add the missing baseline measurement and connect it to the conclusion.",
+            "checks": [{"criterion": "measurement_evidence", "passed": false}],
+            "pass_threshold": 70
+          }
+        }
+      ]
+    },
+    {
+      "ordinal": 2,
+      "delivery": "nonstream",
+      "assistant_text": "The submission needs revision because the required measurement evidence is missing.",
+      "tool_calls": []
+    }
+  ],
+  "oracle_file": "oracles/mini/A-E1-MINI-001.json",
+  "resource_snapshot_version": "decisionbench-e1-mini-resources-v1",
+  "engineering_only": true,
+  "fixture_sha256": "cc9c191ad48bebd71a04b22e1502b6492831ce1ceaca200b4a0069d1fd6795b5"
+}

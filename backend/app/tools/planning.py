@@ -2,26 +2,29 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
 from uuid import NAMESPACE_URL, uuid5
-
-from openai import AsyncOpenAI
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 
 from app.context import ContextAssembler
 from app.core.config import settings
 from app.core.prompt_envelope import estimate_context_message_tokens
-from app.core.trust import mark_external_untrusted_result, project_child_result_authority
+from app.core.time import utc_now
+from app.core.trust import (
+    mark_external_untrusted_result,
+    project_child_result_authority,
+)
 from app.db.database import AsyncSessionLocal
-from app.db.uow import commit as commit_uow, flush as flush_uow
-from app.models import AgentRun, PlanProposal, PlanningIntake, RunEvent, Session
+from app.db.uow import commit as commit_uow
+from app.db.uow import flush as flush_uow
+from app.models import AgentRun, PlanningIntake, PlanProposal, RunEvent, Session
 from app.runtime.checkpoints import make_checkpoint
 from app.runtime.events import emit_event
 from app.runtime.tasks import start_tracked_task
 from app.schemas import PlanCreate
 from app.services.plans import plan_completeness_issues
 from app.tools.base import EmptyArgs, ToolContext, ToolDefinition, ToolEffectKind
+from openai import AsyncOpenAI
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 
 
 class PlanningFact(BaseModel):
@@ -131,7 +134,7 @@ async def planning_intake_update(ctx: ToolContext, args: PlanningIntakeUpdateArg
     intake.readiness = args.readiness
     intake.readiness_confidence = args.readiness_confidence
     intake.rationale = args.rationale
-    intake.updated_at = datetime.now(timezone.utc)
+    intake.updated_at = utc_now()
     await flush_uow(ctx.db)
     return _intake_data(intake)
 
@@ -472,7 +475,7 @@ async def plan_proposal_create(ctx: ToolContext, args: PlanProposalCreateArgs) -
     proposal.rationale = args.rationale
     proposal.plan_payload = args.plan.model_dump(mode="json")
     proposal.specialist_reports = specialist_reports
-    proposal.updated_at = datetime.now(timezone.utc)
+    proposal.updated_at = utc_now()
     ctx.db.add(proposal)
     await flush_uow(ctx.db)
     await ctx.db.refresh(proposal)

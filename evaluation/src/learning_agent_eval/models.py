@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import (
     AfterValidator,
@@ -12,6 +13,7 @@ from pydantic import (
     Field,
     JsonValue,
     StringConstraints,
+    model_validator,
 )
 
 SCHEMA_BASE_URI = "https://zmuxuny.github.io/hy3-learning-agent/evaluation/schemas"
@@ -35,6 +37,8 @@ RoleName = Annotated[
 ]
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 GitCommit = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{40}$")]
+
+
 def _validate_rfc3339(value: str) -> str:
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -376,8 +380,174 @@ class DecisionEpisode(StrictContractModel):
     provenance: Provenance
 
 
+class ScriptedFunctionCall(StrictContractModel):
+    call_id: StableId
+    name: StableId
+    arguments: dict[str, JsonValue]
+
+
+class ScriptedModelTurn(StrictContractModel):
+    ordinal: Annotated[int, Field(ge=1)]
+    delivery: Literal["stream", "nonstream"]
+    assistant_text: str
+    tool_calls: list[ScriptedFunctionCall]
+
+
+class RuntimeMiniFixture(StrictContractModel):
+    schema_version: Literal["e1-runtime-mini-fixture-v1"]
+    episode_id: StableId
+    scenario_family_id: StableId
+    track: Track
+    split: Split
+    difficulty: Difficulty
+    frozen_time: Rfc3339
+    timezone: str
+    owner_id: StableId
+    run_id: StableId
+    session_id: StableId | None
+    trigger: Trigger
+    state_before: StateBefore
+    seed_kind: Literal["planning", "intervention", "assessment", "revision"]
+    seed: dict[str, JsonValue]
+    scripted_turns: Annotated[list[ScriptedModelTurn], Field(min_length=1)]
+    oracle_file: str
+    resource_snapshot_version: StableId
+    engineering_only: Literal[True]
+    fixture_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_fixture_semantics(self) -> Self:
+        if self.track != self.seed_kind:
+            raise ValueError("fixture track and seed kind must match")
+        expected_trigger = {
+            "planning": "user_goal",
+            "intervention": "heartbeat",
+            "assessment": "submission",
+            "revision": "constraint_change",
+        }[self.track]
+        if self.trigger.trigger_type != expected_trigger:
+            raise ValueError("fixture trigger does not match its track")
+        if self.trigger.triggered_at != self.frozen_time:
+            raise ValueError("fixture trigger and frozen time must match")
+        ordinals = [turn.ordinal for turn in self.scripted_turns]
+        if ordinals != list(range(1, len(ordinals) + 1)):
+            raise ValueError("scripted turn ordinals must be consecutive")
+        call_ids = [
+            call.call_id for turn in self.scripted_turns for call in turn.tool_calls
+        ]
+        if len(call_ids) != len(set(call_ids)):
+            raise ValueError("scripted tool call IDs must be unique")
+        return self
+
+
+class SnapshotResult(StrictContractModel):
+    title: NonEmptyText
+    url: NonEmptyText
+
+
+class SnapshotQuery(StrictContractModel):
+    query: NonEmptyText
+    results: Annotated[list[SnapshotResult], Field(min_length=1)]
+
+
+class SnapshotPage(StrictContractModel):
+    url: NonEmptyText
+    title: NonEmptyText
+    content: NonEmptyText
+
+
+class ResourceSnapshot(StrictContractModel):
+    schema_version: Literal["e1-resource-snapshot-v1"]
+    snapshot_version: StableId
+    provenance: Literal["public_and_fully_synthetic"]
+    queries: Annotated[list[SnapshotQuery], Field(min_length=1)]
+    pages: Annotated[list[SnapshotPage], Field(min_length=1)]
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_snapshot_semantics(self) -> Self:
+        queries = [item.query for item in self.queries]
+        page_urls = [item.url for item in self.pages]
+        if len(queries) != len(set(queries)) or len(page_urls) != len(set(page_urls)):
+            raise ValueError("snapshot queries and pages must be unique")
+        registered_pages = set(page_urls)
+        referenced_urls = {
+            result.url for query in self.queries for result in query.results
+        }
+        if not referenced_urls.issubset(registered_pages):
+            raise ValueError("snapshot search results must reference registered pages")
+        for url in registered_pages:
+            parsed = urlsplit(url)
+            if parsed.scheme != "https" or not (parsed.hostname or "").endswith(".test"):
+                raise ValueError("E1 Mini snapshot URLs must use HTTPS .test domains")
+            if parsed.username or parsed.password or parsed.fragment:
+                raise ValueError("snapshot URLs must not contain credentials or fragments")
+        return self
+
+
+class E1RunManifest(StrictContractModel):
+    schema_version: Literal["e1-run-manifest-v1"]
+    dataset_version: StableId
+    fixture_files: Annotated[list[str], Field(min_length=1)]
+    resource_snapshot_file: str
+    default_model_mode: Literal["stub"]
+    formal_evaluation_result: Literal[False]
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_manifest_semantics(self) -> Self:
+        if len(self.fixture_files) != len(set(self.fixture_files)):
+            raise ValueError("runtime fixture paths must be unique")
+        return self
+
+
+class E1CaptureArtifact(StrictContractModel):
+    schema_version: Literal["e1-capture-artifact-v1"]
+    episode_id: StableId
+    invocation_mode: Literal["stub", "real"]
+    model_records: list[dict[str, JsonValue]]
+    database_projection: dict[str, JsonValue]
+    database_projection_sha256: Sha256
+    delivery_attempts: list[dict[str, JsonValue]]
+    isolation_evidence: dict[str, JsonValue]
+    capture_sha256: Sha256
+
+
+class E1RunOutputManifest(StrictContractModel):
+    schema_version: Literal["e1-run-output-manifest-v1"]
+    dataset_version: StableId
+    invocation_mode: Literal["stub", "real"]
+    formal_evaluation_result: Literal[False]
+    evaluation_status: Literal["not_a_formal_model_evaluation"]
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    episode_digests: dict[str, Sha256]
+    capture_digests: dict[str, Sha256]
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_output_semantics(self) -> Self:
+        episode_ids = set(self.episode_ids)
+        if len(episode_ids) != len(self.episode_ids):
+            raise ValueError("output Episode IDs must be unique")
+        if episode_ids != set(self.episode_digests) or episode_ids != set(
+            self.capture_digests
+        ):
+            raise ValueError("output digest keys must match Episode IDs")
+        return self
+
+
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "decision-episode-v1": DecisionEpisode,
     "acceptable-action-envelope-v1": AcceptableActionEnvelope,
     "environment-manifest-v1": EnvironmentManifest,
+}
+
+DATASET_DOCUMENT_MODELS: dict[str, type[BaseModel]] = {
+    **SCHEMA_MODELS,
+    "e1-runtime-mini-fixture-v1": RuntimeMiniFixture,
+    "e1-resource-snapshot-v1": ResourceSnapshot,
+    "e1-run-manifest-v1": E1RunManifest,
+    "e1-capture-artifact-v1": E1CaptureArtifact,
+    "e1-run-output-manifest-v1": E1RunOutputManifest,
 }

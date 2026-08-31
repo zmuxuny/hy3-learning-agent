@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
-
-from sqlalchemy import func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import utc_now
-from app.db.uow import ensure_sqlite_write_transaction, flush as flush_uow
+from app.db.uow import ensure_sqlite_write_transaction
+from app.db.uow import flush as flush_uow
 from app.models import AgentRun, ChatMessage, Intervention, Plan, QueuedMessage, Session
 from app.runtime.interventions import accept_intervention_reply
 from app.runtime.session_titles import initial_session_title
 from app.runtime.state import RunStateError, ensure_root_scope_available
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class QueueStateError(RuntimeError):
@@ -242,7 +241,7 @@ async def dispatch_queued_message(
             reply_to_intervention_id=message.reply_to_intervention_id,
             message_metadata=message.message_metadata or {},
         ))
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = utc_now()
     deleted_position = message.position
     deleted_session_id = message.session_id
     await db.delete(message)

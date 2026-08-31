@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.core.config import PROJECT_ROOT, settings
+from app.core.config import settings
 from app.core.execution_policy import (
     code_execution_rejection,
     current_code_execution_policy,
@@ -24,7 +24,7 @@ from app.outbox import (
 from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind
 
 
-WORKSPACE_ROOT = (PROJECT_ROOT / "data" / "workspace").resolve()
+WORKSPACE_ROOT = (settings.RUNTIME_STATE_ROOT / "data" / "workspace").resolve()
 
 
 class FileListArgs(BaseModel):

@@ -20,7 +20,7 @@ from .integrity import (
     environment_manifest_digest,
     oracle_envelope_digest,
 )
-from .models import SCHEMA_MODELS
+from .models import DATASET_DOCUMENT_MODELS
 from .privacy import privacy_issues
 
 MAX_JSON_BYTES = 2_000_000
@@ -184,7 +184,7 @@ def _schema_issues(
     version: str,
     file: str,
 ) -> list[ValidationIssue]:
-    model = SCHEMA_MODELS[version]
+    model = DATASET_DOCUMENT_MODELS[version]
     try:
         model.model_validate(value)
     except ValidationError as exc:
@@ -703,7 +703,7 @@ def _document_issues(
                 file=file,
             )
         ], None
-    if version not in SCHEMA_MODELS:
+    if version not in DATASET_DOCUMENT_MODELS:
         return [
             _issue(
                 "schema.version",
@@ -715,6 +715,25 @@ def _document_issues(
     schema_issues = _schema_issues(value, version=version, file=file)
     if schema_issues:
         return schema_issues, None
+    digest_fields = {
+        "e1-runtime-mini-fixture-v1": "fixture_sha256",
+        "e1-resource-snapshot-v1": "manifest_sha256",
+        "e1-run-manifest-v1": "manifest_sha256",
+        "e1-capture-artifact-v1": "capture_sha256",
+        "e1-run-output-manifest-v1": "manifest_sha256",
+    }
+    digest_field = digest_fields.get(version)
+    if digest_field is not None:
+        payload = {key: item for key, item in value.items() if key != digest_field}
+        if value[digest_field] != sha256_digest(payload):
+            return [
+                _issue(
+                    "digest.e1_artifact_mismatch",
+                    f"$.{digest_field}",
+                    "E1 artifact digest does not match canonical content.",
+                    file=file,
+                )
+            ], None
     if version != "decision-episode-v1":
         return [], None
     episode = dict(value)

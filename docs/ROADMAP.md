@@ -1,6 +1,6 @@
 # 开发路线图
 
-> 状态口径（2026-08-31）：M0–M12 是历史版本记录，H1–H8 工程门禁已经通过。第三阶段“关键决策评测”现已进入开发；M15–M20 是独立的 2.0 产品能力路线，不在本阶段范围。当前事实以 [`STATUS.md`](STATUS.md) 为准，评测执行以 [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) 为准。
+> 状态口径（2026-09-01）：M0–M12 是历史版本记录，H1–H8 工程门禁已经通过。第三阶段“关键决策评测”现已进入开发；M15–M20 是独立的 2.0 产品能力路线，不在本阶段范围。当前事实以 [`STATUS.md`](STATUS.md) 为准，评测执行以 [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) 为准。
 
 ## 项目管理规则
 
@@ -15,14 +15,16 @@
 - [x] 确定四条轨道：Planning / Intervention / Assessment / Revision。
 - [x] 确定 Decision Episode、七维 Rubric、Rule + Hy3 Judge、48 Primary + 24 Calibration 的总体方案。
 - [x] E0：落地版本化协议、离线包骨架、四轨 Mini Episode 与确定性校验。
-- [ ] E1：完成临时库、冻结时钟、资源快照、假 Outbox 与 Evaluation Model Recorder。
+- [x] E1：完成临时库、冻结时钟、资源快照、真实 Outbox 协议 + Recording Delivery Sink、Evaluation Model Recorder、四轨 Runtime Mini 与最小 runtime export。
 - [ ] E2：完成 Episode Exporter、State Delta、规则包和完整性检查。
 - [ ] E3：完成 Hy3 Judge、聚合、标签盲化与结构化错误处理。
 - [ ] E4：完成 DecisionBench v1、有效性实验、正式评测、版本回归和发布材料。
 
 每个 E 里程碑必须同时提交代码、测试、数据说明和状态更新；Mock 只能验证工程链路，不能替代正式 Hy3 结果。首个开发切片和禁止事项见 [`第三阶段开发交接.md`](第三阶段开发交接.md)。
 
-E0 收口边界：三份 v1 Schema、递归校验 CLI、统一 canonical JSON/SHA-256、P/I/A/R 四个手工协议夹具和 34 项定向测试已经完成；完整 Python 回归为 `1096 passed, 2 warnings`。四个样本均非 Runtime/Hy3 结果，Recorder、Runner、Exporter、Rules、Judge 和正式 DecisionBench 仍从 E1 起按顺序实施。
+E0 收口边界：三份 v1 Schema、递归校验 CLI、统一 canonical JSON/SHA-256 和 P/I/A/R 四个手工协议夹具已经完成。
+
+E1 收口边界：四个公开合成 Runtime Mini Fixture 已通过独立 Worker、临时 SQLite、冻结时钟、生产 Agent Runtime/工具、Recorder、Guard/通知/Outbox 和 Recording Sink 导出为 E0 v1 `runtime_export`，且同输入逐字节确定。这里的 `fake_outbox` 是真实 Outbox claim/fence/idempotency/Receipt 协议，只替换最后的 SMTP/Web Push Transport；Agent 看不到模拟 Receipt。固定 stub 只验证工程链路，未调用真实 Hy3，也不是正式结果。E1 投影只服务四个 Mini；通用 Exporter、Normalizer、完整 State Delta、Rules、Judge 和完整 DecisionBench 从 E2 起继续实施。
 
 ## M0：工程基线
 

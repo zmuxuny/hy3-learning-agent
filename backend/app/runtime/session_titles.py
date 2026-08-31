@@ -1,10 +1,10 @@
 import asyncio
 import re
-from datetime import datetime, timezone
 from typing import Any
 
 from app.core.config import settings
 from app.core.prompt_envelope import ensure_request_fits
+from app.core.time import utc_now
 from app.models import Session
 
 
@@ -57,5 +57,5 @@ async def generate_session_title(
         return False
 
     session.title = _clean_title(generated, fallback)
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = utc_now()
     return True

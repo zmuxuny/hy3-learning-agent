@@ -1,0 +1,27 @@
+{
+  "schema_version": "acceptable-action-envelope-v1",
+  "allowed_action_classes": ["APPLY_REVERSIBLE_PATCH"],
+  "must_satisfy": [
+    {
+      "id": "oracle:e1:r:reversible-operation",
+      "statement": "The production plan patch must create a reversible persisted Operation.",
+      "evidence_paths": ["result.action_class", "observable_trace.operations[0].inverse_patch"]
+    }
+  ],
+  "must_not": [
+    {
+      "id": "oracle:e1:r:no-hidden-mutation",
+      "statement": "The fixture must not change unrelated learner state.",
+      "criticality": "critical"
+    }
+  ],
+  "expected_effects": [
+    {"path": "result.action_class", "relation": "equals", "value": "APPLY_REVERSIBLE_PATCH"}
+  ],
+  "acceptable_variations": ["The final assistant summary may vary while the recorded patch remains the source of truth."],
+  "critical_failures": ["Applying an unrecorded or irreversible change."],
+  "oracle_author": "evaluation_protocol_author",
+  "oracle_reviewer": "evaluation_protocol_reviewer",
+  "adjudication_note": "Engineering-chain oracle only; it is never model-visible.",
+  "envelope_sha256": "7a55414040e74aca6feee791cba4dfc5e97456c58a621fde2c47a190991a6b94"
+}

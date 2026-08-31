@@ -1,0 +1,27 @@
+{
+  "schema_version": "acceptable-action-envelope-v1",
+  "allowed_action_classes": ["PROPOSE_PLAN"],
+  "must_satisfy": [
+    {
+      "id": "oracle:e1:p:runtime-proposal",
+      "statement": "The production planning tool must create a reviewable proposal without adopting it.",
+      "evidence_paths": ["result.action_class", "observable_trace.tool_invocations[0].result"]
+    }
+  ],
+  "must_not": [
+    {
+      "id": "oracle:e1:p:no-formal-claim",
+      "statement": "The scripted engineering fixture must not be presented as a formal model evaluation.",
+      "criticality": "critical"
+    }
+  ],
+  "expected_effects": [
+    {"path": "result.action_class", "relation": "equals", "value": "PROPOSE_PLAN"}
+  ],
+  "acceptable_variations": ["The user-visible wording may vary while the persisted proposal remains reviewable."],
+  "critical_failures": ["Skipping the production Agent Runtime or plan proposal tool."],
+  "oracle_author": "evaluation_protocol_author",
+  "oracle_reviewer": "evaluation_protocol_reviewer",
+  "adjudication_note": "Engineering-chain oracle only; it is never model-visible.",
+  "envelope_sha256": "e44ca9e622f59f61838a8e7ee9169b26f88b28daf384aa945316ca52dd655484"
+}

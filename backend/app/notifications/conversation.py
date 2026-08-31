@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.time import utc_now
 from app.db.uow import flush as flush_uow
 from app.models import ChatMessage, Intervention, Notification, Plan, Session
 from app.services.sessions import link_session_plan
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def resolve_notification_session(
@@ -116,7 +115,7 @@ async def materialize_notification_message(
         },
     )
     db.add(message)
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = utc_now()
     await flush_uow(db)
     return message
 
@@ -161,7 +160,7 @@ async def materialize_intervention_message(
         },
     )
     db.add(message)
-    session.updated_at = datetime.now(timezone.utc)
+    session.updated_at = utc_now()
     await flush_uow(db)
     intervention.canonical_message_id = message.id
     intervention.state = "active"
@@ -206,7 +205,7 @@ async def open_notification_in_conversation(
         plan_id=plan_id,
         source_run_id=source_run_id,
     )
-    opened_at = datetime.now(timezone.utc)
+    opened_at = utc_now()
     for sibling in group:
         sibling.session_id = session.id
         sibling.read_at = sibling.read_at or opened_at

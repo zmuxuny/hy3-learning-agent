@@ -1,13 +1,13 @@
 # 项目状态
 
-更新时间：2026-08-31（Asia/Shanghai）
+更新时间：2026-09-01（Asia/Shanghai）
 当前版本：1.1.1
 
-H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议与离线骨架已经完成，下一切片为 E1 隔离执行；M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议骨架和 E1 隔离执行已经完成，下一切片为 E2 通用导出与规则；M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
 
-## 2026-08-31 第三阶段 E0 收口
+## 2026-09-01 第三阶段 E1 收口
 
-当前仓库已经完成 E0 的版本化评测协议、纯离线校验器和四轨手工协议夹具；状态必须区分为“E0 协议可运行”和“正式评测系统/DecisionBench 尚未实现”。
+当前仓库已在冻结的 E0 v1 契约上完成四轨 Runtime Mini 隔离链路。必须区分“固定 stub 响应经过真实生产 Runtime/工具协议”和“真实 Hy3 正式评测”：前者已经完成，后者没有执行，也不能从 E1 结果推导模型能力。
 
 | 检查项 | 当前结论 | 证据或入口 |
 | --- | --- | --- |
@@ -16,40 +16,51 @@ H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布
 | CI 基线 | 已就绪 | 产品基线的八项远端 CI 门禁全部通过；本节不把未来评测代码视为已通过 |
 | 对外方案 | 已冻结 | [`腾讯犀牛鸟开源实习第三阶段项目方案.md`](腾讯犀牛鸟开源实习第三阶段项目方案.md) |
 | 评测设计 | 已形成可执行版本 | [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) |
-| E0 评测代码与数据 | 已完成 | [`../evaluation/README.md`](../evaluation/README.md)：三份 v1 Schema、递归校验 CLI、确定性摘要和四轨 Mini Episode |
-| 正式评测系统与数据 | 尚未开始 | Recorder、临时库 Runner、Exporter、Rules、Judge、48 Primary 和 24 Calibration 均不得写成现有能力 |
+| E0 评测代码与数据 | 已完成 | [`../evaluation/README.md`](../evaluation/README.md)：三份 v1 Schema、递归校验 CLI、确定性摘要和四轨手工协议 Episode |
+| E1 隔离执行 | 已完成 | 四轨 Runtime Mini Fixture、独立 Worker/临时库、冻结时钟、资源快照、Recorder、真实 Outbox + Recording Sink、最小 runtime export |
+| 正式评测系统与数据 | 尚未完成 | 通用 Exporter/Normalizer、完整 State Delta、Rules、Judge、48 Primary、24 Calibration、聚合与正式结果均未实现 |
 
 当前执行边界：
 
 - 第三阶段评价 Hy3 的 `Planning / Intervention / Assessment / Revision` 四类关键决策；产品内的用户学习成果验收仍是另一项职责。
 - 评测采用隔离的离线/回放平面，不把 Judge 放入用户主流程，不自动按分数修改 Prompt、计划或用户状态。
 - 评测只保存模型可见输入、公开输出、工具调用与状态差异，不保存或评价 `reasoning_content`。
-- 正式样本只使用合成 Fixture 与公开资源快照；真实通知进入假 Outbox，真实用户库和外部渠道必须保持零变化。
+- 正式样本只使用合成 Fixture 与公开资源快照；真实用户库、`.env`、通知地址和外部渠道必须保持零访问/零变化。
 
-E0 已完成：
+E0 契约保持不变：
 
-- 建立独立 `evaluation/` Python 包，冻结 `DecisionEpisode v1`、`Acceptable Action Envelope v1` 和 `Environment Manifest v1` 三份严格 JSON Schema；合同对象拒绝未知字段，只在明确的 JSON 载荷映射中允许领域扩展。
-- 实现唯一的 canonical JSON / SHA-256 路径，统一校验 Context、Environment、Oracle 与 Episode 自摘要；实现结构化错误码、字段路径、稳定排序、逻辑 ID/引用、Evidence Path、摘要和场景族 Split 检查。
-- `python -m learning_agent_eval validate-dataset --dataset <path>` 递归校验 JSON；成功稳定输出样本总数与四轨统计，失败返回非零且不回显被拒绝的载荷。
-- P/I/A/R 各新增一个 `manual_protocol_fixture`；四例均声明手工构造、作者/复核角色、协议验证用途、未运行 Runtime 且不属于正式模型评测结果。每例使用 Acceptable Action Envelope，不伪造唯一标准答案。
-- 隐私守卫在 Schema 前拒绝 `reasoning_content`/私有推理、凭据字段或疑似值、认证 Token、非保留域邮箱和个人身份字段；隔离测试证明校验不创建生产 SQLite、不调用网络，也不触发 SMTP、IMAP、Web Push 或生产 Outbox。
-- 常规 pytest 已发现 `evaluation/tests`；现有 `lint_typecheck` 同时编译并检查评测源码/测试，源码安装会以 editable 模式安装评测 CLI，无新增第三方依赖。
+- `DecisionEpisode v1`、`Acceptable Action Envelope v1`、`Environment Manifest v1` 三份 Schema 未被无版本改写；外部 Schema 注册表仍只有这三份契约。
+- canonical JSON / SHA-256、递归校验、结构化错误、引用/Evidence Path/Split/摘要和隐私失败关闭仍是 E1 发布前的最终门禁。
+- 四个 `manual_protocol_fixture` 继续只证明协议；它们与新的 Runtime Fixture 分目录保存。
 
-E0 收口验证（均为本次实际执行，不沿用历史结果）：
+E1 已完成：
 
-- `.venv/bin/pytest -q evaluation/tests`：`34 passed in 0.69s`；
-- `.venv/bin/pytest -q`：`1096 passed, 2 warnings in 1860.73s (0:31:00)`；0 failed、0 xfailed；两条 warning 分别为上游 FastAPI TestClient/Starlette 弃用提示和 Python 3.14 tar 提取行为预告；
-- `.venv/bin/python scripts/check_doc_links.py`：`Markdown relative links: OK`；
-- `.venv/bin/python scripts/release-check.py lint_typecheck`：`All checks passed!`；
-- `git diff --check`：通过；提交前工作树只包含本次 E0 代码、Schema、手工夹具、测试、安装/CI 接入与文档改动。
+- `run-agent` 父进程属于纯 evaluation 控制平面；每个 Episode 生成独立 Worker 和系统临时目录。Worker 在导入 `app.*` 前使用最小环境白名单、禁用 `env_file`、绑定目录内绝对 SQLite、关闭 Scheduler/Email Reply Polling，不启动完整 FastAPI lifespan。
+- P/I/A/R 各增加一个公开合成、版本化 Runtime Mini Fixture，固定时间、时区、逻辑 ID 与 scripted model/tool-call ID；Oracle 独立存放且不进入模型可见 Context。
+- scoped Clock 默认保持真实 UTC，评测作用域内统一冻结 Runtime、Guard、通知冷却/安静时间、RunEvent、Notification、OutboxReceipt 和相关工具时间；确定性身份只在 Fixture 作用域启用。
+- Snapshot Provider 只命中版本化 query/URL，未知搜索/Open/`resource_save` 失败关闭且不回退 HTTP/DNS；stub Worker 阻断全部网络。
+- Evaluation Model Recorder 通过已有 `AgentRuntime.client` 注入，原样转发 stream/non-stream 对象，只记录公开 messages/output、system/tool digest 与 Function Call；system message 正文只形成 version/digest，产物使用稳定占位。私有推理字段在投影前递归删除，不复制、缓存、散列、计数、导出或评价，字段名和文本值再经 `privacy_issues` 失败关闭。
+- “假 Outbox”已按真实语义实现为生产 `notification_send → Guard → Intervention/Notification → OutboxAction claim/fence/idempotency → Recording Delivery Sink → OutboxReceipt`。带类型 Adapter 只注入 SMTP/Web Push Provider 最后边界，生产默认行为不变；SMTP Receipt 为 `accepted`，Web Push 保持 `delivered`。Agent 只观察 `pending_delivery`，看不到模拟 Receipt。
+- Recording Sink 只接受 SMTP/Web Push，拒绝 workspace file、subprocess 和未知 destination；只保存稳定 action identity、安全摘要与字段元数据，不保存地址、endpoint、Push keys、认证信息或完整载荷。SMTP、SMTP_SSL、Web Push、IMAP、IMAP_SSL 调用均由陷阱证明为 0。
+- E1 最小投影从 Recorder 和临时生产数据库读取模型回合、ToolInvocation、RunEvent、Operation、Guard、通知和 Outbox 事实，把随机数据库身份映射为 Fixture 逻辑 ID/ordinal；结果不从 Oracle 或 scripted expected answer 回填。四个 `runtime_export` 均通过 E0 validator，同输入重复运行 canonical bytes 一致。
+- 输出先在 staging 完整执行隐私/摘要/Schema 校验后原子发布，已有目录不覆盖，任何失败不留半成品。real 模式需要 CLI 双重 opt-in 和调用者环境 Key；本次没有执行真实 Hy3。
 
-下一个里程碑是 **E1：隔离执行**。E1 才允许增加临时 SQLite、冻结时钟、公开资源快照、假 Outbox 与 Evaluation Model Recorder；Recorder 仍不得保存 `reasoning_content`，不得接触真实用户库、通知目标或应用主流程。E0 没有修改生产 Runtime、调用真实 Hy3、实现 Judge、生成分数或宣称完成 DecisionBench。
+E1 定向验收（本次实际执行）：
+
+- `.venv/bin/pytest -q evaluation/tests`：`65 passed in 76.11s (0:01:16)`；
+- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 0.82s`；
+- `.venv/bin/pytest -q`：`1140 passed, 2 warnings in 2126.35s (0:35:26)`，0 failed、0 xfailed；两条 warning 分别为既有的 Starlette/httpx 弃用提示和 Python 3.14 tar 提取行为预告；
+- 四轨 stub `run-agent`：`run_agent_ok episodes=4 tracks=assessment:1,intervention:1,planning:1,revision:1 invocation_mode=stub formal_evaluation_result=false evaluation_status=not_a_formal_model_evaluation`；
+- E0 CLI 校验四轨运行产物：`dataset_valid episodes=4 tracks=planning:1,intervention:1,assessment:1,revision:1`；
+- 同一四轨 Manifest 两次运行目录逐字节一致；四个 Worker root 和 SQLite 均不同，销毁后不存在，仓库未发布 SQLite/WAL/SHM。
+
+下一个里程碑是 **E2：通用导出与规则**。当前 `runtime_export.py` 只覆盖四个 Mini Fixture；通用 Exporter、Normalizer、完整 State Delta、Rules 和完整性评估仍未实现。Hy3 Judge、聚合、报告、Primary/Calibration 和正式结果属于更后续阶段。
 
 另一个开发进程应先阅读 [`第三阶段开发交接.md`](第三阶段开发交接.md)，一次只推进一个可验收切片；完成后同步本文件、相关实施方案与测试证据。
 
 ## 2026-08-18 全盘审查结论（历史）
 
-本节及后续 H0–H8 小节保留各阶段收口时的事实快照；其中“冻结、等待第三阶段计划”是当时的范围决定，不覆盖本文顶部 2026-08-31 的当前开发状态。
+本节及后续 H0–H8 小节保留各阶段收口时的事实快照；其中“冻结、等待第三阶段计划”是当时的范围决定，不覆盖本文顶部 2026-09-01 的当前开发状态。
 
 - `develop` 暂不具备 V2 Alpha 发布条件，也不应继续在当前 Evidence 投影上实现 M15 learner state。
 - 审查确认了审批拒绝恢复、当前工具 checkpoint、queued Run 恢复、SQLite 长事务、Evidence undo/digest/完整投影、跨计划技能 Guard、Session 压缩、handoff、提醒回复和移动导航等 P0/P1 问题。

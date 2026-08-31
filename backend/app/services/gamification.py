@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.time import utc_now
 from app.db.uow import flush as flush_uow
 from app.models import Achievement, ActivityDay, Plan, Quiz, Stage, Task, UserProfile
-
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 ACHIEVEMENT_RULES: list[tuple[str, str, str]] = [
     ("first_plan", "开启学习计划", "创建第一份正式学习计划"),
@@ -29,7 +28,7 @@ async def refresh_streak(db: AsyncSession, owner_id: str) -> int:
         select(ActivityDay.date).where(ActivityDay.owner_id == owner_id)
     )).scalars()
     active_dates = {row for row in rows}
-    today = datetime.now(timezone.utc).date()
+    today = utc_now().date()
     cursor = today if today.isoformat() in active_dates else today - timedelta(days=1)
     streak = 0
     while cursor.isoformat() in active_dates:

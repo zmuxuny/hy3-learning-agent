@@ -1,0 +1,74 @@
+{
+  "schema_version": "e1-runtime-mini-fixture-v1",
+  "episode_id": "I-E1-MINI-001",
+  "scenario_family_id": "E1-MINI-I-001",
+  "track": "intervention",
+  "split": "dev",
+  "difficulty": "standard",
+  "frozen_time": "2026-08-31T09:15:00+08:00",
+  "timezone": "Asia/Shanghai",
+  "owner_id": "fixture-owner-i",
+  "run_id": "run:e1:i:001",
+  "session_id": null,
+  "trigger": {
+    "trigger_id": "trigger:e1:i:001",
+    "trigger_type": "heartbeat",
+    "objective": "Send one concise study reminder because the synthetic learner is outside quiet hours and cooldown.",
+    "triggered_at": "2026-08-31T09:15:00+08:00",
+    "target_refs": ["learner:e1:i:001", "plan:e1:i:001"],
+    "source_event_refs": [],
+    "payload": {"candidate_kind": "study_reminder"}
+  },
+  "state_before": {
+    "snapshot_type": "runtime_snapshot",
+    "logical_entities": [
+      {
+        "logical_id": "learner:e1:i:001",
+        "entity_type": "learner",
+        "data": {"quiet_hours": {"start": "23:00", "end": "08:00"}, "notification_count_today": 0}
+      },
+      {
+        "logical_id": "plan:e1:i:001",
+        "entity_type": "plan",
+        "data": {"title": "Synthetic Systems Practice", "status": "active", "weekly_minutes": 180}
+      }
+    ],
+    "facts": {"guard_expected_path": "normal_policy", "external_provider_allowed": false},
+    "context": {
+      "public_summary": "A synthetic heartbeat candidate occurs outside quiet hours with no prior notification or cooldown conflict.",
+      "source_refs": ["learner:e1:i:001", "plan:e1:i:001"],
+      "context_sha256": "3a50b3c99b0f74397966c690ddf49533148dbaa48f903a9052b101fb1418f2ae"
+    }
+  },
+  "seed_kind": "intervention",
+  "seed": {"plan_title": "Synthetic Systems Practice", "weekly_minutes": 180, "quiet_start": "23:00", "quiet_end": "08:00"},
+  "scripted_turns": [
+    {
+      "ordinal": 1,
+      "delivery": "nonstream",
+      "assistant_text": "I will send the eligible reminder through the production notification protocol.",
+      "tool_calls": [
+        {
+          "call_id": "call:e1:i:notify",
+          "name": "notification_send",
+          "arguments": {
+            "title": "Synthetic study check-in",
+            "body": "Spend twenty focused minutes reviewing the saved systems notes, then record one open question.",
+            "plan_id": 1,
+            "channels": ["email"]
+          }
+        }
+      ]
+    },
+    {
+      "ordinal": 2,
+      "delivery": "stream",
+      "assistant_text": "The reminder entered the durable delivery queue.",
+      "tool_calls": []
+    }
+  ],
+  "oracle_file": "oracles/mini/I-E1-MINI-001.json",
+  "resource_snapshot_version": "decisionbench-e1-mini-resources-v1",
+  "engineering_only": true,
+  "fixture_sha256": "cb43243e7d35b7c8f372627914e857470d3b3dded2799c990092d37515513196"
+}

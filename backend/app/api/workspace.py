@@ -7,11 +7,11 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.core.config import PROJECT_ROOT
+from app.core.config import settings
 
 
 router = APIRouter()
-WORKSPACE_ROOT = (PROJECT_ROOT / "data" / "workspace").resolve()
+WORKSPACE_ROOT = (settings.RUNTIME_STATE_ROOT / "data" / "workspace").resolve()
 UPLOAD_ROOT = WORKSPACE_ROOT / "uploads"
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 

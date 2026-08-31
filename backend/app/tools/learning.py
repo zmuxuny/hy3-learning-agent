@@ -1,11 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Literal
-
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from app.core.time import UTCInstant, canonical_utc, coerce_legacy_utc, utc_now
 from app.db.uow import flush as flush_uow
@@ -25,8 +20,9 @@ from app.models import (
     TaskSubmission,
     UserProfile,
 )
-from app.schemas import TaskCreate, TaskUpdate
 from app.runtime.state import NONTERMINAL_RUN_STATUSES
+from app.schemas import TaskCreate, TaskUpdate
+from app.services import plans as plan_service
 from app.services.evidence import (
     append_observation,
     artifact_ref,
@@ -36,8 +32,10 @@ from app.services.evidence import (
     normalize_percentage_score,
     refresh_plan_evidence_projection,
 )
-from app.services import plans as plan_service
 from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind, json_safe
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 
 class PlanPatchArgs(BaseModel):
@@ -666,7 +664,7 @@ async def _award_completion(ctx: ToolContext, task: Task) -> dict:
         }
         profile.xp += 25 if task.is_core else 10
         profile.level = 1 + profile.xp // 100
-    day_key = datetime.now(timezone.utc).date().isoformat()
+    day_key = utc_now().date().isoformat()
     result = await ctx.db.execute(select(ActivityDay).where(ActivityDay.owner_id == ctx.owner_id, ActivityDay.date == day_key))
     day = result.scalars().one_or_none()
     if day is None:
