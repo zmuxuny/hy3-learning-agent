@@ -1,6 +1,6 @@
 # Personal Learning Harness
 
-> 状态说明（2026-08-21）：本文描述产品目标和已经验收的 H1–H8 工程边界。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention、应用安全、前端闭环、首次设置与发布工程已完成，累计关闭 87 个缺陷 ID；矩阵剩余 0 个 open ID。外部真人采用验证和 M15–M20 继续冻结，等待独立第三阶段计划。事实见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md) 与 [`V2_HARDENING_PLAN.md`](V2_HARDENING_PLAN.md)。
+> 状态说明（2026-08-31）：本文描述产品 Harness 与已经验收的 H1–H8 工程边界。迁移/UTC/备份、工具事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention、应用安全、前端闭环、首次设置与发布工程均已完成。第三阶段正在这些可观察事实之上建设隔离评测平面；M15–M20 不在本阶段范围，外部真人采用验证尚未执行。当前事实见 [`STATUS.md`](STATUS.md)。
 
 ## 产品边界
 
@@ -72,4 +72,4 @@ H4 增加 revision 4 与 Evidence/Competency 事实协议：Evidence、Artifact 
 
 当前版本已经形成真实可运行的个人学习 Harness 原型：计划、资源、执行、证据、检查、记忆和主动提醒均有正常路径能力；SMTP/IMAP 代码、连续 Session 路由和诊断接口已经存在，真实供应商收发仍依赖本机邮箱凭据。它不是通用操作系统 Agent，也不宣称拥有容器级代码隔离、任意宿主目录权限或多节点分布式调度能力。
 
-截至 2026-08-21，H1–H8 工程门禁已完成，累计关闭 87 个 defect ID；H4 的 41 条 baseline/41 个 mutant、10k Evidence 投影，H5 的 10k 消息与 Context/Intervention，H6 的安全协议，H7 的分域 Store/正式路由/真实 Chrome 五宽矩阵，以及 H8 的首次设置、确定性运行包和八项 release gate 均已通过。没有真实 SMTP/IMAP/VAPID 或外部用户采用验证；外部安装、连续使用和 7 日留存保持冻结。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。
+截至 2026-08-31，H1–H8 工程门禁已完成，累计关闭 87 个 defect ID；H4 的 41 条 baseline/41 个 mutant、10k Evidence 投影，H5 的 10k 消息与 Context/Intervention，H6 的安全协议，H7 的分域 Store/正式路由/真实 Chrome 五宽矩阵，以及 H8 的首次设置、确定性运行包和八项 release gate 均已通过。真实 SMTP/IMAP/VAPID 与外部用户安装、连续使用和 7 日留存尚未验证；第三阶段离线评测不能代替这些产品采用证据。完整结果以 [`STATUS.md`](STATUS.md) 的唯一记录为准。

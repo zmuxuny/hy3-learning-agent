@@ -1,6 +1,6 @@
 # 产品定义
 
-> 状态说明（2026-08-21）：本文主要定义目标产品契约。H1–H8 工程门禁已完成，累计关闭 87 个缺陷 ID、剩余 0 个 open ID；Context/Memory/Intervention、应用部署边界、前端闭环、首次配置与发布工程均已验收。外部真人采用验证未执行，M15–M20 与新功能冻结，等待独立第三阶段参赛计划。逐项状态见 [`V2_H0_DEFECT_MATRIX.md`](V2_H0_DEFECT_MATRIX.md)。本轮不作 V2 Alpha 发布声明。
+> 状态说明（2026-08-31）：本文定义产品契约。H1–H8 工程门禁已完成，Context/Memory/Intervention、应用部署边界、前端闭环、首次配置与发布工程均已验收。第三阶段正在建设隔离的关键决策评测平面；它评价产品中的 Planning / Intervention / Assessment / Revision 决策，不进入用户运行时。M15–M20 仍在本阶段范围之外，外部真人采用验证尚未执行。当前事实见 [`STATUS.md`](STATUS.md)。
 
 ## 一句话描述
 
@@ -64,7 +64,7 @@ Hy3 读取经过组装的上下文并自主决策。系统再经过冷却时间�
 - **自动执行且可撤销**：调整任务时间、创建补救任务、重排低风险任务。
 - **执行前确认**：删除数据、跨计划大规模重排、改变最终目标、写入全局长期记忆、向外部服务发送敏感内容。
 
-用户以后可以提高自治等级，但不能关闭操作审计。H8 后的新能力暂不开发，后续范围由独立第三阶段计划决定。
+用户以后可以提高自治等级，但不能关闭操作审计。第三阶段只新增离线评测能力，不借此扩展产品自治范围；M15–M20 的产品能力继续按独立里程碑管理。
 
 ## 学习计划
 
@@ -110,7 +110,7 @@ Plan
 - 跨计划全局短期记忆
 - 经确认的全局长期画像
 
-数据库存储结构化事实，同时生成可读 Markdown 投影。用户可以在“AI 记忆”页面查看来源和使用痕迹、确认候选、提出纠正、归档与恢复；纠正保留新旧替代关系，公开 API 不物理删除历史认识。H5 已建立 message/summary/handoff/memory/snapshot 的版本化 provenance、Context generation、retained/dropped blocks 与 lifecycle invalidation；Markdown 可从 SQLite 重建。完整产品化 ContextPack 与 learner-state 消费仍属于冻结的 M17/M18 后续工作。
+数据库存储结构化事实，同时生成可读 Markdown 投影。用户可以在“AI 记忆”页面查看来源和使用痕迹、确认候选、提出纠正、归档与恢复；纠正保留新旧替代关系，公开 API 不物理删除历史认识。H5 已建立 message/summary/handoff/memory/snapshot 的版本化 provenance、Context generation、retained/dropped blocks 与 lifecycle invalidation；Markdown 可从 SQLite 重建。完整产品化 ContextPack 与 learner-state 消费仍属于 M17/M18 后续产品工作，不是第三阶段评测的前置条件。
 
 ## 通知渠道
 
