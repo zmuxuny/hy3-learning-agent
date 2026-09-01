@@ -3,7 +3,7 @@
 更新时间：2026-09-01（Asia/Shanghai）
 当前版本：1.1.1
 
-H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议骨架、E1 隔离执行和 E2 通用导出/规则已经完成，下一切片为 E3 Hy3 Judge、标签盲化、聚合与报告；M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议骨架、E1 隔离执行和 E2 通用导出/规则已经完成，下一切片为 E3 Hy3 Judge、标签盲化与确定性聚合；正式数据、实验、评测、版本对比和报告仍属于 E4–E8。M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
 
 ## 2026-09-01 第三阶段 E2 收口
 
@@ -47,6 +47,12 @@ E2 已知限制：当前 Assessment revision-required 路径的 Operation/Delta 
 
 最终提交哈希和干净 HEAD 上的 post-commit smoke 结果由本次开发交接与完成汇报记录；测试产物只写入系统临时目录，不进入仓库。
 
+## 下一切片 E3 交接边界
+
+E3 只实现 `DecisionEpisode v2 + rule-result-v1 → 标签盲化 Judge 输入 → judge-result-v1 → 确定性聚合`。Judge 只读取脱敏 v2 Episode、匹配的 Rule Result、当前轨道版本化 Rubric/锚点和输出 Schema；不得读取 Capture、私有推理、质量标签、生成模型身份、作者说明、真实数据库或实时资源。Rule Critical Hard Gate 优先且不可被 Judge 高分覆盖，`invalid_input`/`judge_error` 不得伪造成 0 分或混入正常平均。
+
+当前 `evaluation` 包尚无 Judge/聚合模型、Schema、模块或 CLI。E3 自动化可注入固定结构化 Judge 响应，但必须保持 `formal_evaluation_result=false`，不得以关键词或规则伪造 Judge；没有另行授权与凭据时不调用真实 Hy3。E3 不创建 Primary/Calibration，不做有效性实验、正式能力结论、Case/版本对比或最终报告。完整接手顺序、契约、测试和 Git 门槛见 [`第三阶段开发交接.md`](第三阶段开发交接.md) 的“下一切片：E3”。
+
 ## 2026-09-01 第三阶段 E1 收口
 
 当前仓库已在冻结的 E0 v1 契约上完成四轨 Runtime Mini 隔离链路。必须区分“固定 stub 响应经过真实生产 Runtime/工具协议”和“真实 Hy3 正式评测”：前者已经完成，后者没有执行，也不能从 E1 结果推导模型能力。
@@ -60,7 +66,7 @@ E2 已知限制：当前 Assessment revision-required 路径的 Operation/Delta 
 | 评测设计 | 已形成可执行版本 | [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) |
 | E0 评测代码与数据 | 已完成 | [`../evaluation/README.md`](../evaluation/README.md)：三份 v1 Schema、递归校验 CLI、确定性摘要和四轨手工协议 Episode |
 | E1 隔离执行 | 已完成 | 四轨 Runtime Mini Fixture、独立 Worker/临时库、冻结时钟、资源快照、Recorder、真实 Outbox + Recording Sink、最小 runtime export |
-| 正式评测系统与数据 | 尚未完成 | 通用 Exporter/Normalizer、完整 State Delta、Rules、Judge、48 Primary、24 Calibration、聚合与正式结果均未实现 |
+| 正式评测系统与数据 | 部分完成 | 本表是 E1 收口时的历史快照；E2 后 Exporter/Normalizer/Delta/Rules 已完成，Judge、Primary/Calibration、聚合、实验与正式结果仍未实现 |
 
 当前执行边界：
 
@@ -96,7 +102,7 @@ E1 定向验收（本次实际执行）：
 - E0 CLI 校验四轨运行产物：`dataset_valid episodes=4 tracks=planning:1,intervention:1,assessment:1,revision:1`；
 - 同一四轨 Manifest 两次运行目录逐字节一致；四个 Worker root 和 SQLite 均不同，销毁后不存在，仓库未发布 SQLite/WAL/SHM。
 
-本节是 E1 收口时的历史事实。E2 已用通用 v2 Exporter 替换该最小投影，未推倒 E1 Runtime Harness。下一个里程碑是 **E3：Hy3 Judge、标签盲化、聚合与报告**；Primary/Calibration、正式结果和 DecisionBench v1 发布仍属于更后续阶段。
+本节是 E1 收口时的历史事实。E2 已用通用 v2 Exporter 替换该最小投影，未推倒 E1 Runtime Harness。下一个里程碑是 **E3：Hy3 Judge、标签盲化与确定性聚合**；Primary/Calibration、实验、正式评测、版本对比、报告和 DecisionBench v1 发布仍属于 E4–E8。
 
 另一个开发进程应先阅读 [`第三阶段开发交接.md`](第三阶段开发交接.md)，一次只推进一个可验收切片；完成后同步本文件、相关实施方案与测试证据。
 

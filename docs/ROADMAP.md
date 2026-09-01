@@ -17,8 +17,12 @@
 - [x] E0：落地版本化协议、离线包骨架、四轨 Mini Episode 与确定性校验。
 - [x] E1：完成临时库、冻结时钟、资源快照、真实 Outbox 协议 + Recording Delivery Sink、Evaluation Model Recorder、四轨 Runtime Mini 与最小 runtime export。
 - [x] E2：发布 DecisionEpisode v2，完成通用 Snapshot/Normalizer/Exporter、完整 State Delta、规则包、Hard Gate 和完整性检查。
-- [ ] E3：完成 Hy3 Judge、聚合、标签盲化与结构化错误处理。
-- [ ] E4：完成 DecisionBench v1、有效性实验、正式评测、版本回归和发布材料。
+- [ ] E3：完成 Hy3 Judge、标签盲化、结构化错误与确定性聚合。
+- [ ] E4：完成 48 Primary、24 Calibration、资源、Oracle、Split 与 Dataset Card。
+- [ ] E5：完成判别力、重复一致性、人工一致性、反事实、对抗与安全有效性实验。
+- [ ] E6：完成正式评测、逐 Episode/维度/轨道结果与错误类型归因。
+- [ ] E7：完成冻结 Baseline/Candidate 版本回归，保持 Test 一次冻结。
+- [ ] E8：完成 Case、报告、README、Release 与两分钟 Demo 材料。
 
 每个 E 里程碑必须同时提交代码、测试、数据说明和状态更新；Mock 只能验证工程链路，不能替代正式 Hy3 结果。首个开发切片和禁止事项见 [`第三阶段开发交接.md`](第三阶段开发交接.md)。
 
@@ -28,7 +32,7 @@ E1 收口边界：四个公开合成 Runtime Mini Fixture 已通过独立 Worker
 
 E2 收口边界：工程里程碑、Episode Schema 和 Benchmark 发布名已经分离。`DecisionEpisode v1` 完全冻结，只用于 E0 历史读取、校验和回归；E2 及以后新 Runtime 只写单一权威 `DecisionEpisode v2`，不双写 v1/v2。DecisionBench v1 名称不变。通用 Collector 在 Runtime 前后采集 allowlist Snapshot，Normalizer 提供严格 JSON/UTC 与跨态稳定身份，Delta 一等表达新增、删除、更新、确认无变化、缺失/null、typed source 和零到多个 Operation 对齐；实体新增/删除还必须由配对的显式创建/删除 refs 正反证明。Exporter 只从 Recorder、临时生产数据库和 Runtime 事实推导决策分层，Oracle 在 Runtime/Outbox/Snapshot/Delta 完成后才附加，不用于结果回填。
 
-E2 的 `rule-result-v1` 和 `e2-rule-pack-v1` 提供七包结构化规则、字段 Evidence Path、`pass/fail/not_applicable/invalid_input`、`minor/major/critical` 与不可抵消的 Critical Hard Gate。Capture 只作工程审计，不是 Rules/Judge 的第二事实源。`run-agent` 只发布 v2，`evaluate-rules` 完整性先行并原子发布规则结果。E1 隔离/Recorder/生产 Outbox 边界全部保留。当前 Assessment accepted 分支因生产 Operation 未枚举全部派生 Plan/Stage 更新而失败关闭；revision-required 路径已覆盖。E3 Judge、标签盲化、聚合和报告仍未完成；E4 的 Primary/Calibration、有效性实验和正式 DecisionBench 也未提前实施。
+E2 的 `rule-result-v1` 和 `e2-rule-pack-v1` 提供七包结构化规则、字段 Evidence Path、`pass/fail/not_applicable/invalid_input`、`minor/major/critical` 与不可抵消的 Critical Hard Gate。Capture 只作工程审计，不是 Rules/Judge 的第二事实源。`run-agent` 只发布 v2，`evaluate-rules` 完整性先行并原子发布规则结果。E1 隔离/Recorder/生产 Outbox 边界全部保留。当前 Assessment accepted 分支因生产 Operation 未枚举全部派生 Plan/Stage 更新而失败关闭；revision-required 路径已覆盖。E3 Judge、标签盲化和确定性聚合仍未完成；E4–E8 的 Primary/Calibration、有效性实验、正式评测、版本回归和发布报告也未提前实施。
 
 ## M0：工程基线
 

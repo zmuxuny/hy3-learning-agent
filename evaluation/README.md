@@ -138,7 +138,7 @@ Recorder 在 Worker 内只投影公开模型输入/输出、system/tool digest �
 
 通用 Collector/Exporter 当前覆盖已登记的生产实体与四轨关键路径；新评测事实若需要未登记 ORM 实体或列，必须先显式加入 allowlist、身份和 Delta 语义，否则失败关闭。当前生产 `submission.check` 的 revision-required 路径可完整导出；accepted 路径还会产生 Operation patch 未枚举的派生 Plan/Stage 更新，因此 Exporter 明确以 `delta.operation_unattributed.plan` 失败关闭，不能伪装成完整 ACCEPT Episode。Mini Harness 仍是单 Worker 顺序批处理，只在最终 Transport 层模拟 SMTP/Web Push；没有访问真实用户数据或外部 Provider。
 
-E3 的 Hy3 Judge、标签盲化、聚合和报告仍未实现；48 个 Primary Episodes、24 个 Calibration Outputs、有效性实验、正式分数和 DecisionBench v1 正式发布也均未完成。E2 stub Rules 不能被写成 Hy3 能力结论。
+E3 的 Hy3 Judge、标签盲化和确定性聚合仍未实现；当前包也不存在 Judge/聚合 Schema、模块或 CLI。下一阶段只允许 Judge 读取脱敏 v2 Episode、匹配的 Rule Result 和版本化 Rubric/锚点，且 Rule Hard Gate 不可被覆盖。48 个 Primary Episodes、24 个 Calibration Outputs、有效性实验、正式评测、版本回归、最终报告和 DecisionBench v1 正式发布属于 E4–E8，均未完成。E2 stub Rules 不能被写成 Hy3 能力结论，E3 固定 Judge 响应也只能证明工程协议。
 
 当前定向验收结果为：
 
