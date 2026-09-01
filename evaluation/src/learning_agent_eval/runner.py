@@ -1,4 +1,4 @@
-"""Pure control plane for isolated one-worker-per-Episode E1 execution."""
+"""Pure control plane for isolated Runtime execution and v2 publication."""
 
 from __future__ import annotations
 
@@ -14,7 +14,12 @@ from typing import Any
 
 from .canonical import canonical_json_bytes, sha256_digest
 from .isolation import EvaluationIsolationError, worker_environment
-from .models import E1CaptureArtifact, E1RunManifest, RuntimeMiniFixture
+from .models import (
+    E1CaptureArtifact,
+    E1RunManifest,
+    E2RunOutputManifest,
+    RuntimeMiniFixture,
+)
 from .privacy import privacy_issues
 from .validator import validate_dataset, validate_episode
 
@@ -172,7 +177,11 @@ def run_agent(
         raise RunAgentError("selection_empty", "filter", "batch", "fixture selection is empty")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    stage = Path(tempfile.mkdtemp(prefix=f".{output_path.name}.e1-stage-", dir=output_path.parent))
+    stage = Path(
+        tempfile.mkdtemp(
+            prefix=f".{output_path.name}.e2-stage-", dir=output_path.parent
+        )
+    )
     worker_roots: list[str] = []
     results: list[dict[str, Any]] = []
     try:
@@ -240,7 +249,7 @@ def run_agent(
                 episode = _load(published / "episode.json")
                 capture = _load(published / "capture.json")
                 if validate_episode(episode, source=f"{episode_id}.json"):
-                    raise RunAgentError("episode_invalid", "validate", episode_id, "runtime Episode failed E0 validation")
+                    raise RunAgentError("episode_invalid", "validate", episode_id, "runtime Episode failed validation")
                 try:
                     E1CaptureArtifact.model_validate(capture)
                 except ValueError as exc:
@@ -274,8 +283,9 @@ def run_agent(
                 shutil.rmtree(worker_root, ignore_errors=True)
 
         output_manifest = {
-            "schema_version": "e1-run-output-manifest-v1",
+            "schema_version": "e2-run-output-manifest-v1",
             "dataset_version": run_manifest["dataset_version"],
+            "episode_schema_version": "decision-episode-v2",
             "invocation_mode": model_mode,
             "formal_evaluation_result": False,
             "evaluation_status": "not_a_formal_model_evaluation",
@@ -292,6 +302,15 @@ def run_agent(
         output_manifest["manifest_sha256"] = sha256_digest(
             {key: value for key, value in output_manifest.items() if key != "manifest_sha256"}
         )
+        try:
+            E2RunOutputManifest.model_validate(output_manifest)
+        except ValueError as exc:
+            raise RunAgentError(
+                "output_manifest_invalid",
+                "publish",
+                "batch",
+                "runtime output manifest is invalid",
+            ) from exc
         (stage / "run-manifest.json").write_bytes(canonical_json_bytes(output_manifest))
         if privacy_issues(output_manifest, file="run-manifest.json"):
             raise RunAgentError("privacy_rejected", "publish", "batch", "output manifest failed privacy checks")
@@ -301,7 +320,7 @@ def run_agent(
                 "output_invalid",
                 "publish",
                 "batch",
-                "runtime output failed final E0 validation",
+                "runtime output failed final validation",
             )
         os.replace(stage, output_path)
     except Exception:

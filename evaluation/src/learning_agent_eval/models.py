@@ -1,4 +1,4 @@
-"""Strict Pydantic source models for the three E0 JSON contracts."""
+"""Strict Pydantic sources for frozen E0 and versioned E2 contracts."""
 
 from __future__ import annotations
 
@@ -67,6 +67,17 @@ EvidencePath = Annotated[
         pattern=(
             r"^[A-Za-z_][A-Za-z0-9_-]*(?:\[(?:0|[1-9]\d*)\])?"
             r"(?:\.[A-Za-z_][A-Za-z0-9_-]*(?:\[(?:0|[1-9]\d*)\])?)*$"
+        ),
+    ),
+]
+DeltaFieldPath = Annotated[
+    str,
+    StringConstraints(
+        min_length=1,
+        max_length=300,
+        pattern=(
+            r"^(?:\$entity|data(?:\.[A-Za-z_][A-Za-z0-9_-]*"
+            r"(?:\[(?:0|[1-9]\d*)\])?)*)$"
         ),
     ),
 ]
@@ -380,6 +391,511 @@ class DecisionEpisode(StrictContractModel):
     provenance: Provenance
 
 
+EntityTypeV2 = Literal[
+    "learner",
+    "goal",
+    "constraint",
+    "resource",
+    "session",
+    "agent_run",
+    "context_snapshot",
+    "planning_intake",
+    "plan",
+    "stage",
+    "task",
+    "plan_proposal",
+    "submission",
+    "review",
+    "quiz",
+    "achievement",
+    "activity_day",
+    "artifact",
+    "evidence_observation",
+    "learning_event",
+    "intervention",
+    "proactive_decision",
+    "notification",
+    "outbox_action",
+    "outbox_receipt",
+    "operation",
+    "tool_invocation",
+    "run_approval",
+    "run_event",
+]
+
+
+class SnapshotEntityV2(StrictContractModel):
+    logical_id: StableId
+    entity_type: EntityTypeV2
+    ordinal: Annotated[int, Field(ge=1)]
+    source: Literal["database", "runtime_input", "resource_snapshot"]
+    scope_ref: StableId | None
+    data: dict[str, JsonValue]
+    entity_sha256: Sha256
+
+
+class StateSnapshotV2(StrictContractModel):
+    collector_version: StableId
+    entity_types: list[EntityTypeV2]
+    field_allowlist_sha256: Sha256
+    capture_status: Literal["complete", "incomplete", "failed"]
+    captured_at: Rfc3339
+    logical_entities: list[SnapshotEntityV2]
+    context: StateContext
+    error_codes: list[StableId]
+    snapshot_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_capture_shape(self) -> Self:
+        if (self.capture_status == "complete") != (not self.error_codes):
+            raise ValueError("complete snapshots cannot contain capture errors")
+        return self
+
+
+class PresenceValueV2(StrictContractModel):
+    presence: Literal["missing", "present"]
+    value: JsonValue
+
+    @model_validator(mode="after")
+    def validate_missing_value(self) -> Self:
+        if self.presence == "missing" and self.value is not None:
+            raise ValueError("missing values must use a null payload")
+        return self
+
+
+class TypedSourceRefV2(StrictContractModel):
+    source_type: Literal[
+        "runtime",
+        "model_turn",
+        "tool_invocation",
+        "guard_decision",
+        "operation",
+        "run_event",
+        "entity",
+    ]
+    ref: StableId
+
+
+class StateDeltaChangeV2(StrictContractModel):
+    change_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    kind: Literal["added", "removed", "changed", "unchanged"]
+    entity_ref: StableId
+    field_path: DeltaFieldPath
+    before_path: EvidencePath | None
+    after_path: EvidencePath | None
+    before: PresenceValueV2
+    after: PresenceValueV2
+    source_refs: Annotated[list[TypedSourceRefV2], Field(min_length=1)]
+    operation_refs: list[StableId]
+    operation_alignment: Literal[
+        "matched", "not_applicable", "unattributed", "ambiguous", "mismatch"
+    ]
+
+
+class StateDeltaV2(StrictContractModel):
+    capture_status: Literal["complete", "incomplete", "failed"]
+    before_snapshot_sha256: Sha256
+    after_snapshot_sha256: Sha256
+    changes: list[StateDeltaChangeV2]
+    compared_entity_refs: list[StableId]
+    unchanged_entity_refs: list[StableId]
+    error_codes: list[StableId]
+    delta_sha256: Sha256
+
+
+class ToolInvocationV2(StrictContractModel):
+    invocation_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    tool_call_id: StableId | None
+    tool_name: StableId
+    canonical_args: dict[str, JsonValue]
+    execution_status: Literal["completed", "failed", "blocked", "not_executed"]
+    observation_status: Literal[
+        "succeeded",
+        "failed",
+        "blocked",
+        "deferred",
+        "pending_approval",
+        "pending_delivery",
+        "needs_reconciliation",
+        "retry_pending",
+        "not_executed",
+    ]
+    durable_status: Literal[
+        "running",
+        "pending_approval",
+        "pending_delivery",
+        "committed",
+        "failed",
+        "rejected",
+        "needs_reconciliation",
+        "retry_pending",
+        "cancelled",
+    ]
+    result: dict[str, JsonValue]
+    result_digest: Sha256
+    operation_refs: list[StableId]
+
+
+class OperationV2(StrictContractModel):
+    operation_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    invocation_ref: StableId | None
+    tool_name: StableId
+    status: Literal[
+        "committed",
+        "undo_pending",
+        "undone",
+        "redo_pending",
+        "needs_reconciliation",
+    ]
+    primary_entity_ref: StableId
+    affected_entity_refs: Annotated[list[StableId], Field(min_length=1)]
+    forward_patch: dict[str, JsonValue]
+    inverse_patch: dict[str, JsonValue]
+    patch_digest: Sha256
+
+
+class GuardDecisionV2(StrictContractModel):
+    guard_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    policy: StableId
+    status: Literal["not_evaluated", "allowed", "blocked", "deferred"]
+    reason_code: StableId | None
+    invocation_ref: StableId | None
+    decision_ref: StableId | None
+    attempted_effect_refs: list[StableId]
+    final_effect_refs: list[StableId]
+
+
+class ObservableTraceV2(StrictContractModel):
+    capture_mode: Literal["runtime_recording"]
+    model_turns: list[ModelTurn]
+    tool_invocations: list[ToolInvocationV2]
+    run_events: list[RunEvent]
+    operations: list[OperationV2]
+    guard_decisions: list[GuardDecisionV2]
+
+
+class ModelAttemptV2(StrictContractModel):
+    attempt_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    turn_ref: StableId
+    attempted_action: Literal["tool_call", "respond", "wait", "no_op"]
+    invocation_refs: list[StableId]
+
+
+class FinalEffectV2(StrictContractModel):
+    effect_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    effect_type: Literal[
+        "plan_proposal",
+        "intervention",
+        "assessment_verdict",
+        "reversible_patch",
+        "approval_request",
+        "wait",
+        "no_op",
+        "blocked",
+        "deferred",
+        "failed",
+    ]
+    status: Literal["applied", "blocked", "deferred", "pending", "no_change", "failed"]
+    entity_refs: list[StableId]
+    source_refs: Annotated[list[TypedSourceRefV2], Field(min_length=1)]
+
+
+class DecisionLayersV2(StrictContractModel):
+    model_attempts: list[ModelAttemptV2]
+    guard_decision_refs: list[StableId]
+    final_effects: Annotated[list[FinalEffectV2], Field(min_length=1)]
+    run_status: Literal[
+        "queued",
+        "running",
+        "waiting_approval",
+        "retry_wait",
+        "completed",
+        "failed",
+        "cancelled",
+        "needs_reconciliation",
+    ]
+    durable_status: Literal[
+        "committed",
+        "pending",
+        "partial",
+        "blocked",
+        "deferred",
+        "failed",
+        "needs_reconciliation",
+    ]
+    formal_evaluation_eligibility: Literal[
+        "eligible", "ineligible_stub", "ineligible_engineering", "invalid"
+    ]
+
+
+class GuardDecisionSummaryV2(StrictContractModel):
+    status: Literal["not_evaluated", "allowed", "blocked", "deferred", "mixed"]
+    reason_code: StableId | None
+    blocked_effect_refs: list[StableId]
+
+
+class DecisionResultV2(StrictContractModel):
+    action_class: ActionClass
+    action_mapping_version: StableId
+    action_mapping_sha256: Sha256
+    user_visible_output: str | None
+    guard: GuardDecisionSummaryV2
+    layers: DecisionLayersV2
+
+
+class EpisodeCompletenessV2(StrictContractModel):
+    status: Literal["complete", "invalid"]
+    error_codes: list[StableId]
+    verified_evidence_paths: list[EvidencePath]
+    completeness_sha256: Sha256
+
+
+class SnapshotProviderCallsV2(StrictContractModel):
+    search: Annotated[int, Field(ge=0)]
+    open: Annotated[int, Field(ge=0)]
+    validation_calls: Annotated[int, Field(ge=0, alias="validate")]
+
+
+class RuntimeIsolationEvidenceV2(StrictContractModel):
+    temporary_database: Literal[True]
+    database_inside_worker_root: Literal[True]
+    env_file_read: Literal[False]
+    repository_runtime_data_access: Literal[False]
+    background_services_started: Literal[False]
+    network_calls: Annotated[int, Field(ge=0)]
+    smtp_calls: Annotated[int, Field(ge=0)]
+    smtp_ssl_calls: Annotated[int, Field(ge=0)]
+    web_push_calls: Annotated[int, Field(ge=0)]
+    imap_calls: Annotated[int, Field(ge=0)]
+    imap_ssl_calls: Annotated[int, Field(ge=0)]
+    prohibited_file_access: Annotated[int, Field(ge=0)]
+    outside_sqlite_access: Annotated[int, Field(ge=0)]
+    subprocess_calls: Annotated[int, Field(ge=0)]
+    published_sqlite_files: Literal[0]
+    routing_material_exported: Literal[False]
+    snapshot_provider_calls: SnapshotProviderCallsV2
+    recording_sink_attempts: Annotated[int, Field(ge=0)]
+    outbox_replay_confirmed: bool
+    agent_observed_pending_delivery: bool
+    agent_observed_emulated_receipt: Literal[False]
+
+
+class DecisionEpisodeV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/decision-episode-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["decision-episode-v2"]
+    episode_id: StableId
+    scenario_family_id: StableId
+    track: Track
+    split: Split
+    difficulty: Difficulty
+    tags: Annotated[list[Tag], Field(min_length=1)]
+    trigger: Trigger
+    state_before: StateSnapshotV2
+    state_after: StateSnapshotV2
+    state_delta: StateDeltaV2
+    environment: EnvironmentManifest
+    observable_trace: ObservableTraceV2
+    result: DecisionResultV2
+    oracle: AcceptableActionEnvelope
+    completeness: EpisodeCompletenessV2
+    isolation_evidence: RuntimeIsolationEvidenceV2
+    provenance: Provenance
+
+
+class RuleCheckV1(StrictContractModel):
+    check_id: StableId
+    rule_pack: Literal[
+        "common",
+        "planning",
+        "intervention",
+        "assessment",
+        "revision",
+        "trace",
+        "isolation",
+    ]
+    status: Literal["pass", "fail", "not_applicable", "invalid_input"]
+    severity: Literal["minor", "major", "critical"]
+    evidence_paths: list[EvidencePath]
+    observed: JsonValue
+    expected: JsonValue
+    reason_code: StableId
+    message: NonEmptyText
+
+
+class RuleResultV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/rule-result-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["rule-result-v1"]
+    evaluator_version: StableId
+    episode_id: StableId
+    episode_sha256: Sha256
+    rule_pack_version: StableId
+    rule_pack_sha256: Sha256
+    checks: Annotated[list[RuleCheckV1], Field(min_length=1)]
+    hard_gates: list[StableId]
+    dimension_signals: dict[str, JsonValue]
+    status: Literal["pass", "fail", "invalid_input"]
+    formal_evaluation_result: bool
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_hard_gates(self) -> Self:
+        check_ids = [check.check_id for check in self.checks]
+        if len(check_ids) != len(set(check_ids)):
+            raise ValueError("Rule check IDs must be unique")
+        pack_order = {
+            name: index
+            for index, name in enumerate(
+                (
+                    "common",
+                    "planning",
+                    "intervention",
+                    "assessment",
+                    "revision",
+                    "trace",
+                    "isolation",
+                )
+            )
+        }
+        order = [
+            (pack_order.get(check.rule_pack, len(pack_order)), check.check_id)
+            for check in self.checks
+        ]
+        if order != sorted(order):
+            raise ValueError("Rule checks must use stable pack and check ordering")
+        if any(
+            token in key.casefold()
+            for key in self.dimension_signals
+            for token in ("score", "rank", "judge")
+        ):
+            raise ValueError("dimension signals cannot contain scores or Judge output")
+        expected = [
+            check.check_id
+            for check in self.checks
+            if check.status == "fail" and check.severity == "critical"
+        ]
+        if self.hard_gates != expected:
+            raise ValueError("hard gates must exactly list failed critical checks")
+        expected_status = (
+            "invalid_input"
+            if any(check.status == "invalid_input" for check in self.checks)
+            else "fail"
+            if any(check.status == "fail" for check in self.checks)
+            else "pass"
+        )
+        if self.status != expected_status:
+            raise ValueError("Rule Result status must match its ordered checks")
+        return self
+
+
+class IntegrityErrorV1(StrictContractModel):
+    error_code: StableId
+    stage: StableId
+    episode_id: StableId
+    message: NonEmptyText
+    evidence_path: EvidencePath | None
+
+
+class IntegrityResultV1(StrictContractModel):
+    schema_version: Literal["integrity-result-v1"]
+    episode_id: StableId
+    episode_sha256: Sha256
+    status: Literal["valid", "invalid"]
+    errors: list[IntegrityErrorV1]
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_status(self) -> Self:
+        if (self.status == "valid") != (not self.errors):
+            raise ValueError("integrity status must match the error list")
+        return self
+
+
+class E2RunOutputManifest(StrictContractModel):
+    schema_version: Literal["e2-run-output-manifest-v1"]
+    dataset_version: StableId
+    episode_schema_version: Literal["decision-episode-v2"]
+    invocation_mode: Literal["stub", "real"]
+    formal_evaluation_result: bool
+    evaluation_status: Literal[
+        "not_a_formal_model_evaluation", "formal_model_evaluation"
+    ]
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    episode_digests: dict[str, Sha256]
+    capture_digests: dict[str, Sha256]
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_output_semantics(self) -> Self:
+        episode_ids = set(self.episode_ids)
+        if len(episode_ids) != len(self.episode_ids):
+            raise ValueError("output Episode IDs must be unique")
+        if episode_ids != set(self.episode_digests) or episode_ids != set(
+            self.capture_digests
+        ):
+            raise ValueError("output digest keys must match Episode IDs")
+        if self.invocation_mode == "stub" and (
+            self.formal_evaluation_result
+            or self.evaluation_status != "not_a_formal_model_evaluation"
+        ):
+            raise ValueError("stub outputs cannot claim a formal evaluation")
+        return self
+
+
+class RuleRunManifestV1(StrictContractModel):
+    schema_version: Literal["rule-run-manifest-v1"]
+    input_episode_schema_version: Literal["decision-episode-v2"]
+    evaluator_version: StableId
+    rule_pack_version: StableId
+    rule_pack_sha256: Sha256
+    invocation_mode: Literal["stub", "real", "mixed"]
+    formal_evaluation_result: bool
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    input_episode_digests: dict[str, Sha256]
+    rule_result_digests: dict[str, Sha256]
+    integrity_result_digests: dict[str, Sha256]
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_result_keys(self) -> Self:
+        episode_ids = set(self.episode_ids)
+        if len(episode_ids) != len(self.episode_ids):
+            raise ValueError("rule output Episode IDs must be unique")
+        mappings = (
+            self.input_episode_digests,
+            self.rule_result_digests,
+            self.integrity_result_digests,
+        )
+        if any(set(mapping) != episode_ids for mapping in mappings):
+            raise ValueError("rule output digest keys must match Episode IDs")
+        if self.invocation_mode == "stub" and self.formal_evaluation_result:
+            raise ValueError("stub Rule Results cannot claim formal evaluation")
+        return self
+
+
 class ScriptedFunctionCall(StrictContractModel):
     call_id: StableId
     name: StableId
@@ -539,8 +1055,10 @@ class E1RunOutputManifest(StrictContractModel):
 
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "decision-episode-v1": DecisionEpisode,
+    "decision-episode-v2": DecisionEpisodeV2,
     "acceptable-action-envelope-v1": AcceptableActionEnvelope,
     "environment-manifest-v1": EnvironmentManifest,
+    "rule-result-v1": RuleResultV1,
 }
 
 DATASET_DOCUMENT_MODELS: dict[str, type[BaseModel]] = {
@@ -550,4 +1068,7 @@ DATASET_DOCUMENT_MODELS: dict[str, type[BaseModel]] = {
     "e1-run-manifest-v1": E1RunManifest,
     "e1-capture-artifact-v1": E1CaptureArtifact,
     "e1-run-output-manifest-v1": E1RunOutputManifest,
+    "e2-run-output-manifest-v1": E2RunOutputManifest,
+    "integrity-result-v1": IntegrityResultV1,
+    "rule-run-manifest-v1": RuleRunManifestV1,
 }

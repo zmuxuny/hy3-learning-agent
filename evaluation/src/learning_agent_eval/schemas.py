@@ -8,8 +8,10 @@ from .models import SCHEMA_MODELS
 
 SCHEMA_FILENAMES = {
     "decision-episode-v1": "decision-episode-v1.schema.json",
+    "decision-episode-v2": "decision-episode-v2.schema.json",
     "acceptable-action-envelope-v1": "acceptable-action-envelope-v1.schema.json",
     "environment-manifest-v1": "environment-manifest-v1.schema.json",
+    "rule-result-v1": "rule-result-v1.schema.json",
 }
 
 

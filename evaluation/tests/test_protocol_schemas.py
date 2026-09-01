@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 from learning_agent_eval.models import SCHEMA_DIALECT
@@ -16,8 +17,10 @@ def test_committed_json_schemas_match_source_models() -> None:
     generated = schema_documents()
     assert set(generated) == {
         "decision-episode-v1.schema.json",
+        "decision-episode-v2.schema.json",
         "acceptable-action-envelope-v1.schema.json",
         "environment-manifest-v1.schema.json",
+        "rule-result-v1.schema.json",
     }
     for filename, expected in generated.items():
         committed = json.loads((SCHEMA_ROOT / filename).read_text(encoding="utf-8"))
@@ -27,6 +30,18 @@ def test_committed_json_schemas_match_source_models() -> None:
         for definition in committed.get("$defs", {}).values():
             if isinstance(definition, dict) and "properties" in definition:
                 assert definition.get("additionalProperties") is False
+
+
+def test_three_e0_v1_schema_files_remain_byte_frozen() -> None:
+    expected = {
+        "decision-episode-v1.schema.json": "741e750b63709de7b00a23f36099c9a4033595a0cd3f69ee327e95516dbc2b6e",
+        "acceptable-action-envelope-v1.schema.json": "0ff84c32eeab476630b4a855bab1260e01e2222577942fc3effe49096ff586f1",
+        "environment-manifest-v1.schema.json": "bb6be778edfd78d701d98045b5bc453604c056b67eace47290b0ad458f894f67",
+    }
+    assert {
+        name: hashlib.sha256((SCHEMA_ROOT / name).read_bytes()).hexdigest()
+        for name in expected
+    } == expected
 
 
 def test_decision_episode_schema_requires_all_versioned_sections() -> None:

@@ -3,7 +3,49 @@
 更新时间：2026-09-01（Asia/Shanghai）
 当前版本：1.1.1
 
-H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议骨架和 E1 隔离执行已经完成，下一切片为 E2 通用导出与规则；M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议骨架、E1 隔离执行和 E2 通用导出/规则已经完成，下一切片为 E3 Hy3 Judge、标签盲化、聚合与报告；M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+
+## 2026-09-01 第三阶段 E2 收口
+
+E2 发布 `DecisionEpisode v2` 作为所有新 Runtime Export、Rules 和后续 E3 Judge 的唯一权威 Episode 格式。三个版本维度必须分开：E0/E1/E2 是工程里程碑，DecisionEpisode v1/v2 是单 Episode 契约，DecisionBench v1 是尚未正式完成的 Benchmark 发布名。
+
+| 检查项 | 当前结论 | 证据或入口 |
+| --- | --- | --- |
+| v1 历史兼容 | 已冻结 | 三份 E0 v1 Schema 字节摘要锁定，四个手工 Episode 继续只读校验；不再生成新的 v1 Runtime Episode |
+| v2 权威契约 | 已完成 | `decision-episode-v2.schema.json` 一等表达前后 Snapshot、完整 Delta、决策分层、耐久状态、隔离与完整性 |
+| 通用 Runtime Export | 已完成 | E1 四轨专用 `runtime_export.py` 已退休；新 Exporter 不按 Episode ID、track、`seed_kind`、Oracle 或 scripted 文本分支 |
+| Rules 与 Hard Gate | 已完成 | `rule-result-v1`、`e2-rule-pack-v1`、七个规则包、完整性结果和不可抵消的 Critical Hard Gate |
+| CLI 与发布 | 已完成 | `run-agent` 只产 v2；`evaluate-rules` 支持 Episode/track 过滤、结构化失败、非零门禁退出码、原子发布和不覆盖 |
+| 正式评测 | 尚未执行 | stub Rules 不是 Hy3 能力结果；Judge、标签盲化、聚合、报告、Primary/Calibration 和正式结果仍未实现 |
+
+E2 设计与语义：
+
+- `DecisionEpisode v1`、`Acceptable Action Envelope v1` 和 `Environment Manifest v1` 完全冻结；Schema 注册表和 `validate-dataset` 同时支持历史 v1 与新 v2，但每次新 Runtime 只写 v2，不存在常规 v1/v2 双输出或长期有损 v1 投影。
+- `e2-run-output-manifest-v1` 固定声明 `episode_schema_version=decision-episode-v2` 并拒绝混合。E1 Capture 仍可作为脱敏工程审计附件，但不进入 Rules、完整性事实判断或后续 Judge Evidence；正式 Evidence 根只在 v2 Episode 内解析。
+- Worker 在 Fixture seed 后、Runtime 前采集前态，在 Runtime 和 Outbox drain 后采集后态；Oracle 直到上述执行和真实 Delta 完成后才读取。Collector 使用闭合实体集合与逐字段 allowlist，覆盖四轨所需的 Runtime trace、RunApproval、计划/任务/提案/提交/验收、Intervention/Decision、Notification 和 Outbox 实体；未登记列不读取，已登记事实出现不支持的形状、引用或状态时失败关闭。
+- Normalizer 统一确定性 UTC、递归 canonical JSON、语义数组顺序和集合排序；拒绝非有限数值、未知非 JSON 类型与 `str(unknown)`。跨前后态身份优先使用声明逻辑 ID，否则使用实体类型、作用域和规范化语义 ordinal；数据库自增 ID、随机 UUID、claim/reply token、endpoint、Push key、认证与地址材料不进入产物。
+- State Delta 由前后 Snapshot 实际递归比较产生，一等表达 `added/removed/changed`、`missing/present`、before/after、可解析路径、typed source refs、零到多个有序 Operation refs，并以 `compared_entity_refs/unchanged_entity_refs` 证明确认无变化。新实体只在后态，删除实体只在前态，`null` 不等于缺失，确认无变化不等于未采集。
+- Operation forward/inverse patch 是归因证据而非后态替代；字段更新逐值对齐，实体新增/删除要求配对的显式创建/删除标记（顶层 `created_ref/delete_ref` 或登记的 typed ref）。支持一个 Operation 影响多个实体/字段和多个 Operation 依次影响一路径。Notification/Outbox/Receipt、pending approval、Guard 和运行终态等无 Operation 事实不绑定伪 Operation；持久化变化无法证明对齐时完整性失败。
+- v2 分开表达 `model_attempt → tool_execution → guard_decision → final_effect → durable_status → formal_evaluation_eligibility`。Guard blocked/deferred 保留模型尝试和 ToolInvocation，同时验证禁止副作用为零；Planning 待采纳引用 pending PlanProposal，高风险工具暂停引用 RunApproval。WAIT/NO_OP 可以没有工具和状态变化，但必须有已确认完整的空 Delta、Recorder、终态与完整性证据。
+- `rule-result-v1` 使用 `deterministic-rule-evaluator-v1` 和 `e2-rule-pack-v1`。52 个稳定 check 分布于 `common/planning/intervention/assessment/revision/trace/isolation`，输出 `pass/fail/not_applicable/invalid_input`、`minor/major/critical`、observed/expected、公共 reason code 和可解析 v2 Evidence Path。缺字段是 `invalid_input`，不是业务 Fail；`hard_gates` 只引用 failed Critical checks，其他 Pass 不可抵消。
+- `dimension_signals` 只保存确定性结构化信号；E2 没有实现 0/1/2 Judge 档位、总分、模型语义评价、聚合或报告。
+- E1 的独立 Worker、临时 SQLite、冻结时钟、Recorder、资源 Snapshot、生产 Guard/Notification/Outbox claim-fence-idempotency/Receipt 和 Recording Sink 全部保留。SMTP、SMTP_SSL、Web Push、IMAP、IMAP_SSL、实时网络和真实通知 Provider 调用仍为 0；Agent 看不到模拟 Receipt。
+
+E2 当前已执行的定向验收：
+
+- `.venv/bin/pytest -q evaluation/tests/test_e2_exporter_rules.py`：`38 passed in 55.34s`；
+- `.venv/bin/pytest -q evaluation/tests/test_protocol_schemas.py`：`4 passed in 0.33s`；
+- `.venv/bin/pytest -q evaluation/tests`：`104 passed in 118.16s (0:01:58)`；
+- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 0.89s`；
+- `.venv/bin/pytest -q`：`1179 passed, 2 warnings in 2115.27s (0:35:15)`，0 failed、0 xfailed；两条 warning 仍是既有的 Starlette/httpx 弃用提示和 Python 3.14 tar 提取行为预告；
+- `.venv/bin/python scripts/check_doc_links.py`、`.venv/bin/python scripts/release-check.py lint_typecheck`、`.venv/bin/python scripts/release-check.py secret_scan`、`.venv/bin/pip check` 与 `git diff --check` 均通过；
+- 四轨 stub 已生成且只生成 DecisionEpisode v2；v2 validator 和 `evaluate-rules` 均通过，每例 52 个 checks、0 个 Hard Gate、`formal_evaluation_result=false`；
+- Guard blocked 与 quiet-hours deferred 的生产 Runtime 边界均通过：ToolInvocation 保留，Notification/Outbox/Receipt/Sink 最终副作用为零；
+- 同一输入的 Runtime/Rules 产物逐文件一致；Episode ID 和 track 两类过滤均由自动化测试覆盖。
+
+E2 已知限制：当前 Assessment revision-required 路径的 Operation/Delta 可完整证明；生产 `submission.check` 的 accepted 分支还会更新未被现有 Operation patch 枚举的 Plan/Stage 派生状态，因此通用 Exporter 以稳定的 `delta.operation_unattributed.plan` 失败关闭，不生成猜测的 ACCEPT Episode。修复应在未来补全生产 Operation 契约后再扩展 allowlist 对齐，不能用 Oracle 或工具成功状态回填。
+
+最终提交哈希和干净 HEAD 上的 post-commit smoke 结果由本次开发交接与完成汇报记录；测试产物只写入系统临时目录，不进入仓库。
 
 ## 2026-09-01 第三阶段 E1 收口
 
@@ -54,7 +96,7 @@ E1 定向验收（本次实际执行）：
 - E0 CLI 校验四轨运行产物：`dataset_valid episodes=4 tracks=planning:1,intervention:1,assessment:1,revision:1`；
 - 同一四轨 Manifest 两次运行目录逐字节一致；四个 Worker root 和 SQLite 均不同，销毁后不存在，仓库未发布 SQLite/WAL/SHM。
 
-下一个里程碑是 **E2：通用导出与规则**。当前 `runtime_export.py` 只覆盖四个 Mini Fixture；通用 Exporter、Normalizer、完整 State Delta、Rules 和完整性评估仍未实现。Hy3 Judge、聚合、报告、Primary/Calibration 和正式结果属于更后续阶段。
+本节是 E1 收口时的历史事实。E2 已用通用 v2 Exporter 替换该最小投影，未推倒 E1 Runtime Harness。下一个里程碑是 **E3：Hy3 Judge、标签盲化、聚合与报告**；Primary/Calibration、正式结果和 DecisionBench v1 发布仍属于更后续阶段。
 
 另一个开发进程应先阅读 [`第三阶段开发交接.md`](第三阶段开发交接.md)，一次只推进一个可验收切片；完成后同步本文件、相关实施方案与测试证据。
 

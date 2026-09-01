@@ -1,4 +1,4 @@
-"""One-process-per-Episode E1 worker; imports production code only after isolation."""
+"""One-process-per-Episode worker; imports production code only after isolation."""
 
 from __future__ import annotations
 
@@ -15,13 +15,22 @@ from typing import Any
 
 from .canonical import canonical_json, canonical_json_bytes, sha256_digest
 from .delivery import RecordingDeliverySink
+from .deltas import DeltaConstructionError, build_state_delta
+from .exporter import ExportError, build_decision_episode_v2
 from .isolation import EvaluationIsolationError, IsolationGuard
 from .models import RuntimeMiniFixture
+from .normalizers import normalize_rfc3339
 from .privacy import privacy_issues
 from .recorder import EvaluationModelRecorder
 from .resources import EvaluationSnapshotProvider
-from .runtime_export import build_decision_episode, collect_database_projection
 from .scripted_model import ScriptedModelClient
+from .snapshots import (
+    SnapshotCollectionError,
+    audit_projection,
+    collect_state_snapshot,
+    identity_registry,
+    normalize_reference_fields,
+)
 from .validator import validate_episode
 
 
@@ -61,8 +70,14 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
                 "start": fixture["seed"].get("quiet_start", "23:00"),
                 "end": fixture["seed"].get("quiet_end", "08:00"),
             },
-            preferences={"notification_cooldown_minutes": 180},
-            daily_notification_limit=3,
+            preferences={
+                "notification_cooldown_minutes": int(
+                    fixture["seed"].get("notification_cooldown_minutes", 180)
+                )
+            },
+            daily_notification_limit=int(
+                fixture["seed"].get("daily_notification_limit", 3)
+            ),
         )
         db.add(profile)
         await db.flush()
@@ -217,7 +232,11 @@ def _assert_public_artifacts(episode: dict[str, Any], capture: dict[str, Any]) -
         raise WorkerFailure("private_sentinel", "publish", "private model sentinel reached an artifact")
     episode_issues = validate_episode(episode, source=f"{episode['episode_id']}.json")
     if episode_issues:
-        raise WorkerFailure("episode_invalid", "validate", "runtime Episode failed E0 validation")
+        raise WorkerFailure(
+            "episode_invalid",
+            "validate",
+            "runtime Episode failed validation",
+        )
 
 
 async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, Any]:
@@ -227,7 +246,6 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
         {key: value for key, value in fixture.items() if key != "fixture_sha256"}
     ):
         raise WorkerFailure("fixture_digest", "load", "fixture digest mismatch")
-    oracle = _load_json(Path(request["oracle_path"]))
     snapshot = EvaluationSnapshotProvider(request["resource_path"])
     if snapshot.version != fixture["resource_snapshot_version"]:
         raise WorkerFailure("resource_version", "load", "fixture resource snapshot mismatch")
@@ -240,6 +258,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
     agent_module = import_module("app.runtime.agent")
 
     frozen = datetime.fromisoformat(fixture["frozen_time"].replace("Z", "+00:00"))
+    frozen_timestamp = normalize_rfc3339(fixture["frozen_time"])
     with ExitStack() as stack:
         stack.enter_context(app_time.frozen_utc(frozen))
         stack.enter_context(app_identity.deterministic_entity_ids(fixture["episode_id"]))
@@ -247,6 +266,16 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
         app_config.prepare_runtime_directories(app_config.settings.RUNTIME_STATE_ROOT)
         await database.create_schema(state_root=app_config.settings.RUNTIME_STATE_ROOT)
         await _seed_fixture(fixture, app_time.utc_now())
+        identities = identity_registry(fixture)
+        before_capture = await collect_state_snapshot(
+            database.AsyncSessionLocal,
+            fixture,
+            registry=identities,
+            captured_at=frozen_timestamp,
+            resource_version=snapshot.version,
+            resource_digest=snapshot.digest,
+            phase="before",
+        )
 
         if request["model_mode"] == "stub":
             client = ScriptedModelClient(fixture["scripted_turns"])
@@ -265,26 +294,47 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
 
         sink = RecordingDeliverySink()
         replay = await _drain_recording_sink(sink)
-        projection = await collect_database_projection(database.AsyncSessionLocal, fixture)
-        if projection["run"]["status"] != "completed":
-            raise WorkerFailure("runtime_not_completed", "runtime", "production Runtime did not complete")
-        database_digest = sha256_digest(projection)
-        episode = build_decision_episode(
-            fixture=fixture,
-            oracle=oracle,
-            model_records=recorder.records,
-            database_projection=projection,
-            database_projection_sha256=database_digest,
+        after_capture = await collect_state_snapshot(
+            database.AsyncSessionLocal,
+            fixture,
+            registry=identities,
+            captured_at=frozen_timestamp,
             resource_version=snapshot.version,
             resource_digest=snapshot.digest,
-            git_commit=request["git_commit"],
-            invocation_mode=request["model_mode"],
-            model_name=app_config.settings.MODEL_NAME,
-            model_temperature=app_config.settings.MODEL_TEMPERATURE,
-            model_reasoning_effort=app_config.settings.MODEL_REASONING_EFFORT,
+            phase="after",
         )
+        projection = audit_projection(after_capture.document)
+        if projection["run"]["status"] not in {"completed", "waiting_approval"}:
+            raise WorkerFailure(
+                "runtime_not_exportable",
+                "runtime",
+                "production Runtime did not reach an exportable stable state",
+            )
+        database_digest = sha256_digest(projection)
+        delta = build_state_delta(before_capture.document, after_capture.document)
+        if delta["capture_status"] != "complete":
+            raise DeltaConstructionError(
+                delta["error_codes"][0]
+                if delta["error_codes"]
+                else "delta.incomplete"
+            )
+        # Oracle facts are intentionally unavailable until production Runtime,
+        # delivery, both Snapshots, and the actual State Delta are complete.
+        oracle = _load_json(Path(request["oracle_path"]))
         observation_text = canonical_json(recorder.records)
         observed_pending_delivery = "pending_delivery" in observation_text
+        capture_records = [
+            {
+                **{
+                    key: value
+                    for key, value in record.items()
+                    if key != "visible_messages"
+                },
+                "visible_messages_omitted": True,
+            }
+            for record in recorder.records
+        ]
+        public_model_records = normalize_reference_fields(capture_records, identities)
         isolation_evidence = {
             **guard.evidence(),
             "temporary_database": True,
@@ -297,7 +347,31 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             "agent_observed_pending_delivery": observed_pending_delivery,
             "agent_observed_emulated_receipt": "evaluation_sink" in observation_text,
         }
-        if fixture["track"] == "intervention" and not observed_pending_delivery:
+        episode_isolation_evidence = {
+            key: value
+            for key, value in isolation_evidence.items()
+            if key != "database_projection_recomputable"
+        }
+        episode_isolation_evidence.update(
+            {"published_sqlite_files": 0, "routing_material_exported": False}
+        )
+        episode = build_decision_episode_v2(
+            fixture=fixture,
+            oracle=oracle,
+            model_records=recorder.records,
+            state_before=before_capture.document,
+            state_after=after_capture.document,
+            state_delta=delta,
+            resource_version=snapshot.version,
+            resource_digest=snapshot.digest,
+            git_commit=request["git_commit"],
+            invocation_mode=request["model_mode"],
+            model_name=app_config.settings.MODEL_NAME,
+            model_temperature=app_config.settings.MODEL_TEMPERATURE,
+            model_reasoning_effort=app_config.settings.MODEL_REASONING_EFFORT,
+            isolation_evidence=episode_isolation_evidence,
+        )
+        if projection["outbox_actions"] and not observed_pending_delivery:
             raise WorkerFailure(
                 "pending_delivery_missing",
                 "capture",
@@ -309,7 +383,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             "schema_version": "e1-capture-artifact-v1",
             "episode_id": fixture["episode_id"],
             "invocation_mode": request["model_mode"],
-            "model_records": recorder.records,
+            "model_records": public_model_records,
             "database_projection": projection,
             "database_projection_sha256": database_digest,
             "delivery_attempts": sink.attempts,
@@ -365,6 +439,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except WorkerFailure as exc:
         code, stage, message = exc.code, exc.stage, exc.public_message
+    except SnapshotCollectionError as exc:
+        code, stage, message = exc.code, "snapshot", "production Snapshot collection failed"
+    except DeltaConstructionError as exc:
+        code, stage, message = exc.code, "delta", "State Delta construction failed"
+    except ExportError as exc:
+        code, stage, message = exc.code, "export", "DecisionEpisode v2 export failed"
+    except KeyError:
+        code, stage, message = "e2_internal_key_error", "validate", "runtime artifact validation failed"
+    except TypeError:
+        code, stage, message = "e2_internal_type_error", "validate", "runtime artifact validation failed"
     except (EvaluationIsolationError, ValueError, OSError, RuntimeError):
         code, message = "e1_worker_failed", "isolated evaluation worker failed"
     print(

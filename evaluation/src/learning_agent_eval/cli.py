@@ -1,4 +1,4 @@
-"""Command-line entry point for E0 validation and E1 isolated Runtime Mini runs."""
+"""Command-line entry point for validation, Runtime export, and E2 Rules."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import json
 import sys
 from collections.abc import Sequence
 
+from .rule_runner import RuleEvaluationError, evaluate_run_rules
 from .runner import RunAgentError, run_agent
 from .validator import validate_dataset
 
@@ -21,7 +22,7 @@ def _parser() -> argparse.ArgumentParser:
     validate.add_argument("--dataset", required=True)
     run = commands.add_parser(
         "run-agent",
-        help="run isolated E1 Runtime Mini fixtures",
+        help="run isolated Runtime fixtures and export DecisionEpisode v2",
     )
     run.add_argument("--dataset", required=True)
     run.add_argument("--manifest", required=True)
@@ -33,6 +34,17 @@ def _parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--model-mode", choices=("stub", "real"), default="stub")
     run.add_argument("--allow-real-model", action="store_true")
+    rules = commands.add_parser(
+        "evaluate-rules",
+        help="run E2 completeness and deterministic Rules over v2 Runtime output",
+    )
+    rules.add_argument("--input", required=True)
+    rules.add_argument("--output", required=True)
+    rules.add_argument("--episode-id", action="append", default=[])
+    rules.add_argument(
+        "--track",
+        choices=("planning", "intervention", "assessment", "revision"),
+    )
     return parser
 
 
@@ -50,6 +62,37 @@ def main(argv: Sequence[str] | None = None) -> int:
         counts = ",".join(f"{track}:{count}" for track, count in report.stats.by_track)
         print(f"dataset_valid episodes={report.stats.episodes} tracks={counts}")
         return 0
+    if arguments.command == "evaluate-rules":
+        try:
+            summary = evaluate_run_rules(
+                input_path=arguments.input,
+                output=arguments.output,
+                episode_ids=set(arguments.episode_id) or None,
+                track=arguments.track,
+            )
+        except RuleEvaluationError as exc:
+            print(
+                json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
+                file=sys.stderr,
+            )
+            return 1
+        track_counts = ",".join(
+            f"{track}:{summary.tracks.count(track)}"
+            for track in sorted(set(summary.tracks))
+        )
+        print(
+            "evaluate_rules_ok "
+            f"episodes={len(summary.episode_ids)} tracks={track_counts} "
+            f"failed_episodes={len(summary.failed_episode_ids)} "
+            f"invalid_input_episodes={len(summary.invalid_episode_ids)} "
+            f"hard_gate_episodes={len(summary.hard_gate_episode_ids)} "
+            f"formal_evaluation_result={str(summary.formal_evaluation_result).lower()}"
+        )
+        if summary.invalid_episode_ids:
+            return 1
+        if summary.hard_gate_episode_ids:
+            return 2
+        return 3 if summary.failed_episode_ids else 0
     try:
         summary = run_agent(
             dataset=arguments.dataset,

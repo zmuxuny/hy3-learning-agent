@@ -1,4 +1,4 @@
-"""Public-only model request/response recorder for E1 Runtime execution."""
+"""Public-only model request/response recorder for isolated Runtime execution."""
 
 from __future__ import annotations
 

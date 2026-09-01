@@ -42,3 +42,45 @@ def decision_episode_digest(episode: Mapping[str, object]) -> str:
         raise TypeError("Decision Episode provenance must be an object")
     payload["provenance"] = _without_field(provenance, "episode_sha256")
     return sha256_digest(payload)
+
+
+def snapshot_entity_digest(entity: Mapping[str, object]) -> str:
+    """Hash a v2 Snapshot entity without its self field."""
+
+    return sha256_digest(_without_field(entity, "entity_sha256"))
+
+
+def state_snapshot_digest(snapshot: Mapping[str, object]) -> str:
+    """Hash a v2 state Snapshot without its self field."""
+
+    return sha256_digest(_without_field(snapshot, "snapshot_sha256"))
+
+
+def state_delta_digest(delta: Mapping[str, object]) -> str:
+    """Hash a v2 State Delta without its self field."""
+
+    return sha256_digest(_without_field(delta, "delta_sha256"))
+
+
+def episode_completeness_digest(completeness: Mapping[str, object]) -> str:
+    """Hash a v2 completeness envelope without its self field."""
+
+    return sha256_digest(_without_field(completeness, "completeness_sha256"))
+
+
+def rule_result_digest(result: Mapping[str, object]) -> str:
+    """Hash a Rule Result without its self field."""
+
+    return sha256_digest(_without_field(result, "result_sha256"))
+
+
+def integrity_result_digest(result: Mapping[str, object]) -> str:
+    """Hash an integrity result without its self field."""
+
+    return sha256_digest(_without_field(result, "result_sha256"))
+
+
+def artifact_manifest_digest(manifest: Mapping[str, object]) -> str:
+    """Hash an E2 manifest without its self field."""
+
+    return sha256_digest(_without_field(manifest, "manifest_sha256"))

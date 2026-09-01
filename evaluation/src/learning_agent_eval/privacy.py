@@ -85,6 +85,7 @@ _IDENTITY_PATTERNS = (
     re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)"),
     re.compile(r"(?<!\d)\d{17}[0-9Xx](?!\d)"),
 )
+_SHA256_VALUE = re.compile(r"^[0-9a-f]{64}$")
 _PRIVATE_REASONING_VALUE_PATTERNS = (
     re.compile(r"(?i)\breasoning(?:[_ -]content)?\b"),
     re.compile(r"(?i)\bchain[-_ ]of[-_ ]thought\b"),
@@ -132,7 +133,9 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
 
     issues: list[ValidationIssue] = []
 
-    def visit(item: object, path: str) -> None:
+    def visit(
+        item: object, path: str, *, verified_digest_shape: bool = False
+    ) -> None:
         if isinstance(item, Mapping):
             for raw_key, child in item.items():
                 key = str(raw_key)
@@ -170,7 +173,24 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
                         )
                     )
                     continue
-                visit(child, child_path)
+                visit(
+                    child,
+                    child_path,
+                    verified_digest_shape=(
+                        (
+                            isinstance(child, str)
+                            and _SHA256_VALUE.fullmatch(child) is not None
+                            and (
+                                verified_digest_shape
+                                or normalized.endswith(("_digest", "_sha256"))
+                            )
+                        )
+                        or (
+                            isinstance(child, Mapping)
+                            and normalized.endswith("_digests")
+                        )
+                    ),
+                )
             return
         if isinstance(item, Sequence) and not isinstance(item, (str, bytes, bytearray)):
             for index, child in enumerate(item):
@@ -205,7 +225,9 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
                     file=file,
                 )
             )
-        if any(pattern.search(item) for pattern in _IDENTITY_PATTERNS):
+        if not verified_digest_shape and any(
+            pattern.search(item) for pattern in _IDENTITY_PATTERNS
+        ):
             issues.append(
                 ValidationIssue(
                     code="privacy.personal_identifier_value",
