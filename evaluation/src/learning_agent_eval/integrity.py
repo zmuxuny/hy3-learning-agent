@@ -81,6 +81,18 @@ def integrity_result_digest(result: Mapping[str, object]) -> str:
 
 
 def artifact_manifest_digest(manifest: Mapping[str, object]) -> str:
-    """Hash an E2 manifest without its self field."""
+    """Hash a versioned evaluation manifest without its self field."""
 
     return sha256_digest(_without_field(manifest, "manifest_sha256"))
+
+
+def judge_result_digest(result: Mapping[str, object]) -> str:
+    """Hash a Judge Result without its self field."""
+
+    return sha256_digest(_without_field(result, "result_sha256"))
+
+
+def aggregate_result_digest(result: Mapping[str, object]) -> str:
+    """Hash an Episode or track aggregate without its self field."""
+
+    return sha256_digest(_without_field(result, "result_sha256"))

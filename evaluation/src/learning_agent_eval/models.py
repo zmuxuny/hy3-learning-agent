@@ -1,4 +1,4 @@
-"""Strict Pydantic sources for frozen E0 and versioned E2 contracts."""
+"""Strict Pydantic sources for frozen and versioned evaluation contracts."""
 
 from __future__ import annotations
 
@@ -896,6 +896,397 @@ class RuleRunManifestV1(StrictContractModel):
         return self
 
 
+DimensionId = Literal["D1", "D2", "D3", "D4", "D5", "D6", "D7"]
+JudgeStatus = Literal["complete", "invalid_input", "judge_error"]
+EvaluationStatus = Literal["not_a_formal_model_evaluation", "formal_model_evaluation"]
+
+
+class JudgeDimensionV1(StrictContractModel):
+    dimension_id: DimensionId
+    level: Literal[0, 1, 2]
+    evidence_paths: Annotated[list[EvidencePath], Field(min_length=1)]
+    reason_code: StableId
+    public_summary: NonEmptyText
+    specific_issue: NonEmptyText | None
+
+    @model_validator(mode="after")
+    def validate_dimension(self) -> Self:
+        if len(self.evidence_paths) != len(set(self.evidence_paths)):
+            raise ValueError("Judge Evidence Paths must be unique within a dimension")
+        if self.level < 2 and self.specific_issue is None:
+            raise ValueError("non-full Judge dimensions require a specific issue")
+        return self
+
+
+class JudgeSemanticIssueV1(StrictContractModel):
+    issue_id: StableId
+    dimension_id: DimensionId | None
+    severity: Literal["minor", "major", "critical"]
+    reason_code: StableId
+    evidence_paths: Annotated[list[EvidencePath], Field(min_length=1)]
+    public_summary: NonEmptyText
+
+
+class SuggestedHardGateV1(StrictContractModel):
+    suggestion_id: StableId
+    reason_code: StableId
+    evidence_paths: Annotated[list[EvidencePath], Field(min_length=1)]
+    public_summary: NonEmptyText
+
+
+class JudgeResponsePayloadV1(StrictContractModel):
+    """Provider-visible output only; control-plane metadata is never model-authored."""
+
+    dimensions: Annotated[list[JudgeDimensionV1], Field(min_length=7, max_length=7)]
+    semantic_issues: list[JudgeSemanticIssueV1]
+    suggested_hard_gates: list[SuggestedHardGateV1]
+
+    @model_validator(mode="after")
+    def validate_dimension_order(self) -> Self:
+        expected = ["D1", "D2", "D3", "D4", "D5", "D6", "D7"]
+        if [item.dimension_id for item in self.dimensions] != expected:
+            raise ValueError("Judge dimensions must use fixed D1-D7 order")
+        issue_ids = [item.issue_id for item in self.semantic_issues]
+        suggestion_ids = [item.suggestion_id for item in self.suggested_hard_gates]
+        if len(issue_ids) != len(set(issue_ids)):
+            raise ValueError("semantic issue IDs must be unique")
+        if len(suggestion_ids) != len(set(suggestion_ids)):
+            raise ValueError("suggested hard-gate IDs must be unique")
+        return self
+
+
+class JudgeResultV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/judge-result-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["judge-result-v1"]
+    judge_version: StableId
+    episode_id: StableId
+    episode_sha256: Sha256
+    rule_result_sha256: Sha256
+    track: Track
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
+    blind_input_sha256: Sha256
+    dimensions: list[JudgeDimensionV1]
+    semantic_issues: list[JudgeSemanticIssueV1]
+    suggested_hard_gates: list[SuggestedHardGateV1]
+    status: JudgeStatus
+    judge_mode: Literal["stub", "real"]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    error_code: StableId | None
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_result_state(self) -> Self:
+        if self.status == "complete":
+            JudgeResponsePayloadV1(
+                dimensions=self.dimensions,
+                semantic_issues=self.semantic_issues,
+                suggested_hard_gates=self.suggested_hard_gates,
+            )
+            if self.error_code is not None:
+                raise ValueError("complete Judge Results cannot contain an error code")
+        elif self.dimensions or self.semantic_issues or self.suggested_hard_gates:
+            raise ValueError("non-complete Judge Results cannot contain Judge scores")
+        elif self.error_code is None:
+            raise ValueError("non-complete Judge Results require an error code")
+        expected_formal = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected_formal:
+            raise ValueError("Judge formal flag and evaluation status must agree")
+        if self.status != "complete" and self.formal_evaluation_result:
+            raise ValueError("non-complete Judge Results cannot be formal")
+        if self.judge_mode == "stub" and self.formal_evaluation_result:
+            raise ValueError("stub Judge Results cannot claim formal evaluation")
+        return self
+
+
+class JudgeRunManifestV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/judge-run-manifest-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["judge-run-manifest-v1"]
+    input_episode_schema_version: Literal["decision-episode-v2"]
+    input_rule_schema_version: Literal["rule-result-v1"]
+    judge_version: StableId
+    judge_config_version: StableId
+    judge_config_sha256: Sha256
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
+    repair_limit: Literal[1]
+    judge_mode: Literal["stub", "real"]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    input_episode_digests: dict[str, Sha256]
+    input_rule_result_digests: dict[str, Sha256]
+    blind_input_digests: dict[str, Sha256]
+    judge_result_digests: dict[str, Sha256]
+    result_statuses: dict[str, JudgeStatus]
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_manifest(self) -> Self:
+        episode_ids = set(self.episode_ids)
+        if len(episode_ids) != len(self.episode_ids):
+            raise ValueError("Judge output Episode IDs must be unique")
+        if self.episode_ids != sorted(self.episode_ids):
+            raise ValueError("Judge output Episode IDs must be sorted")
+        if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
+            raise ValueError("requested Judge Episode IDs must be sorted and unique")
+        if self.requested_episode_ids and set(self.requested_episode_ids) != episode_ids:
+            raise ValueError("requested Judge Episode IDs must match selected output")
+        mappings = (
+            self.input_episode_digests,
+            self.input_rule_result_digests,
+            self.blind_input_digests,
+            self.judge_result_digests,
+            self.result_statuses,
+        )
+        if any(set(mapping) != episode_ids for mapping in mappings):
+            raise ValueError("Judge manifest mappings must match Episode IDs")
+        expected_formal = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected_formal:
+            raise ValueError("Judge manifest formal state is inconsistent")
+        if self.judge_mode == "stub" and self.formal_evaluation_result:
+            raise ValueError("stub Judge manifests cannot claim formal evaluation")
+        return self
+
+
+class AggregateDimensionV1(StrictContractModel):
+    dimension_id: DimensionId
+    level: Literal[0, 1, 2]
+    weight: Literal[5, 10, 15, 20]
+    weighted_signal: Annotated[float, Field(ge=0, le=20)]
+    evidence_paths: Annotated[list[EvidencePath], Field(min_length=1)]
+
+
+class AggregateRuleFailureV1(StrictContractModel):
+    check_id: StableId
+    severity: Literal["minor", "major", "critical"]
+    reason_code: StableId
+    evidence_paths: list[EvidencePath]
+
+
+class AppliedScoreCapV1(StrictContractModel):
+    cap_id: Literal["critical_hard_gate", "major_rule_fail"]
+    maximum_score: Literal[39, 69]
+    source_rule_ids: Annotated[list[StableId], Field(min_length=1)]
+
+
+class AggregateResultV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-result-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-result-v1"]
+    aggregator_version: StableId
+    episode_id: StableId
+    track: Track
+    episode_sha256: Sha256
+    rule_result_sha256: Sha256
+    judge_result_sha256: Sha256
+    status: JudgeStatus
+    dimensions: list[AggregateDimensionV1]
+    raw_score: Annotated[float, Field(ge=0, le=100)] | None
+    rule_failures: list[AggregateRuleFailureV1]
+    actual_hard_gates: list[StableId]
+    judge_suggested_hard_gates: list[SuggestedHardGateV1]
+    applied_caps: list[AppliedScoreCapV1]
+    final_score: Annotated[float, Field(ge=0, le=100)] | None
+    episode_outcome: Literal["pass", "fail", "invalid_input", "judge_error"]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    invalid_reason_code: StableId | None
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_aggregate_state(self) -> Self:
+        expected_order = ["D1", "D2", "D3", "D4", "D5", "D6", "D7"]
+        expected_formal = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected_formal:
+            raise ValueError("aggregate formal flag and status must agree")
+        if self.status == "complete":
+            if [item.dimension_id for item in self.dimensions] != expected_order:
+                raise ValueError("aggregate dimensions must use fixed D1-D7 order")
+            if self.raw_score is None or self.final_score is None:
+                raise ValueError("complete aggregates require scores")
+            if self.invalid_reason_code is not None:
+                raise ValueError("complete aggregates cannot contain invalid reasons")
+            expected_outcome = "fail" if self.actual_hard_gates else "pass"
+            if self.episode_outcome != expected_outcome:
+                raise ValueError("aggregate outcome must preserve Rule hard gates")
+        else:
+            if (
+                self.dimensions
+                or self.raw_score is not None
+                or self.final_score is not None
+            ):
+                raise ValueError("invalid aggregates cannot contain scores")
+            if self.applied_caps:
+                raise ValueError("invalid aggregates cannot apply score caps")
+            if self.invalid_reason_code is None:
+                raise ValueError("invalid aggregates require a reason code")
+            if self.episode_outcome != self.status:
+                raise ValueError("invalid aggregate outcome must match its status")
+            if self.formal_evaluation_result:
+                raise ValueError("invalid aggregates cannot be formal")
+        return self
+
+
+class AggregateTrackResultV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-track-result-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-track-result-v1"]
+    aggregator_version: StableId
+    track: Track
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    complete_episode_ids: list[StableId]
+    failed_episode_ids: list[StableId]
+    invalid_input_episode_ids: list[StableId]
+    judge_error_episode_ids: list[StableId]
+    score_count: Annotated[int, Field(ge=0)]
+    mean_score: Annotated[float, Field(ge=0, le=100)] | None
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_track_summary(self) -> Self:
+        episode_ids = set(self.episode_ids)
+        groups = (
+            self.complete_episode_ids,
+            self.invalid_input_episode_ids,
+            self.judge_error_episode_ids,
+        )
+        ordered_groups = (self.episode_ids, *groups, self.failed_episode_ids)
+        if any(group != sorted(set(group)) for group in ordered_groups):
+            raise ValueError("track aggregate Episode lists must be sorted and unique")
+        if any(len(group) != len(set(group)) for group in groups):
+            raise ValueError("track aggregate groups must contain unique IDs")
+        if set().union(*(set(group) for group in groups)) != episode_ids:
+            raise ValueError("track aggregate groups must partition Episode IDs")
+        if any(
+            set(groups[index]) & set(groups[other])
+            for index in range(3)
+            for other in range(index + 1, 3)
+        ):
+            raise ValueError("track aggregate groups must not overlap")
+        if not set(self.failed_episode_ids).issubset(set(self.complete_episode_ids)):
+            raise ValueError("failed Episodes must be complete scored Episodes")
+        if self.score_count != len(self.complete_episode_ids):
+            raise ValueError("track score count must match complete Episodes")
+        if (self.mean_score is None) != (self.score_count == 0):
+            raise ValueError("track mean exists exactly when scored Episodes exist")
+        expected_formal = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected_formal:
+            raise ValueError("track aggregate formal state is inconsistent")
+        return self
+
+
+class AggregateRunManifestV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-run-manifest-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-run-manifest-v1"]
+    aggregator_version: StableId
+    input_judge_manifest_sha256: Sha256
+    judge_version: StableId
+    judge_config_version: StableId
+    judge_config_sha256: Sha256
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
+    judge_mode: Literal["stub", "real"]
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    input_episode_digests: dict[str, Sha256]
+    input_rule_result_digests: dict[str, Sha256]
+    input_judge_result_digests: dict[str, Sha256]
+    aggregate_result_digests: dict[str, Sha256]
+    result_statuses: dict[str, JudgeStatus]
+    track_result_digests: dict[str, Sha256]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_aggregate_manifest(self) -> Self:
+        episode_ids = set(self.episode_ids)
+        if len(episode_ids) != len(self.episode_ids):
+            raise ValueError("aggregate Episode IDs must be unique")
+        if self.episode_ids != sorted(self.episode_ids):
+            raise ValueError("aggregate Episode IDs must be sorted")
+        if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
+            raise ValueError("requested aggregate Episode IDs must be sorted and unique")
+        if self.requested_episode_ids and set(self.requested_episode_ids) != episode_ids:
+            raise ValueError("requested aggregate Episode IDs must match selected output")
+        mappings = (
+            self.input_episode_digests,
+            self.input_rule_result_digests,
+            self.input_judge_result_digests,
+            self.aggregate_result_digests,
+            self.result_statuses,
+        )
+        if any(set(mapping) != episode_ids for mapping in mappings):
+            raise ValueError("aggregate manifest mappings must match Episode IDs")
+        if not self.track_result_digests:
+            raise ValueError("aggregate manifest requires per-track results")
+        expected_formal = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected_formal:
+            raise ValueError("aggregate manifest formal state is inconsistent")
+        if self.judge_mode == "stub" and self.formal_evaluation_result:
+            raise ValueError("stub aggregate manifests cannot claim formal evaluation")
+        return self
+
+
 class ScriptedFunctionCall(StrictContractModel):
     call_id: StableId
     name: StableId
@@ -1059,6 +1450,11 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "acceptable-action-envelope-v1": AcceptableActionEnvelope,
     "environment-manifest-v1": EnvironmentManifest,
     "rule-result-v1": RuleResultV1,
+    "judge-result-v1": JudgeResultV1,
+    "judge-run-manifest-v1": JudgeRunManifestV1,
+    "aggregate-result-v1": AggregateResultV1,
+    "aggregate-track-result-v1": AggregateTrackResultV1,
+    "aggregate-run-manifest-v1": AggregateRunManifestV1,
 }
 
 DATASET_DOCUMENT_MODELS: dict[str, type[BaseModel]] = {

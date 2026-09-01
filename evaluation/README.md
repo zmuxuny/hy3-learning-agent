@@ -1,6 +1,6 @@
 # Learning Agent Evaluation
 
-`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。工程里程碑、Episode Schema 和 Benchmark 发布名是三个独立版本维度：E0/E1/E2 是工程阶段，`DecisionEpisode v1/v2` 是单个 Episode 契约，`DecisionBench v1` 是尚未完成的 Benchmark 发布名。
+`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。工程里程碑、Episode Schema 和 Benchmark 发布名是三个独立版本维度：E0–E3 是工程阶段，`DecisionEpisode v1/v2` 是单个 Episode 契约，`DecisionBench v1` 是尚未完成的 Benchmark 发布名。
 
 E2 复用 E1 的隔离 Runtime Harness，并把新 Runtime 输出直接切换为 `DecisionEpisode v2`：
 
@@ -13,17 +13,21 @@ Runtime Mini Fixture
 → 单一权威 DecisionEpisode v2
 → 完整性检查与 e2-rule-pack-v1
 → rule-result-v1 / Hard Gate
+→ 标签与生成者信息盲化
+→ decision-rubric-v1 / decision-track-anchors-v1
+→ 结构化 Judge（最多一次修复）/ judge-result-v1
+→ Rule Hard Gate 优先的确定性聚合
 → canonical、privacy、Schema 校验
 → 原子发布
 ```
 
-`DecisionEpisode v1`、`Acceptable Action Envelope v1` 和 `Environment Manifest v1` 保持冻结。历史 E0 手工 Episode 仍可读取和校验；新的 Runtime 不再生成 v1，也不会一次运行同时输出 v1/v2。E1 `capture.json` 只保留为脱敏工程审计附件，Rules 和后续 Judge 均不得从 `capture.*` 取证。
+`DecisionEpisode v1/v2`、`rule-result-v1`、`Acceptable Action Envelope v1` 和 `Environment Manifest v1` 均保持冻结。历史 E0 手工 Episode 仍可读取和校验；新的 Runtime 不再生成 v1，也不会一次运行同时输出 v1/v2。E1 `capture.json` 只保留为脱敏工程审计附件，Rules、Judge 和聚合均不得从 `capture.*` 取证。
 
-默认模型模式是固定响应的 `stub`。它只证明工程链路、隔离性、规则确定性和 Hard Gate 语义，不是 Hy3 Primary Episode、Calibration Output 或正式模型能力结果。本次没有运行真实 Hy3。
+默认模型与 Judge 模式都是固定响应的 `stub`。它只证明工程链路、隔离性、结构化 Judge 协议、规则确定性和 Hard Gate/cap 语义，不是 Hy3 Primary Episode、Calibration Output 或正式模型能力结果。本次 E3 开发和验收没有运行真实 Hy3，也没有访问公网。
 
 ## 当前可用能力
 
-- 严格的 `DecisionEpisode v1/v2`、`rule-result-v1`、`Acceptable Action Envelope v1` 和 `Environment Manifest v1` JSON Schema；
+- 严格的 `DecisionEpisode v1/v2`、`rule-result-v1`、`judge-result-v1`、Judge/聚合 Manifest、Episode/轨道聚合、`Acceptable Action Envelope v1` 和 `Environment Manifest v1` JSON Schema；
 - 唯一 canonical JSON / SHA-256 实现，以及版本分派的 Schema、摘要、引用、Evidence Path、Split、隐私和完整性校验；
 - P/I/A/R 各一个 E0 手工协议 Episode，以及各一个版本化 E1 Runtime Mini Fixture 和独立 Oracle；
 - 父进程加独立 Worker 的 `run-agent`：每个 Episode 使用不同的系统临时目录和绝对路径 SQLite，不启动 FastAPI lifespan、Scheduler 或邮件轮询；
@@ -32,6 +36,9 @@ Runtime Mini Fixture
 - 从 Recorder、Snapshot、ToolInvocation、RunEvent、Operation、Guard、Notification 和 Outbox 事实导出的通用 v2 Episode；
 - `model_attempt → tool_execution → guard_decision → final_effect → durable_status` 一等分层；
 - `common/planning/intervention/assessment/revision/trace/isolation` 七个确定性规则包、完整性结果、不可抵消的 Critical Hard Gate 和原子规则发布。
+- 版本化七维公共 Rubric（权重 `15/15/20/20/15/5/10`）与 Planning/Intervention/Assessment/Revision 四轨独立 0/1/2 锚点；
+- 稳定 opaque Judge ID、质量标签/生成者/作者/source ref 盲化、严格输出 Schema、原始 v2 Evidence Path 回映射与一次修复；
+- Rule Critical Hard Gate `Fail + cap=39`、Major Fail `cap=69`、Minor 无额外 cap、suggested gate 不自动升级、无效输入单列和逐轨汇总的纯确定性聚合。
 
 ## 安装与命令
 
@@ -51,23 +58,40 @@ Runtime Mini Fixture
 运行四轨 stub Runtime，校验 v2 Episode，再执行完整性和 Rules：
 
 ```bash
-E2_ROOT="$(mktemp -d)"
+E3_ROOT="$(mktemp -d)"
 .venv/bin/python -m learning_agent_eval run-agent \
   --dataset evaluation/datasets/decisionbench-v1 \
   --manifest evaluation/datasets/decisionbench-v1/manifests/e1-mini-stub.json \
-  --output "$E2_ROOT/runtime"
+  --output "$E3_ROOT/runtime"
 .venv/bin/python -m learning_agent_eval validate-dataset \
-  --dataset "$E2_ROOT/runtime"
+  --dataset "$E3_ROOT/runtime"
 .venv/bin/python -m learning_agent_eval evaluate-rules \
-  --input "$E2_ROOT/runtime" \
-  --output "$E2_ROOT/rules"
+  --input "$E3_ROOT/runtime" \
+  --output "$E3_ROOT/rules"
 .venv/bin/python -m learning_agent_eval validate-dataset \
-  --dataset "$E2_ROOT/rules"
+  --dataset "$E3_ROOT/rules"
+.venv/bin/python -m learning_agent_eval evaluate-judge \
+  --episodes "$E3_ROOT/runtime" \
+  --rules "$E3_ROOT/rules" \
+  --output "$E3_ROOT/judges" \
+  --judge-mode stub \
+  --stub-response evaluation/fixtures/e3-fixed-judge-responses-v1.json
+.venv/bin/python -m learning_agent_eval validate-dataset \
+  --dataset "$E3_ROOT/judges"
+.venv/bin/python -m learning_agent_eval aggregate-results \
+  --episodes "$E3_ROOT/runtime" \
+  --rules "$E3_ROOT/rules" \
+  --judges "$E3_ROOT/judges" \
+  --output "$E3_ROOT/aggregates"
+.venv/bin/python -m learning_agent_eval validate-dataset \
+  --dataset "$E3_ROOT/aggregates"
 ```
 
-两个运行入口均支持 `--episode-id P-E1-MINI-001` 和 `--track intervention`。目标目录必须尚不存在；控制平面先在同级 staging 目录完成全部 Worker、校验或规则计算，再原子发布，任何中途失败都不会留下半成品。`evaluate-rules` 在输入无效、完整性失败或 `invalid_input` 时返回 1，出现 Critical Fail/Hard Gate 时返回 2，仅有非 Critical Fail 时返回 3。
+四个运行入口均支持 `--episode-id P-E1-MINI-001` 和 `--track intervention`。目标目录必须尚不存在；控制平面先在同级 staging 目录完成计算与全部校验，再原子发布，任何中途失败都不会留下半成品。`evaluate-rules` 在输入无效、完整性失败或 `invalid_input` 时返回 1，出现 Critical Fail/Hard Gate 时返回 2，仅有非 Critical Fail 时返回 3。`evaluate-judge` 对 invalid 输入返回 1、稳定 `judge_error` 返回 2；`aggregate-results` 对 invalid 返回 1、Judge Error 返回 2、实际 Hard Gate Fail 返回 3。
 
-成功摘要稳定声明 stub 产物的 `formal_evaluation_result=false`。失败只输出稳定错误码、阶段、Episode ID、公共说明和安全 Evidence Path，不回显完整消息、数据库行、异常载荷、密钥或通知目标。
+固定响应文件明确声明 `judge_mode=stub`、`formal_evaluation_result=false` 和 `not_a_formal_model_evaluation`，只重放调用者提供的同一结构化响应，不按 Episode ID、track、Oracle action class、scripted answer 或关键词生成评分。真实 Judge 必须同时指定 `--judge-mode real --allow-real-judge`，并只从调用者环境读取 `OPENAI_API_KEY`；Key、endpoint、展开 Prompt、Provider 原始响应或异常均不写入产物与错误。本次没有使用该 real 路径。
+
+成功摘要稳定声明 mode、complete/invalid/error 数和 `formal_evaluation_result`。失败只输出稳定错误码、阶段、Episode ID 和公共说明，不回显完整 Episode、展开 Prompt、Provider 载荷/异常、数据库行、密钥、endpoint 或通知目标。
 
 真实模型仍是显式双重 opt-in 路径：
 
@@ -86,7 +110,8 @@ Key 只从调用者环境进入 Worker，不写 Manifest、产物或错误。资
 
 ```text
 evaluation/
-├── schemas/                              # 冻结 v1 + DecisionEpisode v2 + Rule Result v1
+├── schemas/                              # 冻结 E0–E2 契约 + E3 Judge/聚合契约
+├── fixtures/e3-fixed-judge-responses-v1.json # engineering-only 固定响应
 ├── datasets/decisionbench-v1/
 │   ├── episodes/mini/                    # E0 历史 v1 手工协议 Episode
 │   ├── fixtures/mini/                    # E1 Runtime Mini Fixture，E2 导出为 v2
@@ -97,7 +122,7 @@ evaluation/
 └── tests/
 ```
 
-`run-agent` 只生成 v2 `episodes/*.json`、工程审计用 `captures/*.json` 和 `e2-run-output-manifest-v1`。`evaluate-rules` 生成 `rules/*.json`、`integrity/*.json` 和 `rule-run-manifest-v1`。临时 SQLite、WAL/SHM、Worker 目录、模型私有推理与通知路由材料均不发布。
+`run-agent` 只生成 v2 `episodes/*.json`、工程审计用 `captures/*.json` 和 `e2-run-output-manifest-v1`。`evaluate-rules` 生成 `rules/*.json`、`integrity/*.json` 和 `rule-run-manifest-v1`。`evaluate-judge` 只发布 `judge-results/<episode-id>.json` 与 `run-manifest.json`；盲化投影和展开 Prompt 默认不发布。`aggregate-results` 发布 `episodes/<episode-id>.json`、`tracks/<track>.json` 与 `run-manifest.json`，不生成四轨 overall、HTML、CSV 或 Markdown 报告。临时 SQLite、WAL/SHM、Worker/staging 目录、Capture 副本、模型私有推理与通知路由材料均不发布。
 
 ## Snapshot、身份与 State Delta
 
@@ -114,6 +139,22 @@ Operation 的 forward/inverse patch 用于证明归因，但不能代替真实�
 v2 独立表达模型尝试、工具执行、Guard 决定、最终效果、耐久状态和正式评测资格。Guard blocked/deferred 可以保留模型 Tool Call 和 ToolInvocation，同时必须证明禁止的最终副作用为零；计划提案的待采纳边界引用 `PlanProposal(status=pending)`，暂停执行的高风险工具批准引用耐久 `RunApproval`。WAIT/NO_OP 可以没有 ToolInvocation 和状态变化，但仍携带一个已确认完整的空 Delta；只要 Recorder、终态和完整性证据齐全就是有效 Episode。
 
 `rule-result-v1` 使用 `deterministic-rule-evaluator-v1` 和 `e2-rule-pack-v1`。每个稳定顺序的 check 输出 `pass/fail/not_applicable/invalid_input`、`minor/major/critical`、可解析到 v2 Episode 的 Evidence Path、observed、expected 和公共 reason code。缺字段是 `invalid_input`，不是业务 Fail；`hard_gates` 只引用实际 failed Critical checks，其他 Pass 不可抵消它。`dimension_signals` 仅保存确定性结构化信号，不产生 0/1/2 档位、总分或 Judge 结论。
+
+## Judge 输入、Rubric 与结果校验
+
+Judge 控制平面先完整校验 Runtime/Rule 目录、闭合清单、Episode/Rule 自摘要与交叉 digest，再构建 `blind-judge-input-v1`。投影保留公开 v2 事实、Rule 已确认状态、当前轨道锚点和严格输出 Schema；删除或 opaque 化 Good/Mild/Severe、Baseline/Candidate、Episode/family/tag/source ref、生成模型/Prompt/Invocation 身份、Oracle 作者/复核/说明、凭据、endpoint 与路由材料。Oracle 只保留结构化 allowed action、约束引用/Evidence Path、criticality 与 expected effects。原 Episode 不改写，opaque 映射不进入 Prompt 或产物，投影也不是第二事实源。
+
+公共 `decision-rubric-v1` 将 D1–D7 与权重固定为 `15/15/20/20/15/5/10`，`decision-track-anchors-v1` 为四轨分别给出完整 0/1/2 锚点；两份配置分离、可摘要且不读取网页。Judge 被明确要求不重算 Rules 已确定的时间、阈值、存在性、完整性、隐私与 Hard Gate。
+
+`judge-result-v1` 固定 D1–D7 顺序与 `level=0|1|2`，每维至少一个原始 v2 Evidence Path、稳定 reason code 和公共说明，非满分必须有具体问题。所有维度/semantic issue/suggested gate 路径既要存在于 Judge 实际可见投影，也要回到同一原始 Episode 解析；`capture.*`、provenance 作者路径和投影内部路径均拒绝。结果还绑定 Episode/Rule、Prompt、Rubric、轨道锚点与 blind input digest，并校验隐私、formal/mode/status 和自摘要。
+
+Provider 输出首次不满足 Schema、Evidence 或隐私约束时，只携带稳定错误码修复一次，不回传或保存首次原始响应；第二次仍失败生成无维度、无默认分的稳定 `judge_error`。Provider 原始异常同样只折叠为公共错误码。stub 永远 `formal_evaluation_result=false`；real 也只有在 Episode、Rules 和 v2 formal eligibility 全部正式时才可标 formal，因此四个 E1 Mini 即使走 real seam 仍不正式。
+
+## 确定性聚合
+
+`deterministic-aggregator-v1` 不调用模型、网络、数据库、`.env` 或 subprocess。基础分严格为 `sum(weight × level / 2)`。Rule `invalid_input`、Judge `invalid_input/judge_error`、缺维度或路径失效均不评分；它们按类别进入轨道清单，绝不按 0 分混入均值。failed Critical check 的实际 Hard Gate 直接令 Episode `Fail` 且 cap=39；任一 Major Fail cap=69；多个 cap 取最小值；Minor 不新增 cap。Judge 高分无法删除 Rule Gate，`suggested_hard_gates` 只保留为建议，不成为实际 Gate 或 cap。
+
+聚合产物保存七维原始档位、逐维 weighted signal、Rule Fail、实际/建议 Gate、所用 cap、原始/最终分数、Episode outcome、三段 digest 关联、formal 状态和自摘要。轨道文件只平均正常 scored Episode，四轨分别发布，不生成单一总分。
 
 ## 隔离、Outbox 与隐私边界
 
@@ -138,12 +179,14 @@ Recorder 在 Worker 内只投影公开模型输入/输出、system/tool digest �
 
 通用 Collector/Exporter 当前覆盖已登记的生产实体与四轨关键路径；新评测事实若需要未登记 ORM 实体或列，必须先显式加入 allowlist、身份和 Delta 语义，否则失败关闭。当前生产 `submission.check` 的 revision-required 路径可完整导出；accepted 路径还会产生 Operation patch 未枚举的派生 Plan/Stage 更新，因此 Exporter 明确以 `delta.operation_unattributed.plan` 失败关闭，不能伪装成完整 ACCEPT Episode。Mini Harness 仍是单 Worker 顺序批处理，只在最终 Transport 层模拟 SMTP/Web Push；没有访问真实用户数据或外部 Provider。
 
-E3 的 Hy3 Judge、标签盲化和确定性聚合仍未实现；当前包也不存在 Judge/聚合 Schema、模块或 CLI。下一阶段只允许 Judge 读取脱敏 v2 Episode、匹配的 Rule Result 和版本化 Rubric/锚点，且 Rule Hard Gate 不可被覆盖。48 个 Primary Episodes、24 个 Calibration Outputs、有效性实验、正式评测、版本回归、最终报告和 DecisionBench v1 正式发布属于 E4–E8，均未完成。E2 stub Rules 不能被写成 Hy3 能力结论，E3 固定 Judge 响应也只能证明工程协议。
+E3 Judge/盲化/聚合工程闭环已经实现，但本次只运行 fixed-response stub，未调用真实 Hy3，因此没有正式 Judge 能力结论。48 个 Primary Episodes、24 个 Calibration Outputs、有效性实验、正式评测、版本回归、Case/最终报告、Demo 和 DecisionBench v1 正式发布属于 E4–E8，均未完成。固定响应与其 100 分工程聚合只验证协议和 cap 计算，不能写成 Hy3 表现。
 
-当前定向验收结果为：
+E3 pre-commit 验收结果如下；完整门禁与 post-commit 说明见 [`../docs/STATUS.md`](../docs/STATUS.md)：
 
-- `.venv/bin/pytest -q evaluation/tests`：`104 passed in 118.16s (0:01:58)`；
-- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 0.89s`；
-- `.venv/bin/pytest -q`：`1179 passed, 2 warnings in 2115.27s (0:35:15)`。
+- `.venv/bin/pytest -q evaluation/tests/test_e3_judge_aggregate.py`：`25 passed in 29.53s`；
+- `.venv/bin/pytest -q evaluation/tests/test_protocol_schemas.py`：`5 passed in 0.35s`；
+- `.venv/bin/pytest -q evaluation/tests`：`130 passed in 169.79s (0:02:49)`；
+- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 1.32s`；
+- `.venv/bin/pytest -q`：`1205 passed, 2 warnings in 2119.04s (0:35:19)`。
 
-完整回归与发布门禁的最终结果以 [`../docs/STATUS.md`](../docs/STATUS.md) 为准。
+文档链接、lint/typecheck、secret scan、依赖检查、`git diff --check` 与四轨系统临时目录 smoke 均通过；该 smoke 包括两次逐文件比较、Episode/track 过滤、Manifest commit、隐私/标签/路由、零外部调用和 SQLite/WAL/SHM 扫描，临时输出已清理。

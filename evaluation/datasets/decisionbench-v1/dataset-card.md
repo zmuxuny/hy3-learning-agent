@@ -2,16 +2,16 @@
 
 ## 当前状态与版本边界
 
-`DecisionBench v1` 是 Benchmark 的发布名称，不等于 `DecisionEpisode v1`。E0/E1/E2 是工程里程碑；E2 新 Runtime 统一输出 `DecisionEpisode v2`，但 DecisionBench 尚未正式完成，因此无需改名。
+`DecisionBench v1` 是 Benchmark 的发布名称，不等于 `DecisionEpisode v1`。E0–E3 是工程里程碑；E2 新 Runtime 统一输出 `DecisionEpisode v2`，E3 在其上新增 Judge/聚合 Artifact，但 DecisionBench 尚未正式完成，因此无需改名。
 
 本目录包含两个明确分层的 Mini 集合：
 
 | 集合 | Episode / Fixture | 用途 | 是否为正式结果 |
 | --- | --- | --- | --- |
 | E0 手工协议夹具 | `P/I/A/R-MINI-001` | 验证冻结的 v1 Schema、Action Envelope、引用、摘要与隐私 | 否；未执行 Runtime |
-| E1 Runtime Mini Fixture | `P/I/A/R-E1-MINI-001` | 验证隔离 Runtime，并由 E2 通用 Exporter 生成 v2 Episode 和 Rule Result | 否；固定 stub 响应 |
+| E1 Runtime Mini Fixture | `P/I/A/R-E1-MINI-001` | 验证隔离 Runtime，经 E2 生成 v2/Rules，再经 E3 fixed-response Judge 与聚合 | 否；engineering-only stub |
 
-E0 v1 文件只用于历史读取、校验和回归。新的 Runtime 不生成 v1，也不默认双写 v1/v2。E1 Fixture 的 v2 执行结果按需写入系统临时目录，不作为静态 Episode 提交；E1 Capture 只作工程审计，不是 Rules/Judge 的第二事实源。
+E0 v1 文件只用于历史读取、校验和回归。新的 Runtime 不生成 v1，也不默认双写 v1/v2。E1 Fixture 的 v2、Rule、Judge 与聚合执行结果按需写入系统临时目录，不作为静态正式结果提交；E1 Capture 只作工程审计，不是 Rules/Judge/聚合的第二事实源。
 
 这些 Mini 不属于规划中的 48 个 Primary Episodes 或 24 个 Calibration Outputs，也不代表真实 Hy3 表现。当前目录仍不能称为完整 DecisionBench v1，不能生成正式分数、排名或能力结论。
 
@@ -44,6 +44,10 @@ State Delta 由真实前后 Snapshot 比较得到，一等表达新增、删除�
 
 Rules 只读取脱敏 `DecisionEpisode v2`，不读取 Capture。`rule-result-v1` 使用 `e2-rule-pack-v1` 的 `common/planning/intervention/assessment/revision/trace/isolation` 七包；每条 check 区分 `pass/fail/not_applicable/invalid_input` 和 `minor/major/critical`，Critical Fail 进入不可抵消的 Hard Gate。规则不输出 Judge 档位、总分或 Hy3 能力结论。
 
+E3 只接受完整、通过校验的 v2 与 digest 精确匹配的 Rule Result。`blind-judge-input-v1` 删除质量标签、Baseline/Candidate、生成者身份、作者说明、ID/tag/source ref、Capture、私有推理、凭据和路由材料，只保留公开 Episode 事实、Rule 已确认事实、`decision-rubric-v1` 与当前轨道的 `decision-track-anchors-v1`。盲化投影不发布、不改写 Episode，也不是第二事实源；Judge Evidence Path 必须同时存在于实际可见投影并回到同一原始 v2 Episode 解析。
+
+提交版 E3 契约为 `judge-result-v1`、`judge-run-manifest-v1`、`aggregate-result-v1`、`aggregate-track-result-v1` 和 `aggregate-run-manifest-v1`。固定响应文件明确标记 stub/non-formal，只验证 D1–D7 顺序、0/1/2 Schema、Evidence Path、一次修复、`judge_error`、Hard Gate/cap、invalid 单列、分轨与原子发布；它不是校准标签、scripted expected answer 或 Hy3 评分器。
+
 ## 划分与泄漏策略
 
 全部 Mini 均属于 `dev`，并使用互不相同的 `scenario_family_id`。校验器按场景族强制 Dev/Test 不相交；未来 Calibration 变体必须继承种子场景的 Split。正式规划仍是 `S01–S04` 属于 Dev、`S05–S12` 属于 Test；当前没有创建这些 Primary 场景，也没有用 Test 标签调整 Prompt、Oracle、规则或 scripted response。
@@ -56,15 +60,15 @@ Rules 只读取脱敏 `DecisionEpisode v2`，不读取 Capture。`rule-result-v1
 
 ## 隐私与个人信息
 
-数据和运行产物不得包含真实姓名、邮箱、电话、通知地址、Push endpoint/key、账号、用户数据库行、`.env`、API Key、认证 Token 或模型私有推理。Recorder 在投影前递归丢弃私有推理字段，不复制、缓存、散列、计数、导出或评价它们；system message 正文也不发布。最终 Episode、Rule Result、Integrity Result 和 Manifest 再次通过隐私守卫。
+数据和运行产物不得包含真实姓名、邮箱、电话、通知地址、Push endpoint/key、账号、用户数据库行、`.env`、API Key、认证 Token 或模型私有推理。Recorder 在投影前递归丢弃私有推理字段，不复制、缓存、散列、计数、导出或评价它们；system message 正文也不发布。最终 Episode、Rule Result、Integrity Result、Judge Result、聚合结果和 Manifest 再次通过隐私守卫。Judge 输出不保存展开 Prompt、盲化投影、Provider 原始响应/异常、Key 或 endpoint。
 
 Recording Sink 仅保留稳定 action identity、destination、安全摘要和字段元数据；不保存完整载荷或路由材料。数据库摘要只针对 Worker 内合成数据的规范化逻辑投影，不读取或散列真实数据库。
 
 ## 适用范围与限制
 
-当前适合：E0 v1 历史契约回归、E1 隔离工程回归、E2 v2 Snapshot/Delta/Exporter/Rules 回归、生产 Runtime/工具/Outbox seam 验证和确定性检查。
+当前适合：E0 v1 历史契约回归、E1 隔离工程回归、E2 v2 Snapshot/Delta/Exporter/Rules 回归、E3 盲化/Judge 协议/确定性聚合回归、生产 Runtime/工具/Outbox seam 验证和确定性检查。
 
-当前不覆盖：Hy3 Judge、人工盲标、Calibration Mutation、有效性实验、结果聚合、标签盲化、报告、正式模型运行和完整 DecisionBench。Collector 对未登记评测事实失败关闭；生产 `submission.check` 的 accepted 分支因派生 Plan/Stage 更新未被现有 Operation patch 完整枚举而明确拒绝导出，当前 Assessment Mini 只覆盖可证明的 revision-required 路径。现有 Mini 不能冒充任意真实用户 Run 或正式 Hy3 结论。
+当前不覆盖：真实 Hy3 Judge 运行、人工盲标、Primary/Calibration 数据、Calibration Mutation、有效性实验、正式评测、版本回归、报告/Case/Demo/Release 和完整 DecisionBench。Collector 对未登记评测事实失败关闭；生产 `submission.check` 的 accepted 分支因派生 Plan/Stage 更新未被现有 Operation patch 完整枚举而明确拒绝导出，当前 Assessment Mini 只覆盖可证明的 revision-required 路径。现有 Mini 与 fixed-response 聚合不能冒充任意真实用户 Run 或正式 Hy3 结论。
 
 ## 校验与运行
 
@@ -72,16 +76,27 @@ Recording Sink 仅保留稳定 action identity、destination、安全摘要和�
 .venv/bin/python -m learning_agent_eval validate-dataset \
   --dataset evaluation/datasets/decisionbench-v1
 
-E2_ROOT="$(mktemp -d)"
+E3_ROOT="$(mktemp -d)"
 .venv/bin/python -m learning_agent_eval run-agent \
   --dataset evaluation/datasets/decisionbench-v1 \
   --manifest evaluation/datasets/decisionbench-v1/manifests/e1-mini-stub.json \
-  --output "$E2_ROOT/runtime"
+  --output "$E3_ROOT/runtime"
 .venv/bin/python -m learning_agent_eval validate-dataset \
-  --dataset "$E2_ROOT/runtime"
+  --dataset "$E3_ROOT/runtime"
 .venv/bin/python -m learning_agent_eval evaluate-rules \
-  --input "$E2_ROOT/runtime" \
-  --output "$E2_ROOT/rules"
+  --input "$E3_ROOT/runtime" \
+  --output "$E3_ROOT/rules"
+.venv/bin/python -m learning_agent_eval evaluate-judge \
+  --episodes "$E3_ROOT/runtime" \
+  --rules "$E3_ROOT/rules" \
+  --output "$E3_ROOT/judges" \
+  --judge-mode stub \
+  --stub-response evaluation/fixtures/e3-fixed-judge-responses-v1.json
+.venv/bin/python -m learning_agent_eval aggregate-results \
+  --episodes "$E3_ROOT/runtime" \
+  --rules "$E3_ROOT/rules" \
+  --judges "$E3_ROOT/judges" \
+  --output "$E3_ROOT/aggregates"
 ```
 
 入口、过滤参数与真实模型双重 opt-in 说明见 [`../../README.md`](../../README.md)，精确回归结果见 [`../../../docs/STATUS.md`](../../../docs/STATUS.md)。本目录随仓库使用 MIT License。

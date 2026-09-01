@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from pathlib import Path
 
 from learning_agent_eval.models import SCHEMA_DIALECT
@@ -21,6 +21,11 @@ def test_committed_json_schemas_match_source_models() -> None:
         "acceptable-action-envelope-v1.schema.json",
         "environment-manifest-v1.schema.json",
         "rule-result-v1.schema.json",
+        "judge-result-v1.schema.json",
+        "judge-run-manifest-v1.schema.json",
+        "aggregate-result-v1.schema.json",
+        "aggregate-track-result-v1.schema.json",
+        "aggregate-run-manifest-v1.schema.json",
     }
     for filename, expected in generated.items():
         committed = json.loads((SCHEMA_ROOT / filename).read_text(encoding="utf-8"))
@@ -37,6 +42,17 @@ def test_three_e0_v1_schema_files_remain_byte_frozen() -> None:
         "decision-episode-v1.schema.json": "741e750b63709de7b00a23f36099c9a4033595a0cd3f69ee327e95516dbc2b6e",
         "acceptable-action-envelope-v1.schema.json": "0ff84c32eeab476630b4a855bab1260e01e2222577942fc3effe49096ff586f1",
         "environment-manifest-v1.schema.json": "bb6be778edfd78d701d98045b5bc453604c056b67eace47290b0ad458f894f67",
+    }
+    assert {
+        name: hashlib.sha256((SCHEMA_ROOT / name).read_bytes()).hexdigest()
+        for name in expected
+    } == expected
+
+
+def test_e2_schema_files_remain_byte_frozen() -> None:
+    expected = {
+        "decision-episode-v2.schema.json": "de766dd1f9111fb542cfad165dc4e4edbe9d6e8fec6e2bd568b2233263ae939d",
+        "rule-result-v1.schema.json": "d41fa588bc36251510cb87a7da3a1204114e6f1b551f6c067f6e2b3709e88bd8",
     }
     assert {
         name: hashlib.sha256((SCHEMA_ROOT / name).read_bytes()).hexdigest()

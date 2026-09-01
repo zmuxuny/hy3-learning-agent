@@ -1,4 +1,4 @@
-"""Command-line entry point for validation, Runtime export, and E2 Rules."""
+"""Command-line entry point for versioned evaluation control planes."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ import json
 import sys
 from collections.abc import Sequence
 
+from .aggregate import AggregateEvaluationError, aggregate_results
+from .judge import JudgeEvaluationError, evaluate_judges
 from .rule_runner import RuleEvaluationError, evaluate_run_rules
 from .runner import RunAgentError, run_agent
 from .validator import validate_dataset
@@ -42,6 +44,34 @@ def _parser() -> argparse.ArgumentParser:
     rules.add_argument("--output", required=True)
     rules.add_argument("--episode-id", action="append", default=[])
     rules.add_argument(
+        "--track",
+        choices=("planning", "intervention", "assessment", "revision"),
+    )
+    judge = commands.add_parser(
+        "evaluate-judge",
+        help="run the E3 blind structured Judge over matched v2 and Rule artifacts",
+    )
+    judge.add_argument("--episodes", required=True)
+    judge.add_argument("--rules", required=True)
+    judge.add_argument("--output", required=True)
+    judge.add_argument("--episode-id", action="append", default=[])
+    judge.add_argument(
+        "--track",
+        choices=("planning", "intervention", "assessment", "revision"),
+    )
+    judge.add_argument("--judge-mode", choices=("stub", "real"), default="stub")
+    judge.add_argument("--allow-real-judge", action="store_true")
+    judge.add_argument("--stub-response")
+    aggregate = commands.add_parser(
+        "aggregate-results",
+        help="deterministically aggregate E3 Rule and Judge results",
+    )
+    aggregate.add_argument("--episodes", required=True)
+    aggregate.add_argument("--rules", required=True)
+    aggregate.add_argument("--judges", required=True)
+    aggregate.add_argument("--output", required=True)
+    aggregate.add_argument("--episode-id", action="append", default=[])
+    aggregate.add_argument(
         "--track",
         choices=("planning", "intervention", "assessment", "revision"),
     )
@@ -91,6 +121,78 @@ def main(argv: Sequence[str] | None = None) -> int:
         if summary.invalid_episode_ids:
             return 1
         if summary.hard_gate_episode_ids:
+            return 2
+        return 3 if summary.failed_episode_ids else 0
+    if arguments.command == "evaluate-judge":
+        try:
+            summary = evaluate_judges(
+                episodes=arguments.episodes,
+                rules=arguments.rules,
+                output=arguments.output,
+                judge_mode=arguments.judge_mode,
+                allow_real_judge=arguments.allow_real_judge,
+                stub_response=arguments.stub_response,
+                episode_ids=set(arguments.episode_id) or None,
+                track=arguments.track,
+            )
+        except JudgeEvaluationError as exc:
+            print(
+                json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
+                file=sys.stderr,
+            )
+            return 1
+        track_counts = ",".join(
+            f"{track}:{summary.tracks.count(track)}"
+            for track in sorted(set(summary.tracks))
+        )
+        complete = (
+            len(summary.episode_ids)
+            - len(summary.invalid_episode_ids)
+            - len(summary.judge_error_episode_ids)
+        )
+        print(
+            "evaluate_judge_ok "
+            f"episodes={len(summary.episode_ids)} tracks={track_counts} "
+            f"judge_mode={arguments.judge_mode} complete={complete} "
+            f"invalid_input={len(summary.invalid_episode_ids)} "
+            f"judge_errors={len(summary.judge_error_episode_ids)} "
+            f"repairs={len(summary.repair_attempted_episode_ids)} "
+            f"formal_evaluation_result={str(summary.formal_evaluation_result).lower()}"
+        )
+        if summary.invalid_episode_ids:
+            return 1
+        return 2 if summary.judge_error_episode_ids else 0
+    if arguments.command == "aggregate-results":
+        try:
+            summary = aggregate_results(
+                episodes=arguments.episodes,
+                rules=arguments.rules,
+                judges=arguments.judges,
+                output=arguments.output,
+                episode_ids=set(arguments.episode_id) or None,
+                track=arguments.track,
+            )
+        except AggregateEvaluationError as exc:
+            print(
+                json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
+                file=sys.stderr,
+            )
+            return 1
+        track_counts = ",".join(
+            f"{track}:{summary.tracks.count(track)}"
+            for track in sorted(set(summary.tracks))
+        )
+        print(
+            "aggregate_results_ok "
+            f"episodes={len(summary.episode_ids)} tracks={track_counts} "
+            f"failed={len(summary.failed_episode_ids)} "
+            f"invalid_input={len(summary.invalid_episode_ids)} "
+            f"judge_errors={len(summary.judge_error_episode_ids)} "
+            f"formal_evaluation_result={str(summary.formal_evaluation_result).lower()}"
+        )
+        if summary.invalid_episode_ids:
+            return 1
+        if summary.judge_error_episode_ids:
             return 2
         return 3 if summary.failed_episode_ids else 0
     try:

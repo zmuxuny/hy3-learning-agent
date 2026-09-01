@@ -1,4 +1,4 @@
-"""Recursive deterministic validation for Decision Episode datasets."""
+"""Recursive deterministic validation for versioned evaluation artifact trees."""
 
 from __future__ import annotations
 
@@ -28,12 +28,14 @@ from .exporter import (
     _ordered_trace_entities,
 )
 from .integrity import (
+    aggregate_result_digest,
     artifact_manifest_digest,
     context_summary_digest,
     decision_episode_digest,
     environment_manifest_digest,
     episode_completeness_digest,
     integrity_result_digest,
+    judge_result_digest,
     oracle_envelope_digest,
     rule_result_digest,
     snapshot_entity_digest,
@@ -43,6 +45,19 @@ from .integrity import (
 from .models import DATASET_DOCUMENT_MODELS
 from .normalizers import NormalizationError, normalize_rfc3339
 from .privacy import privacy_issues
+from .rubric import (
+    DIMENSION_WEIGHTS,
+    JUDGE_CONFIG_SHA256,
+    JUDGE_CONFIG_VERSION,
+    JUDGE_PROMPT_SHA256,
+    JUDGE_PROMPT_VERSION,
+    JUDGE_VERSION,
+    REPAIR_LIMIT,
+    RUBRIC_SHA256,
+    RUBRIC_VERSION,
+    TRACK_ANCHOR_SHA256,
+    TRACK_ANCHOR_VERSION,
+)
 from .snapshots import (
     COLLECTOR_VERSION,
     ENTITY_TYPE_ORDER,
@@ -1813,6 +1828,85 @@ def validate_episode(
     return tuple(sorted(semantic_issues, key=ValidationIssue.sort_key))
 
 
+def _aggregate_result_semantic_issues(
+    result: dict[str, Any], *, file: str
+) -> list[ValidationIssue]:
+    """Recompute self-contained Rule precedence and score fields in E3 output."""
+
+    issues: list[ValidationIssue] = []
+    critical_ids = [
+        failure["check_id"]
+        for failure in result["rule_failures"]
+        if failure["severity"] == "critical"
+    ]
+    major_ids = [
+        failure["check_id"]
+        for failure in result["rule_failures"]
+        if failure["severity"] == "major"
+    ]
+    if result["actual_hard_gates"] != critical_ids:
+        issues.append(
+            _issue(
+                "aggregate.rule_precedence_invalid",
+                "$.actual_hard_gates",
+                "Aggregate hard gates must exactly preserve Critical Rule failures.",
+                file=file,
+            )
+        )
+    if result["status"] != "complete":
+        return issues
+    expected_dimensions = []
+    for dimension in result["dimensions"]:
+        weight = DIMENSION_WEIGHTS[dimension["dimension_id"]]
+        expected_dimensions.append(
+            {
+                "dimension_id": dimension["dimension_id"],
+                "level": dimension["level"],
+                "weight": weight,
+                "weighted_signal": float(weight * dimension["level"] / 2),
+                "evidence_paths": dimension["evidence_paths"],
+            }
+        )
+    expected_caps: list[dict[str, Any]] = []
+    if critical_ids:
+        expected_caps.append(
+            {
+                "cap_id": "critical_hard_gate",
+                "maximum_score": 39,
+                "source_rule_ids": critical_ids,
+            }
+        )
+    if major_ids:
+        expected_caps.append(
+            {
+                "cap_id": "major_rule_fail",
+                "maximum_score": 69,
+                "source_rule_ids": major_ids,
+            }
+        )
+    raw_score = float(sum(item["weighted_signal"] for item in expected_dimensions))
+    final_score = min(
+        [raw_score, *(float(cap["maximum_score"]) for cap in expected_caps)]
+    )
+    expected_outcome = "fail" if critical_ids else "pass"
+    if (
+        result["dimensions"] != expected_dimensions
+        or result["raw_score"] != raw_score
+        or result["applied_caps"] != expected_caps
+        or result["final_score"] != final_score
+        or result["episode_outcome"] != expected_outcome
+    ):
+        issues.append(
+            _issue(
+                "aggregate.score_invalid",
+                "$.final_score",
+                "Aggregate score, caps, or outcome does not match deterministic inputs.",
+                file=file,
+            )
+        )
+    return issues
+
+
 def _document_issues(
     value: object,
     *,
@@ -1857,6 +1951,11 @@ def _document_issues(
         "integrity-result-v1": "result_sha256",
         "rule-result-v1": "result_sha256",
         "rule-run-manifest-v1": "manifest_sha256",
+        "judge-result-v1": "result_sha256",
+        "judge-run-manifest-v1": "manifest_sha256",
+        "aggregate-result-v1": "result_sha256",
+        "aggregate-track-result-v1": "result_sha256",
+        "aggregate-run-manifest-v1": "manifest_sha256",
     }
     digest_field = digest_fields.get(version)
     if digest_field is not None:
@@ -1865,6 +1964,11 @@ def _document_issues(
             "rule-run-manifest-v1": artifact_manifest_digest,
             "integrity-result-v1": integrity_result_digest,
             "rule-result-v1": rule_result_digest,
+            "judge-run-manifest-v1": artifact_manifest_digest,
+            "aggregate-run-manifest-v1": artifact_manifest_digest,
+            "judge-result-v1": judge_result_digest,
+            "aggregate-result-v1": aggregate_result_digest,
+            "aggregate-track-result-v1": aggregate_result_digest,
         }
         digest = digest_functions.get(version, lambda document: sha256_digest(document))(
             {key: item for key, item in value.items() if key != digest_field}
@@ -1878,6 +1982,8 @@ def _document_issues(
                     file=file,
                 )
             ], None
+    if version == "aggregate-result-v1":
+        return _aggregate_result_semantic_issues(dict(value), file=file), None
     if version not in {"decision-episode-v1", "decision-episode-v2"}:
         return [], None
     episode = dict(value)
@@ -2048,6 +2154,309 @@ def _artifact_inventory_issues(
                         file=file,
                     )
                 )
+
+    judge_manifests = by_version["judge-run-manifest-v1"]
+    if len(judge_manifests) > 1:
+        for file, _ in judge_manifests[1:]:
+            issues.append(
+                _issue(
+                    "manifest.duplicate_judge_run",
+                    "$.schema_version",
+                    "Judge output contains more than one Judge Run manifest.",
+                    file=file,
+                )
+            )
+    for file, manifest in judge_manifests[:1]:
+        expected_ids = set(manifest["episode_ids"])
+        results = {
+            document["episode_id"]: document
+            for _, document in by_version["judge-result-v1"]
+        }
+        expected_judge_metadata = {
+            "input_episode_schema_version": "decision-episode-v2",
+            "input_rule_schema_version": "rule-result-v1",
+            "judge_version": JUDGE_VERSION,
+            "judge_config_version": JUDGE_CONFIG_VERSION,
+            "judge_config_sha256": JUDGE_CONFIG_SHA256,
+            "judge_prompt_version": JUDGE_PROMPT_VERSION,
+            "judge_prompt_sha256": JUDGE_PROMPT_SHA256,
+            "rubric_version": RUBRIC_VERSION,
+            "rubric_sha256": RUBRIC_SHA256,
+            "track_anchor_version": TRACK_ANCHOR_VERSION,
+            "track_anchor_sha256": TRACK_ANCHOR_SHA256,
+            "repair_limit": REPAIR_LIMIT,
+        }
+        if any(
+            manifest[key] != expected
+            for key, expected in expected_judge_metadata.items()
+        ):
+            issues.append(
+                _issue(
+                    "manifest.judge_config_mismatch",
+                    "$.judge_config_sha256",
+                    "Judge Run manifest does not use the submitted E3 configuration.",
+                    file=file,
+                )
+            )
+        if set(results) != expected_ids or len(results) != len(
+            by_version["judge-result-v1"]
+        ):
+            issues.append(
+                _issue(
+                    "manifest.judge_inventory_mismatch",
+                    "$.episode_ids",
+                    "Judge Result inventory must match the Judge Run manifest.",
+                    file=file,
+                )
+            )
+        if manifest["selected_track"] is not None and any(
+            result["track"] != manifest["selected_track"]
+            for result in results.values()
+        ):
+            issues.append(
+                _issue(
+                    "manifest.judge_track_mismatch",
+                    "$.selected_track",
+                    "Judge Results do not match the requested track.",
+                    file=file,
+                )
+            )
+        for episode_id in sorted(expected_ids & set(results)):
+            result = results[episode_id]
+            if (
+                result["episode_sha256"]
+                != manifest["input_episode_digests"][episode_id]
+                or result["rule_result_sha256"]
+                != manifest["input_rule_result_digests"][episode_id]
+                or result["blind_input_sha256"]
+                != manifest["blind_input_digests"][episode_id]
+                or result["result_sha256"]
+                != manifest["judge_result_digests"][episode_id]
+                or result["status"] != manifest["result_statuses"][episode_id]
+                or result["judge_version"] != manifest["judge_version"]
+                or result["judge_mode"] != manifest["judge_mode"]
+                or result["judge_prompt_version"]
+                != manifest["judge_prompt_version"]
+                or result["judge_prompt_sha256"]
+                != manifest["judge_prompt_sha256"]
+                or result["rubric_version"] != manifest["rubric_version"]
+                or result["rubric_sha256"] != manifest["rubric_sha256"]
+                or result["track_anchor_version"]
+                != manifest["track_anchor_version"]
+                or result["track_anchor_sha256"]
+                != manifest["track_anchor_sha256"]
+            ):
+                issues.append(
+                    _issue(
+                        "manifest.judge_result_mismatch",
+                        f"$.judge_result_digests.{episode_id}",
+                        "Judge Result differs from its Judge Run manifest.",
+                        file=file,
+                    )
+                )
+        expected_formal = bool(results) and all(
+            result["formal_evaluation_result"] for result in results.values()
+        )
+        if manifest["formal_evaluation_result"] != expected_formal:
+            issues.append(
+                _issue(
+                    "manifest.judge_formal_mismatch",
+                    "$.formal_evaluation_result",
+                    "Judge Run formal state must match every Judge Result.",
+                    file=file,
+                )
+            )
+
+    aggregate_manifests = by_version["aggregate-run-manifest-v1"]
+    if len(aggregate_manifests) > 1:
+        for file, _ in aggregate_manifests[1:]:
+            issues.append(
+                _issue(
+                    "manifest.duplicate_aggregate_run",
+                    "$.schema_version",
+                    "Aggregate output contains more than one Run manifest.",
+                    file=file,
+                )
+            )
+    for file, manifest in aggregate_manifests[:1]:
+        expected_ids = set(manifest["episode_ids"])
+        results = {
+            document["episode_id"]: document
+            for _, document in by_version["aggregate-result-v1"]
+        }
+        tracks = {
+            document["track"]: document
+            for _, document in by_version["aggregate-track-result-v1"]
+        }
+        expected_aggregate_metadata = {
+            "judge_version": JUDGE_VERSION,
+            "judge_config_version": JUDGE_CONFIG_VERSION,
+            "judge_config_sha256": JUDGE_CONFIG_SHA256,
+            "judge_prompt_version": JUDGE_PROMPT_VERSION,
+            "judge_prompt_sha256": JUDGE_PROMPT_SHA256,
+            "rubric_version": RUBRIC_VERSION,
+            "rubric_sha256": RUBRIC_SHA256,
+            "track_anchor_version": TRACK_ANCHOR_VERSION,
+            "track_anchor_sha256": TRACK_ANCHOR_SHA256,
+        }
+        if any(
+            manifest[key] != expected
+            for key, expected in expected_aggregate_metadata.items()
+        ):
+            issues.append(
+                _issue(
+                    "manifest.aggregate_config_mismatch",
+                    "$.judge_config_sha256",
+                    "Aggregate Run manifest does not preserve E3 Judge configuration.",
+                    file=file,
+                )
+            )
+        if set(results) != expected_ids or len(results) != len(
+            by_version["aggregate-result-v1"]
+        ):
+            issues.append(
+                _issue(
+                    "manifest.aggregate_inventory_mismatch",
+                    "$.episode_ids",
+                    "Aggregate Result inventory must match its Run manifest.",
+                    file=file,
+                )
+            )
+        if set(tracks) != set(manifest["track_result_digests"]) or len(tracks) != len(
+            by_version["aggregate-track-result-v1"]
+        ):
+            issues.append(
+                _issue(
+                    "manifest.track_inventory_mismatch",
+                    "$.track_result_digests",
+                    "Track aggregate inventory must match its Run manifest.",
+                    file=file,
+                )
+            )
+        if manifest["selected_track"] is not None and (
+            set(tracks) != {manifest["selected_track"]}
+            or any(
+                result["track"] != manifest["selected_track"]
+                for result in results.values()
+            )
+        ):
+            issues.append(
+                _issue(
+                    "manifest.aggregate_track_mismatch",
+                    "$.selected_track",
+                    "Aggregate Results do not match the requested track.",
+                    file=file,
+                )
+            )
+        for episode_id in sorted(expected_ids & set(results)):
+            result = results[episode_id]
+            if (
+                result["episode_sha256"]
+                != manifest["input_episode_digests"][episode_id]
+                or result["rule_result_sha256"]
+                != manifest["input_rule_result_digests"][episode_id]
+                or result["judge_result_sha256"]
+                != manifest["input_judge_result_digests"][episode_id]
+                or result["result_sha256"]
+                != manifest["aggregate_result_digests"][episode_id]
+                or result["status"] != manifest["result_statuses"][episode_id]
+                or result["aggregator_version"] != manifest["aggregator_version"]
+            ):
+                issues.append(
+                    _issue(
+                        "manifest.aggregate_result_mismatch",
+                        f"$.aggregate_result_digests.{episode_id}",
+                        "Aggregate Result differs from its Run manifest.",
+                        file=file,
+                    )
+                )
+        for track, result in sorted(tracks.items()):
+            if (
+                result["result_sha256"] != manifest["track_result_digests"][track]
+                or result["aggregator_version"] != manifest["aggregator_version"]
+            ):
+                issues.append(
+                    _issue(
+                        "manifest.track_result_mismatch",
+                        f"$.track_result_digests.{track}",
+                        "Track aggregate differs from its Run manifest.",
+                        file=file,
+                    )
+                )
+            track_episodes = sorted(
+                (
+                    document
+                    for document in results.values()
+                    if document["track"] == track
+                ),
+                key=lambda document: document["episode_id"],
+            )
+            complete = [
+                document
+                for document in track_episodes
+                if document["status"] == "complete"
+            ]
+            scores = [float(document["final_score"]) for document in complete]
+            track_formal = bool(track_episodes) and all(
+                document["formal_evaluation_result"] for document in track_episodes
+            )
+            expected_track_fields = {
+                "episode_ids": [
+                    document["episode_id"] for document in track_episodes
+                ],
+                "complete_episode_ids": [
+                    document["episode_id"] for document in complete
+                ],
+                "failed_episode_ids": [
+                    document["episode_id"]
+                    for document in complete
+                    if document["episode_outcome"] == "fail"
+                ],
+                "invalid_input_episode_ids": [
+                    document["episode_id"]
+                    for document in track_episodes
+                    if document["status"] == "invalid_input"
+                ],
+                "judge_error_episode_ids": [
+                    document["episode_id"]
+                    for document in track_episodes
+                    if document["status"] == "judge_error"
+                ],
+                "score_count": len(scores),
+                "mean_score": (
+                    round(sum(scores) / len(scores), 6) if scores else None
+                ),
+                "formal_evaluation_result": track_formal,
+                "evaluation_status": (
+                    "formal_model_evaluation"
+                    if track_formal
+                    else "not_a_formal_model_evaluation"
+                ),
+            }
+            if any(
+                result[key] != expected
+                for key, expected in expected_track_fields.items()
+            ):
+                issues.append(
+                    _issue(
+                        "manifest.track_summary_mismatch",
+                        f"$.track_result_digests.{track}",
+                        "Track aggregate does not match its Episode results.",
+                        file=file,
+                    )
+                )
+        aggregate_formal = bool(results) and all(
+            result["formal_evaluation_result"] for result in results.values()
+        )
+        if manifest["formal_evaluation_result"] != aggregate_formal:
+            issues.append(
+                _issue(
+                    "manifest.aggregate_formal_mismatch",
+                    "$.formal_evaluation_result",
+                    "Aggregate Run formal state must match every Episode result.",
+                    file=file,
+                )
+            )
     return issues
 
 
@@ -2101,7 +2510,7 @@ def validate_dataset(dataset: str | Path) -> ValidationReport:
     issues: list[ValidationIssue] = []
     episodes: list[_EpisodeRecord] = []
     documents: list[tuple[str, dict[str, Any]]] = []
-    saw_rule_artifact = False
+    saw_non_episode_artifact = False
     for path in candidates:
         file = path.relative_to(base).as_posix()
         value, load_issues = _load_json(path, file=file)
@@ -2112,8 +2521,13 @@ def validate_dataset(dataset: str | Path) -> ValidationReport:
             "rule-result-v1",
             "integrity-result-v1",
             "rule-run-manifest-v1",
+            "judge-result-v1",
+            "judge-run-manifest-v1",
+            "aggregate-result-v1",
+            "aggregate-track-result-v1",
+            "aggregate-run-manifest-v1",
         }:
-            saw_rule_artifact = True
+            saw_non_episode_artifact = True
         document_issues, record = _document_issues(value, file=file)
         issues.extend(document_issues)
         if not document_issues and isinstance(value, Mapping):
@@ -2123,7 +2537,7 @@ def validate_dataset(dataset: str | Path) -> ValidationReport:
 
     issues.extend(_artifact_inventory_issues(documents, episodes))
 
-    if not episodes and not issues and not saw_rule_artifact:
+    if not episodes and not issues and not saw_non_episode_artifact:
         issues.append(
             _issue(
                 "dataset.no_episodes",

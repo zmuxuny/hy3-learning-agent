@@ -12,6 +12,11 @@ SCHEMA_FILENAMES = {
     "acceptable-action-envelope-v1": "acceptable-action-envelope-v1.schema.json",
     "environment-manifest-v1": "environment-manifest-v1.schema.json",
     "rule-result-v1": "rule-result-v1.schema.json",
+    "judge-result-v1": "judge-result-v1.schema.json",
+    "judge-run-manifest-v1": "judge-run-manifest-v1.schema.json",
+    "aggregate-result-v1": "aggregate-result-v1.schema.json",
+    "aggregate-track-result-v1": "aggregate-track-result-v1.schema.json",
+    "aggregate-run-manifest-v1": "aggregate-run-manifest-v1.schema.json",
 }
 
 

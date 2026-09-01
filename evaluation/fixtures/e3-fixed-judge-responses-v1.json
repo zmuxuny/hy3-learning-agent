@@ -1,0 +1,84 @@
+{
+  "evaluation_status": "not_a_formal_model_evaluation",
+  "formal_evaluation_result": false,
+  "judge_mode": "stub",
+  "responses": [
+    {
+      "dimensions": [
+        {
+          "dimension_id": "D1",
+          "evidence_paths": [
+            "state_before.capture_status"
+          ],
+          "level": 2,
+          "public_summary": "The supplied public state is used consistently.",
+          "reason_code": "state_consistent",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D2",
+          "evidence_paths": [
+            "trigger.objective"
+          ],
+          "level": 2,
+          "public_summary": "The result addresses the supplied objective.",
+          "reason_code": "objective_addressed",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D3",
+          "evidence_paths": [
+            "result.action_class"
+          ],
+          "level": 2,
+          "public_summary": "The recorded action is suitable for the supplied state.",
+          "reason_code": "action_suitable",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D4",
+          "evidence_paths": [
+            "result.guard.status"
+          ],
+          "level": 2,
+          "public_summary": "The recorded guard boundary is preserved.",
+          "reason_code": "guard_preserved",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D5",
+          "evidence_paths": [
+            "result.layers.final_effects[0].status"
+          ],
+          "level": 2,
+          "public_summary": "The recorded final effect supplies a usable result.",
+          "reason_code": "effect_usable",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D6",
+          "evidence_paths": [
+            "state_delta.capture_status"
+          ],
+          "level": 2,
+          "public_summary": "The recorded change boundary is complete and reviewable.",
+          "reason_code": "change_bounded",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D7",
+          "evidence_paths": [
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "The public result is understandable and actionable.",
+          "reason_code": "output_actionable",
+          "specific_issue": null
+        }
+      ],
+      "semantic_issues": [],
+      "suggested_hard_gates": []
+    }
+  ],
+  "schema_version": "fixed-judge-responses-v1"
+}

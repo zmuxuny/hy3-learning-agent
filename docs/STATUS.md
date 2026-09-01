@@ -1,9 +1,42 @@
 # 项目状态
 
-更新时间：2026-09-01（Asia/Shanghai）
+更新时间：2026-09-02（Asia/Shanghai）
 当前版本：1.1.1
 
-H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议骨架、E1 隔离执行和 E2 通用导出/规则已经完成，下一切片为 E3 Hy3 Judge、标签盲化与确定性聚合；正式数据、实验、评测、版本对比和报告仍属于 E4–E8。M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议骨架、E1 隔离执行、E2 通用导出/规则和 E3 标签盲化/结构化 Judge/确定性聚合已经完成；正式数据、有效性实验、正式评测、版本对比和报告仍属于 E4–E8。M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+
+## 2026-09-02 第三阶段 E3 收口
+
+E3 在不修改 `DecisionEpisode v1/v2`、`rule-result-v1`、Action Envelope v1 或 Environment Manifest v1 的前提下，完成 `完整 v2 + digest 匹配 Rules → blind Judge input → judge-result-v1 → Rule-first aggregate` 的工程闭环。字段能力审计确认 v2 已一等表达 D1–D7 所需公开事实、模型尝试/最终效果、Guard blocked/deferred、WAIT/NO_OP、durable 状态、formal eligibility 与 Evidence Path；Rule Result 已表达严重级别、实际 Hard Gate 和 Episode 关联，因而无需从 Capture/Oracle 自由说明回填，也无需升级冻结契约。
+
+| 检查项 | 当前结论 | 证据或入口 |
+| --- | --- | --- |
+| Judge/聚合契约 | 已完成 | strict Pydantic + 提交版 `judge-result-v1`、`judge-run-manifest-v1`、`aggregate-result-v1`、`aggregate-track-result-v1`、`aggregate-run-manifest-v1` Schema 与漂移检查 |
+| Rubric/锚点 | 已完成 | `decision-rubric-v1` 固定 D1–D7 和 `15/15/20/20/15/5/10`；`decision-track-anchors-v1` 为 P/I/A/R 分别固定 0/1/2 锚点与摘要 |
+| 标签盲化 | 已完成 | 稳定纯字母 opaque ID；删除 Good/Mild/Severe、Baseline/Candidate、生成者/Prompt/Invocation 身份、作者说明、ID/tag/source ref、Capture、凭据和路由材料；原 Episode 不改写 |
+| Judge 协议 | 已完成 | 独立 OpenAI-compatible seam、`--judge-mode real --allow-real-judge` 双重 opt-in、严格输出 Schema、最多一次修复、稳定 `judge_error`；不导入生产 `app.*`/Settings |
+| Evidence/隐私/formal | 已完成 | D1–D7 固定顺序、0/1/2、每维原始 v2 路径、非满分具体问题、blind-visible + original-path 双解析、digest/privacy/mode/status/self-digest 校验 |
+| 确定性聚合 | 已完成 | `sum(weight × level / 2)`；Critical Hard Gate 直接 Fail/cap 39，Major cap 69，多个 cap 取最严，Minor 无额外 cap，suggested gate 不升级 |
+| invalid 分类 | 已完成 | Rule/Judge invalid 与 `judge_error` 无维度/无分数、单列且不按 0 混入轨道均值；四轨分别发布且无 overall |
+| CLI/发布 | 已完成 | `evaluate-judge`、`aggregate-results` 支持 Episode/track 过滤、稳定摘要/错误/退出码、不覆盖、闭合 Manifest、同级 staging + 原子 rename |
+| 正式 Hy3 | 未调用 | 仅重放 `e3-fixed-judge-responses-v1.json` 的固定结构化响应；所有 E1 Mini Judge/聚合均 `formal_evaluation_result=false`，没有能力结论 |
+| E4–E8 | 未开始 | 未创建 Primary/Calibration，未做有效性实验、人工盲标、正式评测、版本回归、Case、最终报告、Demo 或 Release |
+
+E3 Judge 默认不发布盲化投影或展开 Prompt。`judge-result-v1` 只保存版本/摘要、Episode/Rule/blind input 关联、公共维度/问题/建议 Gate、mode/formal/status 与自摘要；不保存 Provider 原始响应/异常、Key、endpoint 或私有推理。Rule 已确认的时间、阈值、存在性与 Hard Gate 作为权威事实，Judge 不重新裁决。
+
+聚合是纯 evaluation 逻辑，不调用模型、网络、数据库、`.env` 或 subprocess。Judge 高分不能抵消实际 Rule Gate；Judge 建议 Gate 只进入建议字段。机器可读输出仅包含逐 Episode Judge、逐 Episode 聚合、逐轨汇总与 Run Manifest，不实现最终 HTML/CSV/Markdown 报告。
+
+E3 pre-commit 验收实际结果：
+
+- `.venv/bin/pytest -q evaluation/tests/test_e3_judge_aggregate.py`：`25 passed in 29.53s`；
+- `.venv/bin/pytest -q evaluation/tests/test_protocol_schemas.py`：`5 passed in 0.35s`；
+- `.venv/bin/pytest -q evaluation/tests`：`130 passed in 169.79s (0:02:49)`；
+- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 1.32s`；
+- `.venv/bin/pytest -q`：`1205 passed, 2 warnings in 2119.04s (0:35:19)`，0 failed；两条 warning 仍是既有 Starlette/httpx 弃用提示与 Python 3.14 tar 提取行为预告；
+- `.venv/bin/python scripts/check_doc_links.py`、`.venv/bin/python scripts/release-check.py lint_typecheck`、`.venv/bin/python scripts/release-check.py secret_scan`、`.venv/bin/pip check` 与 `git diff --check` 均通过；
+- 四轨系统临时目录已完成 v2 → Rules → fixed-response stub Judge → 非正式聚合，Runtime/Rules/Judge/聚合全部通过 `validate-dataset`；两次 Judge/聚合逐文件一致，Episode/track 过滤、Manifest Git commit、隐私/质量标签/凭据/路由、零外部调用和无 SQLite/WAL/SHM 扫描均通过，临时目录已删除。
+
+E3 开发与验收没有调用真实 Hy3 或公网。提交哈希与干净 HEAD post-commit smoke 作为提交后证据记录在本次完成汇报中；Git 提交不能在自身文档内记录自引用哈希。
 
 ## 2026-09-01 第三阶段 E2 收口
 
@@ -47,11 +80,11 @@ E2 已知限制：当前 Assessment revision-required 路径的 Operation/Delta 
 
 最终提交哈希和干净 HEAD 上的 post-commit smoke 结果由本次开发交接与完成汇报记录；测试产物只写入系统临时目录，不进入仓库。
 
-## 下一切片 E3 交接边界
+## 下一阶段 E4–E8 边界
 
-E3 只实现 `DecisionEpisode v2 + rule-result-v1 → 标签盲化 Judge 输入 → judge-result-v1 → 确定性聚合`。Judge 只读取脱敏 v2 Episode、匹配的 Rule Result、当前轨道版本化 Rubric/锚点和输出 Schema；不得读取 Capture、私有推理、质量标签、生成模型身份、作者说明、真实数据库或实时资源。Rule Critical Hard Gate 优先且不可被 Judge 高分覆盖，`invalid_input`/`judge_error` 不得伪造成 0 分或混入正常平均。
+E3 工程闭环已完成，下一阶段若继续必须从 E4 数据集开始：创建并复核 48 个 Primary Episodes、24 个 Calibration Outputs、Split/Mutation Manifest 与数据说明。E5–E8 才能执行有效性实验、人工盲标、真实 Hy3 正式评测、Baseline/Candidate 版本回归、Case/最终报告、Demo 与 Release。
 
-当前 `evaluation` 包尚无 Judge/聚合模型、Schema、模块或 CLI。E3 自动化可注入固定结构化 Judge 响应，但必须保持 `formal_evaluation_result=false`，不得以关键词或规则伪造 Judge；没有另行授权与凭据时不调用真实 Hy3。E3 不创建 Primary/Calibration，不做有效性实验、正式能力结论、Case/版本对比或最终报告。完整接手顺序、契约、测试和 Git 门槛见 [`第三阶段开发交接.md`](第三阶段开发交接.md) 的“下一切片：E3”。
+当前 fixed-response Judge 与聚合只证明工程协议，不能复用为 Calibration 标签或 Hy3 能力结果。E4 之前不得运行正式 Primary；后续阶段仍须显式授权真实 Hy3、保存正式 Run Manifest，并保持 Judge 不进入产品用户流程、不按评分自动修改 Prompt、计划或用户状态。完整 E3 实现与下一阶段接手边界见 [`第三阶段开发交接.md`](第三阶段开发交接.md)。
 
 ## 2026-09-01 第三阶段 E1 收口
 
@@ -102,7 +135,7 @@ E1 定向验收（本次实际执行）：
 - E0 CLI 校验四轨运行产物：`dataset_valid episodes=4 tracks=planning:1,intervention:1,assessment:1,revision:1`；
 - 同一四轨 Manifest 两次运行目录逐字节一致；四个 Worker root 和 SQLite 均不同，销毁后不存在，仓库未发布 SQLite/WAL/SHM。
 
-本节是 E1 收口时的历史事实。E2 已用通用 v2 Exporter 替换该最小投影，未推倒 E1 Runtime Harness。下一个里程碑是 **E3：Hy3 Judge、标签盲化与确定性聚合**；Primary/Calibration、实验、正式评测、版本对比、报告和 DecisionBench v1 发布仍属于 E4–E8。
+本节是 E1 收口时的历史事实。此后 E2 已用通用 v2 Exporter 替换该最小投影且未推倒 E1 Runtime Harness，E3 也已完成 Judge/盲化/聚合工程闭环；Primary/Calibration、实验、正式评测、版本对比、报告和 DecisionBench v1 发布仍属于 E4–E8。
 
 另一个开发进程应先阅读 [`第三阶段开发交接.md`](第三阶段开发交接.md)，一次只推进一个可验收切片；完成后同步本文件、相关实施方案与测试证据。
 
