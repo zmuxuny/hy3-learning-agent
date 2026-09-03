@@ -43,7 +43,7 @@ from learning_agent_eval.rule_runner import (
     evaluate_run_rules,
 )
 from learning_agent_eval.rules import evaluate_rules
-from learning_agent_eval.runner import RunAgentError, RunAgentSummary, run_agent
+from learning_agent_eval.runner import RunAgentSummary, run_agent
 from learning_agent_eval.snapshots import normalize_reference_fields
 from learning_agent_eval.worker import _execute
 
@@ -86,7 +86,9 @@ def _delete_evidence_path(document: dict[str, Any], path: str) -> None:
         del current[key]
 
 
-def _entity(logical_id: str, entity_type: str, data: dict[str, Any], ordinal: int) -> dict[str, Any]:
+def _entity(
+    logical_id: str, entity_type: str, data: dict[str, Any], ordinal: int
+) -> dict[str, Any]:
     entity = {
         "logical_id": logical_id,
         "entity_type": entity_type,
@@ -167,7 +169,9 @@ def test_four_existing_runtime_minis_export_only_v2_and_validate(
     episodes = [_load(path) for path in sorted((output / "episodes").glob("*.json"))]
     assert len(episodes) == 4
     assert set(summary.tracks) == {"planning", "intervention", "assessment", "revision"}
-    assert {episode["schema_version"] for episode in episodes} == {"decision-episode-v2"}
+    assert {episode["schema_version"] for episode in episodes} == {
+        "decision-episode-v2"
+    }
     assert all(not validate_episode(episode) for episode in episodes)
     assert all(DecisionEpisodeV2.model_validate(episode) for episode in episodes)
     assert not any(b"lossy_v1_projection" in data for data in _files(output).values())
@@ -192,7 +196,9 @@ def test_exporter_classification_has_no_track_fixture_or_oracle_branch() -> None
     assert "seed_kind" not in source
     assert "oracle" not in source
     assert "P-E1" not in source
-    assert not (PROJECT_ROOT / "evaluation/src/learning_agent_eval/runtime_export.py").exists()
+    assert not (
+        PROJECT_ROOT / "evaluation/src/learning_agent_eval/runtime_export.py"
+    ).exists()
 
 
 def test_worker_loads_oracle_only_after_runtime_and_actual_delta() -> None:
@@ -226,9 +232,10 @@ def test_snapshots_and_delta_are_recomputable_and_checkpoint_independent(
             episode["trigger"]["triggered_at"],
             episode["provenance"]["created_at"],
         } == {episode["environment"]["frozen_time"]}
-        assert build_state_delta(episode["state_before"], episode["state_after"]) == episode[
-            "state_delta"
-        ]
+        assert (
+            build_state_delta(episode["state_before"], episode["state_after"])
+            == episode["state_delta"]
+        )
         run_entities = [
             item
             for item in episode["state_after"]["logical_entities"]
@@ -254,7 +261,7 @@ def test_operation_alignment_covers_multi_entity_and_operation_free_effects(
             "affected_entity_refs"
         ]
     }
-    assert affected_types == {"submission", "task"}
+    assert affected_types == {"plan", "stage", "submission", "task"}
     assert all(
         change["operation_alignment"] == "matched"
         for change in assessment["state_delta"]["changes"]
@@ -321,7 +328,9 @@ def test_normalizer_is_deterministic_and_fails_closed() -> None:
         "created_at": "2026-08-31T01:00:00.000000Z",
         "deadline": "2026-09-01T01:00:00.000000Z",
     }
-    phone_shaped_digest = "13133501648d78dbb0b0eb456d59e6381af7575de8f3b4c2b767b9a0346b84cc"
+    phone_shaped_digest = (
+        "13133501648d78dbb0b0eb456d59e6381af7575de8f3b4c2b767b9a0346b84cc"
+    )
     assert not privacy_issues({"result_sha256": phone_shaped_digest})
     assert privacy_issues({"result_sha256": "13133501648"})
 
@@ -349,11 +358,16 @@ def test_stable_identity_ignores_raw_ids_and_insertion_order() -> None:
         registry = StableIdentityRegistry(episode_id="E2-ID-002")
         registry.register_many(
             "task",
-            [IdentityCandidate(1, {"title": "same"}), IdentityCandidate(2, {"title": "same"})],
+            [
+                IdentityCandidate(1, {"title": "same"}),
+                IdentityCandidate(2, {"title": "same"}),
+            ],
         )
 
 
-def test_delta_distinguishes_create_delete_null_missing_nested_and_stable_list() -> None:
+def test_delta_distinguishes_create_delete_null_missing_nested_and_stable_list() -> (
+    None
+):
     before = _snapshot(
         [
             _entity(
@@ -388,16 +402,33 @@ def test_delta_distinguishes_create_delete_null_missing_nested_and_stable_list()
     )
     delta = build_state_delta(before, after)
     assert delta["capture_status"] == "complete"
-    assert {change["kind"] for change in delta["changes"]} == {"added", "removed", "changed"}
-    nullable = next(change for change in delta["changes"] if change["field_path"] == "data.nullable")
+    assert {change["kind"] for change in delta["changes"]} == {
+        "added",
+        "removed",
+        "changed",
+    }
+    nullable = next(
+        change for change in delta["changes"] if change["field_path"] == "data.nullable"
+    )
     assert nullable["after"] == {"presence": "present", "value": None}
-    added = next(change for change in delta["changes"] if change["field_path"] == "data.nested.added")
+    added = next(
+        change
+        for change in delta["changes"]
+        if change["field_path"] == "data.nested.added"
+    )
     assert added["before"] == {"presence": "missing", "value": None}
-    assert any(change["field_path"] == "data.items[0].value" for change in delta["changes"])
-    assert any(change["field_path"] == "$entity" and change["kind"] == "removed" for change in delta["changes"])
+    assert any(
+        change["field_path"] == "data.items[0].value" for change in delta["changes"]
+    )
+    assert any(
+        change["field_path"] == "$entity" and change["kind"] == "removed"
+        for change in delta["changes"]
+    )
 
 
-def test_operation_backed_entity_create_and_delete_require_explicit_patch_markers() -> None:
+def test_operation_backed_entity_create_and_delete_require_explicit_patch_markers() -> (
+    None
+):
     target = "plan:test:001"
     anchor = _entity("constraint:test:001", "constraint", {"value": 1}, 1)
     operation = _entity(
@@ -419,9 +450,7 @@ def test_operation_backed_entity_create_and_delete_require_explicit_patch_marker
     )
     created = build_state_delta(
         _snapshot([anchor]),
-        _snapshot(
-            [anchor, _entity(target, "plan", {"status": "draft"}, 2), operation]
-        ),
+        _snapshot([anchor, _entity(target, "plan", {"status": "draft"}, 2), operation]),
     )
     create_change = next(
         item for item in created["changes"] if item["entity_ref"] == target
@@ -443,9 +472,7 @@ def test_operation_backed_entity_create_and_delete_require_explicit_patch_marker
     assert delete_change["operation_refs"] == ["operation:test:001"]
 
     mismatched_operation = json.loads(json.dumps(operation))
-    mismatched_operation["data"]["forward_patch"] = {
-        "created_ref": "plan:test:002"
-    }
+    mismatched_operation["data"]["forward_patch"] = {"created_ref": "plan:test:002"}
     invalid = build_state_delta(
         _snapshot([anchor]),
         _snapshot(
@@ -482,7 +509,9 @@ def test_multi_operation_chain_and_mismatch_are_explicit() -> None:
         ]
     )
     delta = build_state_delta(before, after)
-    change = next(change for change in delta["changes"] if change["entity_ref"] == target)
+    change = next(
+        change for change in delta["changes"] if change["entity_ref"] == target
+    )
     assert change["operation_alignment"] == "matched"
     assert change["operation_refs"] == ["operation:test:001", "operation:test:002"]
     mismatched = _snapshot(
@@ -497,7 +526,9 @@ def test_multi_operation_chain_and_mismatch_are_explicit() -> None:
 
 
 def test_wait_no_op_blocked_and_deferred_are_structurally_classified() -> None:
-    def classify(outcome: str | None, tool_status: str | None = None) -> tuple[str, str, str]:
+    def classify(
+        outcome: str | None, tool_status: str | None = None
+    ) -> tuple[str, str, str]:
         entities = []
         if outcome is not None:
             entities.append(
@@ -536,7 +567,9 @@ def test_wait_no_op_blocked_and_deferred_are_structurally_classified() -> None:
                         "invocation_id": "tool_invocation:test:001",
                         "tool_name": "notification.send",
                         "durable_status": tool_status,
-                        "execution_status": "blocked" if tool_status == "rejected" else "completed",
+                        "execution_status": "blocked"
+                        if tool_status == "rejected"
+                        else "completed",
                     }
                 ]
                 if tool_status is not None
@@ -643,7 +676,9 @@ def test_track_rules_select_structured_tool_among_multiple_invocations(
         },
     )
     checks = [
-        check for check in evaluate_rules(episode)["checks"] if check["rule_pack"] == pack
+        check
+        for check in evaluate_rules(episode)["checks"]
+        if check["rule_pack"] == pack
     ]
     assert {check["status"] for check in checks} == {"pass"}
 
@@ -695,9 +730,10 @@ def test_runtime_guard_deferred_preserves_attempt_and_zero_side_effects(
     run_agent(dataset=dataset, manifest=manifest_path, output=output)
     episode = _load(output / "episodes/I-E2-DEFERRED-001.json")
     assert episode["result"]["guard"]["status"] == "deferred"
-    assert episode["observable_trace"]["tool_invocations"][0][
-        "observation_status"
-    ] == "deferred"
+    assert (
+        episode["observable_trace"]["tool_invocations"][0]["observation_status"]
+        == "deferred"
+    )
     assert episode["result"]["action_class"] == "INTERVENE_MESSAGE"
     assert episode["result"]["layers"]["model_attempts"][0]["invocation_refs"]
     assert episode["result"]["layers"]["final_effects"] == [
@@ -713,16 +749,14 @@ def test_runtime_guard_deferred_preserves_attempt_and_zero_side_effects(
         "notification",
         "outbox_action",
         "outbox_receipt",
-    } & {
-        item["entity_type"] for item in episode["state_after"]["logical_entities"]
-    }
+    } & {item["entity_type"] for item in episode["state_after"]["logical_entities"]}
     assert episode["isolation_evidence"]["recording_sink_attempts"] == 0
     assert episode["isolation_evidence"]["outbox_replay_confirmed"] is False
     assert not validate_episode(episode)
     assert evaluate_rules(episode)["status"] == "pass"
 
 
-def test_runtime_assessment_accept_fails_closed_on_incomplete_operation_patch(
+def test_runtime_assessment_accept_exports_complete_operation_attribution(
     tmp_path: Path,
 ) -> None:
     dataset = tmp_path / "dataset"
@@ -772,12 +806,29 @@ def test_runtime_assessment_accept_fails_closed_on_incomplete_operation_patch(
     manifest_path.write_bytes(canonical_json_bytes(manifest))
 
     output = tmp_path / "output"
-    with pytest.raises(RunAgentError) as captured:
-        run_agent(dataset=dataset, manifest=manifest_path, output=output)
-    assert captured.value.code == "delta.operation_unattributed.plan"
-    assert captured.value.stage == "delta"
-    assert captured.value.episode_id == "A-E2-ACCEPT-001"
-    assert not output.exists()
+    run_agent(dataset=dataset, manifest=manifest_path, output=output)
+    episode = _load(output / "episodes/A-E2-ACCEPT-001.json")
+    assert not validate_episode(episode)
+    assert episode["result"]["action_class"] == "ACCEPT"
+    assert episode["state_delta"]["capture_status"] == "complete"
+    entity_types = {
+        item["logical_id"]: item["entity_type"]
+        for item in episode["state_after"]["logical_entities"]
+    }
+    changed_types = {
+        entity_types[item["entity_ref"]]
+        for item in episode["state_delta"]["changes"]
+        if item["kind"] == "changed"
+    }
+    assert {"plan", "stage", "task", "submission"}.issubset(changed_types)
+    assert all(
+        item["operation_alignment"] == "matched"
+        for item in episode["state_delta"]["changes"]
+        if entity_types[item["entity_ref"]] in {"plan", "stage", "task", "submission"}
+        and item["field_path"]
+        not in {"data.created_at", "data.updated_at", "data.version"}
+    )
+    assert evaluate_rules(episode)["status"] == "pass"
 
 
 def test_runtime_pending_approval_is_a_complete_deferred_episode(
@@ -861,9 +912,10 @@ def test_runtime_pending_approval_is_a_complete_deferred_episode(
     assert episode["observable_trace"]["operations"] == []
     assert len(approvals) == 1
     assert approvals[0]["data"]["decision"] == "pending"
-    assert approvals[0]["logical_id"] in episode["result"]["layers"][
-        "final_effects"
-    ][0]["entity_refs"]
+    assert (
+        approvals[0]["logical_id"]
+        in episode["result"]["layers"]["final_effects"][0]["entity_refs"]
+    )
     encoded = canonical_json_bytes(episode).decode("utf-8")
     assert '"approval_id"' not in encoded
     assert '"plan_id"' not in encoded
@@ -942,9 +994,7 @@ def test_runtime_no_tool_wait_and_no_op_are_complete_episodes(
         {key: value for key, value in oracle.items() if key != "envelope_sha256"}
     )
     oracle_name = f"{episode_id}.json"
-    (dataset / "oracles/mini" / oracle_name).write_bytes(
-        canonical_json_bytes(oracle)
-    )
+    (dataset / "oracles/mini" / oracle_name).write_bytes(canonical_json_bytes(oracle))
     fixture["oracle_file"] = f"oracles/mini/{oracle_name}"
     fixture["fixture_sha256"] = sha256_digest(
         {key: value for key, value in fixture.items() if key != "fixture_sha256"}
@@ -963,13 +1013,15 @@ def test_runtime_no_tool_wait_and_no_op_are_complete_episodes(
     run_agent(dataset=dataset, manifest=manifest_path, output=output)
     episode = _load(output / "episodes" / oracle_name)
     assert episode["result"]["action_class"] == expected_action
-    assert episode["result"]["layers"]["final_effects"][0][
-        "effect_type"
-    ] == expected_effect
+    assert (
+        episode["result"]["layers"]["final_effects"][0]["effect_type"]
+        == expected_effect
+    )
     assert episode["result"]["layers"]["final_effects"][0]["status"] == "no_change"
-    assert episode["result"]["layers"]["model_attempts"][-1][
-        "attempted_action"
-    ] == expected_effect
+    assert (
+        episode["result"]["layers"]["model_attempts"][-1]["attempted_action"]
+        == expected_effect
+    )
     assert episode["observable_trace"]["tool_invocations"] == []
     assert episode["observable_trace"]["operations"] == []
     assert not validate_episode(episode)
@@ -1021,9 +1073,10 @@ def test_runtime_guard_blocked_preserves_attempt_and_zero_side_effects(
     run_agent(dataset=dataset, manifest=manifest_path, output=output)
     episode = _load(output / "episodes/I-E2-BLOCKED-001.json")
     assert episode["result"]["guard"]["status"] == "blocked"
-    assert episode["observable_trace"]["tool_invocations"][0][
-        "observation_status"
-    ] == "blocked"
+    assert (
+        episode["observable_trace"]["tool_invocations"][0]["observation_status"]
+        == "blocked"
+    )
     assert episode["result"]["action_class"] == "INTERVENE_MESSAGE"
     assert episode["result"]["layers"]["model_attempts"][0]["invocation_refs"]
     assert episode["result"]["layers"]["final_effects"][0]["effect_type"] == "blocked"
@@ -1032,9 +1085,7 @@ def test_runtime_guard_blocked_preserves_attempt_and_zero_side_effects(
         "notification",
         "outbox_action",
         "outbox_receipt",
-    } & {
-        item["entity_type"] for item in episode["state_after"]["logical_entities"]
-    }
+    } & {item["entity_type"] for item in episode["state_after"]["logical_entities"]}
     assert episode["isolation_evidence"]["recording_sink_attempts"] == 0
     assert not validate_episode(episode)
     assert evaluate_rules(episode)["status"] == "pass"
@@ -1091,8 +1142,14 @@ def test_rule_results_are_strict_recomputable_and_use_episode_evidence(
             "critical",
         }
         for check in result["checks"]:
-            assert all(not evidence.startswith("capture.") for evidence in check["evidence_paths"])
-            assert all(resolve_evidence_path(episode, evidence)[0] for evidence in check["evidence_paths"])
+            assert all(
+                not evidence.startswith("capture.")
+                for evidence in check["evidence_paths"]
+            )
+            assert all(
+                resolve_evidence_path(episode, evidence)[0]
+                for evidence in check["evidence_paths"]
+            )
 
 
 def test_every_rule_has_pass_and_missing_input_coverage(
@@ -1185,15 +1242,21 @@ def test_every_rule_has_a_structured_fail_boundary(
         elif check_id == "planning.pending_boundary":
             entity(document, "plan_proposal")["data"]["status"] = "accepted"
         elif check_id == "planning.weekly_budget":
-            entity(document, "plan_proposal")["data"]["plan_payload"]["weekly_minutes"] = 0
+            entity(document, "plan_proposal")["data"]["plan_payload"][
+                "weekly_minutes"
+            ] = 0
         elif check_id == "planning.deadline_present":
             entity(document, "plan_proposal")["data"]["plan_payload"]["deadline"] = ""
         elif check_id == "planning.stage_task_structure":
             entity(document, "plan_proposal")["data"]["plan_payload"]["stages"] = []
         elif check_id == "planning.core_task_evidence":
-            entity(document, "plan_proposal")["data"]["plan_payload"]["stages"][0]["tasks"][0]["evidence_required"] = False
+            entity(document, "plan_proposal")["data"]["plan_payload"]["stages"][0][
+                "tasks"
+            ][0]["evidence_required"] = False
         elif check_id == "planning.resource_snapshot":
-            entity(document, "plan_proposal")["data"]["plan_payload"]["available_resources"] = []
+            entity(document, "plan_proposal")["data"]["plan_payload"][
+                "available_resources"
+            ] = []
         elif check_id in {
             "intervention.guard_complete",
             "intervention.blocked_zero_effect",
@@ -1268,18 +1331,22 @@ def test_every_rule_has_a_structured_fail_boundary(
         elif check_id == "trace.result_digests":
             invocation[0]["result_digest"] = "0" * 64
         elif check_id == "trace.operation_patches":
-            document["observable_trace"]["operations"] = [
-                {
-                    **document["observable_trace"]["operations"][0],
-                    "patch_digest": "0" * 64,
-                }
-            ] if document["observable_trace"]["operations"] else [
-                {
-                    "patch_digest": "0" * 64,
-                    "forward_patch": {},
-                    "inverse_patch": {},
-                }
-            ]
+            document["observable_trace"]["operations"] = (
+                [
+                    {
+                        **document["observable_trace"]["operations"][0],
+                        "patch_digest": "0" * 64,
+                    }
+                ]
+                if document["observable_trace"]["operations"]
+                else [
+                    {
+                        "patch_digest": "0" * 64,
+                        "forward_patch": {},
+                        "inverse_patch": {},
+                    }
+                ]
+            )
         elif check_id == "trace.terminal_state":
             document["result"]["layers"]["run_status"] = "queued"
         elif check_id == "trace.no_tool_complete":
@@ -1291,7 +1358,9 @@ def test_every_rule_has_a_structured_fail_boundary(
         elif check_id == "isolation.production_database_denied":
             document["isolation_evidence"]["repository_runtime_data_access"] = True
         elif check_id == "isolation.network_mode":
-            document["environment"]["isolation"]["network_access"] = "model_provider_only"
+            document["environment"]["isolation"]["network_access"] = (
+                "model_provider_only"
+            )
         elif check_id == "isolation.fake_outbox":
             document["environment"]["isolation"]["notification_mode"] = "disabled"
         elif check_id == "isolation.no_sqlite_publish":
@@ -1344,7 +1413,9 @@ def test_rules_separate_pass_fail_boundary_missing_and_hard_gate(
         for item in boundary["state_after"]["logical_entities"]
         if item["entity_type"] == "submission"
     )
-    invocation["canonical_args"]["score"] = invocation["canonical_args"]["pass_threshold"]
+    invocation["canonical_args"]["score"] = invocation["canonical_args"][
+        "pass_threshold"
+    ]
     submission["data"]["status"] = "accepted"
     assert assessment_check(boundary)["status"] == "pass"
     failed = json.loads(json.dumps(episode))
@@ -1354,22 +1425,32 @@ def test_rules_separate_pass_fail_boundary_missing_and_hard_gate(
         if item["entity_type"] == "submission"
     )["data"]["status"] = "accepted"
     failed_result = evaluate_rules(failed)
-    check = next(item for item in failed_result["checks"] if item["check_id"] == "assessment.score_threshold_verdict")
+    check = next(
+        item
+        for item in failed_result["checks"]
+        if item["check_id"] == "assessment.score_threshold_verdict"
+    )
     assert check["status"] == "fail"
     assert check["check_id"] in failed_result["hard_gates"]
     assert failed_result["status"] == "fail"
     assert any(item["status"] == "pass" for item in failed_result["checks"])
     missing = json.loads(json.dumps(episode))
-    del missing["observable_trace"]["tool_invocations"][0]["canonical_args"]["pass_threshold"]
+    del missing["observable_trace"]["tool_invocations"][0]["canonical_args"][
+        "pass_threshold"
+    ]
     assert assessment_check(missing)["status"] == "invalid_input"
     assert evaluate_rules(missing)["status"] == "invalid_input"
 
 
-def test_not_applicable_is_not_invalid_input(e2_batch: tuple[Path, RunAgentSummary]) -> None:
+def test_not_applicable_is_not_invalid_input(
+    e2_batch: tuple[Path, RunAgentSummary],
+) -> None:
     output, _ = e2_batch
     episode = _load(output / "episodes" / "P-E1-MINI-001.json")
     result = evaluate_rules(episode)
-    intervention = [check for check in result["checks"] if check["rule_pack"] == "intervention"]
+    intervention = [
+        check for check in result["checks"] if check["rule_pack"] == "intervention"
+    ]
     assert intervention
     assert {check["status"] for check in intervention} == {"not_applicable"}
     assert all(check["status"] != "invalid_input" for check in intervention)
@@ -1455,26 +1536,25 @@ def test_evaluate_rules_cli_exit_codes_distinguish_invalid_and_failures(
             "episode_sha256"
         ]
         manifest["manifest_sha256"] = sha256_digest(
-            {
-                key: value
-                for key, value in manifest.items()
-                if key != "manifest_sha256"
-            }
+            {key: value for key, value in manifest.items() if key != "manifest_sha256"}
         )
         manifest_path.write_bytes(canonical_json_bytes(manifest))
         assert validate_dataset(root).ok
         return root
 
     invalid = variant("invalid", lambda payload: payload.pop("deadline"))
-    assert cli_main(
-        [
-            "evaluate-rules",
-            "--input",
-            str(invalid),
-            "--output",
-            str(tmp_path / "invalid-output"),
-        ]
-    ) == 1
+    assert (
+        cli_main(
+            [
+                "evaluate-rules",
+                "--input",
+                str(invalid),
+                "--output",
+                str(tmp_path / "invalid-output"),
+            ]
+        )
+        == 1
+    )
     assert (tmp_path / "invalid-output/rules/P-E1-MINI-001.json").is_file()
     assert "invalid_input_episodes=1" in capsys.readouterr().out
 
@@ -1484,41 +1564,47 @@ def test_evaluate_rules_cli_exit_codes_distinguish_invalid_and_failures(
             evidence_required=False
         ),
     )
-    assert cli_main(
-        [
-            "evaluate-rules",
-            "--input",
-            str(hard_gate),
-            "--output",
-            str(tmp_path / "hard-gate-output"),
-        ]
-    ) == 2
+    assert (
+        cli_main(
+            [
+                "evaluate-rules",
+                "--input",
+                str(hard_gate),
+                "--output",
+                str(tmp_path / "hard-gate-output"),
+            ]
+        )
+        == 2
+    )
     assert "hard_gate_episodes=1" in capsys.readouterr().out
 
-    noncritical = variant(
-        "noncritical", lambda payload: payload.update(deadline="")
+    noncritical = variant("noncritical", lambda payload: payload.update(deadline=""))
+    assert (
+        cli_main(
+            [
+                "evaluate-rules",
+                "--input",
+                str(noncritical),
+                "--output",
+                str(tmp_path / "noncritical-output"),
+            ]
+        )
+        == 3
     )
-    assert cli_main(
-        [
-            "evaluate-rules",
-            "--input",
-            str(noncritical),
-            "--output",
-            str(tmp_path / "noncritical-output"),
-        ]
-    ) == 3
     summary = capsys.readouterr().out
     assert "failed_episodes=1" in summary
     assert "hard_gate_episodes=0" in summary
 
 
 def test_v2_and_rule_contracts_reject_unknown_fields(
-    e2_batch: tuple[Path, RunAgentSummary]
+    e2_batch: tuple[Path, RunAgentSummary],
 ) -> None:
     output, _ = e2_batch
     episode = _load(output / "episodes" / "P-E1-MINI-001.json")
     episode["unknown"] = True
-    assert any(issue.code == "schema.unknown_field" for issue in validate_episode(episode))
+    assert any(
+        issue.code == "schema.unknown_field" for issue in validate_episode(episode)
+    )
     valid_episode = _load(output / "episodes" / "P-E1-MINI-001.json")
     result = evaluate_rules(valid_episode)
     result["unknown"] = True
@@ -1556,7 +1642,9 @@ def test_nested_operation_patch_aligns_to_leaf_delta() -> None:
     )
     delta = build_state_delta(before, after)
     change = next(
-        item for item in delta["changes"] if item["field_path"] == "data.preferences.pace"
+        item
+        for item in delta["changes"]
+        if item["field_path"] == "data.preferences.pace"
     )
     assert change["operation_alignment"] == "matched"
     assert change["operation_refs"] == ["operation:test:nested"]
@@ -1611,12 +1699,12 @@ def test_snapshot_data_allowlist_and_formal_boundary_fail_closed(
         for item in trace_mismatch["state_after"]["logical_entities"]
         if item["entity_type"] == "learner"
     )
-    trace_mismatch["observable_trace"]["operations"][0][
-        "affected_entity_refs"
-    ].append(learner_ref)
-    trace_mismatch["observable_trace"]["tool_invocations"][0][
-        "execution_status"
-    ] = "not_executed"
+    trace_mismatch["observable_trace"]["operations"][0]["affected_entity_refs"].append(
+        learner_ref
+    )
+    trace_mismatch["observable_trace"]["tool_invocations"][0]["execution_status"] = (
+        "not_executed"
+    )
     assert any(
         issue.code == "trace.operation_snapshot_mismatch"
         for issue in validate_episode(trace_mismatch)
@@ -1805,10 +1893,13 @@ def test_multiple_guard_decisions_keep_allowed_and_blocked_effects_separate() ->
     assert [item["status"] for item in guards] == ["allowed", "blocked"]
     assert guards[0]["final_effect_refs"] == [effects[0]["effect_id"]]
     assert guards[1]["final_effect_refs"] == [effects[1]["effect_id"]]
-    assert _durable_status(
-        after=after,
-        trace=trace,
-        run_status="completed",
-        guard_status=guard,
-        effects=effects,
-    ) == "partial"
+    assert (
+        _durable_status(
+            after=after,
+            trace=trace,
+            run_status="completed",
+            guard_status=guard,
+            effects=effects,
+        )
+        == "partial"
+    )

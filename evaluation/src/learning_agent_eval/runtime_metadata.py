@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from .canonical import sha256_digest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DEPENDENCY_LOCK_VERSION = "evaluation-runtime-dependencies-v1"
-DEPENDENCY_FILES = (
-    "backend/requirements.txt",
-    "backend/requirements-dev.txt",
-    "evaluation/pyproject.toml",
-)
+DEPENDENCY_LOCK_VERSION = "evaluation-runtime-lock-v1"
+DEPENDENCY_LOCK_FILE = "evaluation/runtime-requirements.lock"
 ENDPOINT_POLICY_VERSION = "hy3-endpoint-policy-v1"
 HY3_ENDPOINT_ID = "tencent-tokenhub-primary"
 HY3_ENDPOINT_ORIGIN = "https://tokenhub.tencentmaas.com"
@@ -32,20 +31,114 @@ ENDPOINT_POLICY_SHA256 = sha256_digest(
         ],
     }
 )
+AGENT_RUNTIME_CONFIG_SHA256 = sha256_digest(
+    {
+        "scope": "agent_runtime",
+        "endpoint_policy_sha256": ENDPOINT_POLICY_SHA256,
+        "model": HY3_MODEL,
+        "temperature": "0.9",
+        "reasoning_effort": "high",
+    }
+)
 
 
 def dependency_lock_sha256(project_root: Path = PROJECT_ROOT) -> str:
-    """Hash the exact committed dependency declarations in a framed stream."""
+    """Hash the exact committed dependency closure."""
 
-    digest = hashlib.sha256()
-    for relative in DEPENDENCY_FILES:
-        payload = (project_root / relative).read_bytes()
-        encoded_name = relative.encode("utf-8")
-        digest.update(len(encoded_name).to_bytes(4, "big"))
-        digest.update(encoded_name)
-        digest.update(len(payload).to_bytes(8, "big"))
-        digest.update(payload)
-    return digest.hexdigest()
+    return hashlib.sha256(
+        (project_root / DEPENDENCY_LOCK_FILE).read_bytes()
+    ).hexdigest()
+
+
+def dependency_environment_reason_codes(
+    project_root: Path = PROJECT_ROOT,
+) -> tuple[str, ...]:
+    """Compare installed distributions with every exact entry in the lock."""
+
+    try:
+        lines = (
+            (project_root / DEPENDENCY_LOCK_FILE)
+            .read_text(encoding="utf-8")
+            .splitlines()
+        )
+    except OSError:
+        return ("provider.dependency_lock_missing",)
+    reasons: set[str] = set()
+    entries = [
+        line.strip() for line in lines if line.strip() and not line.startswith("#")
+    ]
+    if not entries:
+        return ("provider.dependency_lock_empty",)
+    if entries != sorted(entries, key=lambda item: item.partition("==")[0].casefold()):
+        reasons.add("provider.dependency_lock_unsorted")
+    for entry in entries:
+        name, separator, expected = entry.partition("==")
+        if not separator or not name or not expected:
+            reasons.add("provider.dependency_lock_invalid")
+            continue
+        try:
+            actual = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            reasons.add("provider.dependency_missing")
+            continue
+        if actual != expected:
+            reasons.add("provider.dependency_version_mismatch")
+    return tuple(sorted(reasons))
+
+
+def provider_attribution_reason_codes(
+    attestation: Mapping[str, Any],
+) -> tuple[str, ...]:
+    """Recompute why a real Hy3 attribution is not formally eligible."""
+
+    if attestation.get("invocation_mode") != "real":
+        return ()
+    reasons: set[str] = set()
+    try:
+        lock_digest = dependency_lock_sha256()
+    except OSError:
+        lock_digest = None
+        reasons.add("provider.dependency_lock_missing")
+    expected_fields = {
+        "provider_id": "tencent-tokenhub",
+        "endpoint_policy_version": ENDPOINT_POLICY_VERSION,
+        "endpoint_policy_sha256": ENDPOINT_POLICY_SHA256,
+        "endpoint_id": HY3_ENDPOINT_ID,
+        "endpoint_origin": HY3_ENDPOINT_ORIGIN,
+        "configured_model": HY3_MODEL,
+        "dependency_lock_version": DEPENDENCY_LOCK_VERSION,
+        "dependency_lock_sha256": lock_digest,
+    }
+    if any(attestation.get(key) != value for key, value in expected_fields.items()):
+        reasons.add("provider.configuration_not_allowlisted")
+    scope = attestation.get("scope")
+    if scope == "agent_runtime":
+        expected_configuration = AGENT_RUNTIME_CONFIG_SHA256
+    else:
+        from .rubric import JUDGE_CONFIG_SHA256_V2
+
+        expected_configuration = JUDGE_CONFIG_SHA256_V2
+    if attestation.get("configuration_sha256") != expected_configuration:
+        reasons.add("provider.configuration_digest_mismatch")
+    if not attestation.get("worktree_clean"):
+        reasons.add("provider.worktree_dirty")
+    if not attestation.get("dependency_lock_verified"):
+        reasons.add("provider.dependency_lock_unverified")
+    calls = attestation.get("calls")
+    if not isinstance(calls, list) or not calls:
+        reasons.add("provider.calls_missing")
+        calls = []
+    for call in calls:
+        if not isinstance(call, Mapping) or call.get("request_model") != HY3_MODEL:
+            reasons.add("provider.request_model_mismatch")
+            continue
+        if call.get("status") != "completed":
+            reasons.add("provider.call_incomplete")
+        if call.get("response_model") != HY3_MODEL:
+            reasons.add("provider.response_model_mismatch")
+        if not call.get("provider_request_id"):
+            reasons.add("provider.request_id_missing")
+    return tuple(sorted(reasons))
 
 
 def git_worktree_clean(project_root: Path = PROJECT_ROOT) -> bool:

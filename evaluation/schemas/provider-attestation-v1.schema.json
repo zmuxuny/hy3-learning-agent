@@ -10,25 +10,6 @@
           "title": "Call Id",
           "type": "string"
         },
-        "request_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Request Model",
-          "type": "string"
-        },
-        "response_model": {
-          "anyOf": [
-            {
-              "maxLength": 4000,
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Response Model"
-        },
         "provider_request_id": {
           "anyOf": [
             {
@@ -41,6 +22,12 @@
             }
           ],
           "title": "Provider Request Id"
+        },
+        "request_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Request Model",
+          "type": "string"
         },
         "requested_at": {
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
@@ -58,6 +45,19 @@
             }
           ],
           "title": "Responded At"
+        },
+        "response_model": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Response Model"
         },
         "status": {
           "enum": [
@@ -86,45 +86,52 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "schema_version": {
-      "const": "provider-attestation-v1",
-      "title": "Schema Version",
+    "attestation_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Attestation Sha256",
       "type": "string"
     },
-    "scope": {
+    "attribution_status": {
       "enum": [
-        "agent_runtime",
-        "semantic_judge"
+        "eligible",
+        "ineligible_stub",
+        "invalid"
       ],
-      "title": "Scope",
+      "title": "Attribution Status",
       "type": "string"
     },
-    "invocation_mode": {
-      "enum": [
-        "stub",
-        "real"
-      ],
-      "title": "Invocation Mode",
+    "calls": {
+      "items": {
+        "$ref": "#/$defs/ProviderCallAttestationV1"
+      },
+      "title": "Calls",
+      "type": "array"
+    },
+    "configuration_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Configuration Sha256",
       "type": "string"
     },
-    "provider_id": {
-      "enum": [
-        "none",
-        "tencent-tokenhub"
-      ],
-      "title": "Provider Id",
+    "configured_model": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Configured Model",
       "type": "string"
     },
-    "endpoint_policy_version": {
+    "dependency_lock_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Dependency Lock Sha256",
+      "type": "string"
+    },
+    "dependency_lock_verified": {
+      "title": "Dependency Lock Verified",
+      "type": "boolean"
+    },
+    "dependency_lock_version": {
       "maxLength": 128,
       "minLength": 1,
       "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Endpoint Policy Version",
-      "type": "string"
-    },
-    "endpoint_policy_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Endpoint Policy Sha256",
+      "title": "Dependency Lock Version",
       "type": "string"
     },
     "endpoint_id": {
@@ -154,22 +161,16 @@
       ],
       "title": "Endpoint Origin"
     },
-    "configured_model": {
-      "maxLength": 4000,
-      "minLength": 1,
-      "title": "Configured Model",
+    "endpoint_policy_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Endpoint Policy Sha256",
       "type": "string"
     },
-    "calls": {
-      "items": {
-        "$ref": "#/$defs/ProviderCallAttestationV1"
-      },
-      "title": "Calls",
-      "type": "array"
-    },
-    "configuration_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Configuration Sha256",
+    "endpoint_policy_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Endpoint Policy Version",
       "type": "string"
     },
     "git_commit": {
@@ -177,29 +178,20 @@
       "title": "Git Commit",
       "type": "string"
     },
-    "worktree_clean": {
-      "title": "Worktree Clean",
-      "type": "boolean"
-    },
-    "dependency_lock_version": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Dependency Lock Version",
-      "type": "string"
-    },
-    "dependency_lock_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Dependency Lock Sha256",
-      "type": "string"
-    },
-    "attribution_status": {
+    "invocation_mode": {
       "enum": [
-        "eligible",
-        "ineligible_stub",
-        "invalid"
+        "stub",
+        "real"
       ],
-      "title": "Attribution Status",
+      "title": "Invocation Mode",
+      "type": "string"
+    },
+    "provider_id": {
+      "enum": [
+        "none",
+        "tencent-tokenhub"
+      ],
+      "title": "Provider Id",
       "type": "string"
     },
     "reason_codes": {
@@ -212,10 +204,22 @@
       "title": "Reason Codes",
       "type": "array"
     },
-    "attestation_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Attestation Sha256",
+    "schema_version": {
+      "const": "provider-attestation-v1",
+      "title": "Schema Version",
       "type": "string"
+    },
+    "scope": {
+      "enum": [
+        "agent_runtime",
+        "semantic_judge"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "worktree_clean": {
+      "title": "Worktree Clean",
+      "type": "boolean"
     }
   },
   "required": [
@@ -234,6 +238,7 @@
     "worktree_clean",
     "dependency_lock_version",
     "dependency_lock_sha256",
+    "dependency_lock_verified",
     "attribution_status",
     "reason_codes",
     "attestation_sha256"

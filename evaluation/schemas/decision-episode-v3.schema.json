@@ -3,12 +3,36 @@
     "DecisionLayersV3": {
       "additionalProperties": false,
       "properties": {
-        "model_attempts": {
+        "durable_status": {
+          "enum": [
+            "committed",
+            "pending",
+            "partial",
+            "blocked",
+            "deferred",
+            "failed",
+            "needs_reconciliation"
+          ],
+          "title": "Durable Status",
+          "type": "string"
+        },
+        "final_effects": {
           "items": {
-            "$ref": "#/$defs/ModelAttemptV3"
+            "$ref": "#/$defs/FinalEffectV3"
           },
-          "title": "Model Attempts",
+          "minItems": 1,
+          "title": "Final Effects",
           "type": "array"
+        },
+        "formal_evaluation_eligibility": {
+          "enum": [
+            "eligible",
+            "ineligible_stub",
+            "ineligible_engineering",
+            "invalid"
+          ],
+          "title": "Formal Evaluation Eligibility",
+          "type": "string"
         },
         "guard_decision_refs": {
           "items": {
@@ -20,12 +44,11 @@
           "title": "Guard Decision Refs",
           "type": "array"
         },
-        "final_effects": {
+        "model_attempts": {
           "items": {
-            "$ref": "#/$defs/FinalEffectV3"
+            "$ref": "#/$defs/ModelAttemptV3"
           },
-          "minItems": 1,
-          "title": "Final Effects",
+          "title": "Model Attempts",
           "type": "array"
         },
         "run_status": {
@@ -40,29 +63,6 @@
             "needs_reconciliation"
           ],
           "title": "Run Status",
-          "type": "string"
-        },
-        "durable_status": {
-          "enum": [
-            "committed",
-            "pending",
-            "partial",
-            "blocked",
-            "deferred",
-            "failed",
-            "needs_reconciliation"
-          ],
-          "title": "Durable Status",
-          "type": "string"
-        },
-        "formal_evaluation_eligibility": {
-          "enum": [
-            "eligible",
-            "ineligible_stub",
-            "ineligible_engineering",
-            "invalid"
-          ],
-          "title": "Formal Evaluation Eligibility",
           "type": "string"
         }
       },
@@ -100,6 +100,11 @@
           "title": "Action Class",
           "type": "string"
         },
+        "action_mapping_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Action Mapping Sha256",
+          "type": "string"
+        },
         "action_mapping_version": {
           "maxLength": 128,
           "minLength": 1,
@@ -107,10 +112,11 @@
           "title": "Action Mapping Version",
           "type": "string"
         },
-        "action_mapping_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Action Mapping Sha256",
-          "type": "string"
+        "guard": {
+          "$ref": "#/$defs/GuardDecisionSummaryV2"
+        },
+        "layers": {
+          "$ref": "#/$defs/DecisionLayersV3"
         },
         "user_visible_output": {
           "anyOf": [
@@ -122,12 +128,6 @@
             }
           ],
           "title": "User Visible Output"
-        },
-        "guard": {
-          "$ref": "#/$defs/GuardDecisionSummaryV2"
-        },
-        "layers": {
-          "$ref": "#/$defs/DecisionLayersV3"
         }
       },
       "required": [
@@ -146,14 +146,37 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "properties": {
-        "schema_version": {
-          "const": "environment-manifest-v2",
-          "title": "Schema Version",
-          "type": "string"
-        },
         "frozen_time": {
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
           "title": "Frozen Time",
+          "type": "string"
+        },
+        "isolation": {
+          "$ref": "#/$defs/IsolationManifest"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "policies": {
+          "$ref": "#/$defs/PolicyManifest"
+        },
+        "prompt": {
+          "$ref": "#/$defs/PromptManifest"
+        },
+        "provider_attestation": {
+          "$ref": "#/$defs/ProviderAttestationV1"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceManifest"
+        },
+        "runtime": {
+          "$ref": "#/$defs/RuntimeManifestV2"
+        },
+        "schema_version": {
+          "const": "environment-manifest-v2",
+          "title": "Schema Version",
           "type": "string"
         },
         "timezone": {
@@ -163,31 +186,8 @@
           "title": "Timezone",
           "type": "string"
         },
-        "prompt": {
-          "$ref": "#/$defs/PromptManifest"
-        },
         "tools": {
           "$ref": "#/$defs/ToolManifest"
-        },
-        "policies": {
-          "$ref": "#/$defs/PolicyManifest"
-        },
-        "resources": {
-          "$ref": "#/$defs/ResourceManifest"
-        },
-        "runtime": {
-          "$ref": "#/$defs/RuntimeManifestV2"
-        },
-        "isolation": {
-          "$ref": "#/$defs/IsolationManifest"
-        },
-        "provider_attestation": {
-          "$ref": "#/$defs/ProviderAttestationV1"
-        },
-        "manifest_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Manifest Sha256",
-          "type": "string"
         }
       },
       "required": [
@@ -209,13 +209,15 @@
     "EpisodeCompletenessV3": {
       "additionalProperties": false,
       "properties": {
-        "status": {
-          "enum": [
-            "complete",
-            "invalid"
-          ],
-          "title": "Status",
+        "completeness_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Completeness Sha256",
           "type": "string"
+        },
+        "decision_correctness_evaluated": {
+          "const": false,
+          "title": "Decision Correctness Evaluated",
+          "type": "boolean"
         },
         "evidence_error_codes": {
           "items": {
@@ -227,6 +229,14 @@
           "title": "Evidence Error Codes",
           "type": "array"
         },
+        "status": {
+          "enum": [
+            "complete",
+            "invalid"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
         "verified_evidence_paths": {
           "items": {
             "maxLength": 300,
@@ -236,16 +246,6 @@
           },
           "title": "Verified Evidence Paths",
           "type": "array"
-        },
-        "decision_correctness_evaluated": {
-          "const": false,
-          "title": "Decision Correctness Evaluated",
-          "type": "boolean"
-        },
-        "completeness_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Completeness Sha256",
-          "type": "string"
         }
       },
       "required": [
@@ -268,11 +268,6 @@
           "title": "Effect Id",
           "type": "string"
         },
-        "ordinal": {
-          "minimum": 1,
-          "title": "Ordinal",
-          "type": "integer"
-        },
         "effect_type": {
           "enum": [
             "plan_proposal",
@@ -289,6 +284,29 @@
           "title": "Effect Type",
           "type": "string"
         },
+        "entity_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Entity Refs",
+          "type": "array"
+        },
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "source_refs": {
+          "items": {
+            "$ref": "#/$defs/TypedSourceRefV3"
+          },
+          "minItems": 1,
+          "title": "Source Refs",
+          "type": "array"
+        },
         "status": {
           "enum": [
             "applied",
@@ -300,24 +318,6 @@
           ],
           "title": "Status",
           "type": "string"
-        },
-        "entity_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Entity Refs",
-          "type": "array"
-        },
-        "source_refs": {
-          "items": {
-            "$ref": "#/$defs/TypedSourceRefV3"
-          },
-          "minItems": 1,
-          "title": "Source Refs",
-          "type": "array"
         }
       },
       "required": [
@@ -334,16 +334,15 @@
     "GuardDecisionSummaryV2": {
       "additionalProperties": false,
       "properties": {
-        "status": {
-          "enum": [
-            "not_evaluated",
-            "allowed",
-            "blocked",
-            "deferred",
-            "mixed"
-          ],
-          "title": "Status",
-          "type": "string"
+        "blocked_effect_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Blocked Effect Refs",
+          "type": "array"
         },
         "reason_code": {
           "anyOf": [
@@ -359,15 +358,16 @@
           ],
           "title": "Reason Code"
         },
-        "blocked_effect_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Blocked Effect Refs",
-          "type": "array"
+        "status": {
+          "enum": [
+            "not_evaluated",
+            "allowed",
+            "blocked",
+            "deferred",
+            "mixed"
+          ],
+          "title": "Status",
+          "type": "string"
         }
       },
       "required": [
@@ -381,62 +381,15 @@
     "GuardDecisionV2": {
       "additionalProperties": false,
       "properties": {
-        "guard_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Guard Id",
-          "type": "string"
-        },
-        "ordinal": {
-          "minimum": 1,
-          "title": "Ordinal",
-          "type": "integer"
-        },
-        "policy": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Policy",
-          "type": "string"
-        },
-        "status": {
-          "enum": [
-            "not_evaluated",
-            "allowed",
-            "blocked",
-            "deferred"
-          ],
-          "title": "Status",
-          "type": "string"
-        },
-        "reason_code": {
-          "anyOf": [
-            {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Reason Code"
-        },
-        "invocation_ref": {
-          "anyOf": [
-            {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Invocation Ref"
+        "attempted_effect_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Attempted Effect Refs",
+          "type": "array"
         },
         "decision_ref": {
           "anyOf": [
@@ -452,16 +405,6 @@
           ],
           "title": "Decision Ref"
         },
-        "attempted_effect_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Attempted Effect Refs",
-          "type": "array"
-        },
         "final_effect_refs": {
           "items": {
             "maxLength": 128,
@@ -471,6 +414,63 @@
           },
           "title": "Final Effect Refs",
           "type": "array"
+        },
+        "guard_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Guard Id",
+          "type": "string"
+        },
+        "invocation_ref": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Invocation Ref"
+        },
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "policy": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Policy",
+          "type": "string"
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason Code"
+        },
+        "status": {
+          "enum": [
+            "not_evaluated",
+            "allowed",
+            "blocked",
+            "deferred"
+          ],
+          "title": "Status",
+          "type": "string"
         }
       },
       "required": [
@@ -490,11 +490,6 @@
     "IsolationManifest": {
       "additionalProperties": false,
       "properties": {
-        "production_database_access": {
-          "const": false,
-          "title": "Production Database Access",
-          "type": "boolean"
-        },
         "network_access": {
           "enum": [
             "disabled",
@@ -511,6 +506,11 @@
           ],
           "title": "Notification Mode",
           "type": "string"
+        },
+        "production_database_access": {
+          "const": false,
+          "title": "Production Database Access",
+          "type": "boolean"
         }
       },
       "required": [
@@ -532,18 +532,6 @@
           "title": "Attempt Id",
           "type": "string"
         },
-        "ordinal": {
-          "minimum": 1,
-          "title": "Ordinal",
-          "type": "integer"
-        },
-        "call_ref": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Call Ref",
-          "type": "string"
-        },
         "attempted_action": {
           "enum": [
             "tool_call",
@@ -552,6 +540,13 @@
             "no_op"
           ],
           "title": "Attempted Action",
+          "type": "string"
+        },
+        "call_ref": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Call Ref",
           "type": "string"
         },
         "invocation_refs": {
@@ -563,6 +558,11 @@
           },
           "title": "Invocation Refs",
           "type": "array"
+        },
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
         }
       },
       "required": [
@@ -578,57 +578,23 @@
     "ModelCallV3": {
       "additionalProperties": false,
       "properties": {
+        "assistant_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Assistant Text"
+        },
         "call_id": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Call Id",
           "type": "string"
-        },
-        "ordinal": {
-          "minimum": 1,
-          "title": "Ordinal",
-          "type": "integer"
-        },
-        "run_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Run Id",
-          "type": "string"
-        },
-        "parent_run_id": {
-          "anyOf": [
-            {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Parent Run Id"
-        },
-        "parent_call_id": {
-          "anyOf": [
-            {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Parent Call Id"
-        },
-        "depth": {
-          "minimum": 0,
-          "title": "Depth",
-          "type": "integer"
         },
         "call_purpose": {
           "enum": [
@@ -645,44 +611,48 @@
           "title": "Decision Relevant",
           "type": "boolean"
         },
-        "visible_context": {
-          "$ref": "#/$defs/ModelVisibleContextV1"
+        "depth": {
+          "minimum": 0,
+          "title": "Depth",
+          "type": "integer"
         },
-        "request_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Request Model",
-          "type": "string"
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
         },
-        "assistant_text": {
+        "parent_call_id": {
           "anyOf": [
             {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
               "type": "string"
             },
             {
               "type": "null"
             }
           ],
-          "title": "Assistant Text"
+          "title": "Parent Call Id"
         },
-        "tool_call_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Tool Call Refs",
-          "type": "array"
-        },
-        "status": {
-          "enum": [
-            "completed",
-            "provider_error",
-            "framework_error",
-            "cancelled"
+        "parent_run_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ],
-          "title": "Status",
+          "title": "Parent Run Id"
+        },
+        "request_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Request Model",
           "type": "string"
         },
         "response_sha256": {
@@ -696,6 +666,36 @@
             }
           ],
           "title": "Response Sha256"
+        },
+        "run_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "provider_error",
+            "framework_error",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tool_call_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Tool Call Refs",
+          "type": "array"
+        },
+        "visible_context": {
+          "$ref": "#/$defs/ModelVisibleContextV1"
         }
       },
       "required": [
@@ -720,6 +720,11 @@
     "ModelVisibleContextV1": {
       "additionalProperties": false,
       "properties": {
+        "context_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Context Sha256",
+          "type": "string"
+        },
         "context_version": {
           "const": "model-visible-context-v1",
           "title": "Context Version",
@@ -742,11 +747,6 @@
           },
           "title": "Tool Schemas",
           "type": "array"
-        },
-        "context_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Context Sha256",
-          "type": "string"
         }
       },
       "required": [
@@ -761,18 +761,20 @@
     "ObservableTraceV3": {
       "additionalProperties": false,
       "properties": {
+        "auxiliary_call_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Auxiliary Call Refs",
+          "type": "array"
+        },
         "capture_mode": {
           "const": "runtime_recording",
           "title": "Capture Mode",
           "type": "string"
-        },
-        "model_calls": {
-          "items": {
-            "$ref": "#/$defs/ModelCallV3"
-          },
-          "minItems": 1,
-          "title": "Model Calls",
-          "type": "array"
         },
         "decision_call_refs": {
           "items": {
@@ -785,28 +787,19 @@
           "title": "Decision Call Refs",
           "type": "array"
         },
-        "auxiliary_call_refs": {
+        "guard_decisions": {
           "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
+            "$ref": "#/$defs/GuardDecisionV2"
           },
-          "title": "Auxiliary Call Refs",
+          "title": "Guard Decisions",
           "type": "array"
         },
-        "tool_invocations": {
+        "model_calls": {
           "items": {
-            "$ref": "#/$defs/ToolInvocationV2"
+            "$ref": "#/$defs/ModelCallV3"
           },
-          "title": "Tool Invocations",
-          "type": "array"
-        },
-        "run_events": {
-          "items": {
-            "$ref": "#/$defs/RunEvent"
-          },
-          "title": "Run Events",
+          "minItems": 1,
+          "title": "Model Calls",
           "type": "array"
         },
         "operations": {
@@ -816,11 +809,18 @@
           "title": "Operations",
           "type": "array"
         },
-        "guard_decisions": {
+        "run_events": {
           "items": {
-            "$ref": "#/$defs/GuardDecisionV2"
+            "$ref": "#/$defs/RunEvent"
           },
-          "title": "Guard Decisions",
+          "title": "Run Events",
+          "type": "array"
+        },
+        "tool_invocations": {
+          "items": {
+            "$ref": "#/$defs/ToolInvocationV2"
+          },
+          "title": "Tool Invocations",
           "type": "array"
         }
       },
@@ -840,57 +840,6 @@
     "OperationV2": {
       "additionalProperties": false,
       "properties": {
-        "operation_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Operation Id",
-          "type": "string"
-        },
-        "ordinal": {
-          "minimum": 1,
-          "title": "Ordinal",
-          "type": "integer"
-        },
-        "invocation_ref": {
-          "anyOf": [
-            {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Invocation Ref"
-        },
-        "tool_name": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Tool Name",
-          "type": "string"
-        },
-        "status": {
-          "enum": [
-            "committed",
-            "undo_pending",
-            "undone",
-            "redo_pending",
-            "needs_reconciliation"
-          ],
-          "title": "Status",
-          "type": "string"
-        },
-        "primary_entity_ref": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Primary Entity Ref",
-          "type": "string"
-        },
         "affected_entity_refs": {
           "items": {
             "maxLength": 128,
@@ -916,9 +865,60 @@
           "title": "Inverse Patch",
           "type": "object"
         },
+        "invocation_ref": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Invocation Ref"
+        },
+        "operation_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
         "patch_digest": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Patch Digest",
+          "type": "string"
+        },
+        "primary_entity_ref": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Primary Entity Ref",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "committed",
+            "undo_pending",
+            "undone",
+            "redo_pending",
+            "needs_reconciliation"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tool_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Tool Name",
           "type": "string"
         }
       },
@@ -940,28 +940,9 @@
     "PolicyManifest": {
       "additionalProperties": false,
       "properties": {
-        "proactive_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Proactive Version",
-          "type": "string"
-        },
-        "proactive_digest": {
+        "approval_digest": {
           "pattern": "^[0-9a-f]{64}$",
-          "title": "Proactive Digest",
-          "type": "string"
-        },
-        "evidence_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Evidence Version",
-          "type": "string"
-        },
-        "evidence_digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Evidence Digest",
+          "title": "Approval Digest",
           "type": "string"
         },
         "approval_version": {
@@ -971,9 +952,28 @@
           "title": "Approval Version",
           "type": "string"
         },
-        "approval_digest": {
+        "evidence_digest": {
           "pattern": "^[0-9a-f]{64}$",
-          "title": "Approval Digest",
+          "title": "Evidence Digest",
+          "type": "string"
+        },
+        "evidence_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Evidence Version",
+          "type": "string"
+        },
+        "proactive_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Proactive Digest",
+          "type": "string"
+        },
+        "proactive_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Proactive Version",
           "type": "string"
         }
       },
@@ -1013,16 +1013,16 @@
     "PromptManifest": {
       "additionalProperties": false,
       "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
         "version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Version",
-          "type": "string"
-        },
-        "digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Digest",
           "type": "string"
         }
       },
@@ -1036,14 +1036,14 @@
     "ProvenanceV3": {
       "additionalProperties": false,
       "properties": {
-        "source_type": {
-          "const": "runtime_export",
-          "title": "Source Type",
-          "type": "string"
-        },
         "construction_method": {
           "const": "runtime_recorded",
           "title": "Construction Method",
+          "type": "string"
+        },
+        "created_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Created At",
           "type": "string"
         },
         "dataset_role": {
@@ -1055,14 +1055,10 @@
           "title": "Dataset Role",
           "type": "string"
         },
-        "runtime_executed": {
-          "const": true,
-          "title": "Runtime Executed",
-          "type": "boolean"
-        },
-        "formal_evaluation_result": {
-          "title": "Formal Evaluation Result",
-          "type": "boolean"
+        "episode_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Episode Sha256",
+          "type": "string"
         },
         "evaluation_status": {
           "enum": [
@@ -1072,10 +1068,14 @@
           "title": "Evaluation Status",
           "type": "string"
         },
-        "created_at": {
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
-          "title": "Created At",
-          "type": "string"
+        "formal_evaluation_result": {
+          "title": "Formal Evaluation Result",
+          "type": "boolean"
+        },
+        "runtime_executed": {
+          "const": true,
+          "title": "Runtime Executed",
+          "type": "boolean"
         },
         "source_refs": {
           "items": {
@@ -1087,9 +1087,9 @@
           "title": "Source Refs",
           "type": "array"
         },
-        "episode_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Episode Sha256",
+        "source_type": {
+          "const": "runtime_export",
+          "title": "Source Type",
           "type": "string"
         }
       },
@@ -1112,45 +1112,52 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "properties": {
-        "schema_version": {
-          "const": "provider-attestation-v1",
-          "title": "Schema Version",
+        "attestation_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Attestation Sha256",
           "type": "string"
         },
-        "scope": {
+        "attribution_status": {
           "enum": [
-            "agent_runtime",
-            "semantic_judge"
+            "eligible",
+            "ineligible_stub",
+            "invalid"
           ],
-          "title": "Scope",
+          "title": "Attribution Status",
           "type": "string"
         },
-        "invocation_mode": {
-          "enum": [
-            "stub",
-            "real"
-          ],
-          "title": "Invocation Mode",
+        "calls": {
+          "items": {
+            "$ref": "#/$defs/ProviderCallAttestationV1"
+          },
+          "title": "Calls",
+          "type": "array"
+        },
+        "configuration_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Configuration Sha256",
           "type": "string"
         },
-        "provider_id": {
-          "enum": [
-            "none",
-            "tencent-tokenhub"
-          ],
-          "title": "Provider Id",
+        "configured_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Configured Model",
           "type": "string"
         },
-        "endpoint_policy_version": {
+        "dependency_lock_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Dependency Lock Sha256",
+          "type": "string"
+        },
+        "dependency_lock_verified": {
+          "title": "Dependency Lock Verified",
+          "type": "boolean"
+        },
+        "dependency_lock_version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Endpoint Policy Version",
-          "type": "string"
-        },
-        "endpoint_policy_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Endpoint Policy Sha256",
+          "title": "Dependency Lock Version",
           "type": "string"
         },
         "endpoint_id": {
@@ -1180,22 +1187,16 @@
           ],
           "title": "Endpoint Origin"
         },
-        "configured_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Configured Model",
+        "endpoint_policy_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Endpoint Policy Sha256",
           "type": "string"
         },
-        "calls": {
-          "items": {
-            "$ref": "#/$defs/ProviderCallAttestationV1"
-          },
-          "title": "Calls",
-          "type": "array"
-        },
-        "configuration_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Configuration Sha256",
+        "endpoint_policy_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Endpoint Policy Version",
           "type": "string"
         },
         "git_commit": {
@@ -1203,29 +1204,20 @@
           "title": "Git Commit",
           "type": "string"
         },
-        "worktree_clean": {
-          "title": "Worktree Clean",
-          "type": "boolean"
-        },
-        "dependency_lock_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Dependency Lock Version",
-          "type": "string"
-        },
-        "dependency_lock_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Dependency Lock Sha256",
-          "type": "string"
-        },
-        "attribution_status": {
+        "invocation_mode": {
           "enum": [
-            "eligible",
-            "ineligible_stub",
-            "invalid"
+            "stub",
+            "real"
           ],
-          "title": "Attribution Status",
+          "title": "Invocation Mode",
+          "type": "string"
+        },
+        "provider_id": {
+          "enum": [
+            "none",
+            "tencent-tokenhub"
+          ],
+          "title": "Provider Id",
           "type": "string"
         },
         "reason_codes": {
@@ -1238,10 +1230,22 @@
           "title": "Reason Codes",
           "type": "array"
         },
-        "attestation_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Attestation Sha256",
+        "schema_version": {
+          "const": "provider-attestation-v1",
+          "title": "Schema Version",
           "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "agent_runtime",
+            "semantic_judge"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "worktree_clean": {
+          "title": "Worktree Clean",
+          "type": "boolean"
         }
       },
       "required": [
@@ -1260,6 +1264,7 @@
         "worktree_clean",
         "dependency_lock_version",
         "dependency_lock_sha256",
+        "dependency_lock_verified",
         "attribution_status",
         "reason_codes",
         "attestation_sha256"
@@ -1277,25 +1282,6 @@
           "title": "Call Id",
           "type": "string"
         },
-        "request_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Request Model",
-          "type": "string"
-        },
-        "response_model": {
-          "anyOf": [
-            {
-              "maxLength": 4000,
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Response Model"
-        },
         "provider_request_id": {
           "anyOf": [
             {
@@ -1308,6 +1294,12 @@
             }
           ],
           "title": "Provider Request Id"
+        },
+        "request_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Request Model",
+          "type": "string"
         },
         "requested_at": {
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
@@ -1325,6 +1317,19 @@
             }
           ],
           "title": "Responded At"
+        },
+        "response_model": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Response Model"
         },
         "status": {
           "enum": [
@@ -1351,16 +1356,16 @@
     "ResourceManifest": {
       "additionalProperties": false,
       "properties": {
+        "snapshot_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
         "snapshot_version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Snapshot Version",
-          "type": "string"
-        },
-        "snapshot_digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Snapshot Digest",
           "type": "string"
         }
       },
@@ -1381,17 +1386,17 @@
           "title": "Event Id",
           "type": "string"
         },
-        "ordinal": {
-          "minimum": 1,
-          "title": "Ordinal",
-          "type": "integer"
-        },
         "event_type": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Event Type",
           "type": "string"
+        },
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
         },
         "payload": {
           "additionalProperties": {
@@ -1419,9 +1424,18 @@
     "RuntimeIsolationEvidenceV2": {
       "additionalProperties": false,
       "properties": {
-        "temporary_database": {
-          "const": true,
-          "title": "Temporary Database",
+        "agent_observed_emulated_receipt": {
+          "const": false,
+          "title": "Agent Observed Emulated Receipt",
+          "type": "boolean"
+        },
+        "agent_observed_pending_delivery": {
+          "title": "Agent Observed Pending Delivery",
+          "type": "boolean"
+        },
+        "background_services_started": {
+          "const": false,
+          "title": "Background Services Started",
           "type": "boolean"
         },
         "database_inside_worker_root": {
@@ -1434,20 +1448,54 @@
           "title": "Env File Read",
           "type": "boolean"
         },
-        "repository_runtime_data_access": {
-          "const": false,
-          "title": "Repository Runtime Data Access",
-          "type": "boolean"
+        "imap_calls": {
+          "minimum": 0,
+          "title": "Imap Calls",
+          "type": "integer"
         },
-        "background_services_started": {
-          "const": false,
-          "title": "Background Services Started",
-          "type": "boolean"
+        "imap_ssl_calls": {
+          "minimum": 0,
+          "title": "Imap Ssl Calls",
+          "type": "integer"
         },
         "network_calls": {
           "minimum": 0,
           "title": "Network Calls",
           "type": "integer"
+        },
+        "outbox_replay_confirmed": {
+          "title": "Outbox Replay Confirmed",
+          "type": "boolean"
+        },
+        "outside_sqlite_access": {
+          "minimum": 0,
+          "title": "Outside Sqlite Access",
+          "type": "integer"
+        },
+        "prohibited_file_access": {
+          "minimum": 0,
+          "title": "Prohibited File Access",
+          "type": "integer"
+        },
+        "published_sqlite_files": {
+          "const": 0,
+          "title": "Published Sqlite Files",
+          "type": "integer"
+        },
+        "recording_sink_attempts": {
+          "minimum": 0,
+          "title": "Recording Sink Attempts",
+          "type": "integer"
+        },
+        "repository_runtime_data_access": {
+          "const": false,
+          "title": "Repository Runtime Data Access",
+          "type": "boolean"
+        },
+        "routing_material_exported": {
+          "const": false,
+          "title": "Routing Material Exported",
+          "type": "boolean"
         },
         "smtp_calls": {
           "minimum": 0,
@@ -1459,66 +1507,23 @@
           "title": "Smtp Ssl Calls",
           "type": "integer"
         },
-        "web_push_calls": {
-          "minimum": 0,
-          "title": "Web Push Calls",
-          "type": "integer"
-        },
-        "imap_calls": {
-          "minimum": 0,
-          "title": "Imap Calls",
-          "type": "integer"
-        },
-        "imap_ssl_calls": {
-          "minimum": 0,
-          "title": "Imap Ssl Calls",
-          "type": "integer"
-        },
-        "prohibited_file_access": {
-          "minimum": 0,
-          "title": "Prohibited File Access",
-          "type": "integer"
-        },
-        "outside_sqlite_access": {
-          "minimum": 0,
-          "title": "Outside Sqlite Access",
-          "type": "integer"
+        "snapshot_provider_calls": {
+          "$ref": "#/$defs/SnapshotProviderCallsV2"
         },
         "subprocess_calls": {
           "minimum": 0,
           "title": "Subprocess Calls",
           "type": "integer"
         },
-        "published_sqlite_files": {
-          "const": 0,
-          "title": "Published Sqlite Files",
-          "type": "integer"
-        },
-        "routing_material_exported": {
-          "const": false,
-          "title": "Routing Material Exported",
+        "temporary_database": {
+          "const": true,
+          "title": "Temporary Database",
           "type": "boolean"
         },
-        "snapshot_provider_calls": {
-          "$ref": "#/$defs/SnapshotProviderCallsV2"
-        },
-        "recording_sink_attempts": {
+        "web_push_calls": {
           "minimum": 0,
-          "title": "Recording Sink Attempts",
+          "title": "Web Push Calls",
           "type": "integer"
-        },
-        "outbox_replay_confirmed": {
-          "title": "Outbox Replay Confirmed",
-          "type": "boolean"
-        },
-        "agent_observed_pending_delivery": {
-          "title": "Agent Observed Pending Delivery",
-          "type": "boolean"
-        },
-        "agent_observed_emulated_receipt": {
-          "const": false,
-          "title": "Agent Observed Emulated Receipt",
-          "type": "boolean"
         }
       },
       "required": [
@@ -1550,23 +1555,14 @@
     "RuntimeManifestV2": {
       "additionalProperties": false,
       "properties": {
-        "git_commit": {
-          "pattern": "^[0-9a-f]{40}$",
-          "title": "Git Commit",
-          "type": "string"
-        },
-        "worktree_clean": {
-          "title": "Worktree Clean",
-          "type": "boolean"
-        },
         "database_mode": {
           "const": "temporary_fixture",
           "title": "Database Mode",
           "type": "string"
         },
-        "fixture_db_sha256": {
+        "dependency_lock_sha256": {
           "pattern": "^[0-9a-f]{64}$",
-          "title": "Fixture Db Sha256",
+          "title": "Dependency Lock Sha256",
           "type": "string"
         },
         "dependency_lock_version": {
@@ -1576,10 +1572,19 @@
           "title": "Dependency Lock Version",
           "type": "string"
         },
-        "dependency_lock_sha256": {
+        "fixture_db_sha256": {
           "pattern": "^[0-9a-f]{64}$",
-          "title": "Dependency Lock Sha256",
+          "title": "Fixture Db Sha256",
           "type": "string"
+        },
+        "git_commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Git Commit",
+          "type": "string"
+        },
+        "worktree_clean": {
+          "title": "Worktree Clean",
+          "type": "boolean"
         }
       },
       "required": [
@@ -1596,11 +1601,16 @@
     "SnapshotEntityV2": {
       "additionalProperties": false,
       "properties": {
-        "logical_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Logical Id",
+        "data": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Data",
+          "type": "object"
+        },
+        "entity_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Entity Sha256",
           "type": "string"
         },
         "entity_type": {
@@ -1638,19 +1648,17 @@
           "title": "Entity Type",
           "type": "string"
         },
+        "logical_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Logical Id",
+          "type": "string"
+        },
         "ordinal": {
           "minimum": 1,
           "title": "Ordinal",
           "type": "integer"
-        },
-        "source": {
-          "enum": [
-            "database",
-            "runtime_input",
-            "resource_snapshot"
-          ],
-          "title": "Source",
-          "type": "string"
         },
         "scope_ref": {
           "anyOf": [
@@ -1666,16 +1674,13 @@
           ],
           "title": "Scope Ref"
         },
-        "data": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Data",
-          "type": "object"
-        },
-        "entity_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Entity Sha256",
+        "source": {
+          "enum": [
+            "database",
+            "runtime_input",
+            "resource_snapshot"
+          ],
+          "title": "Source",
           "type": "string"
         }
       },
@@ -1694,14 +1699,14 @@
     "SnapshotProviderCallsV2": {
       "additionalProperties": false,
       "properties": {
-        "search": {
-          "minimum": 0,
-          "title": "Search",
-          "type": "integer"
-        },
         "open": {
           "minimum": 0,
           "title": "Open",
+          "type": "integer"
+        },
+        "search": {
+          "minimum": 0,
+          "title": "Search",
           "type": "integer"
         },
         "validate": {
@@ -1721,6 +1726,11 @@
     "StateContext": {
       "additionalProperties": false,
       "properties": {
+        "context_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Context Sha256",
+          "type": "string"
+        },
         "public_summary": {
           "maxLength": 4000,
           "minLength": 1,
@@ -1737,11 +1747,6 @@
           "minItems": 1,
           "title": "Source Refs",
           "type": "array"
-        },
-        "context_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Context Sha256",
-          "type": "string"
         }
       },
       "required": [
@@ -1755,55 +1760,8 @@
     "StateDeltaChangeV2": {
       "additionalProperties": false,
       "properties": {
-        "change_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Change Id",
-          "type": "string"
-        },
-        "ordinal": {
-          "minimum": 1,
-          "title": "Ordinal",
-          "type": "integer"
-        },
-        "kind": {
-          "enum": [
-            "added",
-            "removed",
-            "changed",
-            "unchanged"
-          ],
-          "title": "Kind",
-          "type": "string"
-        },
-        "entity_ref": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Entity Ref",
-          "type": "string"
-        },
-        "field_path": {
-          "maxLength": 300,
-          "minLength": 1,
-          "pattern": "^(?:\\$entity|data(?:\\.[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?)*)$",
-          "title": "Field Path",
-          "type": "string"
-        },
-        "before_path": {
-          "anyOf": [
-            {
-              "maxLength": 300,
-              "minLength": 1,
-              "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?(?:\\.[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Before Path"
+        "after": {
+          "$ref": "#/$defs/PresenceValueV2"
         },
         "after_path": {
           "anyOf": [
@@ -1822,26 +1780,50 @@
         "before": {
           "$ref": "#/$defs/PresenceValueV2"
         },
-        "after": {
-          "$ref": "#/$defs/PresenceValueV2"
+        "before_path": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?(?:\\.[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Before Path"
         },
-        "source_refs": {
-          "items": {
-            "$ref": "#/$defs/TypedSourceRefV2"
-          },
-          "minItems": 1,
-          "title": "Source Refs",
-          "type": "array"
+        "change_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Change Id",
+          "type": "string"
         },
-        "operation_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Operation Refs",
-          "type": "array"
+        "entity_ref": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Entity Ref",
+          "type": "string"
+        },
+        "field_path": {
+          "maxLength": 300,
+          "minLength": 1,
+          "pattern": "^(?:\\$entity|data(?:\\.[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?)*)$",
+          "title": "Field Path",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "added",
+            "removed",
+            "changed",
+            "unchanged"
+          ],
+          "title": "Kind",
+          "type": "string"
         },
         "operation_alignment": {
           "enum": [
@@ -1853,6 +1835,29 @@
           ],
           "title": "Operation Alignment",
           "type": "string"
+        },
+        "operation_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Operation Refs",
+          "type": "array"
+        },
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "source_refs": {
+          "items": {
+            "$ref": "#/$defs/TypedSourceRefV2"
+          },
+          "minItems": 1,
+          "title": "Source Refs",
+          "type": "array"
         }
       },
       "required": [
@@ -1875,13 +1880,9 @@
     "StateDeltaV2": {
       "additionalProperties": false,
       "properties": {
-        "capture_status": {
-          "enum": [
-            "complete",
-            "incomplete",
-            "failed"
-          ],
-          "title": "Capture Status",
+        "after_snapshot_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "After Snapshot Sha256",
           "type": "string"
         },
         "before_snapshot_sha256": {
@@ -1889,9 +1890,13 @@
           "title": "Before Snapshot Sha256",
           "type": "string"
         },
-        "after_snapshot_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "After Snapshot Sha256",
+        "capture_status": {
+          "enum": [
+            "complete",
+            "incomplete",
+            "failed"
+          ],
+          "title": "Capture Status",
           "type": "string"
         },
         "changes": {
@@ -1911,15 +1916,10 @@
           "title": "Compared Entity Refs",
           "type": "array"
         },
-        "unchanged_entity_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Unchanged Entity Refs",
-          "type": "array"
+        "delta_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Delta Sha256",
+          "type": "string"
         },
         "error_codes": {
           "items": {
@@ -1931,10 +1931,15 @@
           "title": "Error Codes",
           "type": "array"
         },
-        "delta_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Delta Sha256",
-          "type": "string"
+        "unchanged_entity_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Unchanged Entity Refs",
+          "type": "array"
         }
       },
       "required": [
@@ -1953,12 +1958,29 @@
     "StateSnapshotV2": {
       "additionalProperties": false,
       "properties": {
+        "capture_status": {
+          "enum": [
+            "complete",
+            "incomplete",
+            "failed"
+          ],
+          "title": "Capture Status",
+          "type": "string"
+        },
+        "captured_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Captured At",
+          "type": "string"
+        },
         "collector_version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Collector Version",
           "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/StateContext"
         },
         "entity_types": {
           "items": {
@@ -1998,35 +2020,6 @@
           "title": "Entity Types",
           "type": "array"
         },
-        "field_allowlist_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Field Allowlist Sha256",
-          "type": "string"
-        },
-        "capture_status": {
-          "enum": [
-            "complete",
-            "incomplete",
-            "failed"
-          ],
-          "title": "Capture Status",
-          "type": "string"
-        },
-        "captured_at": {
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
-          "title": "Captured At",
-          "type": "string"
-        },
-        "logical_entities": {
-          "items": {
-            "$ref": "#/$defs/SnapshotEntityV2"
-          },
-          "title": "Logical Entities",
-          "type": "array"
-        },
-        "context": {
-          "$ref": "#/$defs/StateContext"
-        },
         "error_codes": {
           "items": {
             "maxLength": 128,
@@ -2035,6 +2028,18 @@
             "type": "string"
           },
           "title": "Error Codes",
+          "type": "array"
+        },
+        "field_allowlist_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Field Allowlist Sha256",
+          "type": "string"
+        },
+        "logical_entities": {
+          "items": {
+            "$ref": "#/$defs/SnapshotEntityV2"
+          },
+          "title": "Logical Entities",
           "type": "array"
         },
         "snapshot_sha256": {
@@ -2060,6 +2065,38 @@
     "ToolInvocationV2": {
       "additionalProperties": false,
       "properties": {
+        "canonical_args": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Canonical Args",
+          "type": "object"
+        },
+        "durable_status": {
+          "enum": [
+            "running",
+            "pending_approval",
+            "pending_delivery",
+            "committed",
+            "failed",
+            "rejected",
+            "needs_reconciliation",
+            "retry_pending",
+            "cancelled"
+          ],
+          "title": "Durable Status",
+          "type": "string"
+        },
+        "execution_status": {
+          "enum": [
+            "completed",
+            "failed",
+            "blocked",
+            "not_executed"
+          ],
+          "title": "Execution Status",
+          "type": "string"
+        },
         "invocation_id": {
           "maxLength": 128,
           "minLength": 1,
@@ -2067,10 +2104,47 @@
           "title": "Invocation Id",
           "type": "string"
         },
+        "observation_status": {
+          "enum": [
+            "succeeded",
+            "failed",
+            "blocked",
+            "deferred",
+            "pending_approval",
+            "pending_delivery",
+            "needs_reconciliation",
+            "retry_pending",
+            "not_executed"
+          ],
+          "title": "Observation Status",
+          "type": "string"
+        },
+        "operation_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Operation Refs",
+          "type": "array"
+        },
         "ordinal": {
           "minimum": 1,
           "title": "Ordinal",
           "type": "integer"
+        },
+        "result": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Result",
+          "type": "object"
+        },
+        "result_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Result Digest",
+          "type": "string"
         },
         "tool_call_id": {
           "anyOf": [
@@ -2092,75 +2166,6 @@
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Tool Name",
           "type": "string"
-        },
-        "canonical_args": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Canonical Args",
-          "type": "object"
-        },
-        "execution_status": {
-          "enum": [
-            "completed",
-            "failed",
-            "blocked",
-            "not_executed"
-          ],
-          "title": "Execution Status",
-          "type": "string"
-        },
-        "observation_status": {
-          "enum": [
-            "succeeded",
-            "failed",
-            "blocked",
-            "deferred",
-            "pending_approval",
-            "pending_delivery",
-            "needs_reconciliation",
-            "retry_pending",
-            "not_executed"
-          ],
-          "title": "Observation Status",
-          "type": "string"
-        },
-        "durable_status": {
-          "enum": [
-            "running",
-            "pending_approval",
-            "pending_delivery",
-            "committed",
-            "failed",
-            "rejected",
-            "needs_reconciliation",
-            "retry_pending",
-            "cancelled"
-          ],
-          "title": "Durable Status",
-          "type": "string"
-        },
-        "result": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Result",
-          "type": "object"
-        },
-        "result_digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Result Digest",
-          "type": "string"
-        },
-        "operation_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Operation Refs",
-          "type": "array"
         }
       },
       "required": [
@@ -2208,6 +2213,40 @@
     "Trigger": {
       "additionalProperties": false,
       "properties": {
+        "objective": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Payload",
+          "type": "object"
+        },
+        "source_event_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Source Event Refs",
+          "type": "array"
+        },
+        "target_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Target Refs",
+          "type": "array"
+        },
         "trigger_id": {
           "maxLength": 128,
           "minLength": 1,
@@ -2225,44 +2264,10 @@
           "title": "Trigger Type",
           "type": "string"
         },
-        "objective": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Objective",
-          "type": "string"
-        },
         "triggered_at": {
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
           "title": "Triggered At",
           "type": "string"
-        },
-        "target_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "minItems": 1,
-          "title": "Target Refs",
-          "type": "array"
-        },
-        "source_event_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Source Event Refs",
-          "type": "array"
-        },
-        "payload": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Payload",
-          "type": "object"
         }
       },
       "required": [
@@ -2280,6 +2285,13 @@
     "TypedSourceRefV2": {
       "additionalProperties": false,
       "properties": {
+        "ref": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Ref",
+          "type": "string"
+        },
         "source_type": {
           "enum": [
             "runtime",
@@ -2291,13 +2303,6 @@
             "entity"
           ],
           "title": "Source Type",
-          "type": "string"
-        },
-        "ref": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Ref",
           "type": "string"
         }
       },
@@ -2311,6 +2316,13 @@
     "TypedSourceRefV3": {
       "additionalProperties": false,
       "properties": {
+        "ref": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Ref",
+          "type": "string"
+        },
         "source_type": {
           "enum": [
             "runtime",
@@ -2322,13 +2334,6 @@
             "entity"
           ],
           "title": "Source Type",
-          "type": "string"
-        },
-        "ref": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Ref",
           "type": "string"
         }
       },
@@ -2347,6 +2352,13 @@
           "title": "Ordinal",
           "type": "integer"
         },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Payload",
+          "type": "object"
+        },
         "role": {
           "enum": [
             "system",
@@ -2357,13 +2369,6 @@
           ],
           "title": "Role",
           "type": "string"
-        },
-        "payload": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Payload",
-          "type": "object"
         }
       },
       "required": [
@@ -2379,10 +2384,25 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "schema_version": {
-      "const": "decision-episode-v3",
-      "title": "Schema Version",
+    "case_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Case Spec Sha256",
       "type": "string"
+    },
+    "completeness": {
+      "$ref": "#/$defs/EpisodeCompletenessV3"
+    },
+    "difficulty": {
+      "enum": [
+        "standard",
+        "hard",
+        "adversarial"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "environment": {
+      "$ref": "#/$defs/EnvironmentManifestV2"
     },
     "episode_id": {
       "maxLength": 128,
@@ -2391,15 +2411,22 @@
       "title": "Episode Id",
       "type": "string"
     },
-    "case_spec_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Case Spec Sha256",
-      "type": "string"
+    "isolation_evidence": {
+      "$ref": "#/$defs/RuntimeIsolationEvidenceV2"
     },
     "judge_reference_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Judge Reference Sha256",
       "type": "string"
+    },
+    "observable_trace": {
+      "$ref": "#/$defs/ObservableTraceV3"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ProvenanceV3"
+    },
+    "result": {
+      "$ref": "#/$defs/DecisionResultV3"
     },
     "scenario_family_id": {
       "maxLength": 128,
@@ -2407,6 +2434,28 @@
       "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
       "title": "Scenario Family Id",
       "type": "string"
+    },
+    "schema_version": {
+      "const": "decision-episode-v3",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "dev",
+        "test"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "state_after": {
+      "$ref": "#/$defs/StateSnapshotV2"
+    },
+    "state_before": {
+      "$ref": "#/$defs/StateSnapshotV2"
+    },
+    "state_delta": {
+      "$ref": "#/$defs/StateDeltaV2"
     },
     "track": {
       "enum": [
@@ -2418,52 +2467,8 @@
       "title": "Track",
       "type": "string"
     },
-    "split": {
-      "enum": [
-        "dev",
-        "test"
-      ],
-      "title": "Split",
-      "type": "string"
-    },
-    "difficulty": {
-      "enum": [
-        "standard",
-        "hard",
-        "adversarial"
-      ],
-      "title": "Difficulty",
-      "type": "string"
-    },
     "trigger": {
       "$ref": "#/$defs/Trigger"
-    },
-    "state_before": {
-      "$ref": "#/$defs/StateSnapshotV2"
-    },
-    "state_after": {
-      "$ref": "#/$defs/StateSnapshotV2"
-    },
-    "state_delta": {
-      "$ref": "#/$defs/StateDeltaV2"
-    },
-    "environment": {
-      "$ref": "#/$defs/EnvironmentManifestV2"
-    },
-    "observable_trace": {
-      "$ref": "#/$defs/ObservableTraceV3"
-    },
-    "result": {
-      "$ref": "#/$defs/DecisionResultV3"
-    },
-    "completeness": {
-      "$ref": "#/$defs/EpisodeCompletenessV3"
-    },
-    "isolation_evidence": {
-      "$ref": "#/$defs/RuntimeIsolationEvidenceV2"
-    },
-    "provenance": {
-      "$ref": "#/$defs/ProvenanceV3"
     }
   },
   "required": [

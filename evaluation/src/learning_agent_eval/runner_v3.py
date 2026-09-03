@@ -16,6 +16,7 @@ from .canonical import canonical_json_bytes
 from .case_specs import episode_id_for_case, validate_case_spec
 from .e3_io import current_git_commit
 from .e31_runtime import (
+    build_real_provider_attestation,
     build_runtime_failure,
     build_runtime_manifest_v2,
     build_stub_provider_attestation,
@@ -26,10 +27,12 @@ from .models import CaseSuiteManifestV1, RuntimeRunManifestV2
 from .privacy import privacy_issues
 from .runner import _contained_file
 from .runtime_metadata import (
+    AGENT_RUNTIME_CONFIG_SHA256,
     DEPENDENCY_LOCK_VERSION,
     ENDPOINT_POLICY_SHA256,
     ENDPOINT_POLICY_VERSION,
     PROJECT_ROOT,
+    dependency_environment_reason_codes,
     dependency_lock_sha256,
     git_worktree_clean,
 )
@@ -109,21 +112,33 @@ def _fallback_failure(
     git_commit: str,
     worktree_clean: bool,
     dependency_digest: str,
+    dependency_lock_verified: bool,
+    model_mode: str,
     error: dict[str, str],
 ) -> dict[str, Any]:
     frozen_time = case["runtime_setup"]["frozen_time"]
-    attestation = build_stub_provider_attestation(
-        [],
-        scope="agent_runtime",
-        configured_model="e31-scripted-model",
-        frozen_time=frozen_time,
-        git_commit=git_commit,
-        dependency_lock_version=DEPENDENCY_LOCK_VERSION,
-        dependency_lock_sha256=dependency_digest,
-        endpoint_policy_version=ENDPOINT_POLICY_VERSION,
-        endpoint_policy_sha256=ENDPOINT_POLICY_SHA256,
-        worktree_clean=worktree_clean,
-    )
+    if model_mode == "stub":
+        attestation = build_stub_provider_attestation(
+            [],
+            scope="agent_runtime",
+            configured_model="e31-scripted-model",
+            frozen_time=frozen_time,
+            git_commit=git_commit,
+            dependency_lock_version=DEPENDENCY_LOCK_VERSION,
+            dependency_lock_sha256=dependency_digest,
+            endpoint_policy_version=ENDPOINT_POLICY_VERSION,
+            endpoint_policy_sha256=ENDPOINT_POLICY_SHA256,
+            worktree_clean=worktree_clean,
+        )
+    else:
+        attestation = build_real_provider_attestation(
+            [],
+            scope="agent_runtime",
+            configuration_sha256=AGENT_RUNTIME_CONFIG_SHA256,
+            git_commit=git_commit,
+            worktree_clean=worktree_clean,
+            dependency_lock_verified=dependency_lock_verified,
+        )
     return build_runtime_failure(
         case_id=case["case_id"],
         case_spec_sha256=case["case_spec_sha256"],
@@ -255,6 +270,7 @@ def run_agent_v3(
             "current Git worktree status is unavailable",
         ) from exc
     dependency_digest = dependency_lock_sha256()
+    dependency_lock_verified = not dependency_environment_reason_codes()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(
         tempfile.mkdtemp(
@@ -289,6 +305,7 @@ def run_agent_v3(
                 "worktree_clean": clean,
                 "dependency_lock_version": DEPENDENCY_LOCK_VERSION,
                 "dependency_lock_sha256": dependency_digest,
+                "dependency_lock_verified": dependency_lock_verified,
             }
             (worker_root / "request.json").write_bytes(canonical_json_bytes(request))
             try:
@@ -327,6 +344,8 @@ def run_agent_v3(
                         git_commit=commit,
                         worktree_clean=clean,
                         dependency_digest=dependency_digest,
+                        dependency_lock_verified=dependency_lock_verified,
+                        model_mode=model_mode,
                         error=error,
                     )
                     (stage / "failures" / f"{failure['failure_id']}.json").write_bytes(
@@ -336,12 +355,15 @@ def run_agent_v3(
                     artifact_id = failure["failure_id"]
                     artifact_sha256 = failure["failure_sha256"]
                     terminal_kind = "failure"
+                    terminal_formal = False
                 elif completed.returncode != 0:
                     failure = _fallback_failure(
                         case=case,
                         git_commit=commit,
                         worktree_clean=clean,
                         dependency_digest=dependency_digest,
+                        dependency_lock_verified=dependency_lock_verified,
+                        model_mode=model_mode,
                         error=_worker_error(completed),
                     )
                     (stage / "failures" / f"{failure['failure_id']}.json").write_bytes(
@@ -351,6 +373,7 @@ def run_agent_v3(
                     artifact_id = failure["failure_id"]
                     artifact_sha256 = failure["failure_sha256"]
                     terminal_kind = "failure"
+                    terminal_formal = False
                 else:
                     try:
                         result = json.loads(completed.stdout.strip())
@@ -371,6 +394,7 @@ def run_agent_v3(
                         )
                         failure_output_ids.append(artifact_id)
                         terminal_kind = "failure"
+                        terminal_formal = False
                     elif result.get("status") == "episode":
                         episode = _load(published / "episode.json", artifact="Episode")
                         reference = _load(
@@ -407,6 +431,9 @@ def run_agent_v3(
                         artifact_id = episode_id
                         artifact_sha256 = episode["provenance"]["episode_sha256"]
                         terminal_kind = "episode"
+                        terminal_formal = bool(
+                            episode["provenance"]["formal_evaluation_result"]
+                        )
                     else:
                         raise RunAgentV3Error(
                             "worker_result_invalid",
@@ -422,6 +449,7 @@ def run_agent_v3(
                         "terminal_kind": terminal_kind,
                         "artifact_id": artifact_id,
                         "artifact_sha256": artifact_sha256,
+                        "formal_evaluation_result": terminal_formal,
                     }
                 )
             except EvaluationIsolationError as exc:
@@ -473,5 +501,5 @@ def run_agent_v3(
         invocation_mode=model_mode,
         output=output_path,
         worker_roots=tuple(worker_roots),
-        formal_evaluation_result=False,
+        formal_evaluation_result=manifest_document["formal_evaluation_result"],
     )

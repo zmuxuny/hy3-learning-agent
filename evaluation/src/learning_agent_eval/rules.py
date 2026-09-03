@@ -723,7 +723,21 @@ def _assessment_checks(episode: Mapping[str, Any]) -> list[dict[str, Any]]:
         for entity in episode.get("state_after", {}).get("logical_entities", [])
         if entity.get("entity_type") == "plan"
     }
-    plan_changes = [change for change in episode.get("state_delta", {}).get("changes", []) if change.get("entity_ref") in plan_refs]
+    submission_operation_refs = {
+        operation_ref
+        for change in aligned
+        for operation_ref in change.get("operation_refs", [])
+    }
+    plan_changes = [
+        change
+        for change in episode.get("state_delta", {}).get("changes", [])
+        if change.get("entity_ref") in plan_refs
+        and not (
+            change.get("operation_alignment") == "matched"
+            and submission_operation_refs
+            & set(change.get("operation_refs", []))
+        )
+    ]
     feedback_value = (
         resolve_evidence_path(episode, f"{submission_path}.data.feedback")[1]
         if submission_path

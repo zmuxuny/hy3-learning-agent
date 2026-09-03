@@ -20,7 +20,12 @@ from .case_specs import (
 )
 from .delivery import RecordingDeliverySink
 from .deltas import DeltaConstructionError, build_state_delta
-from .e31_runtime import build_runtime_failure, build_stub_provider_attestation
+from .e31_runtime import (
+    build_model_calls_v3,
+    build_real_provider_attestation,
+    build_runtime_failure,
+    build_stub_provider_attestation,
+)
 from .exporter import ExportError
 from .exporter_v3 import ExportV3Error, build_decision_episode_v3
 from .isolation import EvaluationIsolationError, IsolationGuard
@@ -28,7 +33,11 @@ from .normalizers import normalize_json, normalize_rfc3339
 from .privacy import privacy_issues
 from .recorder import EvaluationModelRecorder
 from .resources import EvaluationSnapshotProvider
-from .runtime_metadata import ENDPOINT_POLICY_SHA256, ENDPOINT_POLICY_VERSION
+from .runtime_metadata import (
+    AGENT_RUNTIME_CONFIG_SHA256,
+    ENDPOINT_POLICY_SHA256,
+    ENDPOINT_POLICY_VERSION,
+)
 from .scripted_model import ScriptedModelClient
 from .snapshots import (
     SnapshotCollectionError,
@@ -58,24 +67,33 @@ def _publish(output: Path, files: dict[str, dict[str, Any]]) -> None:
         raise
 
 
-def _stub_attestation(
+def _provider_attestation(
     request: dict[str, Any],
     records: list[dict[str, Any]],
     *,
     configured_model: str,
     frozen_time: str,
 ) -> dict[str, Any]:
-    return build_stub_provider_attestation(
+    if request["model_mode"] == "stub":
+        return build_stub_provider_attestation(
+            records,
+            scope="agent_runtime",
+            configured_model=configured_model,
+            frozen_time=frozen_time,
+            git_commit=request["git_commit"],
+            dependency_lock_version=request["dependency_lock_version"],
+            dependency_lock_sha256=request["dependency_lock_sha256"],
+            endpoint_policy_version=ENDPOINT_POLICY_VERSION,
+            endpoint_policy_sha256=ENDPOINT_POLICY_SHA256,
+            worktree_clean=bool(request["worktree_clean"]),
+        )
+    return build_real_provider_attestation(
         records,
         scope="agent_runtime",
-        configured_model=configured_model,
-        frozen_time=frozen_time,
+        configuration_sha256=AGENT_RUNTIME_CONFIG_SHA256,
         git_commit=request["git_commit"],
-        dependency_lock_version=request["dependency_lock_version"],
-        dependency_lock_sha256=request["dependency_lock_sha256"],
-        endpoint_policy_version=ENDPOINT_POLICY_VERSION,
-        endpoint_policy_sha256=ENDPOINT_POLICY_SHA256,
         worktree_clean=bool(request["worktree_clean"]),
+        dependency_lock_verified=bool(request["dependency_lock_verified"]),
     )
 
 
@@ -98,13 +116,14 @@ def _failure_document(
     public_summary: str,
     records: list[dict[str, Any]] | None = None,
     isolation_evidence: dict[str, Any] | None = None,
+    configured_model: str = "e31-scripted-model",
 ) -> dict[str, Any]:
     frozen_time = normalize_rfc3339(case["runtime_setup"]["frozen_time"])
     public_records = records or []
-    attestation = _stub_attestation(
+    attestation = _provider_attestation(
         request,
         public_records,
-        configured_model="e31-scripted-model",
+        configured_model=configured_model,
         frozen_time=frozen_time,
     )
     return build_runtime_failure(
@@ -114,7 +133,7 @@ def _failure_document(
         failure_class=_failure_class(stage),
         reason_code=reason_code,
         public_summary=public_summary,
-        model_calls=[],
+        model_calls=build_model_calls_v3(public_records),
         provider_attestation=attestation,
         isolation_evidence=isolation_evidence,
         started_at=frozen_time,
@@ -221,7 +240,9 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
         app_config.prepare_runtime_directories(app_config.settings.RUNTIME_STATE_ROOT)
         await database.create_schema(state_root=app_config.settings.RUNTIME_STATE_ROOT)
         await _seed_fixture(fixture, app_time.utc_now())
-        identities = identity_registry(fixture)
+        identities = identity_registry(
+            fixture, identity_bindings=case["identity_bindings"]
+        )
         before = await collect_state_snapshot(
             database.AsyncSessionLocal,
             fixture,
@@ -266,26 +287,6 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             phase="after",
         )
         projection = audit_projection(after.document)
-        root_runs = [
-            item
-            for item in after.document["logical_entities"]
-            if item["entity_type"] == "agent_run"
-            and item["data"].get("parent_run_ref") is None
-        ]
-        if len(root_runs) != 1 or root_runs[0]["data"]["status"] not in {
-            "completed",
-            "waiting_approval",
-        }:
-            raise WorkerFailure(
-                "runtime_not_exportable",
-                "runtime",
-                "production Runtime did not reach an exportable stable state",
-            )
-        delta = build_state_delta(before.document, after.document)
-        if delta["capture_status"] != "complete":
-            raise DeltaConstructionError(
-                delta["error_codes"][0] if delta["error_codes"] else "delta.incomplete"
-            )
         observation_text = canonical_json(recorder.records)
         public_records = _public_model_records(recorder.records, identities)
         isolation = {
@@ -299,7 +300,57 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             "published_sqlite_files": 0,
             "routing_material_exported": False,
         }
-        attestation = _stub_attestation(
+        root_runs = [
+            item
+            for item in after.document["logical_entities"]
+            if item["entity_type"] == "agent_run"
+            and item["data"].get("parent_run_ref") is None
+        ]
+        if len(root_runs) != 1:
+            raise WorkerFailure(
+                "runtime_not_exportable",
+                "runtime",
+                "production Runtime did not reach an exportable stable state",
+            )
+        root_status = root_runs[0]["data"]["status"]
+        if root_status not in {"completed", "waiting_approval"}:
+            provider_failed = any(
+                record.get("response_status") == "provider_error"
+                for record in public_records
+            )
+            failure = _failure_document(
+                request=request,
+                case=case,
+                stage="provider" if provider_failed else "runtime",
+                reason_code=(
+                    "provider.runtime_call_failed"
+                    if provider_failed
+                    else "runtime.non_exportable_terminal"
+                ),
+                public_summary=(
+                    "The isolated model provider did not complete."
+                    if provider_failed
+                    else "The isolated Runtime ended without a scoreable Episode."
+                ),
+                records=public_records,
+                isolation_evidence=isolation,
+                configured_model=app_config.settings.MODEL_NAME,
+            )
+            await database.engine.dispose()
+            _publish(Path(request["output_path"]), {"failure.json": failure})
+            return {
+                "status": "failure",
+                "case_id": case["case_id"],
+                "track": case["track"],
+                "artifact_id": failure["failure_id"],
+                "artifact_sha256": failure["failure_sha256"],
+            }
+        delta = build_state_delta(before.document, after.document)
+        if delta["capture_status"] != "complete":
+            raise DeltaConstructionError(
+                delta["error_codes"][0] if delta["error_codes"] else "delta.incomplete"
+            )
+        attestation = _provider_attestation(
             request,
             public_records,
             configured_model=app_config.settings.MODEL_NAME,

@@ -133,6 +133,7 @@ def _stub_attestation() -> dict[str, object]:
         "worktree_clean": True,
         "dependency_lock_version": "runtime-lock-v1",
         "dependency_lock_sha256": SHA,
+        "dependency_lock_verified": False,
         "attribution_status": "ineligible_stub",
         "reason_codes": ["provider.stub"],
         "attestation_sha256": SHA,
@@ -270,6 +271,23 @@ def test_stub_provider_cannot_claim_endpoint_or_formal_eligibility() -> None:
         ProviderAttestationV1.model_validate(forged)
 
 
+def test_provider_response_time_cannot_precede_request() -> None:
+    attestation = _stub_attestation()
+    attestation["calls"] = [
+        {
+            "call_id": "provider-call-001",
+            "request_model": "fixed-model",
+            "response_model": "fixed-model",
+            "provider_request_id": "request-001",
+            "requested_at": "2026-09-04T10:00:01Z",
+            "responded_at": "2026-09-04T10:00:00Z",
+            "status": "completed",
+        }
+    ]
+    with pytest.raises(ValidationError):
+        ProviderAttestationV1.model_validate(attestation)
+
+
 def test_runtime_manifest_requires_one_terminal_per_selected_case() -> None:
     manifest = {
         "schema_version": "runtime-run-manifest-v2",
@@ -287,6 +305,7 @@ def test_runtime_manifest_requires_one_terminal_per_selected_case() -> None:
                 "terminal_kind": "episode",
                 "artifact_id": "episode-a",
                 "artifact_sha256": SHA,
+                "formal_evaluation_result": False,
             },
             {
                 "case_id": "case-b",
@@ -295,6 +314,7 @@ def test_runtime_manifest_requires_one_terminal_per_selected_case() -> None:
                 "terminal_kind": "failure",
                 "artifact_id": "failure-b",
                 "artifact_sha256": SHA,
+                "formal_evaluation_result": False,
             },
         ],
         "formal_evaluation_result": False,

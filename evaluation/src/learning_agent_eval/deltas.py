@@ -307,6 +307,16 @@ def _affected_refs(
     data = operation["data"]
     affected = [data["primary_entity_ref"]]
     patch = data["forward_patch"]
+    explicit = patch.get("affected")
+    if isinstance(explicit, Mapping):
+        for key in ("plan_ref", "stage_ref", "task_ref"):
+            reference = explicit.get(key)
+            if (
+                isinstance(reference, str)
+                and reference in after_entities
+                and reference not in affected
+            ):
+                affected.append(reference)
     present_types = {item[1]["entity_type"] for item in after_entities.values()}
     for entity_type in sorted(set(patch) & present_types):
         candidates = [

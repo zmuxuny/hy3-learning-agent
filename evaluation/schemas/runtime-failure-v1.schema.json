@@ -4,57 +4,23 @@
     "ModelCallV3": {
       "additionalProperties": false,
       "properties": {
+        "assistant_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Assistant Text"
+        },
         "call_id": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Call Id",
           "type": "string"
-        },
-        "ordinal": {
-          "minimum": 1,
-          "title": "Ordinal",
-          "type": "integer"
-        },
-        "run_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Run Id",
-          "type": "string"
-        },
-        "parent_run_id": {
-          "anyOf": [
-            {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Parent Run Id"
-        },
-        "parent_call_id": {
-          "anyOf": [
-            {
-              "maxLength": 128,
-              "minLength": 1,
-              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Parent Call Id"
-        },
-        "depth": {
-          "minimum": 0,
-          "title": "Depth",
-          "type": "integer"
         },
         "call_purpose": {
           "enum": [
@@ -71,44 +37,48 @@
           "title": "Decision Relevant",
           "type": "boolean"
         },
-        "visible_context": {
-          "$ref": "#/$defs/ModelVisibleContextV1"
+        "depth": {
+          "minimum": 0,
+          "title": "Depth",
+          "type": "integer"
         },
-        "request_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Request Model",
-          "type": "string"
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
         },
-        "assistant_text": {
+        "parent_call_id": {
           "anyOf": [
             {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
               "type": "string"
             },
             {
               "type": "null"
             }
           ],
-          "title": "Assistant Text"
+          "title": "Parent Call Id"
         },
-        "tool_call_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Tool Call Refs",
-          "type": "array"
-        },
-        "status": {
-          "enum": [
-            "completed",
-            "provider_error",
-            "framework_error",
-            "cancelled"
+        "parent_run_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ],
-          "title": "Status",
+          "title": "Parent Run Id"
+        },
+        "request_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Request Model",
           "type": "string"
         },
         "response_sha256": {
@@ -122,6 +92,36 @@
             }
           ],
           "title": "Response Sha256"
+        },
+        "run_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "provider_error",
+            "framework_error",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tool_call_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Tool Call Refs",
+          "type": "array"
+        },
+        "visible_context": {
+          "$ref": "#/$defs/ModelVisibleContextV1"
         }
       },
       "required": [
@@ -146,6 +146,11 @@
     "ModelVisibleContextV1": {
       "additionalProperties": false,
       "properties": {
+        "context_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Context Sha256",
+          "type": "string"
+        },
         "context_version": {
           "const": "model-visible-context-v1",
           "title": "Context Version",
@@ -168,11 +173,6 @@
           },
           "title": "Tool Schemas",
           "type": "array"
-        },
-        "context_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Context Sha256",
-          "type": "string"
         }
       },
       "required": [
@@ -189,45 +189,52 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "properties": {
-        "schema_version": {
-          "const": "provider-attestation-v1",
-          "title": "Schema Version",
+        "attestation_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Attestation Sha256",
           "type": "string"
         },
-        "scope": {
+        "attribution_status": {
           "enum": [
-            "agent_runtime",
-            "semantic_judge"
+            "eligible",
+            "ineligible_stub",
+            "invalid"
           ],
-          "title": "Scope",
+          "title": "Attribution Status",
           "type": "string"
         },
-        "invocation_mode": {
-          "enum": [
-            "stub",
-            "real"
-          ],
-          "title": "Invocation Mode",
+        "calls": {
+          "items": {
+            "$ref": "#/$defs/ProviderCallAttestationV1"
+          },
+          "title": "Calls",
+          "type": "array"
+        },
+        "configuration_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Configuration Sha256",
           "type": "string"
         },
-        "provider_id": {
-          "enum": [
-            "none",
-            "tencent-tokenhub"
-          ],
-          "title": "Provider Id",
+        "configured_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Configured Model",
           "type": "string"
         },
-        "endpoint_policy_version": {
+        "dependency_lock_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Dependency Lock Sha256",
+          "type": "string"
+        },
+        "dependency_lock_verified": {
+          "title": "Dependency Lock Verified",
+          "type": "boolean"
+        },
+        "dependency_lock_version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Endpoint Policy Version",
-          "type": "string"
-        },
-        "endpoint_policy_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Endpoint Policy Sha256",
+          "title": "Dependency Lock Version",
           "type": "string"
         },
         "endpoint_id": {
@@ -257,22 +264,16 @@
           ],
           "title": "Endpoint Origin"
         },
-        "configured_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Configured Model",
+        "endpoint_policy_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Endpoint Policy Sha256",
           "type": "string"
         },
-        "calls": {
-          "items": {
-            "$ref": "#/$defs/ProviderCallAttestationV1"
-          },
-          "title": "Calls",
-          "type": "array"
-        },
-        "configuration_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Configuration Sha256",
+        "endpoint_policy_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Endpoint Policy Version",
           "type": "string"
         },
         "git_commit": {
@@ -280,29 +281,20 @@
           "title": "Git Commit",
           "type": "string"
         },
-        "worktree_clean": {
-          "title": "Worktree Clean",
-          "type": "boolean"
-        },
-        "dependency_lock_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Dependency Lock Version",
-          "type": "string"
-        },
-        "dependency_lock_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Dependency Lock Sha256",
-          "type": "string"
-        },
-        "attribution_status": {
+        "invocation_mode": {
           "enum": [
-            "eligible",
-            "ineligible_stub",
-            "invalid"
+            "stub",
+            "real"
           ],
-          "title": "Attribution Status",
+          "title": "Invocation Mode",
+          "type": "string"
+        },
+        "provider_id": {
+          "enum": [
+            "none",
+            "tencent-tokenhub"
+          ],
+          "title": "Provider Id",
           "type": "string"
         },
         "reason_codes": {
@@ -315,10 +307,22 @@
           "title": "Reason Codes",
           "type": "array"
         },
-        "attestation_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Attestation Sha256",
+        "schema_version": {
+          "const": "provider-attestation-v1",
+          "title": "Schema Version",
           "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "agent_runtime",
+            "semantic_judge"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "worktree_clean": {
+          "title": "Worktree Clean",
+          "type": "boolean"
         }
       },
       "required": [
@@ -337,6 +341,7 @@
         "worktree_clean",
         "dependency_lock_version",
         "dependency_lock_sha256",
+        "dependency_lock_verified",
         "attribution_status",
         "reason_codes",
         "attestation_sha256"
@@ -354,25 +359,6 @@
           "title": "Call Id",
           "type": "string"
         },
-        "request_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Request Model",
-          "type": "string"
-        },
-        "response_model": {
-          "anyOf": [
-            {
-              "maxLength": 4000,
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Response Model"
-        },
         "provider_request_id": {
           "anyOf": [
             {
@@ -385,6 +371,12 @@
             }
           ],
           "title": "Provider Request Id"
+        },
+        "request_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Request Model",
+          "type": "string"
         },
         "requested_at": {
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
@@ -402,6 +394,19 @@
             }
           ],
           "title": "Responded At"
+        },
+        "response_model": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Response Model"
         },
         "status": {
           "enum": [
@@ -428,9 +433,18 @@
     "RuntimeIsolationEvidenceV2": {
       "additionalProperties": false,
       "properties": {
-        "temporary_database": {
-          "const": true,
-          "title": "Temporary Database",
+        "agent_observed_emulated_receipt": {
+          "const": false,
+          "title": "Agent Observed Emulated Receipt",
+          "type": "boolean"
+        },
+        "agent_observed_pending_delivery": {
+          "title": "Agent Observed Pending Delivery",
+          "type": "boolean"
+        },
+        "background_services_started": {
+          "const": false,
+          "title": "Background Services Started",
           "type": "boolean"
         },
         "database_inside_worker_root": {
@@ -443,20 +457,54 @@
           "title": "Env File Read",
           "type": "boolean"
         },
-        "repository_runtime_data_access": {
-          "const": false,
-          "title": "Repository Runtime Data Access",
-          "type": "boolean"
+        "imap_calls": {
+          "minimum": 0,
+          "title": "Imap Calls",
+          "type": "integer"
         },
-        "background_services_started": {
-          "const": false,
-          "title": "Background Services Started",
-          "type": "boolean"
+        "imap_ssl_calls": {
+          "minimum": 0,
+          "title": "Imap Ssl Calls",
+          "type": "integer"
         },
         "network_calls": {
           "minimum": 0,
           "title": "Network Calls",
           "type": "integer"
+        },
+        "outbox_replay_confirmed": {
+          "title": "Outbox Replay Confirmed",
+          "type": "boolean"
+        },
+        "outside_sqlite_access": {
+          "minimum": 0,
+          "title": "Outside Sqlite Access",
+          "type": "integer"
+        },
+        "prohibited_file_access": {
+          "minimum": 0,
+          "title": "Prohibited File Access",
+          "type": "integer"
+        },
+        "published_sqlite_files": {
+          "const": 0,
+          "title": "Published Sqlite Files",
+          "type": "integer"
+        },
+        "recording_sink_attempts": {
+          "minimum": 0,
+          "title": "Recording Sink Attempts",
+          "type": "integer"
+        },
+        "repository_runtime_data_access": {
+          "const": false,
+          "title": "Repository Runtime Data Access",
+          "type": "boolean"
+        },
+        "routing_material_exported": {
+          "const": false,
+          "title": "Routing Material Exported",
+          "type": "boolean"
         },
         "smtp_calls": {
           "minimum": 0,
@@ -468,66 +516,23 @@
           "title": "Smtp Ssl Calls",
           "type": "integer"
         },
-        "web_push_calls": {
-          "minimum": 0,
-          "title": "Web Push Calls",
-          "type": "integer"
-        },
-        "imap_calls": {
-          "minimum": 0,
-          "title": "Imap Calls",
-          "type": "integer"
-        },
-        "imap_ssl_calls": {
-          "minimum": 0,
-          "title": "Imap Ssl Calls",
-          "type": "integer"
-        },
-        "prohibited_file_access": {
-          "minimum": 0,
-          "title": "Prohibited File Access",
-          "type": "integer"
-        },
-        "outside_sqlite_access": {
-          "minimum": 0,
-          "title": "Outside Sqlite Access",
-          "type": "integer"
+        "snapshot_provider_calls": {
+          "$ref": "#/$defs/SnapshotProviderCallsV2"
         },
         "subprocess_calls": {
           "minimum": 0,
           "title": "Subprocess Calls",
           "type": "integer"
         },
-        "published_sqlite_files": {
-          "const": 0,
-          "title": "Published Sqlite Files",
-          "type": "integer"
-        },
-        "routing_material_exported": {
-          "const": false,
-          "title": "Routing Material Exported",
+        "temporary_database": {
+          "const": true,
+          "title": "Temporary Database",
           "type": "boolean"
         },
-        "snapshot_provider_calls": {
-          "$ref": "#/$defs/SnapshotProviderCallsV2"
-        },
-        "recording_sink_attempts": {
+        "web_push_calls": {
           "minimum": 0,
-          "title": "Recording Sink Attempts",
+          "title": "Web Push Calls",
           "type": "integer"
-        },
-        "outbox_replay_confirmed": {
-          "title": "Outbox Replay Confirmed",
-          "type": "boolean"
-        },
-        "agent_observed_pending_delivery": {
-          "title": "Agent Observed Pending Delivery",
-          "type": "boolean"
-        },
-        "agent_observed_emulated_receipt": {
-          "const": false,
-          "title": "Agent Observed Emulated Receipt",
-          "type": "boolean"
         }
       },
       "required": [
@@ -559,14 +564,14 @@
     "SnapshotProviderCallsV2": {
       "additionalProperties": false,
       "properties": {
-        "search": {
-          "minimum": 0,
-          "title": "Search",
-          "type": "integer"
-        },
         "open": {
           "minimum": 0,
           "title": "Open",
+          "type": "integer"
+        },
+        "search": {
+          "minimum": 0,
+          "title": "Search",
           "type": "integer"
         },
         "validate": {
@@ -591,6 +596,13 @@
           "title": "Ordinal",
           "type": "integer"
         },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Payload",
+          "type": "object"
+        },
         "role": {
           "enum": [
             "system",
@@ -601,13 +613,6 @@
           ],
           "title": "Role",
           "type": "string"
-        },
-        "payload": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Payload",
-          "type": "object"
         }
       },
       "required": [
@@ -623,18 +628,6 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "schema_version": {
-      "const": "runtime-failure-v1",
-      "title": "Schema Version",
-      "type": "string"
-    },
-    "failure_id": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Failure Id",
-      "type": "string"
-    },
     "case_id": {
       "maxLength": 128,
       "minLength": 1,
@@ -647,11 +640,14 @@
       "title": "Case Spec Sha256",
       "type": "string"
     },
-    "stage": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Stage",
+    "evaluation_status": {
+      "const": "not_a_formal_model_evaluation",
+      "title": "Evaluation Status",
+      "type": "string"
+    },
+    "failed_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+      "title": "Failed At",
       "type": "string"
     },
     "failure_class": {
@@ -664,28 +660,22 @@
       "title": "Failure Class",
       "type": "string"
     },
-    "reason_code": {
+    "failure_id": {
       "maxLength": 128,
       "minLength": 1,
       "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Reason Code",
+      "title": "Failure Id",
       "type": "string"
     },
-    "public_summary": {
-      "maxLength": 4000,
-      "minLength": 1,
-      "title": "Public Summary",
+    "failure_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Failure Sha256",
       "type": "string"
     },
-    "model_calls": {
-      "items": {
-        "$ref": "#/$defs/ModelCallV3"
-      },
-      "title": "Model Calls",
-      "type": "array"
-    },
-    "provider_attestation": {
-      "$ref": "#/$defs/ProviderAttestationV1"
+    "formal_evaluation_result": {
+      "const": false,
+      "title": "Formal Evaluation Result",
+      "type": "boolean"
     },
     "isolation_evidence": {
       "anyOf": [
@@ -697,29 +687,44 @@
         }
       ]
     },
+    "model_calls": {
+      "items": {
+        "$ref": "#/$defs/ModelCallV3"
+      },
+      "title": "Model Calls",
+      "type": "array"
+    },
+    "provider_attestation": {
+      "$ref": "#/$defs/ProviderAttestationV1"
+    },
+    "public_summary": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Public Summary",
+      "type": "string"
+    },
+    "reason_code": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Reason Code",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "runtime-failure-v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stage": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Stage",
+      "type": "string"
+    },
     "started_at": {
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
       "title": "Started At",
-      "type": "string"
-    },
-    "failed_at": {
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
-      "title": "Failed At",
-      "type": "string"
-    },
-    "formal_evaluation_result": {
-      "const": false,
-      "title": "Formal Evaluation Result",
-      "type": "boolean"
-    },
-    "evaluation_status": {
-      "const": "not_a_formal_model_evaluation",
-      "title": "Evaluation Status",
-      "type": "string"
-    },
-    "failure_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Failure Sha256",
       "type": "string"
     }
   },

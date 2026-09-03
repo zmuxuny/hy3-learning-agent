@@ -68,6 +68,7 @@ from .rubric import (
     TRACK_ANCHOR_SHA256,
     TRACK_ANCHOR_VERSION,
 )
+from .runtime_metadata import provider_attribution_reason_codes
 from .snapshots import (
     COLLECTOR_VERSION,
     ENTITY_TYPE_ORDER,
@@ -2101,6 +2102,49 @@ def _episode_v3_semantic_issues(
                 file=file,
             )
         )
+    attribution_reasons = list(provider_attribution_reason_codes(attestation))
+    if attestation["invocation_mode"] == "real" and (
+        attestation["reason_codes"] != attribution_reasons
+        or attestation["attribution_status"]
+        != ("invalid" if attribution_reasons else "eligible")
+    ):
+        issues.append(
+            _issue(
+                "provider.attribution_invalid",
+                "$.environment.provider_attestation.attribution_status",
+                "Provider attribution does not satisfy the committed Hy3 policy.",
+                file=file,
+            )
+        )
+    dataset_role = episode["provenance"]["dataset_role"]
+    invocation_mode = attestation["invocation_mode"]
+    expected_eligibility = (
+        "ineligible_stub"
+        if invocation_mode == "stub"
+        else "ineligible_engineering"
+        if dataset_role != "primary_episode"
+        else "eligible"
+        if attestation["attribution_status"] == "eligible"
+        else "invalid"
+    )
+    formal = bool(
+        invocation_mode == "real"
+        and dataset_role == "primary_episode"
+        and attestation["attribution_status"] == "eligible"
+    )
+    if (
+        episode["result"]["layers"]["formal_evaluation_eligibility"]
+        != expected_eligibility
+        or episode["provenance"]["formal_evaluation_result"] != formal
+    ):
+        issues.append(
+            _issue(
+                "provenance.v3_formal_eligibility_mismatch",
+                "$.result.layers.formal_evaluation_eligibility",
+                "v3 formal status must follow role and verified Provider attribution.",
+                file=file,
+            )
+        )
     if episode["provenance"]["episode_sha256"] != decision_episode_digest(episode):
         issues.append(
             _issue(
@@ -2547,6 +2591,8 @@ def _e31_artifact_inventory_issues(
                 or reference["reference_sha256"] != episode["judge_reference_sha256"]
                 or reference["case_spec_sha256"] != episode["case_spec_sha256"]
                 or reference["track"] != episode["track"]
+                or terminal["formal_evaluation_result"]
+                != episode["provenance"]["formal_evaluation_result"]
             ):
                 add(
                     "manifest.runtime_v2_episode_mismatch",
@@ -2560,6 +2606,8 @@ def _e31_artifact_inventory_issues(
             if (
                 terminal["artifact_sha256"] != failure["failure_sha256"]
                 or terminal["case_spec_sha256"] != failure["case_spec_sha256"]
+                or terminal["formal_evaluation_result"]
+                != failure["formal_evaluation_result"]
             ):
                 add(
                     "manifest.runtime_v2_failure_mismatch",

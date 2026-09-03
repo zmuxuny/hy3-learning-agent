@@ -3,6 +3,18 @@
     "RuntimeTerminalRecordV2": {
       "additionalProperties": false,
       "properties": {
+        "artifact_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "artifact_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
         "case_id": {
           "maxLength": 128,
           "minLength": 1,
@@ -15,15 +27,9 @@
           "title": "Case Spec Sha256",
           "type": "string"
         },
-        "track": {
-          "enum": [
-            "planning",
-            "intervention",
-            "assessment",
-            "revision"
-          ],
-          "title": "Track",
-          "type": "string"
+        "formal_evaluation_result": {
+          "title": "Formal Evaluation Result",
+          "type": "boolean"
         },
         "terminal_kind": {
           "enum": [
@@ -33,16 +39,14 @@
           "title": "Terminal Kind",
           "type": "string"
         },
-        "artifact_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Artifact Id",
-          "type": "string"
-        },
-        "artifact_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Artifact Sha256",
+        "track": {
+          "enum": [
+            "planning",
+            "intervention",
+            "assessment",
+            "revision"
+          ],
+          "title": "Track",
           "type": "string"
         }
       },
@@ -52,7 +56,8 @@
         "track",
         "terminal_kind",
         "artifact_id",
-        "artifact_sha256"
+        "artifact_sha256",
+        "formal_evaluation_result"
       ],
       "title": "RuntimeTerminalRecordV2",
       "type": "object"
@@ -62,9 +67,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "schema_version": {
-      "const": "runtime-run-manifest-v2",
-      "title": "Schema Version",
+    "case_schema_version": {
+      "const": "case-spec-v1",
+      "title": "Case Schema Version",
       "type": "string"
     },
     "dataset_version": {
@@ -74,9 +79,16 @@
       "title": "Dataset Version",
       "type": "string"
     },
-    "case_schema_version": {
-      "const": "case-spec-v1",
-      "title": "Case Schema Version",
+    "dependency_lock_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Dependency Lock Sha256",
+      "type": "string"
+    },
+    "dependency_lock_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Dependency Lock Version",
       "type": "string"
     },
     "episode_schema_version": {
@@ -84,9 +96,26 @@
       "title": "Episode Schema Version",
       "type": "string"
     },
+    "evaluation_status": {
+      "enum": [
+        "not_a_formal_model_evaluation",
+        "formal_model_evaluation"
+      ],
+      "title": "Evaluation Status",
+      "type": "string"
+    },
     "failure_schema_version": {
       "const": "runtime-failure-v1",
       "title": "Failure Schema Version",
+      "type": "string"
+    },
+    "formal_evaluation_result": {
+      "title": "Formal Evaluation Result",
+      "type": "boolean"
+    },
+    "git_commit": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Git Commit",
       "type": "string"
     },
     "invocation_mode": {
@@ -95,6 +124,16 @@
         "real"
       ],
       "title": "Invocation Mode",
+      "type": "string"
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifest Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "runtime-run-manifest-v2",
+      "title": "Schema Version",
       "type": "string"
     },
     "selected_case_ids": {
@@ -115,40 +154,6 @@
       "minItems": 1,
       "title": "Terminals",
       "type": "array"
-    },
-    "formal_evaluation_result": {
-      "title": "Formal Evaluation Result",
-      "type": "boolean"
-    },
-    "evaluation_status": {
-      "enum": [
-        "not_a_formal_model_evaluation",
-        "formal_model_evaluation"
-      ],
-      "title": "Evaluation Status",
-      "type": "string"
-    },
-    "git_commit": {
-      "pattern": "^[0-9a-f]{40}$",
-      "title": "Git Commit",
-      "type": "string"
-    },
-    "dependency_lock_version": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Dependency Lock Version",
-      "type": "string"
-    },
-    "dependency_lock_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Dependency Lock Sha256",
-      "type": "string"
-    },
-    "manifest_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Manifest Sha256",
-      "type": "string"
     }
   },
   "required": [

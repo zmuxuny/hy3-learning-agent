@@ -21,6 +21,7 @@ from learning_agent_eval.integrity import judge_result_digest, rule_result_diges
 from learning_agent_eval.judge_v2 import (
     FixedResponseJudgeProviderV2,
     JudgeEvaluationV2Error,
+    JudgeProviderReplyV2,
     _evaluate_one,
     evaluate_judges_v2,
 )
@@ -39,10 +40,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATASET = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v3-engineering"
 CASE_MANIFEST = DATASET / "manifest.json"
 FIXED_RESPONSES = (
-    PROJECT_ROOT / "evaluation" / "fixtures" / "e3-fixed-judge-responses-v1.json"
+    PROJECT_ROOT / "evaluation" / "fixtures" / "e31-fixed-judge-responses-v2.json"
 )
-WRONG_ACTION_ID = "episode-cea34a758d8acd7eecbcd12e"
-PLANNING_ID = "episode-2427940261d17c68e68d29f9"
+ASSESSMENT_ID = "episode-51a2b3950716e197afcb2c4c"
+WRONG_ACTION_ID = "episode-478ab137277ff3c9f736ae5c"
+CHILD_HIERARCHY_ID = "episode-2cdb9b5463d3b78023c6aba0"
+PLANNING_ID = "episode-97b64ff30f26d2acb8a49dc6"
 RUNTIME_FAILURE_ID = "failure:case-e31-p-provider-failure"
 
 
@@ -118,6 +121,26 @@ def test_v3_wrong_decision_is_valid_and_receives_critical_fail(
     )
 
 
+def test_assessment_accept_and_multi_entity_bindings_are_complete(
+    e31_chain: dict[str, Any],
+) -> None:
+    episode = _load(e31_chain["runtime"] / "episodes" / f"{ASSESSMENT_ID}.json")
+    rule = _load(e31_chain["rules"] / "rules" / f"{ASSESSMENT_ID}.json")
+    before = episode["state_before"]["logical_entities"]
+    by_title = {
+        item["data"].get("title"): item["logical_id"]
+        for item in before
+        if item["entity_type"] in {"stage", "task"}
+    }
+
+    assert episode["result"]["action_class"] == "ACCEPT"
+    assert rule["status"] == "pass"
+    assert by_title["Synthetic assessment stage"] == "stage:A-E1-MINI-001:assessment"
+    assert by_title["Explain the benchmark"] == "task:e1:a:001"
+    assert by_title["AAA synthetic distractor stage"].startswith("stage:episode-")
+    assert by_title["AAA synthetic distractor task"].startswith("task:episode-")
+
+
 def test_runtime_failure_does_not_rollback_siblings_and_is_propagated(
     e31_chain: dict[str, Any],
 ) -> None:
@@ -126,17 +149,44 @@ def test_runtime_failure_does_not_rollback_siblings_and_is_propagated(
     judge_manifest = _load(e31_chain["judges"] / "run-manifest.json")
     aggregate_manifest = _load(e31_chain["aggregate"] / "run-manifest.json")
 
-    assert len(e31_chain["runtime_summary"].episode_ids) == 6
+    assert len(e31_chain["runtime_summary"].episode_ids) == 7
     assert e31_chain["runtime_summary"].failure_ids == (RUNTIME_FAILURE_ID,)
-    assert len(runtime_manifest["terminals"]) == 7
+    assert len(runtime_manifest["terminals"]) == 8
     assert (e31_chain["runtime"] / "failures" / f"{RUNTIME_FAILURE_ID}.json").is_file()
     for manifest in (rule_manifest, judge_manifest, aggregate_manifest):
         assert manifest["runtime_failure_ids"] == [RUNTIME_FAILURE_ID]
         assert set(manifest["input_runtime_failure_digests"]) == {RUNTIME_FAILURE_ID}
     planning = _load(e31_chain["aggregate"] / "tracks" / "planning.json")
     assert planning["runtime_failure_ids"] == [RUNTIME_FAILURE_ID]
-    assert planning["score_count"] == 1
+    assert planning["score_count"] == 2
     assert planning["mean_score"] == 100
+
+
+def test_production_child_call_is_reconstructable_end_to_end(
+    e31_chain: dict[str, Any],
+) -> None:
+    episode = _load(e31_chain["runtime"] / "episodes" / f"{CHILD_HIERARCHY_ID}.json")
+    calls = episode["observable_trace"]["model_calls"]
+    child_calls = [
+        item for item in calls if item["call_purpose"] == "subagent_decision"
+    ]
+    run_entities = {
+        item["logical_id"]: item
+        for item in episode["state_after"]["logical_entities"]
+        if item["entity_type"] == "agent_run"
+    }
+
+    assert len(child_calls) == 1
+    child_call = child_calls[0]
+    assert child_call["depth"] == 1
+    assert child_call["parent_run_id"] in run_entities
+    assert child_call["run_id"] in run_entities
+    assert (
+        run_entities[child_call["run_id"]]["data"]["parent_run_ref"]
+        == child_call["parent_run_id"]
+    )
+    assert child_call["visible_context"]["messages"]
+    assert validate_episode(episode, source="child-hierarchy.json") == ()
 
 
 def test_exact_blinding_preserves_business_terms_and_exposes_judge_reference(
@@ -155,6 +205,10 @@ def test_exact_blinding_preserves_business_terms_and_exposes_judge_reference(
     encoded = canonical_json_bytes(blind_a.document)
 
     assert blind_a == blind_b
+    assert "state_before" not in blind_a.document["episode"]
+    assert blind_a.document["episode"]["observable_trace"]["model_calls"][0][
+        "visible_context"
+    ]["messages"]
     assert b"Good baseline and candidate are ordinary learning-domain terms" in encoded
     assert b"The production planning tool must create a reviewable proposal" in encoded
     for private_key in (
@@ -239,6 +293,56 @@ def test_two_invalid_responses_produce_unscored_judge_error(
     assert result["status"] == "judge_error"
     assert result["raw_score"] is None
     assert result["final_score"] is None
+
+
+def test_real_provider_failure_retains_safe_attempt_attribution(
+    e31_chain: dict[str, Any],
+) -> None:
+    class FailedProvider:
+        mode = "real"
+
+        def complete(self, request: dict[str, Any]) -> JudgeProviderReplyV2:
+            assert request["schema_version"] == "judge-provider-request-v2"
+            return JudgeProviderReplyV2(
+                content=None,
+                request_model="hy3",
+                response_model=None,
+                provider_request_id=None,
+                requested_at="2026-08-31T01:00:00Z",
+                responded_at="2026-08-31T01:00:01Z",
+                status="provider_error",
+            )
+
+    inputs = load_e31_inputs(episodes=e31_chain["runtime"], rules=e31_chain["rules"])
+    bundle = next(
+        item for item in inputs.bundles if item.episode["episode_id"] == PLANNING_ID
+    )
+    result, repaired = _evaluate_one(
+        episode=bundle.episode,
+        rule_result=bundle.rule_result,
+        reference=bundle.judge_reference,
+        judge_mode="real",
+        provider=FailedProvider(),
+        git_commit="0" * 40,
+        worktree_clean=True,
+        dependency_digest=dependency_lock_sha256(),
+    )
+
+    assert repaired is False
+    assert result["status"] == "judge_error"
+    assert result["dimensions"] == []
+    assert result["provider_attestation"]["attribution_status"] == "invalid"
+    assert result["provider_attestation"]["calls"] == [
+        {
+            "call_id": "judge-provider-call:001",
+            "request_model": "hy3",
+            "response_model": None,
+            "provider_request_id": None,
+            "requested_at": "2026-08-31T01:00:00Z",
+            "responded_at": "2026-08-31T01:00:01Z",
+            "status": "provider_error",
+        }
+    ]
 
 
 def test_rule_invalid_input_never_calls_provider(e31_chain: dict[str, Any]) -> None:

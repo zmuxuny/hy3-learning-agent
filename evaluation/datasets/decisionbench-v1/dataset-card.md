@@ -2,16 +2,16 @@
 
 ## 当前状态与版本边界
 
-`DecisionBench v1` 是 Benchmark 的发布名称，不等于 `DecisionEpisode v1`。E0–E3 是工程里程碑；E2 新 Runtime 统一输出 `DecisionEpisode v2`，E3 在其上新增 Judge/聚合 Artifact，但 DecisionBench 尚未正式完成，因此无需改名。
+`DecisionBench v1` 是未来 Benchmark 的发布名称，不等于 `DecisionEpisode v1`。本目录现已冻结为 E0–E3 的 engineering-only 历史回归输入；E3.1 的干净切换使 `DecisionEpisode v3` 成为唯一可能 formal 的活动路径，见 [`../decisionbench-v3-engineering/dataset-card.md`](../decisionbench-v3-engineering/dataset-card.md)。以下 v1/v2 说明记录历史契约，不是正式执行指南。
 
 本目录包含两个明确分层的 Mini 集合：
 
 | 集合 | Episode / Fixture | 用途 | 是否为正式结果 |
 | --- | --- | --- | --- |
 | E0 手工协议夹具 | `P/I/A/R-MINI-001` | 验证冻结的 v1 Schema、Action Envelope、引用、摘要与隐私 | 否；未执行 Runtime |
-| E1 Runtime Mini Fixture | `P/I/A/R-E1-MINI-001` | 验证隔离 Runtime，经 E2 生成 v2/Rules，再经 E3 fixed-response Judge 与聚合 | 否；engineering-only stub |
+| E1 Runtime Mini Fixture | `P/I/A/R-E1-MINI-001` | 回归隔离 Runtime、v2/Rules v1 与 E3 legacy Judge/聚合 | 否；永久 engineering-only stub |
 
-E0 v1 文件只用于历史读取、校验和回归。新的 Runtime 不生成 v1，也不默认双写 v1/v2。E1 Fixture 的 v2、Rule、Judge 与聚合执行结果按需写入系统临时目录，不作为静态正式结果提交；E1 Capture 只作工程审计，不是 Rules/Judge/聚合的第二事实源。
+E0 v1 文件与 E1→v2 链路只用于历史读取、校验和回归。活动 CaseSpec Runtime 不生成 v1/v2，也不建设正式双栈。E1 Fixture 的 v2、Rule、Judge 与聚合执行结果按需写入系统临时目录，不作为静态正式结果提交；E1 Capture 只作工程审计，不是 Rules/Judge/聚合的第二事实源。
 
 这些 Mini 不属于规划中的 48 个 Primary Episodes 或 24 个 Calibration Outputs，也不代表真实 Hy3 表现。当前目录仍不能称为完整 DecisionBench v1，不能生成正式分数、排名或能力结论。
 
@@ -44,7 +44,7 @@ State Delta 由真实前后 Snapshot 比较得到，一等表达新增、删除�
 
 Rules 只读取脱敏 `DecisionEpisode v2`，不读取 Capture。`rule-result-v1` 使用 `e2-rule-pack-v1` 的 `common/planning/intervention/assessment/revision/trace/isolation` 七包；每条 check 区分 `pass/fail/not_applicable/invalid_input` 和 `minor/major/critical`，Critical Fail 进入不可抵消的 Hard Gate。规则不输出 Judge 档位、总分或 Hy3 能力结论。
 
-E3 只接受完整、通过校验的 v2 与 digest 精确匹配的 Rule Result。`blind-judge-input-v1` 删除质量标签、Baseline/Candidate、生成者身份、作者说明、ID/tag/source ref、Capture、私有推理、凭据和路由材料，只保留公开 Episode 事实、Rule 已确认事实、`decision-rubric-v1` 与当前轨道的 `decision-track-anchors-v1`。盲化投影不发布、不改写 Episode，也不是第二事实源；Judge Evidence Path 必须同时存在于实际可见投影并回到同一原始 v2 Episode 解析。
+Legacy E3 只接受完整 v2 与 digest 匹配的 Rule Result。它的 `blind-judge-input-v1` 和结果 v1 仅用于冻结回归；E3.1 已用路径级 `blind-judge-input-v2` 取代其活动地位，避免把普通业务中的 Baseline/Candidate/Good 词面误当质量标签。两条历史/活动路径都禁止 Capture 成为事实源，但只有 v3 可能 formal。
 
 提交版 E3 契约为 `judge-result-v1`、`judge-run-manifest-v1`、`aggregate-result-v1`、`aggregate-track-result-v1` 和 `aggregate-run-manifest-v1`。固定响应文件明确标记 stub/non-formal，只验证 D1–D7 顺序、0/1/2 Schema、Evidence Path、一次修复、`judge_error`、Hard Gate/cap、invalid 单列、分轨与原子发布；它不是校准标签、scripted expected answer 或 Hy3 评分器。
 
@@ -66,9 +66,9 @@ Recording Sink 仅保留稳定 action identity、destination、安全摘要和�
 
 ## 适用范围与限制
 
-当前适合：E0 v1 历史契约回归、E1 隔离工程回归、E2 v2 Snapshot/Delta/Exporter/Rules 回归、E3 盲化/Judge 协议/确定性聚合回归、生产 Runtime/工具/Outbox seam 验证和确定性检查。
+当前适合：E0 v1 历史契约回归、E1 隔离工程回归、E2 v2 Snapshot/Delta/Exporter/Rules 回归、Legacy E3 Judge/聚合回归，以及生产 Runtime/工具/Outbox seam 的非正式确定性检查。
 
-当前不覆盖：真实 Hy3 Judge 运行、人工盲标、Primary/Calibration 数据、Calibration Mutation、有效性实验、正式评测、版本回归、报告/Case/Demo/Release 和完整 DecisionBench。Collector 对未登记评测事实失败关闭；生产 `submission.check` 的 accepted 分支因派生 Plan/Stage 更新未被现有 Operation patch 完整枚举而明确拒绝导出，当前 Assessment Mini 只覆盖可证明的 revision-required 路径。现有 Mini 与 fixed-response 聚合不能冒充任意真实用户 Run 或正式 Hy3 结论。
+当前不覆盖：真实 Hy3 Judge 运行、人工盲标、Primary/Calibration 数据、Calibration Mutation、有效性实验、正式评测、版本回归、报告/Case/Demo/Release 和完整 DecisionBench。本目录的 Assessment Mini 固定回归 revision-required；共享生产 `submission.check` 的 Operation 现已能完整枚举 ACCEPT 对 Submission/Task/Stage/Plan 的派生更新，活动 v3 engineering suite 另有 ACCEPT 验证。现有 Mini 与 fixed-response 聚合不能冒充任意真实用户 Run 或正式 Hy3 结论。
 
 ## 校验与运行
 
@@ -99,4 +99,4 @@ E3_ROOT="$(mktemp -d)"
   --output "$E3_ROOT/aggregates"
 ```
 
-入口、过滤参数与真实模型双重 opt-in 说明见 [`../../README.md`](../../README.md)，精确回归结果见 [`../../../docs/STATUS.md`](../../../docs/STATUS.md)。本目录随仓库使用 MIT License。
+以上命令显式回放 legacy v2 路径。活动 v3 入口、过滤参数与 real 双重 opt-in 说明见 [`../../README.md`](../../README.md)，精确回归结果见 [`../../../docs/STATUS.md`](../../../docs/STATUS.md)。本目录随仓库使用 MIT License。

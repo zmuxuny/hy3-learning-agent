@@ -3,11 +3,6 @@
     "IsolationManifest": {
       "additionalProperties": false,
       "properties": {
-        "production_database_access": {
-          "const": false,
-          "title": "Production Database Access",
-          "type": "boolean"
-        },
         "network_access": {
           "enum": [
             "disabled",
@@ -24,6 +19,11 @@
           ],
           "title": "Notification Mode",
           "type": "string"
+        },
+        "production_database_access": {
+          "const": false,
+          "title": "Production Database Access",
+          "type": "boolean"
         }
       },
       "required": [
@@ -37,28 +37,9 @@
     "PolicyManifest": {
       "additionalProperties": false,
       "properties": {
-        "proactive_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Proactive Version",
-          "type": "string"
-        },
-        "proactive_digest": {
+        "approval_digest": {
           "pattern": "^[0-9a-f]{64}$",
-          "title": "Proactive Digest",
-          "type": "string"
-        },
-        "evidence_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Evidence Version",
-          "type": "string"
-        },
-        "evidence_digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Evidence Digest",
+          "title": "Approval Digest",
           "type": "string"
         },
         "approval_version": {
@@ -68,9 +49,28 @@
           "title": "Approval Version",
           "type": "string"
         },
-        "approval_digest": {
+        "evidence_digest": {
           "pattern": "^[0-9a-f]{64}$",
-          "title": "Approval Digest",
+          "title": "Evidence Digest",
+          "type": "string"
+        },
+        "evidence_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Evidence Version",
+          "type": "string"
+        },
+        "proactive_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Proactive Digest",
+          "type": "string"
+        },
+        "proactive_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Proactive Version",
           "type": "string"
         }
       },
@@ -88,16 +88,16 @@
     "PromptManifest": {
       "additionalProperties": false,
       "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
         "version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Version",
-          "type": "string"
-        },
-        "digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Digest",
           "type": "string"
         }
       },
@@ -113,45 +113,52 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "properties": {
-        "schema_version": {
-          "const": "provider-attestation-v1",
-          "title": "Schema Version",
+        "attestation_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Attestation Sha256",
           "type": "string"
         },
-        "scope": {
+        "attribution_status": {
           "enum": [
-            "agent_runtime",
-            "semantic_judge"
+            "eligible",
+            "ineligible_stub",
+            "invalid"
           ],
-          "title": "Scope",
+          "title": "Attribution Status",
           "type": "string"
         },
-        "invocation_mode": {
-          "enum": [
-            "stub",
-            "real"
-          ],
-          "title": "Invocation Mode",
+        "calls": {
+          "items": {
+            "$ref": "#/$defs/ProviderCallAttestationV1"
+          },
+          "title": "Calls",
+          "type": "array"
+        },
+        "configuration_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Configuration Sha256",
           "type": "string"
         },
-        "provider_id": {
-          "enum": [
-            "none",
-            "tencent-tokenhub"
-          ],
-          "title": "Provider Id",
+        "configured_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Configured Model",
           "type": "string"
         },
-        "endpoint_policy_version": {
+        "dependency_lock_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Dependency Lock Sha256",
+          "type": "string"
+        },
+        "dependency_lock_verified": {
+          "title": "Dependency Lock Verified",
+          "type": "boolean"
+        },
+        "dependency_lock_version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Endpoint Policy Version",
-          "type": "string"
-        },
-        "endpoint_policy_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Endpoint Policy Sha256",
+          "title": "Dependency Lock Version",
           "type": "string"
         },
         "endpoint_id": {
@@ -181,22 +188,16 @@
           ],
           "title": "Endpoint Origin"
         },
-        "configured_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Configured Model",
+        "endpoint_policy_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Endpoint Policy Sha256",
           "type": "string"
         },
-        "calls": {
-          "items": {
-            "$ref": "#/$defs/ProviderCallAttestationV1"
-          },
-          "title": "Calls",
-          "type": "array"
-        },
-        "configuration_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Configuration Sha256",
+        "endpoint_policy_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Endpoint Policy Version",
           "type": "string"
         },
         "git_commit": {
@@ -204,29 +205,20 @@
           "title": "Git Commit",
           "type": "string"
         },
-        "worktree_clean": {
-          "title": "Worktree Clean",
-          "type": "boolean"
-        },
-        "dependency_lock_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Dependency Lock Version",
-          "type": "string"
-        },
-        "dependency_lock_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Dependency Lock Sha256",
-          "type": "string"
-        },
-        "attribution_status": {
+        "invocation_mode": {
           "enum": [
-            "eligible",
-            "ineligible_stub",
-            "invalid"
+            "stub",
+            "real"
           ],
-          "title": "Attribution Status",
+          "title": "Invocation Mode",
+          "type": "string"
+        },
+        "provider_id": {
+          "enum": [
+            "none",
+            "tencent-tokenhub"
+          ],
+          "title": "Provider Id",
           "type": "string"
         },
         "reason_codes": {
@@ -239,10 +231,22 @@
           "title": "Reason Codes",
           "type": "array"
         },
-        "attestation_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Attestation Sha256",
+        "schema_version": {
+          "const": "provider-attestation-v1",
+          "title": "Schema Version",
           "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "agent_runtime",
+            "semantic_judge"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "worktree_clean": {
+          "title": "Worktree Clean",
+          "type": "boolean"
         }
       },
       "required": [
@@ -261,6 +265,7 @@
         "worktree_clean",
         "dependency_lock_version",
         "dependency_lock_sha256",
+        "dependency_lock_verified",
         "attribution_status",
         "reason_codes",
         "attestation_sha256"
@@ -278,25 +283,6 @@
           "title": "Call Id",
           "type": "string"
         },
-        "request_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Request Model",
-          "type": "string"
-        },
-        "response_model": {
-          "anyOf": [
-            {
-              "maxLength": 4000,
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Response Model"
-        },
         "provider_request_id": {
           "anyOf": [
             {
@@ -309,6 +295,12 @@
             }
           ],
           "title": "Provider Request Id"
+        },
+        "request_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Request Model",
+          "type": "string"
         },
         "requested_at": {
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
@@ -326,6 +318,19 @@
             }
           ],
           "title": "Responded At"
+        },
+        "response_model": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Response Model"
         },
         "status": {
           "enum": [
@@ -352,16 +357,16 @@
     "ResourceManifest": {
       "additionalProperties": false,
       "properties": {
+        "snapshot_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
         "snapshot_version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
           "title": "Snapshot Version",
-          "type": "string"
-        },
-        "snapshot_digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Snapshot Digest",
           "type": "string"
         }
       },
@@ -375,23 +380,14 @@
     "RuntimeManifestV2": {
       "additionalProperties": false,
       "properties": {
-        "git_commit": {
-          "pattern": "^[0-9a-f]{40}$",
-          "title": "Git Commit",
-          "type": "string"
-        },
-        "worktree_clean": {
-          "title": "Worktree Clean",
-          "type": "boolean"
-        },
         "database_mode": {
           "const": "temporary_fixture",
           "title": "Database Mode",
           "type": "string"
         },
-        "fixture_db_sha256": {
+        "dependency_lock_sha256": {
           "pattern": "^[0-9a-f]{64}$",
-          "title": "Fixture Db Sha256",
+          "title": "Dependency Lock Sha256",
           "type": "string"
         },
         "dependency_lock_version": {
@@ -401,10 +397,19 @@
           "title": "Dependency Lock Version",
           "type": "string"
         },
-        "dependency_lock_sha256": {
+        "fixture_db_sha256": {
           "pattern": "^[0-9a-f]{64}$",
-          "title": "Dependency Lock Sha256",
+          "title": "Fixture Db Sha256",
           "type": "string"
+        },
+        "git_commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Git Commit",
+          "type": "string"
+        },
+        "worktree_clean": {
+          "title": "Worktree Clean",
+          "type": "boolean"
         }
       },
       "required": [
@@ -449,14 +454,37 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "schema_version": {
-      "const": "environment-manifest-v2",
-      "title": "Schema Version",
-      "type": "string"
-    },
     "frozen_time": {
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
       "title": "Frozen Time",
+      "type": "string"
+    },
+    "isolation": {
+      "$ref": "#/$defs/IsolationManifest"
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifest Sha256",
+      "type": "string"
+    },
+    "policies": {
+      "$ref": "#/$defs/PolicyManifest"
+    },
+    "prompt": {
+      "$ref": "#/$defs/PromptManifest"
+    },
+    "provider_attestation": {
+      "$ref": "#/$defs/ProviderAttestationV1"
+    },
+    "resources": {
+      "$ref": "#/$defs/ResourceManifest"
+    },
+    "runtime": {
+      "$ref": "#/$defs/RuntimeManifestV2"
+    },
+    "schema_version": {
+      "const": "environment-manifest-v2",
+      "title": "Schema Version",
       "type": "string"
     },
     "timezone": {
@@ -466,31 +494,8 @@
       "title": "Timezone",
       "type": "string"
     },
-    "prompt": {
-      "$ref": "#/$defs/PromptManifest"
-    },
     "tools": {
       "$ref": "#/$defs/ToolManifest"
-    },
-    "policies": {
-      "$ref": "#/$defs/PolicyManifest"
-    },
-    "resources": {
-      "$ref": "#/$defs/ResourceManifest"
-    },
-    "runtime": {
-      "$ref": "#/$defs/RuntimeManifestV2"
-    },
-    "isolation": {
-      "$ref": "#/$defs/IsolationManifest"
-    },
-    "provider_attestation": {
-      "$ref": "#/$defs/ProviderAttestationV1"
-    },
-    "manifest_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Manifest Sha256",
-      "type": "string"
     }
   },
   "required": [

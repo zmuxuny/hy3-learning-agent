@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -8,6 +10,7 @@ from learning_agent_eval.canonical import sha256_digest
 from learning_agent_eval.e31_runtime import (
     E31RuntimeArtifactError,
     build_model_calls_v3,
+    build_real_provider_attestation,
     build_runtime_failure,
     build_runtime_manifest_v2,
     build_stub_provider_attestation,
@@ -15,11 +18,31 @@ from learning_agent_eval.e31_runtime import (
 from learning_agent_eval.integrity import (
     artifact_manifest_digest,
     model_visible_context_digest,
+    provider_attestation_digest,
     runtime_failure_digest,
 )
-from learning_agent_eval.models import RuntimeFailureV1, RuntimeRunManifestV2
+from learning_agent_eval.models import (
+    ProviderAttestationV1,
+    RuntimeFailureV1,
+    RuntimeRunManifestV2,
+)
+from learning_agent_eval.normalizers import (
+    IdentityCandidate,
+    NormalizationError,
+    StableIdentityRegistry,
+)
 from learning_agent_eval.recorder import EvaluationModelRecorder
+from learning_agent_eval.rubric import JUDGE_CONFIG_SHA256_V2
+from learning_agent_eval.runtime_metadata import (
+    dependency_environment_reason_codes,
+    provider_attribution_reason_codes,
+)
 from learning_agent_eval.scripted_model import ScriptedModelClient
+from learning_agent_eval.snapshots import (
+    audit_projection,
+    collect_state_snapshot,
+    identity_registry,
+)
 
 SHA = "0" * 64
 GIT = "0" * 40
@@ -110,11 +133,37 @@ async def test_recorder_retains_exact_sanitized_context_and_call_metadata() -> N
     )
     assert "reasoning_content" not in str(record)
     assert "E1_PRIVATE_REASONING_SENTINEL_DO_NOT_EXPORT" not in str(record)
+    assert "requested_at" not in record
+    assert "responded_at" not in record
 
     calls = build_model_calls_v3(recorder.records)
     context = calls[0]["visible_context"]
     assert context["context_sha256"] == model_visible_context_digest(context)
     assert calls[0]["assistant_text"] == "public answer"
+
+
+@pytest.mark.asyncio
+async def test_real_recorder_retains_provider_call_times() -> None:
+    client = ScriptedModelClient(
+        [
+            {
+                "delivery": "nonstream",
+                "assistant_text": "public answer",
+                "tool_calls": [],
+            }
+        ]
+    )
+    recorder = EvaluationModelRecorder(
+        client,
+        invocation_mode="real",
+        metadata_provider=lambda: _metadata(),
+    )
+    await _record(recorder, model="hy3")
+
+    record = recorder.records[0]
+    assert record["requested_at"].endswith("Z")
+    assert record["responded_at"].endswith("Z")
+    assert record["requested_at"] <= record["responded_at"]
 
 
 @pytest.mark.asyncio
@@ -252,6 +301,7 @@ def test_failure_and_manifest_preserve_one_terminal_per_case() -> None:
                 "terminal_kind": "episode",
                 "artifact_id": "episode-success",
                 "artifact_sha256": SHA,
+                "formal_evaluation_result": False,
             },
             {
                 "case_id": "case-failure",
@@ -260,6 +310,7 @@ def test_failure_and_manifest_preserve_one_terminal_per_case() -> None:
                 "terminal_kind": "failure",
                 "artifact_id": failure["failure_id"],
                 "artifact_sha256": failure["failure_sha256"],
+                "formal_evaluation_result": False,
             },
         ],
         git_commit=GIT,
@@ -269,6 +320,27 @@ def test_failure_and_manifest_preserve_one_terminal_per_case() -> None:
     RuntimeRunManifestV2.model_validate(manifest)
     assert manifest["selected_case_ids"] == ["case-failure", "case-success"]
     assert manifest["manifest_sha256"] == artifact_manifest_digest(manifest)
+
+    formal = build_runtime_manifest_v2(
+        dataset_version="decisionbench-primary-v3",
+        invocation_mode="real",
+        terminals=[
+            {
+                "case_id": "case-primary",
+                "case_spec_sha256": SHA,
+                "track": "planning",
+                "terminal_kind": "episode",
+                "artifact_id": "episode-primary",
+                "artifact_sha256": SHA,
+                "formal_evaluation_result": True,
+            }
+        ],
+        git_commit=GIT,
+        dependency_lock_version="runtime-lock-v1",
+        dependency_lock_sha256=SHA,
+    )
+    assert formal["formal_evaluation_result"] is True
+    assert formal["evaluation_status"] == "formal_model_evaluation"
 
 
 def test_unscoped_model_call_fails_closed_for_v3() -> None:
@@ -286,3 +358,184 @@ def test_unscoped_model_call_fails_closed_for_v3() -> None:
                 }
             ]
         )
+
+
+def test_identity_bindings_follow_semantics_instead_of_row_order() -> None:
+    bindings = [
+        {
+            "entity_type": "task",
+            "logical_id": "task-alpha",
+            "identity_fields": {"stage_ref": "stage-main", "title": "Alpha"},
+        },
+        {
+            "entity_type": "task",
+            "logical_id": "task-beta",
+            "identity_fields": {"stage_ref": "stage-main", "title": "Beta"},
+        },
+    ]
+    registry = StableIdentityRegistry(
+        episode_id="episode-bindings",
+        declarations={"task": ["task-alpha", "task-beta"]},
+        identity_bindings=bindings,
+    )
+    registry.register_many(
+        "task",
+        [
+            IdentityCandidate(22, {"stage_ref": "stage-main", "title": "Beta"}),
+            IdentityCandidate(11, {"stage_ref": "stage-main", "title": "Alpha"}),
+        ],
+    )
+    registry.assert_bindings_resolved(["task"])
+    assert registry.resolve("task", 11) == "task-alpha"
+    assert registry.resolve("task", 22) == "task-beta"
+
+    missing = StableIdentityRegistry(
+        episode_id="episode-bindings",
+        identity_bindings=bindings,
+    )
+    missing.register_many(
+        "task",
+        [IdentityCandidate(33, {"stage_ref": "stage-main", "title": "Gamma"})],
+    )
+    with pytest.raises(NormalizationError, match="identity.binding_unresolved"):
+        missing.assert_bindings_resolved(["task"])
+
+
+def test_real_provider_attribution_is_recomputed_from_allowlisted_facts() -> None:
+    assert dependency_environment_reason_codes() == ()
+    attestation = build_real_provider_attestation(
+        [
+            {
+                "call_id": "provider-call-001",
+                "request_model": "hy3",
+                "response_model": "hy3",
+                "provider_request_id": "request-public-001",
+                "requested_at": NOW,
+                "responded_at": NOW,
+                "response_status": "completed",
+            }
+        ],
+        scope="semantic_judge",
+        configuration_sha256=JUDGE_CONFIG_SHA256_V2,
+        git_commit=GIT,
+        worktree_clean=True,
+        dependency_lock_verified=True,
+    )
+    assert attestation["attribution_status"] == "eligible"
+    assert attestation["reason_codes"] == []
+
+    for mutate in ("endpoint", "response_model"):
+        forged = deepcopy(attestation)
+        if mutate == "endpoint":
+            forged["endpoint_origin"] = "https://fake-provider.example"
+        else:
+            forged["calls"][0]["response_model"] = "not-hy3"
+        forged["reason_codes"] = list(provider_attribution_reason_codes(forged))
+        forged["attribution_status"] = "invalid"
+        forged["attestation_sha256"] = provider_attestation_digest(forged)
+        validated = ProviderAttestationV1.model_validate(forged)
+        assert validated.attribution_status == "invalid"
+        assert validated.reason_codes
+
+
+@pytest.mark.asyncio
+async def test_snapshot_captures_root_and_child_agent_run_hierarchy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_root = tmp_path / "app-runtime"
+    database_path = runtime_root / "hierarchy.sqlite3"
+    runtime_root.mkdir()
+    monkeypatch.setenv("EVALUATION_MODE", "1")
+    monkeypatch.setenv("RUNTIME_STATE_ROOT", str(runtime_root))
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database_path}")
+    monkeypatch.setenv("ENABLE_SCHEDULER", "false")
+    monkeypatch.setenv("ENABLE_EMAIL_REPLY_POLLING", "false")
+
+    from app.db.database import Base
+    from app.models import AgentRun, Owner, UserProfile
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    engine = create_async_engine(f"sqlite+aiosqlite:///{database_path}")
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+    async with session_factory() as db:
+        db.add(
+            Owner(
+                id="local", display_name="Synthetic learner", timezone="Asia/Shanghai"
+            )
+        )
+        db.add(UserProfile(owner_id="local"))
+        parent = AgentRun(
+            id="e31-parent-run",
+            owner_id="local",
+            trigger="user_message",
+            objective="Coordinate a synthetic decision.",
+            status="completed",
+            phase="terminal",
+        )
+        child = AgentRun(
+            id="e31-child-run",
+            owner_id="local",
+            parent_run_id=parent.id,
+            trigger="subagent",
+            objective="Collect synthetic supporting evidence.",
+            status="completed",
+            phase="terminal",
+        )
+        db.add_all([parent, child])
+        await db.commit()
+
+    fixture = {
+        "episode_id": "episode-child-hierarchy",
+        "owner_id": "local",
+        "run_id": parent.id,
+        "state_before": {
+            "logical_entities": [
+                {
+                    "entity_type": "learner",
+                    "logical_id": "learner-child-hierarchy",
+                    "data": {"fixture": "public"},
+                }
+            ],
+            "context": {
+                "public_summary": "Synthetic parent and child runtime context.",
+                "source_refs": ["learner-child-hierarchy"],
+                "context_sha256": SHA,
+            },
+        },
+    }
+    registry = identity_registry(
+        fixture,
+        identity_bindings=[
+            {
+                "entity_type": "learner",
+                "logical_id": "learner-child-hierarchy",
+                "identity_fields": {
+                    "timezone": "Asia/Shanghai",
+                },
+            }
+        ],
+    )
+    snapshot = await collect_state_snapshot(
+        session_factory,
+        fixture,
+        registry=registry,
+        captured_at=NOW,
+        resource_version="resource-snapshot-v1",
+        resource_digest=SHA,
+        phase="before",
+    )
+    runs = [
+        item
+        for item in snapshot.document["logical_entities"]
+        if item["entity_type"] == "agent_run"
+    ]
+    assert len(runs) == 2
+    root = next(item for item in runs if item["data"]["parent_run_ref"] is None)
+    nested = next(item for item in runs if item is not root)
+    assert nested["data"]["parent_run_ref"] == root["logical_id"]
+    assert audit_projection(snapshot.document)["run"]["run_ref"] == root["logical_id"]
+    await engine.dispose()

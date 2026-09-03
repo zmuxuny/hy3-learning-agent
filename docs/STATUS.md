@@ -1,11 +1,48 @@
 # 项目状态
 
-更新时间：2026-09-02（Asia/Shanghai）
+更新时间：2026-09-04（Asia/Shanghai）
 当前版本：1.1.1
 
-H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0 协议骨架、E1 隔离执行、E2 通用导出/规则和 E3 标签盲化/结构化 Judge/确定性聚合已经完成；正式数据、有效性实验、正式评测、版本对比和报告仍属于 E4–E8。M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0–E3 工程骨架及 E3.1 评测有效性前置修复已经实现；活动链路已干净切换到 DecisionEpisode v3，v1/v2 永久保留为 engineering-only 历史回归。正式数据、有效性实验、正式评测、版本对比和报告仍属于未启动的 E4–E8。M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
 
-## 2026-09-02 第三阶段 E3 收口
+## 2026-09-04 第三阶段 E3.1 评测有效性修复
+
+E3.1 采用“版本化、一次干净切换”，没有原地改变冻结 v1/v2 Schema，也没有建设长期正式双栈。`case-spec-v1 → decision-episode-v3/runtime-failure-v1 → rule-result-v2 → judge-result-v2 → aggregate-result-v2` 是唯一活动评测链；旧 v1/v2 仍可读、可验证、可回归，但永远不能获得 formal 资格。
+
+| 检查项 | 当前结论 | 证据或入口 |
+| --- | --- | --- |
+| 有效性语义 | 已修复 | v3 Validator 只判断证据完整性；错误动作保留为有效 Episode，由 Rules 产生 Critical Fail，不再被结构校验提前丢弃 |
+| CaseSpec/JudgeReference | 已完成 | CaseSpec 是唯一案例控制面；JudgeReference 只能确定性派生，公开约束文本与结构化谓词可见，质量标签/变异源/作者裁决不可见 |
+| 可重建轨迹 | 已完成 | 保存每次调用实际收到的脱敏消息和工具 Schema，以及 run/parent/depth/purpose；Judge 不获得额外 `state_before` 全知视图 |
+| 全模型调用 | 已完成 | Worker 级 Model Client Factory 覆盖主 Agent、生产 planning 子 Agent、子 Agent 汇总、标题与记忆压缩；辅助调用标记 non-decision |
+| 失败终态 | 已完成 | 每 Case 独立执行并发布 Episode 或 RuntimeFailure；Provider/框架失败不评分且不撤销同批成功制品，安全调用尝试元数据可保留 |
+| 精确盲化 | 已完成 | 路径级删除/opaque 化取代词面替换；业务 `baseline/candidate/Good/candidate_key` 保留，Calibration 标签和生成者/路由信息移除 |
+| Stable ID | 已完成 | CaseSpec 以公开语义字段绑定数据库实体；多 Stage/Task 与父子 Run/RunEvent 不依赖排序位置，不匹配或歧义时失败关闭 |
+| Assessment ACCEPT | 已完成 | 生产 `submission.check` Operation 完整枚举 Submission/Task/Stage/Plan 正反 patch，ACCEPT 与 REVISION_REQUIRED 均可完整导出 |
+| Provider 归因 | 已完成 | 固定 TokenHub/Hy3 allowlist，校验请求/响应模型、request ID、时间、配置摘要、Git/洁净树和精确依赖锁；表述为可审计归因而非密码学证明 |
+| 隔离/隐私 | 已完成 | 相对 `.env`/`data/...` 同样被审计阻断；普通 reasoning/推理过程业务文本不误报，真正私有推理字段继续失败关闭 |
+| Rules/Judge/Aggregate | 已完成 | v2 结果契约保持 D1–D7、一次修复、Evidence Path、Rule-first Hard Gate、Critical 39/Major 69 cap、invalid/error/failure 单列和四轨无 overall |
+| 正式 Hy3 | 未调用 | 仅固定 stub 工程响应；全部 engineering Mini、旧 v1/v2 与本次聚合均 non-formal，没有 Hy3 能力结论 |
+| E4–E8 | 未开始 | 未创建 48 Primary/24 Calibration，未做有效性实验、人工盲标、正式评测、版本回归、Case、最终报告、Demo 或 Release |
+
+活动 engineering suite 现有 8 个 Case：四轨正例、一个错误 Assessment 动作、一个 Guard 阻断、一个真实生产 `planning_delegate` 父子轨迹和一个故意的 Provider Failure。成功/错误/安全/基础设施失败均使用公开合成数据；错误动作的 v3 Episode 通过结构校验后产生 Critical Rule Fail 和 cap 39，基础设施 Failure 则贯穿 Rules/Judge/Aggregate Manifest 但不进入分母。
+
+Provider Attestation 只能证明产物中的配置、响应归因字段、提交和依赖环境满足固定政策，不能密码学证明远端服务身份。正式运行还必须另行授权、使用组织侧凭据和干净提交；本次没有尝试 real 模式或公网。
+
+E3.1 分片提交为：`2af42e3`（契约）、`9685eba`（轨迹/失败）、`16ad39b`（v3 Runtime）、`874f95a`（评分链），最终正式性/隔离/ACCEPT/多实体与文档收口由 E3.1d 提交承载。Git 提交不能在自身文档中保存自引用哈希，最终 HEAD 由完成汇报记录。
+
+E3.1d 提交前实际验收：
+
+- `.venv/bin/pytest -q evaluation/tests/test_e31_contracts.py evaluation/tests/test_e31_runtime_artifacts.py evaluation/tests/test_e31_scoring_chain.py evaluation/tests/test_protocol_schemas.py evaluation/tests/test_e2_exporter_rules.py`：`79 passed in 156.93s (0:02:36)`；
+- `.venv/bin/pytest -q evaluation/tests`：`170 passed in 307.01s (0:05:07)`；
+- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 1.59s`；
+- `.venv/bin/pytest -q`：`1245 passed, 2 warnings in 2571.87s (0:42:51)`，0 failed；warning 仍是既有 Starlette/httpx 弃用提示和 Python 3.14 tar 提取行为预告；
+- `.venv/bin/python scripts/check_doc_links.py`、`.venv/bin/python scripts/release-check.py lint_typecheck`、`.venv/bin/python scripts/release-check.py secret_scan`、`.venv/bin/pip check` 与 `git diff --check` 均通过；
+- 系统临时目录中的 8 Case 两轮完整链均得到 `7 Episode + 1 RuntimeFailure`、1 个错误动作 Critical Hard Gate 和 1 个聚合 Fail；全部 Runtime/Rules/Judge/Aggregate 通过 validator，两轮逐文件一致；Episode/track 过滤、Manifest Git commit、zero-provider/isolation 与无 SQLite/WAL/SHM 扫描通过，临时目录已删除。
+
+干净 HEAD post-commit smoke 的提交对齐、双轮比较、盲化/凭据/路由扫描和最终工作树状态由本次完成汇报记录。
+
+## 2026-09-02 第三阶段 E3 收口（已被 E3.1 活动链取代）
 
 E3 在不修改 `DecisionEpisode v1/v2`、`rule-result-v1`、Action Envelope v1 或 Environment Manifest v1 的前提下，完成 `完整 v2 + digest 匹配 Rules → blind Judge input → judge-result-v1 → Rule-first aggregate` 的工程闭环。字段能力审计确认 v2 已一等表达 D1–D7 所需公开事实、模型尝试/最终效果、Guard blocked/deferred、WAIT/NO_OP、durable 状态、formal eligibility 与 Evidence Path；Rule Result 已表达严重级别、实际 Hard Gate 和 Episode 关联，因而无需从 Capture/Oracle 自由说明回填，也无需升级冻结契约。
 
@@ -76,15 +113,15 @@ E2 当前已执行的定向验收：
 - Guard blocked 与 quiet-hours deferred 的生产 Runtime 边界均通过：ToolInvocation 保留，Notification/Outbox/Receipt/Sink 最终副作用为零；
 - 同一输入的 Runtime/Rules 产物逐文件一致；Episode ID 和 track 两类过滤均由自动化测试覆盖。
 
-E2 已知限制：当前 Assessment revision-required 路径的 Operation/Delta 可完整证明；生产 `submission.check` 的 accepted 分支还会更新未被现有 Operation patch 枚举的 Plan/Stage 派生状态，因此通用 Exporter 以稳定的 `delta.operation_unattributed.plan` 失败关闭，不生成猜测的 ACCEPT Episode。修复应在未来补全生产 Operation 契约后再扩展 allowlist 对齐，不能用 Oracle 或工具成功状态回填。
+E2 收口时的已知限制是 Assessment accepted 分支缺少 Plan/Stage Operation 归因。E3.1 已在生产 `submission.check` 契约中补齐真实正反 patch，并用 v3 ACCEPT、多实体干扰项和旧 v2 回归验证关闭该限制；没有用 Oracle 或工具成功状态回填 Delta。本节其余内容仍是 E2 当时的历史证据。
 
 最终提交哈希和干净 HEAD 上的 post-commit smoke 结果由本次开发交接与完成汇报记录；测试产物只写入系统临时目录，不进入仓库。
 
 ## 下一阶段 E4–E8 边界
 
-E3 工程闭环已完成，下一阶段若继续必须从 E4 数据集开始：创建并复核 48 个 Primary Episodes、24 个 Calibration Outputs、Split/Mutation Manifest 与数据说明。E5–E8 才能执行有效性实验、人工盲标、真实 Hy3 正式评测、Baseline/Candidate 版本回归、Case/最终报告、Demo 与 Release。
+E3.1 正式评测前置修复完成后，仍须另行授权才能进入 E4：创建并复核 48 个 Primary Episodes、24 个 Calibration Outputs、Split/Mutation Manifest 与数据说明。E5–E8 才能执行有效性实验、人工盲标、真实 Hy3 正式评测、Baseline/Candidate 版本回归、Case/最终报告、Demo 与 Release。
 
-当前 fixed-response Judge 与聚合只证明工程协议，不能复用为 Calibration 标签或 Hy3 能力结果。E4 之前不得运行正式 Primary；后续阶段仍须显式授权真实 Hy3、保存正式 Run Manifest，并保持 Judge 不进入产品用户流程、不按评分自动修改 Prompt、计划或用户状态。完整 E3 实现与下一阶段接手边界见 [`第三阶段开发交接.md`](第三阶段开发交接.md)。
+当前 fixed-response Judge 与聚合只证明工程协议，不能复用为 Calibration 标签或 Hy3 能力结果。后续阶段仍须显式授权真实 Hy3、保存正式 Run Manifest，并保持 Judge 不进入产品用户流程、不按评分自动修改 Prompt、计划或用户状态。完整 E3.1 实现与下一阶段接手边界见 [`第三阶段开发交接.md`](第三阶段开发交接.md)。
 
 ## 2026-09-01 第三阶段 E1 收口
 

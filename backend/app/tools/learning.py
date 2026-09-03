@@ -365,6 +365,8 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
         return error
     before_submission = {"status": submission.status, "score": submission.score, "feedback": submission.feedback, "checked_at": submission.checked_at}
     before_task = {"status": task.status, "completed_at": task.completed_at, "task_metadata": dict(task.task_metadata)}
+    before_stage = {"status": task.stage.status}
+    before_plan = {"progress": task.stage.plan.progress}
     passed = args.score >= args.pass_threshold
     submission.score = args.score
     submission.feedback = args.feedback
@@ -501,9 +503,27 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
                 "completed_at": canonical_utc(task.completed_at),
                 "task_metadata": task.task_metadata,
             },
+            "stage": {"status": task.stage.status},
+            "plan": {"progress": task.stage.plan.progress},
+            "affected": {
+                "plan_id": task.stage.plan_id,
+                "stage_id": task.stage_id,
+                "task_id": task.id,
+            },
             "award": forward_award,
         },
-        inverse_patch={"submission": json_safe(before_submission), "task": json_safe(before_task), "award": award_inverse},
+        inverse_patch={
+            "submission": json_safe(before_submission),
+            "task": json_safe(before_task),
+            "stage": json_safe(before_stage),
+            "plan": json_safe(before_plan),
+            "affected": {
+                "plan_id": task.stage.plan_id,
+                "stage_id": task.stage_id,
+                "task_id": task.id,
+            },
+            "award": award_inverse,
+        },
     )
     ctx.db.add(operation)
     await flush_uow(ctx.db)

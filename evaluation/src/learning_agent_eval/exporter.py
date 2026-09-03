@@ -580,7 +580,14 @@ def _effects_and_action(
                 assessment_refs, sources(assessment_refs),
             )
         )
-    plan_refs = _changed_refs(delta, "plan", before, after)
+    represented_refs = {
+        reference for effect in effects for reference in effect["entity_refs"]
+    }
+    plan_refs = [
+        reference
+        for reference in _changed_refs(delta, "plan", before, after)
+        if reference not in represented_refs
+    ]
     if plan_refs:
         if any(ref not in _entity_map(after) for ref in plan_refs):
             raise ExportError("export.removed_plan_unclassified")

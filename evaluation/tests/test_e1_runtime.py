@@ -363,6 +363,31 @@ def test_real_model_provider_url_must_be_credential_free_https(
         )
 
 
+@pytest.mark.parametrize(
+    ("base_url", "model"),
+    [
+        ("https://fake-provider.example/v1", "hy3"),
+        ("https://tokenhub.tencentmaas.com/v1", "not-hy3"),
+    ],
+)
+def test_real_model_requires_allowlisted_hy3_attribution(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    base_url: str,
+    model: str,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "synthetic-caller-key")
+    monkeypatch.setenv("OPENAI_API_BASE", base_url)
+    monkeypatch.setenv("MODEL_NAME", model)
+    with pytest.raises(EvaluationIsolationError, match="Hy3 allowlist"):
+        worker_environment(
+            project_root=PROJECT_ROOT,
+            worker_root=tmp_path,
+            model_mode="real",
+            allow_real_model=True,
+        )
+
+
 def test_isolation_guard_rejects_synthetic_env_and_database_canaries(
     tmp_path: Path,
 ) -> None:
@@ -397,6 +422,31 @@ def test_isolation_guard_rejects_synthetic_env_and_database_canaries(
     }
     assert guard.counters["prohibited_file_access"] == 1
     assert guard.counters["outside_sqlite_access"] == 1
+
+
+def test_isolation_guard_resolves_relative_repository_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    synthetic_project = tmp_path / "synthetic-project"
+    worker_root = tmp_path / "worker"
+    (synthetic_project / "data").mkdir(parents=True)
+    worker_root.mkdir()
+    guard = IsolationGuard(
+        project_root=synthetic_project,
+        worker_root=worker_root,
+        model_mode="stub",
+        model_base_url="https://model.example.invalid/v1",
+    )
+    monkeypatch.chdir(synthetic_project)
+
+    with pytest.raises(EvaluationIsolationError, match="runtime data"):
+        guard._audit("open", (".env", "r", 0))
+    with pytest.raises(EvaluationIsolationError, match="runtime data"):
+        guard._audit("open", ("data/learning_companion.db", "r", 0))
+    guard._audit("open", (str(worker_root / "public.json"), "w", 0))
+
+    assert guard.counters["prohibited_file_access"] == 2
 
 
 @pytest.mark.parametrize(

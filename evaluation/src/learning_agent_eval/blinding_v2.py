@@ -133,7 +133,6 @@ def _episode_projection(episode: Mapping[str, Any], *, salt: str) -> dict[str, A
         "schema_version": episode["schema_version"],
         "track": episode["track"],
         "trigger": _sanitize(episode["trigger"], salt=salt),
-        "state_before": _state_projection(episode["state_before"], salt=salt),
         "state_after": _state_projection(episode["state_after"], salt=salt),
         "state_delta": _sanitize(episode["state_delta"], salt=salt),
         "environment": _sanitize(
@@ -259,7 +258,6 @@ def build_blind_judge_input_v2(
             "schema_version",
             "track",
             "trigger",
-            "state_before",
             "state_after",
             "state_delta",
             "environment",

@@ -16,15 +16,6 @@
           "title": "Dimension Id",
           "type": "string"
         },
-        "level": {
-          "enum": [
-            0,
-            1,
-            2
-          ],
-          "title": "Level",
-          "type": "integer"
-        },
         "evidence_paths": {
           "items": {
             "maxLength": 300,
@@ -36,17 +27,26 @@
           "title": "Evidence Paths",
           "type": "array"
         },
-        "reason_code": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Reason Code",
-          "type": "string"
+        "level": {
+          "enum": [
+            0,
+            1,
+            2
+          ],
+          "title": "Level",
+          "type": "integer"
         },
         "public_summary": {
           "maxLength": 4000,
           "minLength": 1,
           "title": "Public Summary",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Reason Code",
           "type": "string"
         },
         "specific_issue": {
@@ -77,13 +77,6 @@
     "JudgeSemanticIssueV1": {
       "additionalProperties": false,
       "properties": {
-        "issue_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Issue Id",
-          "type": "string"
-        },
         "dimension_id": {
           "anyOf": [
             {
@@ -104,22 +97,6 @@
           ],
           "title": "Dimension Id"
         },
-        "severity": {
-          "enum": [
-            "minor",
-            "major",
-            "critical"
-          ],
-          "title": "Severity",
-          "type": "string"
-        },
-        "reason_code": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Reason Code",
-          "type": "string"
-        },
         "evidence_paths": {
           "items": {
             "maxLength": 300,
@@ -131,10 +108,33 @@
           "title": "Evidence Paths",
           "type": "array"
         },
+        "issue_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Issue Id",
+          "type": "string"
+        },
         "public_summary": {
           "maxLength": 4000,
           "minLength": 1,
           "title": "Public Summary",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "minor",
+            "major",
+            "critical"
+          ],
+          "title": "Severity",
           "type": "string"
         }
       },
@@ -154,45 +154,52 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "properties": {
-        "schema_version": {
-          "const": "provider-attestation-v1",
-          "title": "Schema Version",
+        "attestation_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Attestation Sha256",
           "type": "string"
         },
-        "scope": {
+        "attribution_status": {
           "enum": [
-            "agent_runtime",
-            "semantic_judge"
+            "eligible",
+            "ineligible_stub",
+            "invalid"
           ],
-          "title": "Scope",
+          "title": "Attribution Status",
           "type": "string"
         },
-        "invocation_mode": {
-          "enum": [
-            "stub",
-            "real"
-          ],
-          "title": "Invocation Mode",
+        "calls": {
+          "items": {
+            "$ref": "#/$defs/ProviderCallAttestationV1"
+          },
+          "title": "Calls",
+          "type": "array"
+        },
+        "configuration_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Configuration Sha256",
           "type": "string"
         },
-        "provider_id": {
-          "enum": [
-            "none",
-            "tencent-tokenhub"
-          ],
-          "title": "Provider Id",
+        "configured_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Configured Model",
           "type": "string"
         },
-        "endpoint_policy_version": {
+        "dependency_lock_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Dependency Lock Sha256",
+          "type": "string"
+        },
+        "dependency_lock_verified": {
+          "title": "Dependency Lock Verified",
+          "type": "boolean"
+        },
+        "dependency_lock_version": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Endpoint Policy Version",
-          "type": "string"
-        },
-        "endpoint_policy_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Endpoint Policy Sha256",
+          "title": "Dependency Lock Version",
           "type": "string"
         },
         "endpoint_id": {
@@ -222,22 +229,16 @@
           ],
           "title": "Endpoint Origin"
         },
-        "configured_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Configured Model",
+        "endpoint_policy_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Endpoint Policy Sha256",
           "type": "string"
         },
-        "calls": {
-          "items": {
-            "$ref": "#/$defs/ProviderCallAttestationV1"
-          },
-          "title": "Calls",
-          "type": "array"
-        },
-        "configuration_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Configuration Sha256",
+        "endpoint_policy_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Endpoint Policy Version",
           "type": "string"
         },
         "git_commit": {
@@ -245,29 +246,20 @@
           "title": "Git Commit",
           "type": "string"
         },
-        "worktree_clean": {
-          "title": "Worktree Clean",
-          "type": "boolean"
-        },
-        "dependency_lock_version": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Dependency Lock Version",
-          "type": "string"
-        },
-        "dependency_lock_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Dependency Lock Sha256",
-          "type": "string"
-        },
-        "attribution_status": {
+        "invocation_mode": {
           "enum": [
-            "eligible",
-            "ineligible_stub",
-            "invalid"
+            "stub",
+            "real"
           ],
-          "title": "Attribution Status",
+          "title": "Invocation Mode",
+          "type": "string"
+        },
+        "provider_id": {
+          "enum": [
+            "none",
+            "tencent-tokenhub"
+          ],
+          "title": "Provider Id",
           "type": "string"
         },
         "reason_codes": {
@@ -280,10 +272,22 @@
           "title": "Reason Codes",
           "type": "array"
         },
-        "attestation_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Attestation Sha256",
+        "schema_version": {
+          "const": "provider-attestation-v1",
+          "title": "Schema Version",
           "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "agent_runtime",
+            "semantic_judge"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "worktree_clean": {
+          "title": "Worktree Clean",
+          "type": "boolean"
         }
       },
       "required": [
@@ -302,6 +306,7 @@
         "worktree_clean",
         "dependency_lock_version",
         "dependency_lock_sha256",
+        "dependency_lock_verified",
         "attribution_status",
         "reason_codes",
         "attestation_sha256"
@@ -319,25 +324,6 @@
           "title": "Call Id",
           "type": "string"
         },
-        "request_model": {
-          "maxLength": 4000,
-          "minLength": 1,
-          "title": "Request Model",
-          "type": "string"
-        },
-        "response_model": {
-          "anyOf": [
-            {
-              "maxLength": 4000,
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Response Model"
-        },
         "provider_request_id": {
           "anyOf": [
             {
@@ -350,6 +336,12 @@
             }
           ],
           "title": "Provider Request Id"
+        },
+        "request_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Request Model",
+          "type": "string"
         },
         "requested_at": {
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
@@ -367,6 +359,19 @@
             }
           ],
           "title": "Responded At"
+        },
+        "response_model": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Response Model"
         },
         "status": {
           "enum": [
@@ -393,20 +398,6 @@
     "SuggestedHardGateV1": {
       "additionalProperties": false,
       "properties": {
-        "suggestion_id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Suggestion Id",
-          "type": "string"
-        },
-        "reason_code": {
-          "maxLength": 128,
-          "minLength": 1,
-          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Reason Code",
-          "type": "string"
-        },
         "evidence_paths": {
           "items": {
             "maxLength": 300,
@@ -422,6 +413,20 @@
           "maxLength": 4000,
           "minLength": 1,
           "title": "Public Summary",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "suggestion_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Suggestion Id",
           "type": "string"
         }
       },
@@ -439,86 +444,6 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "schema_version": {
-      "const": "judge-result-v2",
-      "title": "Schema Version",
-      "type": "string"
-    },
-    "judge_version": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Judge Version",
-      "type": "string"
-    },
-    "episode_id": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Episode Id",
-      "type": "string"
-    },
-    "episode_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Episode Sha256",
-      "type": "string"
-    },
-    "rule_result_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Rule Result Sha256",
-      "type": "string"
-    },
-    "judge_reference_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Judge Reference Sha256",
-      "type": "string"
-    },
-    "track": {
-      "enum": [
-        "planning",
-        "intervention",
-        "assessment",
-        "revision"
-      ],
-      "title": "Track",
-      "type": "string"
-    },
-    "judge_prompt_version": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Judge Prompt Version",
-      "type": "string"
-    },
-    "judge_prompt_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Judge Prompt Sha256",
-      "type": "string"
-    },
-    "rubric_version": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Rubric Version",
-      "type": "string"
-    },
-    "rubric_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Rubric Sha256",
-      "type": "string"
-    },
-    "track_anchor_version": {
-      "maxLength": 128,
-      "minLength": 1,
-      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-      "title": "Track Anchor Version",
-      "type": "string"
-    },
-    "track_anchor_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Track Anchor Sha256",
-      "type": "string"
-    },
     "blind_input_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Blind Input Sha256",
@@ -531,50 +456,16 @@
       "title": "Dimensions",
       "type": "array"
     },
-    "semantic_issues": {
-      "items": {
-        "$ref": "#/$defs/JudgeSemanticIssueV1"
-      },
-      "title": "Semantic Issues",
-      "type": "array"
-    },
-    "suggested_hard_gates": {
-      "items": {
-        "$ref": "#/$defs/SuggestedHardGateV1"
-      },
-      "title": "Suggested Hard Gates",
-      "type": "array"
-    },
-    "status": {
-      "enum": [
-        "complete",
-        "invalid_input",
-        "judge_error"
-      ],
-      "title": "Status",
+    "episode_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Episode Id",
       "type": "string"
     },
-    "judge_mode": {
-      "enum": [
-        "stub",
-        "real"
-      ],
-      "title": "Judge Mode",
-      "type": "string"
-    },
-    "provider_attestation": {
-      "$ref": "#/$defs/ProviderAttestationV1"
-    },
-    "formal_evaluation_result": {
-      "title": "Formal Evaluation Result",
-      "type": "boolean"
-    },
-    "evaluation_status": {
-      "enum": [
-        "not_a_formal_model_evaluation",
-        "formal_model_evaluation"
-      ],
-      "title": "Evaluation Status",
+    "episode_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Episode Sha256",
       "type": "string"
     },
     "error_code": {
@@ -591,9 +482,123 @@
       ],
       "title": "Error Code"
     },
+    "evaluation_status": {
+      "enum": [
+        "not_a_formal_model_evaluation",
+        "formal_model_evaluation"
+      ],
+      "title": "Evaluation Status",
+      "type": "string"
+    },
+    "formal_evaluation_result": {
+      "title": "Formal Evaluation Result",
+      "type": "boolean"
+    },
+    "judge_mode": {
+      "enum": [
+        "stub",
+        "real"
+      ],
+      "title": "Judge Mode",
+      "type": "string"
+    },
+    "judge_prompt_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Judge Prompt Sha256",
+      "type": "string"
+    },
+    "judge_prompt_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Judge Prompt Version",
+      "type": "string"
+    },
+    "judge_reference_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Judge Reference Sha256",
+      "type": "string"
+    },
+    "judge_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Judge Version",
+      "type": "string"
+    },
+    "provider_attestation": {
+      "$ref": "#/$defs/ProviderAttestationV1"
+    },
     "result_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Result Sha256",
+      "type": "string"
+    },
+    "rubric_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Rubric Sha256",
+      "type": "string"
+    },
+    "rubric_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Rubric Version",
+      "type": "string"
+    },
+    "rule_result_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Rule Result Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "judge-result-v2",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "semantic_issues": {
+      "items": {
+        "$ref": "#/$defs/JudgeSemanticIssueV1"
+      },
+      "title": "Semantic Issues",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "invalid_input",
+        "judge_error"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "suggested_hard_gates": {
+      "items": {
+        "$ref": "#/$defs/SuggestedHardGateV1"
+      },
+      "title": "Suggested Hard Gates",
+      "type": "array"
+    },
+    "track": {
+      "enum": [
+        "planning",
+        "intervention",
+        "assessment",
+        "revision"
+      ],
+      "title": "Track",
+      "type": "string"
+    },
+    "track_anchor_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Track Anchor Sha256",
+      "type": "string"
+    },
+    "track_anchor_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Track Anchor Version",
       "type": "string"
     }
   },

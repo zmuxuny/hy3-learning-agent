@@ -38,7 +38,14 @@ FIELD_ALLOWLISTS: dict[str, tuple[str, ...]] = {
         "created_at",
         "updated_at",
     ),
-    "session": ("plan_ref", "title", "summary", "archived_at", "created_at", "updated_at"),
+    "session": (
+        "plan_ref",
+        "title",
+        "summary",
+        "archived_at",
+        "created_at",
+        "updated_at",
+    ),
     "agent_run": (
         "session_ref",
         "plan_ref",
@@ -379,6 +386,7 @@ _REFERENCE_TYPES = {
     "task_id": "task",
     "submission_id": "submission",
     "run_id": "agent_run",
+    "child_run_id": "agent_run",
     "source_run_id": "agent_run",
     "parent_run_id": "agent_run",
     "invocation_id": "tool_invocation",
@@ -457,7 +465,9 @@ async def _load_rows(
     models = import_module("app.models")
     async with session_factory() as db:
         owners = await _rows(db, models.Owner, models.Owner.id == owner_id)
-        profiles = await _rows(db, models.UserProfile, models.UserProfile.owner_id == owner_id)
+        profiles = await _rows(
+            db, models.UserProfile, models.UserProfile.owner_id == owner_id
+        )
         sessions = await _rows(db, models.Session, models.Session.owner_id == owner_id)
         plans = await _rows(db, models.Plan, models.Plan.owner_id == owner_id)
         plan_ids = [row.id for row in plans]
@@ -480,9 +490,7 @@ async def _load_rows(
         scoped_run_ids = {run_id}
         while True:
             descendants = {
-                row.id
-                for row in owner_runs
-                if row.parent_run_id in scoped_run_ids
+                row.id for row in owner_runs if row.parent_run_id in scoped_run_ids
             }
             expanded = scoped_run_ids | descendants
             if expanded == scoped_run_ids:
@@ -490,7 +498,9 @@ async def _load_rows(
             scoped_run_ids = expanded
         agent_runs = [row for row in owner_runs if row.id in scoped_run_ids]
         ordered_run_ids = sorted(scoped_run_ids)
-        outbox = await _rows(db, models.OutboxAction, models.OutboxAction.owner_id == owner_id)
+        outbox = await _rows(
+            db, models.OutboxAction, models.OutboxAction.owner_id == owner_id
+        )
         outbox_ids = [row.id for row in outbox]
         return {
             "learner": owners,
@@ -522,7 +532,9 @@ async def _load_rows(
             "activity_day": await _rows(
                 db, models.ActivityDay, models.ActivityDay.owner_id == owner_id
             ),
-            "artifact": await _rows(db, models.Artifact, models.Artifact.owner_id == owner_id),
+            "artifact": await _rows(
+                db, models.Artifact, models.Artifact.owner_id == owner_id
+            ),
             "evidence_observation": await _rows(
                 db,
                 models.EvidenceObservation,
@@ -585,10 +597,14 @@ def _semantic_key(
     entity_type: str, row: Any, registry: StableIdentityRegistry
 ) -> object:
     fields: dict[str, tuple[str, ...]] = {
-        "learner": ("timezone", "created_at"),
+        "learner": ("display_name", "timezone", "created_at"),
         "session": ("title", "created_at"),
         "agent_run": ("trigger", "objective", "created_at"),
-        "context_snapshot": ("context_generation", "snapshot_version", "context_digest"),
+        "context_snapshot": (
+            "context_generation",
+            "snapshot_version",
+            "context_digest",
+        ),
         "planning_intake": ("goal", "created_at"),
         "plan": ("title", "created_at"),
         "stage": ("position", "title"),
@@ -617,6 +633,43 @@ def _semantic_key(
         "outbox_action": ("destination", "request_digest", "created_at"),
         "outbox_receipt": ("action_key", "accepted_at"),
     }
+    if entity_type == "session":
+        return {
+            "title": row.title,
+            "created_at": row.created_at,
+        }
+    if entity_type == "agent_run":
+        return {
+            "parent_run_ref": registry.resolve("agent_run", row.parent_run_id),
+            "trigger": row.trigger,
+            "objective": row.objective,
+            "created_at": row.created_at,
+        }
+    if entity_type == "stage":
+        return {
+            "plan_ref": registry.resolve("plan", row.plan_id),
+            "position": row.position,
+            "title": row.title,
+        }
+    if entity_type == "task":
+        return {
+            "stage_ref": registry.resolve("stage", row.stage_id),
+            "position": row.position,
+            "title": row.title,
+        }
+    if entity_type == "submission":
+        return {
+            "plan_ref": registry.resolve("plan", row.plan_id),
+            "task_ref": registry.resolve("task", row.task_id),
+            "submission_type": row.submission_type,
+            "content": row.content,
+            "created_at": row.created_at,
+        }
+    if entity_type == "run_event":
+        return {
+            "run_ref": registry.resolve("agent_run", row.run_id),
+            "sequence": row.sequence,
+        }
     if entity_type == "operation":
         target_type = {
             "submission": "submission",
@@ -663,6 +716,30 @@ def _register_identities(
     for entity_type in ENTITY_TYPE_ORDER:
         if entity_type in {"goal", "constraint", "resource"}:
             continue
+        if entity_type == "agent_run":
+            remaining = list(rows.get(entity_type, []))
+            while remaining:
+                ready = [
+                    row
+                    for row in remaining
+                    if row.parent_run_id is None
+                    or registry.is_registered("agent_run", row.parent_run_id)
+                ]
+                if not ready:
+                    raise SnapshotCollectionError("snapshot.run_hierarchy_invalid")
+                registry.register_many(
+                    entity_type,
+                    [
+                        IdentityCandidate(
+                            raw_id=_raw_id(entity_type, row),
+                            semantic_key=_semantic_key(entity_type, row, registry),
+                        )
+                        for row in ready
+                    ],
+                )
+                ready_ids = {row.id for row in ready}
+                remaining = [row for row in remaining if row.id not in ready_ids]
+            continue
         candidates = [
             IdentityCandidate(
                 raw_id=_raw_id(entity_type, row),
@@ -703,12 +780,18 @@ def _normalize_references(value: object, registry: StableIdentityRegistry) -> An
                         child = registry.resolve(entity_type, child)
                 elif key == "memory_ids":
                     if child:
-                        raise SnapshotCollectionError("snapshot.unsupported_memory_reference")
+                        raise SnapshotCollectionError(
+                            "snapshot.unsupported_memory_reference"
+                        )
                     public_key = "memory_refs"
                 elif key.endswith("_id") and key not in _PUBLIC_ID_FIELDS:
-                    raise SnapshotCollectionError("snapshot.unsupported_nested_reference")
+                    raise SnapshotCollectionError(
+                        "snapshot.unsupported_nested_reference"
+                    )
                 elif key.endswith("_ids"):
-                    raise SnapshotCollectionError("snapshot.unsupported_nested_reference_list")
+                    raise SnapshotCollectionError(
+                        "snapshot.unsupported_nested_reference_list"
+                    )
                 if isinstance(child, str) and (
                     public_key.endswith("_at")
                     or public_key in {"deadline", "due_at", "review_due_at"}
@@ -804,9 +887,7 @@ def _artifact_source_identity(
     raise SnapshotCollectionError("snapshot.unsupported_artifact_source")
 
 
-def normalize_reference_fields(
-    value: object, registry: StableIdentityRegistry
-) -> Any:
+def normalize_reference_fields(value: object, registry: StableIdentityRegistry) -> Any:
     """Normalize explicit ``*_id`` fields in public Runtime records to refs."""
 
     return _normalize_references(value, registry)
@@ -885,7 +966,9 @@ def _pending_approval_projection(
     }
 
 
-def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[str, Any]:
+def _data(
+    entity_type: str, row: Any, registry: StableIdentityRegistry
+) -> dict[str, Any]:
     def values(*names: str) -> dict[str, Any]:
         return {name: getattr(row, name) for name in names}
 
@@ -902,13 +985,30 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "plan_ref": _ref(registry, "plan", row.plan_id),
             "parent_run_ref": _ref(registry, "agent_run", row.parent_run_id),
             **values(
-                "trigger", "objective", "status", "phase", "state_version", "attempt",
-                "retry_count", "available_at", "status_reason", "model", "cancel_requested",
-                "budget_usage", "output", "execution_mode",
-                "proactive_candidate_state", "proactive_candidate_key",
-                "proactive_candidate_kind", "proactive_candidate_payload",
-                "proactive_candidate_digest", "proactive_detected_at", "started_at",
-                "completed_at", "created_at", "updated_at",
+                "trigger",
+                "objective",
+                "status",
+                "phase",
+                "state_version",
+                "attempt",
+                "retry_count",
+                "available_at",
+                "status_reason",
+                "model",
+                "cancel_requested",
+                "budget_usage",
+                "output",
+                "execution_mode",
+                "proactive_candidate_state",
+                "proactive_candidate_key",
+                "proactive_candidate_kind",
+                "proactive_candidate_payload",
+                "proactive_candidate_digest",
+                "proactive_detected_at",
+                "started_at",
+                "completed_at",
+                "created_at",
+                "updated_at",
             ),
             "pending_approval": _pending_approval_projection(
                 row.pending_approval, registry
@@ -921,9 +1021,16 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "session_ref": _ref(registry, "session", row.session_id),
             "run_ref": _ref(registry, "agent_run", row.run_id),
             **values(
-                "estimated_tokens", "context_generation", "snapshot_version",
-                "assembler_version", "context_digest", "source_digest", "validity_state",
-                "invalidated_at", "invalidation_reason", "created_at",
+                "estimated_tokens",
+                "context_generation",
+                "snapshot_version",
+                "assembler_version",
+                "context_digest",
+                "source_digest",
+                "validity_state",
+                "invalidated_at",
+                "invalidation_reason",
+                "created_at",
             ),
         }
     elif entity_type == "planning_intake":
@@ -931,8 +1038,14 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "session_ref": _ref(registry, "session", row.session_id),
             "run_ref": _ref(registry, "agent_run", row.source_run_id),
             **values(
-                "goal", "confirmed_facts", "open_questions", "readiness",
-                "readiness_confidence", "rationale", "created_at", "updated_at",
+                "goal",
+                "confirmed_facts",
+                "open_questions",
+                "readiness",
+                "readiness_confidence",
+                "rationale",
+                "created_at",
+                "updated_at",
             ),
         }
     elif entity_type == "plan":
@@ -946,9 +1059,19 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
         raw = {
             "stage_ref": _ref(registry, "stage", row.stage_id),
             **values(
-                "title", "description", "kind", "status", "is_core",
-                "evidence_required", "estimated_minutes", "position", "due_at",
-                "completed_at", "review_due_at", "resource_url", "task_metadata",
+                "title",
+                "description",
+                "kind",
+                "status",
+                "is_core",
+                "evidence_required",
+                "estimated_minutes",
+                "position",
+                "due_at",
+                "completed_at",
+                "review_due_at",
+                "resource_url",
+                "task_metadata",
             ),
         }
     elif entity_type == "plan_proposal":
@@ -956,8 +1079,14 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "session_ref": _ref(registry, "session", row.session_id),
             "run_ref": _ref(registry, "agent_run", row.source_run_id),
             **values(
-                "title", "rationale", "plan_payload", "specialist_reports", "status",
-                "decided_at", "created_at", "updated_at",
+                "title",
+                "rationale",
+                "plan_payload",
+                "specialist_reports",
+                "status",
+                "decided_at",
+                "created_at",
+                "updated_at",
             ),
             "plan_ref": _ref(registry, "plan", row.plan_id),
         }
@@ -967,8 +1096,14 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "task_ref": _ref(registry, "task", row.task_id),
             "run_ref": _ref(registry, "agent_run", row.run_id),
             **values(
-                "submission_type", "content", "artifacts", "status", "score",
-                "feedback", "checked_at", "created_at",
+                "submission_type",
+                "content",
+                "artifacts",
+                "status",
+                "score",
+                "feedback",
+                "checked_at",
+                "created_at",
             ),
         }
     elif entity_type == "review":
@@ -983,8 +1118,15 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "task_ref": _ref(registry, "task", row.task_id),
             "run_ref": _ref(registry, "agent_run", row.run_id),
             **values(
-                "prompt", "rubric", "answer", "score", "feedback", "evidence",
-                "status", "created_at", "graded_at",
+                "prompt",
+                "rubric",
+                "answer",
+                "score",
+                "feedback",
+                "evidence",
+                "status",
+                "created_at",
+                "graded_at",
             ),
         }
     elif entity_type == "achievement":
@@ -994,8 +1136,14 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
     elif entity_type == "artifact":
         raw = {
             **values(
-                "artifact_type", "title", "content_hash", "size_bytes",
-                "artifact_metadata", "snapshot_sha256", "storage_state", "envelope_version",
+                "artifact_type",
+                "title",
+                "content_hash",
+                "size_bytes",
+                "artifact_metadata",
+                "snapshot_sha256",
+                "storage_state",
+                "envelope_version",
             ),
             "source_identity": _artifact_source_identity(row.source_uri, registry),
             "plan_ref": _ref(registry, "plan", row.plan_id),
@@ -1016,11 +1164,25 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
                 registry, "evidence_observation", row.target_observation_id
             ),
             **values(
-                "fact_kind", "reason_code", "evidence_role", "eligibility_stage",
-                "eligibility_reason", "eligibility_policy_version", "counts_as_success",
-                "outcome", "normalized_score", "is_correct", "assistance_level",
-                "transfer_level", "rubric_snapshot", "evaluator", "payload", "occurred_at",
-                "recorded_at", "schema_version", "request_digest",
+                "fact_kind",
+                "reason_code",
+                "evidence_role",
+                "eligibility_stage",
+                "eligibility_reason",
+                "eligibility_policy_version",
+                "counts_as_success",
+                "outcome",
+                "normalized_score",
+                "is_correct",
+                "assistance_level",
+                "transfer_level",
+                "rubric_snapshot",
+                "evaluator",
+                "payload",
+                "occurred_at",
+                "recorded_at",
+                "schema_version",
+                "request_digest",
             ),
         }
     elif entity_type == "learning_event":
@@ -1029,17 +1191,32 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "task_ref": _ref(registry, "task", row.task_id),
             "run_ref": _ref(registry, "agent_run", row.run_id),
             **values(
-                "event_type", "payload", "schema_version", "occurred_at",
-                "invalidated_at", "invalidation_reason", "created_at",
+                "event_type",
+                "payload",
+                "schema_version",
+                "occurred_at",
+                "invalidated_at",
+                "invalidation_reason",
+                "created_at",
             ),
         }
     elif entity_type == "tool_invocation":
         raw = {
             "run_ref": _ref(registry, "agent_run", row.run_id),
             **values(
-                "tool_call_id", "tool_name", "args_hash", "request_digest",
-                "canonical_args", "effect_kind", "status", "result_payload", "attempt",
-                "version", "completed_at", "created_at", "updated_at",
+                "tool_call_id",
+                "tool_name",
+                "args_hash",
+                "request_digest",
+                "canonical_args",
+                "effect_kind",
+                "status",
+                "result_payload",
+                "attempt",
+                "version",
+                "completed_at",
+                "created_at",
+                "updated_at",
             ),
         }
     elif entity_type == "run_approval":
@@ -1048,9 +1225,7 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             raise SnapshotCollectionError("snapshot.unsupported_run_approval")
         raw = {
             "run_ref": _ref(registry, "agent_run", row.run_id),
-            "invocation_ref": _ref(
-                registry, "tool_invocation", row.invocation_id
-            ),
+            "invocation_ref": _ref(registry, "tool_invocation", row.invocation_id),
             "tool_call_id": row.tool_call_id,
             "tool_name": row.tool_name,
             "remaining_tool_call_count": len(remaining),
@@ -1077,7 +1252,9 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
         }.get(row.entity_type)
         if target_type is None:
             raise SnapshotCollectionError("snapshot.unsupported_operation_entity")
-        target_raw: object = int(row.entity_id) if row.entity_id.isdigit() else row.entity_id
+        target_raw: object = (
+            int(row.entity_id) if row.entity_id.isdigit() else row.entity_id
+        )
         forward_patch = _operation_patch(
             row.forward_patch,
             registry,
@@ -1106,11 +1283,23 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
         raw = {
             "plan_ref": _ref(registry, "plan", row.plan_id),
             "run_ref": _ref(registry, "agent_run", row.source_run_id),
-            "invocation_ref": _ref(registry, "tool_invocation", row.source_invocation_id),
+            "invocation_ref": _ref(
+                registry, "tool_invocation", row.source_invocation_id
+            ),
             **values(
-                "candidate_key", "candidate_kind", "candidate_payload", "candidate_digest",
-                "policy_version", "policy_digest", "status", "outcome", "reason_code",
-                "next_eligible_at", "decision_payload", "decision_digest", "decided_at",
+                "candidate_key",
+                "candidate_kind",
+                "candidate_payload",
+                "candidate_digest",
+                "policy_version",
+                "policy_digest",
+                "status",
+                "outcome",
+                "reason_code",
+                "next_eligible_at",
+                "decision_payload",
+                "decision_digest",
+                "decided_at",
                 "created_at",
             ),
         }
@@ -1120,12 +1309,22 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
                 registry, "proactive_decision", row.proactive_decision_id
             ),
             "run_ref": _ref(registry, "agent_run", row.source_run_id),
-            "invocation_ref": _ref(registry, "tool_invocation", row.source_invocation_id),
+            "invocation_ref": _ref(
+                registry, "tool_invocation", row.source_invocation_id
+            ),
             "plan_ref": _ref(registry, "plan", row.plan_id),
             "session_ref": _ref(registry, "session", row.session_id),
             **values(
-                "title", "body", "content_digest", "reason_code", "state", "outcome",
-                "read_at", "archived_at", "resolved_at", "created_at",
+                "title",
+                "body",
+                "content_digest",
+                "reason_code",
+                "state",
+                "outcome",
+                "read_at",
+                "archived_at",
+                "resolved_at",
+                "created_at",
             ),
         }
     elif entity_type == "notification":
@@ -1136,8 +1335,16 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "plan_ref": _ref(registry, "plan", row.plan_id),
             "intervention_ref": _ref(registry, "intervention", row.intervention_id),
             **values(
-                "delivery_generation", "legacy_unlinked", "channel", "title", "body",
-                "status", "sent_at", "read_at", "archived_at", "created_at",
+                "delivery_generation",
+                "legacy_unlinked",
+                "channel",
+                "title",
+                "body",
+                "status",
+                "sent_at",
+                "read_at",
+                "archived_at",
+                "created_at",
             ),
         }
     elif entity_type == "outbox_action":
@@ -1147,18 +1354,28 @@ def _data(entity_type: str, row: Any, registry: StableIdentityRegistry) -> dict[
             "notification_ref": _ref(registry, "notification", row.notification_id),
             "operation_ref": _ref(registry, "operation", row.operation_id),
             **values(
-                "action_key", "request_digest", "effect_kind", "destination", "status",
-                "attempt", "version", "available_at", "completed_at", "created_at",
+                "action_key",
+                "request_digest",
+                "effect_kind",
+                "destination",
+                "status",
+                "attempt",
+                "version",
+                "available_at",
+                "completed_at",
+                "created_at",
                 "updated_at",
             ),
         }
     elif entity_type == "outbox_receipt":
         raw = {
-            "outbox_action_ref": _ref(
-                registry, "outbox_action", row.outbox_action_id
-            ),
+            "outbox_action_ref": _ref(registry, "outbox_action", row.outbox_action_id),
             **values(
-                "action_key", "status", "provider_id", "response", "accepted_at",
+                "action_key",
+                "status",
+                "provider_id",
+                "response",
+                "accepted_at",
                 "created_at",
             ),
         }
@@ -1182,11 +1399,17 @@ def _declarations(fixture: dict[str, Any]) -> dict[str, tuple[str, ...]]:
     return {key: tuple(values) for key, values in declared.items()}
 
 
-def identity_registry(fixture: dict[str, Any]) -> StableIdentityRegistry:
+def identity_registry(
+    fixture: dict[str, Any],
+    *,
+    identity_bindings: list[dict[str, Any]] | None = None,
+) -> StableIdentityRegistry:
     """Create the one registry shared by the before and after captures."""
 
     return StableIdentityRegistry(
-        episode_id=fixture["episode_id"], declarations=_declarations(fixture)
+        episode_id=fixture["episode_id"],
+        declarations=_declarations(fixture),
+        identity_bindings=identity_bindings,
     )
 
 
@@ -1210,12 +1433,26 @@ async def collect_state_snapshot(
         )
         if len(rows["learner"]) != 1 or len(rows["profiles"]) != 1:
             raise SnapshotCollectionError("snapshot.learner_scope_incomplete")
-        if len(rows["agent_run"]) != 1:
+        root_runs = [
+            row
+            for row in rows["agent_run"]
+            if row.id == fixture["run_id"] and row.parent_run_id is None
+        ]
+        if len(root_runs) != 1:
             raise SnapshotCollectionError("snapshot.run_scope_incomplete")
         _register_identities(registry, rows)
+        if phase == "before":
+            registry.assert_bindings_resolved(
+                tuple(
+                    entity_type
+                    for entity_type in ENTITY_TYPE_ORDER
+                    if entity_type not in {"goal", "constraint", "resource"}
+                )
+            )
         profile = rows["profiles"][0]
         declarations_by_id = {
-            item["logical_id"]: item for item in fixture["state_before"]["logical_entities"]
+            item["logical_id"]: item
+            for item in fixture["state_before"]["logical_entities"]
         }
         entities: list[dict[str, Any]] = []
         for entity_type in ENTITY_TYPE_ORDER:
@@ -1246,9 +1483,13 @@ async def collect_state_snapshot(
                         )
                     )
                     if set(data) != set(FIELD_ALLOWLISTS["learner"]):
-                        raise SnapshotCollectionError("snapshot.field_allowlist_mismatch")
-                scope_ref = None if entity_type == "learner" else registry.resolve(
-                    "learner", fixture["owner_id"]
+                        raise SnapshotCollectionError(
+                            "snapshot.field_allowlist_mismatch"
+                        )
+                scope_ref = (
+                    None
+                    if entity_type == "learner"
+                    else registry.resolve("learner", fixture["owner_id"])
                 )
                 entities.append(
                     {
@@ -1273,7 +1514,9 @@ async def collect_state_snapshot(
                     )
                 continue
             if entity_type not in runtime_only:
-                raise SnapshotCollectionError("snapshot.unsupported_runtime_input_entity")
+                raise SnapshotCollectionError(
+                    "snapshot.unsupported_runtime_input_entity"
+                )
             entities.append(
                 {
                     "logical_id": declared["logical_id"],
@@ -1333,7 +1576,9 @@ def audit_projection(snapshot: dict[str, Any]) -> dict[str, Any]:
             for item in by_type.get(entity_type, [])
         ]
 
-    run_rows = rows("agent_run")
+    run_rows = [
+        item for item in rows("agent_run") if item.get("parent_run_ref") is None
+    ]
     if len(run_rows) != 1:
         raise SnapshotCollectionError("snapshot.audit_run_missing")
     run = run_rows[0]
@@ -1374,9 +1619,7 @@ def audit_projection(snapshot: dict[str, Any]) -> dict[str, Any]:
         "notifications": sorted(
             rows("notification"),
             key=lambda item: (
-                {"in_app": 0, "email": 1, "web_push": 2}.get(
-                    item["channel"], 99
-                ),
+                {"in_app": 0, "email": 1, "web_push": 2}.get(item["channel"], 99),
                 item["logical_id"],
             ),
         ),

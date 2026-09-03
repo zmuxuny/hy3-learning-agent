@@ -1695,6 +1695,15 @@ class ProviderCallAttestationV1(StrictContractModel):
             self.response_model is None or self.responded_at is None
         ):
             raise ValueError("completed provider calls require response attribution")
+        if self.responded_at is not None:
+            requested = datetime.fromisoformat(
+                self.requested_at.replace("Z", "+00:00")
+            )
+            responded = datetime.fromisoformat(
+                self.responded_at.replace("Z", "+00:00")
+            )
+            if responded < requested:
+                raise ValueError("provider response cannot precede its request")
         return self
 
 
@@ -1723,6 +1732,7 @@ class ProviderAttestationV1(StrictContractModel):
     worktree_clean: bool
     dependency_lock_version: StableId
     dependency_lock_sha256: Sha256
+    dependency_lock_verified: bool
     attribution_status: AttributionStatusV1
     reason_codes: list[StableId]
     attestation_sha256: Sha256
@@ -1740,13 +1750,23 @@ class ProviderAttestationV1(StrictContractModel):
                 raise ValueError("stub attribution must be explicitly ineligible")
             if self.endpoint_id is not None or self.endpoint_origin is not None:
                 raise ValueError("stub attribution cannot claim a provider endpoint")
-        elif self.provider_id != "tencent-tokenhub":
-            raise ValueError("real E3.1 attribution requires the allowlisted provider")
+        else:
+            from .runtime_metadata import provider_attribution_reason_codes
+
+            expected_reasons = list(
+                provider_attribution_reason_codes(self.model_dump(mode="json"))
+            )
+            expected_status = "invalid" if expected_reasons else "eligible"
+            if self.attribution_status != expected_status:
+                raise ValueError("real attribution eligibility was not recomputed")
+            if self.reason_codes != expected_reasons:
+                raise ValueError("real attribution reason codes are incomplete")
         if self.attribution_status == "eligible" and (
             self.invocation_mode != "real"
             or not self.worktree_clean
             or self.endpoint_id is None
             or self.endpoint_origin is None
+            or not self.dependency_lock_verified
             or bool(self.reason_codes)
             or any(item.status != "completed" for item in self.calls)
         ):
@@ -1793,6 +1813,22 @@ class EnvironmentManifestV2(StrictContractModel):
     isolation: IsolationManifest
     provider_attestation: ProviderAttestationV1
     manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_runtime_attribution_linkage(self) -> Self:
+        attestation = self.provider_attestation
+        if attestation.scope != "agent_runtime":
+            raise ValueError("Environment attribution must describe the Agent Runtime")
+        if (
+            self.runtime.git_commit != attestation.git_commit
+            or self.runtime.worktree_clean != attestation.worktree_clean
+            or self.runtime.dependency_lock_version
+            != attestation.dependency_lock_version
+            or self.runtime.dependency_lock_sha256
+            != attestation.dependency_lock_sha256
+        ):
+            raise ValueError("Runtime Manifest and Provider attribution must agree")
+        return self
 
 
 class VisibleMessageV1(StrictContractModel):
@@ -2018,8 +2054,8 @@ class ProvenanceV3(StrictContractModel):
         expected = self.evaluation_status == "formal_model_evaluation"
         if self.formal_evaluation_result != expected:
             raise ValueError("v3 provenance formal flag and status must agree")
-        if self.dataset_role == "engineering_mini" and self.formal_evaluation_result:
-            raise ValueError("engineering Mini Episodes can never be formal")
+        if self.dataset_role != "primary_episode" and self.formal_evaluation_result:
+            raise ValueError("only Primary Episodes can be formal results")
         return self
 
 
@@ -2097,6 +2133,13 @@ class RuntimeTerminalRecordV2(StrictContractModel):
     terminal_kind: Literal["episode", "failure"]
     artifact_id: StableId
     artifact_sha256: Sha256
+    formal_evaluation_result: bool
+
+    @model_validator(mode="after")
+    def validate_terminal_formal_state(self) -> Self:
+        if self.terminal_kind == "failure" and self.formal_evaluation_result:
+            raise ValueError("Runtime Failures cannot be formal results")
+        return self
 
 
 class RuntimeRunManifestV2(StrictContractModel):
@@ -2146,6 +2189,15 @@ class RuntimeRunManifestV2(StrictContractModel):
             raise ValueError(
                 "runtime batches containing failures cannot be formal results"
             )
+        terminal_formal = bool(
+            self.invocation_mode == "real"
+            and all(
+                item.terminal_kind == "episode" and item.formal_evaluation_result
+                for item in self.terminals
+            )
+        )
+        if self.formal_evaluation_result != terminal_formal:
+            raise ValueError("runtime manifest formal state must match all terminals")
         return self
 
 
@@ -2351,6 +2403,8 @@ class JudgeResultV2(StrictContractModel):
             raise ValueError("stub Judge Results cannot be formal")
         if self.judge_mode != self.provider_attestation.invocation_mode:
             raise ValueError("Judge mode must match provider attestation")
+        if self.provider_attestation.scope != "semantic_judge":
+            raise ValueError("Judge attribution must describe the semantic Judge")
         return self
 
 

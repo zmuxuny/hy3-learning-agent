@@ -148,10 +148,14 @@ def build_decision_episode_v3(
     )
     result = _v3_result(base["result"], decision_records)
     attribution_status = provider_attestation["attribution_status"]
-    formal = attribution_status == "eligible"
+    formal = bool(
+        invocation_mode == "real"
+        and case_spec["dataset_role"] == "primary_episode"
+        and attribution_status == "eligible"
+    )
     if invocation_mode == "stub":
         eligibility = "ineligible_stub"
-    elif case_spec["dataset_role"] == "engineering_mini":
+    elif case_spec["dataset_role"] != "primary_episode":
         eligibility = "ineligible_engineering"
     else:
         eligibility = "eligible" if formal else "invalid"

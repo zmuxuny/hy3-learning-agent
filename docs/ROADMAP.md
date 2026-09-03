@@ -1,6 +1,6 @@
 # 开发路线图
 
-> 状态口径（2026-09-02）：M0–M12 是历史版本记录，H1–H8 工程门禁已经通过。第三阶段“关键决策评测”已完成 E0–E3 工程闭环；M15–M20 是独立的 2.0 产品能力路线，不在本阶段范围。当前事实以 [`STATUS.md`](STATUS.md) 为准，评测执行以 [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) 为准。
+> 状态口径（2026-09-04）：M0–M12 是历史版本记录，H1–H8 工程门禁已经通过。第三阶段“关键决策评测”已完成 E0–E3 工程骨架和 E3.1 正式评测前置修复；活动链路已干净切换到 DecisionEpisode v3，v1/v2 只作 engineering-only 历史回归。M15–M20 是独立的 2.0 产品能力路线，不在本阶段范围。当前事实以 [`STATUS.md`](STATUS.md) 为准，评测执行以 [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) 为准。
 
 ## 项目管理规则
 
@@ -18,7 +18,8 @@
 - [x] E1：完成临时库、冻结时钟、资源快照、真实 Outbox 协议 + Recording Delivery Sink、Evaluation Model Recorder、四轨 Runtime Mini 与最小 runtime export。
 - [x] E2：发布 DecisionEpisode v2，完成通用 Snapshot/Normalizer/Exporter、完整 State Delta、规则包、Hard Gate 和完整性检查。
 - [x] E3：完成版本化 Rubric/四轨锚点、标签盲化、结构化 Judge 协议、一次修复、Judge/聚合契约、Rule-first 确定性聚合与原子 CLI；fixed-response 结果保持 non-formal。
-- [ ] E4：完成 48 Primary、24 Calibration、资源、Oracle、Split 与 Dataset Card。
+- [x] E3.1：以 v3 干净切换修复有效性边界；分离结构无效与行为失败，新增 CaseSpec/JudgeReference、可重建层级轨迹、失败制品、Provider 可审计归因，并关闭精确盲化、Assessment ACCEPT、多实体身份、相对路径隔离与隐私误报缺口。
+- [ ] E4：完成 48 Primary、24 Calibration、资源、CaseSpec/JudgeReference、Split/Mutation Manifest 与 Dataset Card。
 - [ ] E5：完成判别力、重复一致性、人工一致性、反事实、对抗与安全有效性实验。
 - [ ] E6：完成正式评测、逐 Episode/维度/轨道结果与错误类型归因。
 - [ ] E7：完成冻结 Baseline/Candidate 版本回归，保持 Test 一次冻结。
@@ -30,9 +31,9 @@ E0 收口边界：三份 v1 Schema、递归校验 CLI、统一 canonical JSON/SH
 
 E1 收口边界：四个公开合成 Runtime Mini Fixture 已通过独立 Worker、临时 SQLite、冻结时钟、生产 Agent Runtime/工具、Recorder、Guard/通知/Outbox 和 Recording Sink 导出为当时冻结的 v1 最小投影，且同输入逐字节确定。这里的 `fake_outbox` 是真实 Outbox claim/fence/idempotency/Receipt 协议，只替换最后的 SMTP/Web Push Transport；Agent 看不到模拟 Receipt。固定 stub 只验证工程链路，未调用真实 Hy3，也不是正式结果。
 
-E2 收口边界：工程里程碑、Episode Schema 和 Benchmark 发布名已经分离。`DecisionEpisode v1` 完全冻结，只用于 E0 历史读取、校验和回归；E2 及以后新 Runtime 只写单一权威 `DecisionEpisode v2`，不双写 v1/v2。DecisionBench v1 名称不变。通用 Collector 在 Runtime 前后采集 allowlist Snapshot，Normalizer 提供严格 JSON/UTC 与跨态稳定身份，Delta 一等表达新增、删除、更新、确认无变化、缺失/null、typed source 和零到多个 Operation 对齐；实体新增/删除还必须由配对的显式创建/删除 refs 正反证明。Exporter 只从 Recorder、临时生产数据库和 Runtime 事实推导决策分层，Oracle 在 Runtime/Outbox/Snapshot/Delta 完成后才附加，不用于结果回填。
+E2 收口边界（历史）：工程里程碑、Episode Schema 和 Benchmark 发布名已经分离。`DecisionEpisode v1` 完全冻结；E2 当时的新 Runtime 只写单一权威 `DecisionEpisode v2`。E3.1 已进一步将活动链路一次切换到 v3，v1/v2 都只保留读取、校验和工程回归，不建设正式双栈。DecisionBench v1 名称仍不变。E2 的通用 Collector、严格 JSON/UTC、真实 Snapshot/Delta 和 Operation 归因继续由 v3 复用。
 
-E2 的 `rule-result-v1` 和 `e2-rule-pack-v1` 提供七包结构化规则、字段 Evidence Path、`pass/fail/not_applicable/invalid_input`、`minor/major/critical` 与不可抵消的 Critical Hard Gate。E3 在冻结 E0–E2 契约上新增 `judge-result-v1`、Judge/聚合 Manifest、七维 Rubric、四轨锚点、盲化输入、OpenAI-compatible seam、一次修复与 Rule-first 聚合；Critical cap 39、Major cap 69、无效输入单列，四轨无 overall。Capture 只作工程审计，不是 Rules/Judge/聚合的事实源。E1 隔离/Recorder/生产 Outbox 边界全部保留。当前 Assessment accepted 分支因生产 Operation 未枚举全部派生 Plan/Stage 更新而失败关闭；revision-required 路径已覆盖。E3 只运行 fixed-response stub，没有真实 Hy3 或正式能力结论；E4–E8 的 Primary/Calibration、有效性实验、正式评测、版本回归和发布报告也未提前实施。
+E2/E3 的 v1 结果契约现在只作历史工程回归。活动 E3.1 链为 `case-spec-v1 → decision-episode-v3/runtime-failure-v1 → rule-result-v2 → judge-result-v2 → aggregate-result-v2`：Validator 只判断证据完整性，错误行为仍进入评分；JudgeReference 含无标签公共约束语义；轨迹保存模型实际看到的脱敏消息、工具 Schema 和父子调用；Runtime Failure 单列；Rule Hard Gate、Critical cap 39、Major cap 69、四轨无 overall 继续保持。路径级盲化保留业务语义但移除 Calibration/作者/生成者元数据，Capture 仍不是事实源。生产 `submission.check` 已补齐 ACCEPT 的 Plan/Stage Operation 归因，多实体使用 CaseSpec 语义绑定；Provider 只提供可审计归因，不宣称密码学证明。E3.1 仍只运行 fixed-response stub，没有真实 Hy3 或正式能力结论；E4–E8 未提前实施。
 
 ## M0：工程基线
 

@@ -26,7 +26,10 @@ from .blinding_v2 import (
 from .canonical import canonical_json, canonical_json_bytes
 from .e3_io import current_git_commit
 from .e31_io import E31InputError, load_e31_inputs, load_object
-from .e31_runtime import build_stub_provider_attestation
+from .e31_runtime import (
+    build_real_provider_attestation,
+    build_stub_provider_attestation,
+)
 from .integrity import (
     artifact_manifest_digest,
     judge_result_digest,
@@ -53,9 +56,9 @@ from .runtime_metadata import (
     DEPENDENCY_LOCK_VERSION,
     ENDPOINT_POLICY_SHA256,
     ENDPOINT_POLICY_VERSION,
-    HY3_ENDPOINT_ID,
     HY3_ENDPOINT_ORIGIN,
     HY3_MODEL,
+    dependency_environment_reason_codes,
     dependency_lock_sha256,
     git_worktree_clean,
 )
@@ -122,7 +125,7 @@ class FixedResponseJudgeProviderV2:
                 "evaluation_status",
                 "responses",
             }
-            or document.get("schema_version") != "fixed-judge-responses-v1"
+            or document.get("schema_version") != "fixed-judge-responses-v2"
             or document.get("judge_mode") != "stub"
             or document.get("formal_evaluation_result") is not False
             or document.get("evaluation_status") != "not_a_formal_model_evaluation"
@@ -143,8 +146,8 @@ class FixedResponseJudgeProviderV2:
         self.calls += 1
         return JudgeProviderReplyV2(
             content=deepcopy(self._responses[index]),
-            request_model="fixed-judge-response-v1",
-            response_model="fixed-judge-response-v1",
+            request_model="fixed-judge-response-v2",
+            response_model="fixed-judge-response-v2",
             provider_request_id=f"fixed-response-{self.calls:03d}",
             requested_at=self._frozen_time,
             responded_at=self._frozen_time,
@@ -200,8 +203,16 @@ class OpenAICompatibleHy3JudgeProviderV2:
             IndexError,
             TypeError,
             urllib.error.URLError,
-        ) as exc:
-            raise RuntimeError("judge_provider_error") from exc
+        ):
+            return JudgeProviderReplyV2(
+                content=None,
+                request_model=HY3_MODEL,
+                response_model=None,
+                provider_request_id=None,
+                requested_at=requested_at,
+                responded_at=utc_timestamp(datetime.now(timezone.utc)),
+                status="provider_error",
+            )
         return JudgeProviderReplyV2(
             content=content,
             request_model=HY3_MODEL,
@@ -320,6 +331,7 @@ def _provider_attestation(
     git_commit: str,
     worktree_clean: bool,
     dependency_digest: str,
+    dependency_lock_verified: bool,
 ) -> dict[str, Any]:
     records = [
         {
@@ -346,54 +358,14 @@ def _provider_attestation(
             endpoint_policy_sha256=ENDPOINT_POLICY_SHA256,
             worktree_clean=worktree_clean,
         )
-    reason_codes: list[str] = []
-    if not worktree_clean:
-        reason_codes.append("provider.worktree_dirty")
-    if not replies:
-        reason_codes.append("provider.calls_missing")
-    if any(reply.request_model != HY3_MODEL for reply in replies):
-        reason_codes.append("provider.request_model_mismatch")
-    if any(reply.response_model != HY3_MODEL for reply in replies):
-        reason_codes.append("provider.response_model_mismatch")
-    if any(
-        reply.status != "completed" or not reply.provider_request_id
-        for reply in replies
-    ):
-        reason_codes.append("provider.call_incomplete")
-    reason_codes = sorted(set(reason_codes))
-    attestation = {
-        "schema_version": "provider-attestation-v1",
-        "scope": "semantic_judge",
-        "invocation_mode": "real",
-        "provider_id": "tencent-tokenhub",
-        "endpoint_policy_version": ENDPOINT_POLICY_VERSION,
-        "endpoint_policy_sha256": ENDPOINT_POLICY_SHA256,
-        "endpoint_id": HY3_ENDPOINT_ID,
-        "endpoint_origin": HY3_ENDPOINT_ORIGIN,
-        "configured_model": HY3_MODEL,
-        "calls": [
-            {
-                "call_id": item["call_id"],
-                "request_model": item["request_model"],
-                "response_model": item["response_model"],
-                "provider_request_id": item["provider_request_id"],
-                "requested_at": item["requested_at"],
-                "responded_at": item["responded_at"],
-                "status": item["response_status"],
-            }
-            for item in records
-        ],
-        "configuration_sha256": JUDGE_CONFIG_SHA256_V2,
-        "git_commit": git_commit,
-        "worktree_clean": worktree_clean,
-        "dependency_lock_version": DEPENDENCY_LOCK_VERSION,
-        "dependency_lock_sha256": dependency_digest,
-        "attribution_status": "eligible" if not reason_codes else "invalid",
-        "reason_codes": reason_codes,
-        "attestation_sha256": "0" * 64,
-    }
-    attestation["attestation_sha256"] = provider_attestation_digest(attestation)
-    return attestation
+    return build_real_provider_attestation(
+        records,
+        scope="semantic_judge",
+        configuration_sha256=JUDGE_CONFIG_SHA256_V2,
+        git_commit=git_commit,
+        worktree_clean=worktree_clean,
+        dependency_lock_verified=dependency_lock_verified,
+    )
 
 
 def _result_base(
@@ -507,6 +479,7 @@ def _evaluate_one(
     git_commit: str,
     worktree_clean: bool,
     dependency_digest: str,
+    dependency_lock_verified: bool = True,
 ) -> tuple[dict[str, Any], bool]:
     try:
         blind_input = build_blind_judge_input_v2(episode, rule_result, reference)
@@ -544,6 +517,9 @@ def _evaluate_one(
                 error_codes = ("provider_error",)
                 break
             replies.append(reply)
+            if reply.status != "completed":
+                error_codes = ("provider_error",)
+                break
             payload, error_codes = _validate_payload(
                 reply.content, episode=episode, blind_input=blind_input
             )
@@ -567,6 +543,7 @@ def _evaluate_one(
         git_commit=git_commit,
         worktree_clean=worktree_clean,
         dependency_digest=dependency_digest,
+        dependency_lock_verified=dependency_lock_verified,
     )
     formal = bool(
         status == "complete"
@@ -689,6 +666,7 @@ def evaluate_judges_v2(
             "current Git worktree status is unavailable",
         ) from exc
     dependency_digest = dependency_lock_sha256()
+    dependency_lock_verified = not dependency_environment_reason_codes()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(
         tempfile.mkdtemp(
@@ -709,6 +687,7 @@ def evaluate_judges_v2(
                 git_commit=commit,
                 worktree_clean=clean,
                 dependency_digest=dependency_digest,
+                dependency_lock_verified=dependency_lock_verified,
             )
             episode_id = result["episode_id"]
             (stage / "judge-results" / f"{episode_id}.json").write_bytes(

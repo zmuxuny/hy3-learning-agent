@@ -146,6 +146,7 @@ class StableIdentityRegistry:
         *,
         episode_id: str,
         declarations: Mapping[str, Sequence[str]] | None = None,
+        identity_bindings: Sequence[Mapping[str, object]] | None = None,
     ) -> None:
         self.episode_id = episode_id
         self._declarations = {
@@ -154,6 +155,25 @@ class StableIdentityRegistry:
         }
         self._identities: dict[tuple[str, str], str] = {}
         self._next_ordinal: dict[str, int] = {}
+        self._bindings: dict[str, tuple[tuple[str, dict[str, object]], ...]] = {}
+        self._resolved_binding_ids: set[str] = set()
+        grouped: dict[str, list[tuple[str, dict[str, object]]]] = {}
+        for binding in identity_bindings or ():
+            entity_type = str(binding["entity_type"])
+            logical_id = str(binding["logical_id"])
+            fields = normalize_json(binding["identity_fields"])
+            if not isinstance(fields, dict) or not fields:
+                raise NormalizationError(
+                    "identity.binding_fields_invalid", f"$.{entity_type}"
+                )
+            grouped.setdefault(entity_type, []).append((logical_id, fields))
+        for entity_type, values in grouped.items():
+            fingerprints = [canonical_json_bytes(fields) for _, fields in values]
+            if len(fingerprints) != len(set(fingerprints)):
+                raise NormalizationError(
+                    "identity.ambiguous_binding", f"$.{entity_type}"
+                )
+            self._bindings[entity_type] = tuple(values)
 
     @staticmethod
     def _raw_key(entity_type: str, raw_id: object) -> tuple[str, str]:
@@ -173,10 +193,14 @@ class StableIdentityRegistry:
             for candidate in candidates
             if self._raw_key(entity_type, candidate.raw_id) not in self._identities
         ]
-        keyed = [
-            (canonical_json_bytes(normalize_json(candidate.semantic_key)), candidate)
-            for candidate in pending
-        ]
+        keyed = []
+        for candidate in pending:
+            semantic_key = normalize_json(candidate.semantic_key)
+            if not isinstance(semantic_key, dict):
+                raise NormalizationError(
+                    "identity.semantic_key_invalid", f"$.{entity_type}"
+                )
+            keyed.append((canonical_json_bytes(semantic_key), candidate, semantic_key))
         keyed.sort(key=lambda item: item[0])
         for index in range(1, len(keyed)):
             if keyed[index - 1][0] == keyed[index][0]:
@@ -184,14 +208,47 @@ class StableIdentityRegistry:
                     "identity.ambiguous_semantic_key", f"$.{entity_type}"
                 )
         declarations = self._declarations.get(entity_type, ())
-        next_ordinal = self._next_ordinal.get(entity_type, 1)
+        bindings = self._bindings.get(entity_type, ())
+        next_ordinal = self._next_ordinal.get(
+            entity_type, len(declarations) + 1 if bindings else 1
+        )
         used = set(self._identities.values())
-        for _, candidate in keyed:
+        unmatched: list[IdentityCandidate] = []
+        for _, candidate, semantic_key in keyed:
+            matches = [
+                logical_id
+                for logical_id, fields in bindings
+                if all(
+                    key in semantic_key
+                    and canonical_json_bytes(semantic_key[key])
+                    == canonical_json_bytes(value)
+                    for key, value in fields.items()
+                )
+            ]
+            if len(matches) > 1:
+                raise NormalizationError(
+                    "identity.ambiguous_binding", f"$.{entity_type}"
+                )
+            if matches:
+                logical_id = matches[0]
+                if logical_id in used:
+                    raise NormalizationError(
+                        "identity.binding_reused", f"$.{entity_type}"
+                    )
+                self._identities[
+                    self._raw_key(entity_type, candidate.raw_id)
+                ] = logical_id
+                self._resolved_binding_ids.add(logical_id)
+                used.add(logical_id)
+            else:
+                unmatched.append(candidate)
+        reserved = set(declarations) if bindings else set()
+        for candidate in unmatched:
             while next_ordinal <= len(declarations) and declarations[
                 next_ordinal - 1
-            ] in used:
+            ] in used | reserved:
                 next_ordinal += 1
-            if next_ordinal <= len(declarations):
+            if not bindings and next_ordinal <= len(declarations):
                 logical_id = declarations[next_ordinal - 1]
             else:
                 logical_id = (
@@ -203,6 +260,20 @@ class StableIdentityRegistry:
             next_ordinal += 1
         self._next_ordinal[entity_type] = next_ordinal
 
+    def assert_bindings_resolved(self, entity_types: Sequence[str]) -> None:
+        """Fail when a declared runtime entity was not found by its semantic key."""
+
+        unresolved = sorted(
+            logical_id
+            for entity_type in entity_types
+            for logical_id, _ in self._bindings.get(entity_type, ())
+            if logical_id not in self._resolved_binding_ids
+        )
+        if unresolved:
+            raise NormalizationError(
+                "identity.binding_unresolved", f"$.{unresolved[0]}"
+            )
+
     def resolve(self, entity_type: str, raw_id: object | None) -> str | None:
         if raw_id is None:
             return None
@@ -213,6 +284,11 @@ class StableIdentityRegistry:
             raise NormalizationError(
                 "identity.unregistered_reference", f"$.{entity_type}"
             ) from exc
+
+    def is_registered(self, entity_type: str, raw_id: object) -> bool:
+        """Return whether a raw identity already has a stable mapping."""
+
+        return self._raw_key(entity_type, raw_id) in self._identities
 
     def resolve_compound(self, entity_type: str, value: object) -> str:
         """Replace a raw identity prefix while preserving a public suffix.

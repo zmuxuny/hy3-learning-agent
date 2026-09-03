@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from datetime import datetime, timezone
 from typing import Any
 
 from .canonical import canonical_json, sha256_digest
+from .normalizers import utc_timestamp
 from .privacy import is_private_reasoning_field, privacy_issues
 
 
@@ -177,6 +179,9 @@ class EvaluationModelRecorder:
             "invocation_mode": self.invocation_mode,
             "_stream_calls": {},
         }
+        if self.invocation_mode == "real":
+            pending["requested_at"] = utc_timestamp(datetime.now(timezone.utc))
+            pending["responded_at"] = None
         self._assert_public(pending)
         return pending
 
@@ -227,6 +232,8 @@ class EvaluationModelRecorder:
             )
         pending["function_calls"] = calls
         pending["response_status"] = "completed"
+        if self.invocation_mode == "real":
+            pending["responded_at"] = utc_timestamp(datetime.now(timezone.utc))
         pending["response_digest"] = sha256_digest(
             {
                 "assistant_text": pending["assistant_text"],
@@ -247,6 +254,8 @@ class EvaluationModelRecorder:
         if getattr(response, "id", None):
             pending["provider_request_id"] = str(response.id)
         pending["response_status"] = "completed"
+        if self.invocation_mode == "real":
+            pending["responded_at"] = utc_timestamp(datetime.now(timezone.utc))
         pending["response_digest"] = sha256_digest(
             {
                 "assistant_text": pending["assistant_text"],
@@ -258,6 +267,8 @@ class EvaluationModelRecorder:
     def _finish_error(self, pending: dict[str, Any], *, status: str) -> None:
         pending.pop("_stream_calls", None)
         pending["response_status"] = status
+        if self.invocation_mode == "real":
+            pending["responded_at"] = utc_timestamp(datetime.now(timezone.utc))
         pending["response_digest"] = None
         self._publish(pending)
 

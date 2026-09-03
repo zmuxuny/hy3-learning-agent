@@ -18,6 +18,18 @@ from .models import (
     RuntimeFailureV1,
     RuntimeRunManifestV2,
 )
+from .runtime_metadata import (
+    DEPENDENCY_LOCK_VERSION,
+    ENDPOINT_POLICY_SHA256,
+    ENDPOINT_POLICY_VERSION,
+    HY3_ENDPOINT_ID,
+    HY3_ENDPOINT_ORIGIN,
+    HY3_MODEL,
+    provider_attribution_reason_codes,
+)
+from .runtime_metadata import (
+    dependency_lock_sha256 as current_dependency_lock_sha256,
+)
 
 
 class E31RuntimeArtifactError(ValueError):
@@ -161,10 +173,79 @@ def build_stub_provider_attestation(
         "worktree_clean": worktree_clean,
         "dependency_lock_version": dependency_lock_version,
         "dependency_lock_sha256": dependency_lock_sha256,
+        "dependency_lock_verified": False,
         "attribution_status": "ineligible_stub",
         "reason_codes": ["provider.stub"],
         "attestation_sha256": "0" * 64,
     }
+    attestation["attestation_sha256"] = provider_attestation_digest(attestation)
+    return ProviderAttestationV1.model_validate(attestation).model_dump(mode="json")
+
+
+def build_real_provider_attestation(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    scope: str,
+    configuration_sha256: str,
+    git_commit: str,
+    worktree_clean: bool,
+    dependency_lock_verified: bool,
+) -> dict[str, Any]:
+    """Build a recomputable audit attribution for the fixed Hy3 endpoint."""
+
+    calls = []
+    for record in records:
+        status = str(record.get("response_status") or "framework_error")
+        if status not in {"completed", "provider_error", "framework_error"}:
+            status = "framework_error"
+        calls.append(
+            {
+                "call_id": str(record.get("call_id") or "missing-call"),
+                "request_model": str(record.get("request_model") or "unspecified-model"),
+                "response_model": (
+                    str(record["response_model"])
+                    if record.get("response_model") is not None
+                    else None
+                ),
+                "provider_request_id": (
+                    str(record["provider_request_id"])
+                    if record.get("provider_request_id") is not None
+                    else None
+                ),
+                "requested_at": str(record.get("requested_at") or ""),
+                "responded_at": (
+                    str(record["responded_at"])
+                    if record.get("responded_at") is not None
+                    else None
+                ),
+                "status": status,
+            }
+        )
+    lock_digest = current_dependency_lock_sha256()
+    attestation = {
+        "schema_version": "provider-attestation-v1",
+        "scope": scope,
+        "invocation_mode": "real",
+        "provider_id": "tencent-tokenhub",
+        "endpoint_policy_version": ENDPOINT_POLICY_VERSION,
+        "endpoint_policy_sha256": ENDPOINT_POLICY_SHA256,
+        "endpoint_id": HY3_ENDPOINT_ID,
+        "endpoint_origin": HY3_ENDPOINT_ORIGIN,
+        "configured_model": HY3_MODEL,
+        "calls": calls,
+        "configuration_sha256": configuration_sha256,
+        "git_commit": git_commit,
+        "worktree_clean": worktree_clean,
+        "dependency_lock_version": DEPENDENCY_LOCK_VERSION,
+        "dependency_lock_sha256": lock_digest,
+        "dependency_lock_verified": dependency_lock_verified,
+        "attribution_status": "invalid",
+        "reason_codes": [],
+        "attestation_sha256": "0" * 64,
+    }
+    reasons = list(provider_attribution_reason_codes(attestation))
+    attestation["reason_codes"] = reasons
+    attestation["attribution_status"] = "invalid" if reasons else "eligible"
     attestation["attestation_sha256"] = provider_attestation_digest(attestation)
     return ProviderAttestationV1.model_validate(attestation).model_dump(mode="json")
 
@@ -221,6 +302,15 @@ def build_runtime_manifest_v2(
     """Build the exhaustive one-terminal-per-case batch manifest."""
 
     ordered = sorted((dict(item) for item in terminals), key=lambda item: item["case_id"])
+    formal = bool(
+        invocation_mode == "real"
+        and ordered
+        and all(
+            item["terminal_kind"] == "episode"
+            and item["formal_evaluation_result"]
+            for item in ordered
+        )
+    )
     manifest = {
         "schema_version": "runtime-run-manifest-v2",
         "dataset_version": dataset_version,
@@ -230,8 +320,12 @@ def build_runtime_manifest_v2(
         "invocation_mode": invocation_mode,
         "selected_case_ids": [item["case_id"] for item in ordered],
         "terminals": ordered,
-        "formal_evaluation_result": False,
-        "evaluation_status": "not_a_formal_model_evaluation",
+        "formal_evaluation_result": formal,
+        "evaluation_status": (
+            "formal_model_evaluation"
+            if formal
+            else "not_a_formal_model_evaluation"
+        ),
         "git_commit": git_commit,
         "dependency_lock_version": dependency_lock_version,
         "dependency_lock_sha256": dependency_lock_sha256,

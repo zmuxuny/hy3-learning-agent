@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
+from .runtime_metadata import HY3_API_BASE, HY3_MODEL
+
 
 class EvaluationIsolationError(RuntimeError):
     pass
@@ -67,13 +69,11 @@ def worker_environment(
             raise EvaluationIsolationError("real model requires caller OPENAI_API_KEY")
         environment["OPENAI_API_KEY"] = key
         environment["OPENAI_API_BASE"] = os.environ.get(
-            "OPENAI_API_BASE", "https://tokenhub.tencentmaas.com/v1"
+            "OPENAI_API_BASE", HY3_API_BASE
         )
-        environment["MODEL_NAME"] = os.environ.get("MODEL_NAME", "hy3")
-        environment["MODEL_TEMPERATURE"] = os.environ.get("MODEL_TEMPERATURE", "0.9")
-        environment["MODEL_REASONING_EFFORT"] = os.environ.get(
-            "MODEL_REASONING_EFFORT", "high"
-        )
+        environment["MODEL_NAME"] = os.environ.get("MODEL_NAME", HY3_MODEL)
+        environment["MODEL_TEMPERATURE"] = "0.9"
+        environment["MODEL_REASONING_EFFORT"] = "high"
     model_url = urlsplit(environment["OPENAI_API_BASE"])
     if (
         model_url.scheme != "https"
@@ -84,6 +84,13 @@ def worker_environment(
         or model_url.fragment
     ):
         raise EvaluationIsolationError("model provider URL must be credential-free HTTPS")
+    if model_mode == "real" and (
+        environment["OPENAI_API_BASE"].rstrip("/") != HY3_API_BASE
+        or environment["MODEL_NAME"] != HY3_MODEL
+    ):
+        raise EvaluationIsolationError(
+            "real model endpoint and model must match the Hy3 allowlist"
+        )
     return environment
 
 
@@ -125,11 +132,8 @@ class IsolationGuard:
             raw = arguments[0]
             if isinstance(raw, (str, bytes, os.PathLike)):
                 supplied = Path(os.fsdecode(raw)).expanduser()
-                # Relative names can be components of a safe dir-fd operation;
-                # production runtime targets and the repository .env are
-                # configured as absolute paths and are checked below.
                 if not supplied.is_absolute():
-                    return
+                    supplied = Path.cwd() / supplied
                 path = supplied.resolve()
                 protected_data = self.project_root / "data"
                 if path == self.project_root / ".env" or (
