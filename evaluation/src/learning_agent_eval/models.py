@@ -238,9 +238,7 @@ class AcceptableActionEnvelope(StrictContractModel):
 
 class Trigger(StrictContractModel):
     trigger_id: StableId
-    trigger_type: Literal[
-        "user_goal", "heartbeat", "submission", "constraint_change"
-    ]
+    trigger_type: Literal["user_goal", "heartbeat", "submission", "constraint_change"]
     objective: NonEmptyText
     triggered_at: Rfc3339
     target_refs: Annotated[list[StableId], Field(min_length=1)]
@@ -1058,7 +1056,10 @@ class JudgeRunManifestV1(StrictContractModel):
             raise ValueError("Judge output Episode IDs must be sorted")
         if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
             raise ValueError("requested Judge Episode IDs must be sorted and unique")
-        if self.requested_episode_ids and set(self.requested_episode_ids) != episode_ids:
+        if (
+            self.requested_episode_ids
+            and set(self.requested_episode_ids) != episode_ids
+        ):
             raise ValueError("requested Judge Episode IDs must match selected output")
         mappings = (
             self.input_episode_digests,
@@ -1265,9 +1266,16 @@ class AggregateRunManifestV1(StrictContractModel):
         if self.episode_ids != sorted(self.episode_ids):
             raise ValueError("aggregate Episode IDs must be sorted")
         if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
-            raise ValueError("requested aggregate Episode IDs must be sorted and unique")
-        if self.requested_episode_ids and set(self.requested_episode_ids) != episode_ids:
-            raise ValueError("requested aggregate Episode IDs must match selected output")
+            raise ValueError(
+                "requested aggregate Episode IDs must be sorted and unique"
+            )
+        if (
+            self.requested_episode_ids
+            and set(self.requested_episode_ids) != episode_ids
+        ):
+            raise ValueError(
+                "requested aggregate Episode IDs must match selected output"
+            )
         mappings = (
             self.input_episode_digests,
             self.input_rule_result_digests,
@@ -1385,10 +1393,14 @@ class ResourceSnapshot(StrictContractModel):
             raise ValueError("snapshot search results must reference registered pages")
         for url in registered_pages:
             parsed = urlsplit(url)
-            if parsed.scheme != "https" or not (parsed.hostname or "").endswith(".test"):
+            if parsed.scheme != "https" or not (parsed.hostname or "").endswith(
+                ".test"
+            ):
                 raise ValueError("E1 Mini snapshot URLs must use HTTPS .test domains")
             if parsed.username or parsed.password or parsed.fragment:
-                raise ValueError("snapshot URLs must not contain credentials or fragments")
+                raise ValueError(
+                    "snapshot URLs must not contain credentials or fragments"
+                )
         return self
 
 
@@ -1444,6 +1456,954 @@ class E1RunOutputManifest(StrictContractModel):
         return self
 
 
+# E3.1 clean-switch contracts.  The frozen v1/v2 models above remain readable
+# engineering history; only the contracts below may represent a formal run.
+DatasetRoleV3 = Literal["engineering_mini", "primary_episode", "calibration_output"]
+ConstraintKindV1 = Literal["must_satisfy", "must_not"]
+ConstraintEvaluationV1 = Literal["deterministic_rule", "semantic_judge"]
+FailureClassV1 = Literal[
+    "fixture_error",
+    "provider_error",
+    "framework_error",
+    "isolation_violation",
+]
+ProviderScopeV1 = Literal["agent_runtime", "semantic_judge"]
+AttributionStatusV1 = Literal["eligible", "ineligible_stub", "invalid"]
+
+
+def _contains_private_reasoning_key(value: JsonValue) -> bool:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key.casefold() in {
+                "analysis",
+                "chain_of_thought",
+                "private_reasoning",
+                "reasoning_content",
+            }:
+                return True
+            if _contains_private_reasoning_key(item):
+                return True
+    elif isinstance(value, list):
+        return any(_contains_private_reasoning_key(item) for item in value)
+    return False
+
+
+class IdentityBindingV1(StrictContractModel):
+    entity_type: EntityTypeV2
+    logical_id: StableId
+    identity_fields: Annotated[dict[str, JsonValue], Field(min_length=1)]
+
+
+class JudgePredicateV1(StrictContractModel):
+    path: EvidencePath
+    operator: Literal[
+        "equals",
+        "not_equals",
+        "contains",
+        "not_contains",
+        "exists",
+        "not_exists",
+        "greater_than_or_equal",
+        "less_than_or_equal",
+    ]
+    expected_value: JsonValue
+
+    @model_validator(mode="after")
+    def validate_expected_value(self) -> Self:
+        if self.operator in {"exists", "not_exists"} and not isinstance(
+            self.expected_value, bool
+        ):
+            raise ValueError("existence predicates require a boolean expected value")
+        return self
+
+
+class JudgeConstraintV1(StrictContractModel):
+    constraint_id: StableId
+    kind: ConstraintKindV1
+    evaluation: ConstraintEvaluationV1
+    public_statement: NonEmptyText
+    criticality: Literal["minor", "major", "critical"]
+    evidence_paths: Annotated[list[EvidencePath], Field(min_length=1)]
+    predicates: list[JudgePredicateV1]
+
+    @model_validator(mode="after")
+    def validate_constraint(self) -> Self:
+        if len(self.evidence_paths) != len(set(self.evidence_paths)):
+            raise ValueError("constraint Evidence Paths must be unique")
+        predicate_paths = [item.path for item in self.predicates]
+        if len(predicate_paths) != len(set(predicate_paths)):
+            raise ValueError("constraint predicate paths must be unique")
+        if self.evaluation == "deterministic_rule" and not self.predicates:
+            raise ValueError("deterministic constraints require structured predicates")
+        if any(path not in self.evidence_paths for path in predicate_paths):
+            raise ValueError("predicate paths must be declared as constraint evidence")
+        return self
+
+
+class CaseJudgeCriteriaV1(StrictContractModel):
+    allowed_action_classes: Annotated[list[ActionClass], Field(min_length=1)]
+    constraints: Annotated[list[JudgeConstraintV1], Field(min_length=1)]
+    acceptable_variations: Annotated[list[NonEmptyText], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def validate_criteria(self) -> Self:
+        if self.allowed_action_classes != list(
+            dict.fromkeys(self.allowed_action_classes)
+        ):
+            raise ValueError("allowed action classes must be unique and ordered")
+        ids = [item.constraint_id for item in self.constraints]
+        if len(ids) != len(set(ids)):
+            raise ValueError("case constraint IDs must be unique")
+        return self
+
+
+class CasePrivateAnnotationsV1(StrictContractModel):
+    quality_label: Literal["good", "mild", "severe"] | None
+    mutation_source: NonEmptyText | None
+    author_role: RoleName
+    reviewer_role: RoleName
+    adjudication_note: NonEmptyText | None
+
+
+class CaseRuntimeSetupV1(StrictContractModel):
+    invocation_mode: Literal["stub", "real"]
+    frozen_time: Rfc3339
+    timezone: Annotated[
+        str,
+        StringConstraints(
+            min_length=1,
+            max_length=80,
+            pattern=r"^(?:UTC|[A-Za-z_]+(?:/[A-Za-z0-9_+.-]+)+)$",
+        ),
+    ]
+    owner_id: StableId
+    run_id: StableId
+    session_id: StableId | None
+    trigger: Trigger
+    state_before: StateBefore
+    seed_kind: Track
+    seed: dict[str, JsonValue]
+    scripted_turns: list[ScriptedModelTurn]
+    resource_snapshot_version: StableId
+
+    @model_validator(mode="after")
+    def validate_runtime_setup(self) -> Self:
+        if self.trigger.triggered_at != self.frozen_time:
+            raise ValueError("runtime trigger and frozen time must match")
+        if self.invocation_mode == "stub" and not self.scripted_turns:
+            raise ValueError("stub CaseSpecs require fixed scripted turns")
+        if self.invocation_mode == "real" and self.scripted_turns:
+            raise ValueError("real CaseSpecs cannot contain scripted model answers")
+        return self
+
+
+class CaseSpecV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/case-spec-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["case-spec-v1"]
+    case_id: StableId
+    scenario_family_id: StableId
+    track: Track
+    split: Split
+    difficulty: Difficulty
+    tags: Annotated[list[Tag], Field(min_length=1)]
+    dataset_role: DatasetRoleV3
+    runtime_setup: CaseRuntimeSetupV1
+    identity_bindings: Annotated[list[IdentityBindingV1], Field(min_length=1)]
+    judge_criteria: CaseJudgeCriteriaV1
+    private_annotations: CasePrivateAnnotationsV1
+    case_spec_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_case_spec(self) -> Self:
+        if self.track != self.runtime_setup.seed_kind:
+            raise ValueError("CaseSpec track and runtime seed kind must match")
+        expected_trigger = {
+            "planning": "user_goal",
+            "intervention": "heartbeat",
+            "assessment": "submission",
+            "revision": "constraint_change",
+        }[self.track]
+        if self.runtime_setup.trigger.trigger_type != expected_trigger:
+            raise ValueError("CaseSpec trigger does not match its track")
+        if self.dataset_role == "engineering_mini":
+            if self.runtime_setup.invocation_mode != "stub":
+                raise ValueError("engineering Mini CaseSpecs must use stub mode")
+            if self.private_annotations.quality_label is not None:
+                raise ValueError(
+                    "engineering Mini CaseSpecs cannot carry quality labels"
+                )
+        elif self.dataset_role == "calibration_output":
+            if self.private_annotations.quality_label is None:
+                raise ValueError(
+                    "Calibration CaseSpecs require a private quality label"
+                )
+        elif self.private_annotations.quality_label is not None:
+            raise ValueError("Primary CaseSpecs cannot carry Calibration labels")
+        binding_ids = [item.logical_id for item in self.identity_bindings]
+        if len(binding_ids) != len(set(binding_ids)):
+            raise ValueError("identity binding logical IDs must be unique")
+        return self
+
+
+class JudgeReferenceV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/judge-reference-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["judge-reference-v1"]
+    opaque_case_id: StableId
+    case_spec_sha256: Sha256
+    track: Track
+    allowed_action_classes: Annotated[list[ActionClass], Field(min_length=1)]
+    constraints: Annotated[list[JudgeConstraintV1], Field(min_length=1)]
+    acceptable_variations: Annotated[list[NonEmptyText], Field(min_length=1)]
+    reference_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_reference(self) -> Self:
+        ids = [item.constraint_id for item in self.constraints]
+        if len(ids) != len(set(ids)):
+            raise ValueError("JudgeReference constraint IDs must be unique")
+        return self
+
+
+class ProviderCallAttestationV1(StrictContractModel):
+    call_id: StableId
+    request_model: NonEmptyText
+    response_model: NonEmptyText | None
+    provider_request_id: NonEmptyText | None
+    requested_at: Rfc3339
+    responded_at: Rfc3339 | None
+    status: Literal["completed", "provider_error", "framework_error"]
+
+    @model_validator(mode="after")
+    def validate_call_state(self) -> Self:
+        if self.status == "completed" and (
+            self.response_model is None or self.responded_at is None
+        ):
+            raise ValueError("completed provider calls require response attribution")
+        return self
+
+
+class ProviderAttestationV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/provider-attestation-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["provider-attestation-v1"]
+    scope: ProviderScopeV1
+    invocation_mode: Literal["stub", "real"]
+    provider_id: Literal["none", "tencent-tokenhub"]
+    endpoint_policy_version: StableId
+    endpoint_policy_sha256: Sha256
+    endpoint_id: StableId | None
+    endpoint_origin: NonEmptyText | None
+    configured_model: NonEmptyText
+    calls: list[ProviderCallAttestationV1]
+    configuration_sha256: Sha256
+    git_commit: GitCommit
+    worktree_clean: bool
+    dependency_lock_version: StableId
+    dependency_lock_sha256: Sha256
+    attribution_status: AttributionStatusV1
+    reason_codes: list[StableId]
+    attestation_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_attribution(self) -> Self:
+        call_ids = [item.call_id for item in self.calls]
+        if len(call_ids) != len(set(call_ids)):
+            raise ValueError("provider call attestation IDs must be unique")
+        if self.invocation_mode == "stub":
+            if (
+                self.provider_id != "none"
+                or self.attribution_status != "ineligible_stub"
+            ):
+                raise ValueError("stub attribution must be explicitly ineligible")
+            if self.endpoint_id is not None or self.endpoint_origin is not None:
+                raise ValueError("stub attribution cannot claim a provider endpoint")
+        elif self.provider_id != "tencent-tokenhub":
+            raise ValueError("real E3.1 attribution requires the allowlisted provider")
+        if self.attribution_status == "eligible" and (
+            self.invocation_mode != "real"
+            or not self.worktree_clean
+            or self.endpoint_id is None
+            or self.endpoint_origin is None
+            or bool(self.reason_codes)
+            or any(item.status != "completed" for item in self.calls)
+        ):
+            raise ValueError("eligible attribution requires a clean complete real run")
+        if self.attribution_status == "invalid" and not self.reason_codes:
+            raise ValueError("invalid attribution requires stable reason codes")
+        return self
+
+
+class RuntimeManifestV2(StrictContractModel):
+    git_commit: GitCommit
+    worktree_clean: bool
+    database_mode: Literal["temporary_fixture"]
+    fixture_db_sha256: Sha256
+    dependency_lock_version: StableId
+    dependency_lock_sha256: Sha256
+
+
+class EnvironmentManifestV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/environment-manifest-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["environment-manifest-v2"]
+    frozen_time: Rfc3339
+    timezone: Annotated[
+        str,
+        StringConstraints(
+            min_length=1,
+            max_length=80,
+            pattern=r"^(?:UTC|[A-Za-z_]+(?:/[A-Za-z0-9_+.-]+)+)$",
+        ),
+    ]
+    prompt: PromptManifest
+    tools: ToolManifest
+    policies: PolicyManifest
+    resources: ResourceManifest
+    runtime: RuntimeManifestV2
+    isolation: IsolationManifest
+    provider_attestation: ProviderAttestationV1
+    manifest_sha256: Sha256
+
+
+class VisibleMessageV1(StrictContractModel):
+    ordinal: Annotated[int, Field(ge=1)]
+    role: Literal["system", "developer", "user", "assistant", "tool"]
+    payload: dict[str, JsonValue]
+
+    @model_validator(mode="after")
+    def reject_private_reasoning(self) -> Self:
+        if _contains_private_reasoning_key(self.payload):
+            raise ValueError(
+                "model-visible messages cannot retain private reasoning fields"
+            )
+        return self
+
+
+class ModelVisibleContextV1(StrictContractModel):
+    context_version: Literal["model-visible-context-v1"]
+    messages: Annotated[list[VisibleMessageV1], Field(min_length=1)]
+    tool_schemas: list[dict[str, JsonValue]]
+    context_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_context_order(self) -> Self:
+        ordinals = [item.ordinal for item in self.messages]
+        if ordinals != list(range(1, len(ordinals) + 1)):
+            raise ValueError("visible message ordinals must be consecutive")
+        if _contains_private_reasoning_key(self.tool_schemas):
+            raise ValueError("tool schemas cannot contain private reasoning fields")
+        return self
+
+
+CallPurposeV1 = Literal[
+    "decision",
+    "subagent_decision",
+    "subagent_synthesis",
+    "session_title",
+    "memory_compression",
+]
+
+
+class ModelCallV3(StrictContractModel):
+    call_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    run_id: StableId
+    parent_run_id: StableId | None
+    parent_call_id: StableId | None
+    depth: Annotated[int, Field(ge=0)]
+    call_purpose: CallPurposeV1
+    decision_relevant: bool
+    visible_context: ModelVisibleContextV1
+    request_model: NonEmptyText
+    assistant_text: str | None
+    tool_call_refs: list[StableId]
+    status: Literal["completed", "provider_error", "framework_error", "cancelled"]
+    response_sha256: Sha256 | None
+
+    @model_validator(mode="after")
+    def validate_call_semantics(self) -> Self:
+        decision_purposes = {
+            "decision",
+            "subagent_decision",
+            "subagent_synthesis",
+        }
+        if self.decision_relevant != (self.call_purpose in decision_purposes):
+            raise ValueError("model call purpose and decision relevance must agree")
+        if self.depth == 0 and (
+            self.parent_run_id is not None or self.parent_call_id is not None
+        ):
+            raise ValueError("root model calls cannot have parent references")
+        if self.depth > 0 and self.parent_run_id is None:
+            raise ValueError("nested model calls require a parent run")
+        if self.status == "completed" and self.response_sha256 is None:
+            raise ValueError("completed model calls require a response digest")
+        if self.status != "completed" and self.response_sha256 is not None:
+            raise ValueError("failed model calls cannot invent a response digest")
+        return self
+
+
+class ObservableTraceV3(StrictContractModel):
+    capture_mode: Literal["runtime_recording"]
+    model_calls: Annotated[list[ModelCallV3], Field(min_length=1)]
+    decision_call_refs: Annotated[list[StableId], Field(min_length=1)]
+    auxiliary_call_refs: list[StableId]
+    tool_invocations: list[ToolInvocationV2]
+    run_events: list[RunEvent]
+    operations: list[OperationV2]
+    guard_decisions: list[GuardDecisionV2]
+
+    @model_validator(mode="after")
+    def validate_call_partition(self) -> Self:
+        call_ids = [item.call_id for item in self.model_calls]
+        if len(call_ids) != len(set(call_ids)):
+            raise ValueError("model call IDs must be unique")
+        if [item.ordinal for item in self.model_calls] != list(
+            range(1, len(self.model_calls) + 1)
+        ):
+            raise ValueError("model call ordinals must be consecutive")
+        expected_decision = [
+            item.call_id for item in self.model_calls if item.decision_relevant
+        ]
+        expected_auxiliary = [
+            item.call_id for item in self.model_calls if not item.decision_relevant
+        ]
+        if self.decision_call_refs != expected_decision:
+            raise ValueError("decision call refs must preserve recorded call order")
+        if self.auxiliary_call_refs != expected_auxiliary:
+            raise ValueError("auxiliary call refs must preserve recorded call order")
+        known = set(call_ids)
+        if any(
+            item.parent_call_id is not None and item.parent_call_id not in known
+            for item in self.model_calls
+        ):
+            raise ValueError("parent call references must resolve within the trace")
+        return self
+
+
+class EpisodeCompletenessV3(StrictContractModel):
+    status: Literal["complete", "invalid"]
+    evidence_error_codes: list[StableId]
+    verified_evidence_paths: list[EvidencePath]
+    decision_correctness_evaluated: Literal[False]
+    completeness_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_evidence_status(self) -> Self:
+        if (self.status == "complete") != (not self.evidence_error_codes):
+            raise ValueError("v3 completeness is determined only by evidence errors")
+        return self
+
+
+class ProvenanceV3(StrictContractModel):
+    source_type: Literal["runtime_export"]
+    construction_method: Literal["runtime_recorded"]
+    dataset_role: DatasetRoleV3
+    runtime_executed: Literal[True]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    created_at: Rfc3339
+    source_refs: list[StableId]
+    episode_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_formal_state(self) -> Self:
+        expected = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected:
+            raise ValueError("v3 provenance formal flag and status must agree")
+        if self.dataset_role == "engineering_mini" and self.formal_evaluation_result:
+            raise ValueError("engineering Mini Episodes can never be formal")
+        return self
+
+
+class DecisionEpisodeV3(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/decision-episode-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["decision-episode-v3"]
+    episode_id: StableId
+    case_spec_sha256: Sha256
+    judge_reference_sha256: Sha256
+    scenario_family_id: StableId
+    track: Track
+    split: Split
+    difficulty: Difficulty
+    trigger: Trigger
+    state_before: StateSnapshotV2
+    state_after: StateSnapshotV2
+    state_delta: StateDeltaV2
+    environment: EnvironmentManifestV2
+    observable_trace: ObservableTraceV3
+    result: DecisionResultV2
+    completeness: EpisodeCompletenessV3
+    isolation_evidence: RuntimeIsolationEvidenceV2
+    provenance: ProvenanceV3
+
+    @model_validator(mode="after")
+    def validate_episode_formal_state(self) -> Self:
+        eligible = (
+            self.environment.provider_attestation.attribution_status == "eligible"
+        )
+        if self.provenance.formal_evaluation_result != eligible:
+            raise ValueError(
+                "v3 formal state must match provider attribution eligibility"
+            )
+        return self
+
+
+class RuntimeFailureV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/runtime-failure-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["runtime-failure-v1"]
+    failure_id: StableId
+    case_id: StableId
+    case_spec_sha256: Sha256
+    stage: StableId
+    failure_class: FailureClassV1
+    reason_code: StableId
+    public_summary: NonEmptyText
+    model_calls: list[ModelCallV3]
+    provider_attestation: ProviderAttestationV1
+    isolation_evidence: RuntimeIsolationEvidenceV2 | None
+    started_at: Rfc3339
+    failed_at: Rfc3339
+    formal_evaluation_result: Literal[False]
+    evaluation_status: Literal["not_a_formal_model_evaluation"]
+    failure_sha256: Sha256
+
+
+class RuntimeTerminalRecordV2(StrictContractModel):
+    case_id: StableId
+    case_spec_sha256: Sha256
+    terminal_kind: Literal["episode", "failure"]
+    artifact_id: StableId
+    artifact_sha256: Sha256
+
+
+class RuntimeRunManifestV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/runtime-run-manifest-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["runtime-run-manifest-v2"]
+    dataset_version: StableId
+    case_schema_version: Literal["case-spec-v1"]
+    episode_schema_version: Literal["decision-episode-v3"]
+    failure_schema_version: Literal["runtime-failure-v1"]
+    invocation_mode: Literal["stub", "real"]
+    selected_case_ids: Annotated[list[StableId], Field(min_length=1)]
+    terminals: Annotated[list[RuntimeTerminalRecordV2], Field(min_length=1)]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    git_commit: GitCommit
+    dependency_lock_version: StableId
+    dependency_lock_sha256: Sha256
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_terminal_partition(self) -> Self:
+        selected = self.selected_case_ids
+        terminal_cases = [item.case_id for item in self.terminals]
+        if selected != sorted(set(selected)):
+            raise ValueError("selected runtime Case IDs must be sorted and unique")
+        if terminal_cases != selected:
+            raise ValueError(
+                "every selected CaseSpec requires exactly one terminal artifact"
+            )
+        artifact_ids = [item.artifact_id for item in self.terminals]
+        if len(artifact_ids) != len(set(artifact_ids)):
+            raise ValueError("runtime terminal artifact IDs must be unique")
+        expected = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected:
+            raise ValueError("runtime manifest formal state is inconsistent")
+        if self.invocation_mode == "stub" and self.formal_evaluation_result:
+            raise ValueError("stub runtime manifests cannot be formal")
+        if any(item.terminal_kind == "failure" for item in self.terminals) and expected:
+            raise ValueError(
+                "runtime batches containing failures cannot be formal results"
+            )
+        return self
+
+
+class RuleResultV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/rule-result-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["rule-result-v2"]
+    evaluator_version: StableId
+    episode_id: StableId
+    episode_sha256: Sha256
+    case_spec_sha256: Sha256
+    judge_reference_sha256: Sha256
+    rule_pack_version: StableId
+    rule_pack_sha256: Sha256
+    checks: Annotated[list[RuleCheckV1], Field(min_length=1)]
+    hard_gates: list[StableId]
+    dimension_signals: dict[str, JsonValue]
+    status: Literal["pass", "fail", "invalid_input"]
+    formal_evaluation_result: bool
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_rule_result(self) -> Self:
+        ids = [item.check_id for item in self.checks]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Rule check IDs must be unique")
+        expected_gates = [
+            item.check_id
+            for item in self.checks
+            if item.status == "fail" and item.severity == "critical"
+        ]
+        if self.hard_gates != expected_gates:
+            raise ValueError("hard gates must exactly list failed critical checks")
+        expected_status = (
+            "invalid_input"
+            if any(item.status == "invalid_input" for item in self.checks)
+            else "fail"
+            if any(item.status == "fail" for item in self.checks)
+            else "pass"
+        )
+        if self.status != expected_status:
+            raise ValueError("Rule Result status must match its checks")
+        return self
+
+
+class RuleRunManifestV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/rule-run-manifest-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["rule-run-manifest-v2"]
+    input_episode_schema_version: Literal["decision-episode-v3"]
+    input_reference_schema_version: Literal["judge-reference-v1"]
+    evaluator_version: StableId
+    rule_pack_version: StableId
+    rule_pack_sha256: Sha256
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    input_episode_digests: dict[str, Sha256]
+    input_reference_digests: dict[str, Sha256]
+    rule_result_digests: dict[str, Sha256]
+    formal_evaluation_result: bool
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_rule_manifest(self) -> Self:
+        if self.episode_ids != sorted(set(self.episode_ids)):
+            raise ValueError("Rule manifest Episode IDs must be sorted and unique")
+        ids = set(self.episode_ids)
+        if any(
+            set(mapping) != ids
+            for mapping in (
+                self.input_episode_digests,
+                self.input_reference_digests,
+                self.rule_result_digests,
+            )
+        ):
+            raise ValueError("Rule manifest mappings must match Episode IDs")
+        return self
+
+
+class JudgeResultV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/judge-result-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["judge-result-v2"]
+    judge_version: StableId
+    episode_id: StableId
+    episode_sha256: Sha256
+    rule_result_sha256: Sha256
+    judge_reference_sha256: Sha256
+    track: Track
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
+    blind_input_sha256: Sha256
+    dimensions: list[JudgeDimensionV1]
+    semantic_issues: list[JudgeSemanticIssueV1]
+    suggested_hard_gates: list[SuggestedHardGateV1]
+    status: JudgeStatus
+    judge_mode: Literal["stub", "real"]
+    provider_attestation: ProviderAttestationV1
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    error_code: StableId | None
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_judge_state(self) -> Self:
+        if self.status == "complete":
+            JudgeResponsePayloadV1(
+                dimensions=self.dimensions,
+                semantic_issues=self.semantic_issues,
+                suggested_hard_gates=self.suggested_hard_gates,
+            )
+            if self.error_code is not None:
+                raise ValueError("complete Judge Results cannot contain errors")
+        elif self.dimensions or self.semantic_issues or self.suggested_hard_gates:
+            raise ValueError("non-complete Judge Results cannot contain scores")
+        elif self.error_code is None:
+            raise ValueError("non-complete Judge Results require a stable error code")
+        expected = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected:
+            raise ValueError("Judge Result formal state is inconsistent")
+        eligible = self.provider_attestation.attribution_status == "eligible"
+        if expected != (self.status == "complete" and eligible):
+            raise ValueError(
+                "formal Judge Results require eligible complete attribution"
+            )
+        if self.judge_mode != self.provider_attestation.invocation_mode:
+            raise ValueError("Judge mode must match provider attestation")
+        return self
+
+
+class JudgeRunManifestV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/judge-run-manifest-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["judge-run-manifest-v2"]
+    input_episode_schema_version: Literal["decision-episode-v3"]
+    input_rule_schema_version: Literal["rule-result-v2"]
+    input_reference_schema_version: Literal["judge-reference-v1"]
+    judge_version: StableId
+    judge_config_version: StableId
+    judge_config_sha256: Sha256
+    repair_limit: Literal[1]
+    judge_mode: Literal["stub", "real"]
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    input_episode_digests: dict[str, Sha256]
+    input_rule_result_digests: dict[str, Sha256]
+    input_reference_digests: dict[str, Sha256]
+    blind_input_digests: dict[str, Sha256]
+    judge_result_digests: dict[str, Sha256]
+    result_statuses: dict[str, JudgeStatus]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_judge_manifest(self) -> Self:
+        if self.episode_ids != sorted(set(self.episode_ids)):
+            raise ValueError("Judge manifest Episode IDs must be sorted and unique")
+        ids = set(self.episode_ids)
+        mappings = (
+            self.input_episode_digests,
+            self.input_rule_result_digests,
+            self.input_reference_digests,
+            self.blind_input_digests,
+            self.judge_result_digests,
+            self.result_statuses,
+        )
+        if any(set(mapping) != ids for mapping in mappings):
+            raise ValueError("Judge manifest mappings must match Episode IDs")
+        expected = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected:
+            raise ValueError("Judge manifest formal state is inconsistent")
+        if self.judge_mode == "stub" and expected:
+            raise ValueError("stub Judge manifests cannot be formal")
+        return self
+
+
+class AggregateResultV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-result-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-result-v2"]
+    aggregator_version: StableId
+    episode_id: StableId
+    track: Track
+    episode_sha256: Sha256
+    rule_result_sha256: Sha256
+    judge_result_sha256: Sha256
+    judge_reference_sha256: Sha256
+    status: JudgeStatus
+    dimensions: list[AggregateDimensionV1]
+    raw_score: Annotated[float, Field(ge=0, le=100)] | None
+    rule_failures: list[AggregateRuleFailureV1]
+    actual_hard_gates: list[StableId]
+    judge_suggested_hard_gates: list[SuggestedHardGateV1]
+    applied_caps: list[AppliedScoreCapV1]
+    final_score: Annotated[float, Field(ge=0, le=100)] | None
+    episode_outcome: Literal["pass", "fail", "invalid_input", "judge_error"]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    invalid_reason_code: StableId | None
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_aggregate(self) -> Self:
+        expected_order = ["D1", "D2", "D3", "D4", "D5", "D6", "D7"]
+        expected_formal = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected_formal:
+            raise ValueError("aggregate formal state is inconsistent")
+        if self.status == "complete":
+            if [item.dimension_id for item in self.dimensions] != expected_order:
+                raise ValueError("aggregate dimensions must use fixed D1-D7 order")
+            if self.raw_score is None or self.final_score is None:
+                raise ValueError("complete aggregates require scores")
+            if self.invalid_reason_code is not None:
+                raise ValueError("complete aggregates cannot contain invalid reasons")
+            expected_outcome = "fail" if self.actual_hard_gates else "pass"
+            if self.episode_outcome != expected_outcome:
+                raise ValueError("Rule hard gates determine aggregate outcome")
+        else:
+            if (
+                self.dimensions
+                or self.raw_score is not None
+                or self.final_score is not None
+            ):
+                raise ValueError("invalid aggregates cannot contain scores")
+            if self.applied_caps:
+                raise ValueError("invalid aggregates cannot apply caps")
+            if self.invalid_reason_code is None or self.episode_outcome != self.status:
+                raise ValueError("invalid aggregate classification must be explicit")
+            if self.formal_evaluation_result:
+                raise ValueError("invalid aggregates cannot be formal")
+        return self
+
+
+class AggregateTrackResultV2(AggregateTrackResultV1):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-track-result-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-track-result-v2"]  # type: ignore[assignment]
+
+
+class AggregateRunManifestV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-run-manifest-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-run-manifest-v2"]
+    aggregator_version: StableId
+    input_judge_manifest_sha256: Sha256
+    episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    input_episode_digests: dict[str, Sha256]
+    input_rule_result_digests: dict[str, Sha256]
+    input_judge_result_digests: dict[str, Sha256]
+    input_reference_digests: dict[str, Sha256]
+    aggregate_result_digests: dict[str, Sha256]
+    result_statuses: dict[str, JudgeStatus]
+    track_result_digests: dict[str, Sha256]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_aggregate_manifest(self) -> Self:
+        if self.episode_ids != sorted(set(self.episode_ids)):
+            raise ValueError("aggregate manifest Episode IDs must be sorted and unique")
+        ids = set(self.episode_ids)
+        mappings = (
+            self.input_episode_digests,
+            self.input_rule_result_digests,
+            self.input_judge_result_digests,
+            self.input_reference_digests,
+            self.aggregate_result_digests,
+            self.result_statuses,
+        )
+        if any(set(mapping) != ids for mapping in mappings):
+            raise ValueError("aggregate manifest mappings must match Episode IDs")
+        if not self.track_result_digests:
+            raise ValueError("aggregate manifest requires per-track results")
+        expected = self.evaluation_status == "formal_model_evaluation"
+        if self.formal_evaluation_result != expected:
+            raise ValueError("aggregate manifest formal state is inconsistent")
+        return self
+
+
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "decision-episode-v1": DecisionEpisode,
     "decision-episode-v2": DecisionEpisodeV2,
@@ -1455,6 +2415,20 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "aggregate-result-v1": AggregateResultV1,
     "aggregate-track-result-v1": AggregateTrackResultV1,
     "aggregate-run-manifest-v1": AggregateRunManifestV1,
+    "case-spec-v1": CaseSpecV1,
+    "judge-reference-v1": JudgeReferenceV1,
+    "provider-attestation-v1": ProviderAttestationV1,
+    "environment-manifest-v2": EnvironmentManifestV2,
+    "decision-episode-v3": DecisionEpisodeV3,
+    "runtime-failure-v1": RuntimeFailureV1,
+    "runtime-run-manifest-v2": RuntimeRunManifestV2,
+    "rule-result-v2": RuleResultV2,
+    "rule-run-manifest-v2": RuleRunManifestV2,
+    "judge-result-v2": JudgeResultV2,
+    "judge-run-manifest-v2": JudgeRunManifestV2,
+    "aggregate-result-v2": AggregateResultV2,
+    "aggregate-track-result-v2": AggregateTrackResultV2,
+    "aggregate-run-manifest-v2": AggregateRunManifestV2,
 }
 
 DATASET_DOCUMENT_MODELS: dict[str, type[BaseModel]] = {

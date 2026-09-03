@@ -1,0 +1,168 @@
+{
+  "$id": "https://zmuxuny.github.io/hy3-learning-agent/evaluation/schemas/judge-run-manifest-v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "judge-run-manifest-v2",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "input_episode_schema_version": {
+      "const": "decision-episode-v3",
+      "title": "Input Episode Schema Version",
+      "type": "string"
+    },
+    "input_rule_schema_version": {
+      "const": "rule-result-v2",
+      "title": "Input Rule Schema Version",
+      "type": "string"
+    },
+    "input_reference_schema_version": {
+      "const": "judge-reference-v1",
+      "title": "Input Reference Schema Version",
+      "type": "string"
+    },
+    "judge_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Judge Version",
+      "type": "string"
+    },
+    "judge_config_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Judge Config Version",
+      "type": "string"
+    },
+    "judge_config_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Judge Config Sha256",
+      "type": "string"
+    },
+    "repair_limit": {
+      "const": 1,
+      "title": "Repair Limit",
+      "type": "integer"
+    },
+    "judge_mode": {
+      "enum": [
+        "stub",
+        "real"
+      ],
+      "title": "Judge Mode",
+      "type": "string"
+    },
+    "episode_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Episode Ids",
+      "type": "array"
+    },
+    "input_episode_digests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Input Episode Digests",
+      "type": "object"
+    },
+    "input_rule_result_digests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Input Rule Result Digests",
+      "type": "object"
+    },
+    "input_reference_digests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Input Reference Digests",
+      "type": "object"
+    },
+    "blind_input_digests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Blind Input Digests",
+      "type": "object"
+    },
+    "judge_result_digests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Judge Result Digests",
+      "type": "object"
+    },
+    "result_statuses": {
+      "additionalProperties": {
+        "enum": [
+          "complete",
+          "invalid_input",
+          "judge_error"
+        ],
+        "type": "string"
+      },
+      "title": "Result Statuses",
+      "type": "object"
+    },
+    "formal_evaluation_result": {
+      "title": "Formal Evaluation Result",
+      "type": "boolean"
+    },
+    "evaluation_status": {
+      "enum": [
+        "not_a_formal_model_evaluation",
+        "formal_model_evaluation"
+      ],
+      "title": "Evaluation Status",
+      "type": "string"
+    },
+    "git_commit": {
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Git Commit",
+      "type": "string"
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifest Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "input_episode_schema_version",
+    "input_rule_schema_version",
+    "input_reference_schema_version",
+    "judge_version",
+    "judge_config_version",
+    "judge_config_sha256",
+    "repair_limit",
+    "judge_mode",
+    "episode_ids",
+    "input_episode_digests",
+    "input_rule_result_digests",
+    "input_reference_digests",
+    "blind_input_digests",
+    "judge_result_digests",
+    "result_statuses",
+    "formal_evaluation_result",
+    "evaluation_status",
+    "git_commit",
+    "manifest_sha256"
+  ],
+  "title": "JudgeRunManifestV2",
+  "type": "object"
+}

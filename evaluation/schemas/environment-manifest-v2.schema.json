@@ -1,0 +1,511 @@
+{
+  "$defs": {
+    "IsolationManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "production_database_access": {
+          "const": false,
+          "title": "Production Database Access",
+          "type": "boolean"
+        },
+        "network_access": {
+          "enum": [
+            "disabled",
+            "model_provider_only",
+            "resource_snapshots_only"
+          ],
+          "title": "Network Access",
+          "type": "string"
+        },
+        "notification_mode": {
+          "enum": [
+            "disabled",
+            "fake_outbox"
+          ],
+          "title": "Notification Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "production_database_access",
+        "network_access",
+        "notification_mode"
+      ],
+      "title": "IsolationManifest",
+      "type": "object"
+    },
+    "PolicyManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "proactive_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Proactive Version",
+          "type": "string"
+        },
+        "proactive_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Proactive Digest",
+          "type": "string"
+        },
+        "evidence_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Evidence Version",
+          "type": "string"
+        },
+        "evidence_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evidence Digest",
+          "type": "string"
+        },
+        "approval_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Approval Version",
+          "type": "string"
+        },
+        "approval_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Approval Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "proactive_version",
+        "proactive_digest",
+        "evidence_version",
+        "evidence_digest",
+        "approval_version",
+        "approval_digest"
+      ],
+      "title": "PolicyManifest",
+      "type": "object"
+    },
+    "PromptManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Version",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "digest"
+      ],
+      "title": "PromptManifest",
+      "type": "object"
+    },
+    "ProviderAttestationV1": {
+      "$id": "https://zmuxuny.github.io/hy3-learning-agent/evaluation/schemas/provider-attestation-v1.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "provider-attestation-v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "agent_runtime",
+            "semantic_judge"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "invocation_mode": {
+          "enum": [
+            "stub",
+            "real"
+          ],
+          "title": "Invocation Mode",
+          "type": "string"
+        },
+        "provider_id": {
+          "enum": [
+            "none",
+            "tencent-tokenhub"
+          ],
+          "title": "Provider Id",
+          "type": "string"
+        },
+        "endpoint_policy_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Endpoint Policy Version",
+          "type": "string"
+        },
+        "endpoint_policy_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Endpoint Policy Sha256",
+          "type": "string"
+        },
+        "endpoint_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Endpoint Id"
+        },
+        "endpoint_origin": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Endpoint Origin"
+        },
+        "configured_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Configured Model",
+          "type": "string"
+        },
+        "calls": {
+          "items": {
+            "$ref": "#/$defs/ProviderCallAttestationV1"
+          },
+          "title": "Calls",
+          "type": "array"
+        },
+        "configuration_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Configuration Sha256",
+          "type": "string"
+        },
+        "git_commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Git Commit",
+          "type": "string"
+        },
+        "worktree_clean": {
+          "title": "Worktree Clean",
+          "type": "boolean"
+        },
+        "dependency_lock_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Dependency Lock Version",
+          "type": "string"
+        },
+        "dependency_lock_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Dependency Lock Sha256",
+          "type": "string"
+        },
+        "attribution_status": {
+          "enum": [
+            "eligible",
+            "ineligible_stub",
+            "invalid"
+          ],
+          "title": "Attribution Status",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "attestation_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Attestation Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "scope",
+        "invocation_mode",
+        "provider_id",
+        "endpoint_policy_version",
+        "endpoint_policy_sha256",
+        "endpoint_id",
+        "endpoint_origin",
+        "configured_model",
+        "calls",
+        "configuration_sha256",
+        "git_commit",
+        "worktree_clean",
+        "dependency_lock_version",
+        "dependency_lock_sha256",
+        "attribution_status",
+        "reason_codes",
+        "attestation_sha256"
+      ],
+      "title": "ProviderAttestationV1",
+      "type": "object"
+    },
+    "ProviderCallAttestationV1": {
+      "additionalProperties": false,
+      "properties": {
+        "call_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Call Id",
+          "type": "string"
+        },
+        "request_model": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Request Model",
+          "type": "string"
+        },
+        "response_model": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Response Model"
+        },
+        "provider_request_id": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Provider Request Id"
+        },
+        "requested_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Requested At",
+          "type": "string"
+        },
+        "responded_at": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Responded At"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "provider_error",
+            "framework_error"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "call_id",
+        "request_model",
+        "response_model",
+        "provider_request_id",
+        "requested_at",
+        "responded_at",
+        "status"
+      ],
+      "title": "ProviderCallAttestationV1",
+      "type": "object"
+    },
+    "ResourceManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "snapshot_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Snapshot Version",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_version",
+        "snapshot_digest"
+      ],
+      "title": "ResourceManifest",
+      "type": "object"
+    },
+    "RuntimeManifestV2": {
+      "additionalProperties": false,
+      "properties": {
+        "git_commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Git Commit",
+          "type": "string"
+        },
+        "worktree_clean": {
+          "title": "Worktree Clean",
+          "type": "boolean"
+        },
+        "database_mode": {
+          "const": "temporary_fixture",
+          "title": "Database Mode",
+          "type": "string"
+        },
+        "fixture_db_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Fixture Db Sha256",
+          "type": "string"
+        },
+        "dependency_lock_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Dependency Lock Version",
+          "type": "string"
+        },
+        "dependency_lock_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Dependency Lock Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "git_commit",
+        "worktree_clean",
+        "database_mode",
+        "fixture_db_sha256",
+        "dependency_lock_version",
+        "dependency_lock_sha256"
+      ],
+      "title": "RuntimeManifestV2",
+      "type": "object"
+    },
+    "ToolManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "allowlist": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Allowlist",
+          "type": "array"
+        },
+        "schema_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Schema Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "allowlist",
+        "schema_digest"
+      ],
+      "title": "ToolManifest",
+      "type": "object"
+    }
+  },
+  "$id": "https://zmuxuny.github.io/hy3-learning-agent/evaluation/schemas/environment-manifest-v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "environment-manifest-v2",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "frozen_time": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+      "title": "Frozen Time",
+      "type": "string"
+    },
+    "timezone": {
+      "maxLength": 80,
+      "minLength": 1,
+      "pattern": "^(?:UTC|[A-Za-z_]+(?:/[A-Za-z0-9_+.-]+)+)$",
+      "title": "Timezone",
+      "type": "string"
+    },
+    "prompt": {
+      "$ref": "#/$defs/PromptManifest"
+    },
+    "tools": {
+      "$ref": "#/$defs/ToolManifest"
+    },
+    "policies": {
+      "$ref": "#/$defs/PolicyManifest"
+    },
+    "resources": {
+      "$ref": "#/$defs/ResourceManifest"
+    },
+    "runtime": {
+      "$ref": "#/$defs/RuntimeManifestV2"
+    },
+    "isolation": {
+      "$ref": "#/$defs/IsolationManifest"
+    },
+    "provider_attestation": {
+      "$ref": "#/$defs/ProviderAttestationV1"
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifest Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "frozen_time",
+    "timezone",
+    "prompt",
+    "tools",
+    "policies",
+    "resources",
+    "runtime",
+    "isolation",
+    "provider_attestation",
+    "manifest_sha256"
+  ],
+  "title": "EnvironmentManifestV2",
+  "type": "object"
+}

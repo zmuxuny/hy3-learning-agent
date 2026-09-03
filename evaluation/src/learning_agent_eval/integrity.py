@@ -96,3 +96,33 @@ def aggregate_result_digest(result: Mapping[str, object]) -> str:
     """Hash an Episode or track aggregate without its self field."""
 
     return sha256_digest(_without_field(result, "result_sha256"))
+
+
+def case_spec_digest(case_spec: Mapping[str, object]) -> str:
+    """Hash a CaseSpec without its ``case_spec_sha256`` self field."""
+
+    return sha256_digest(_without_field(case_spec, "case_spec_sha256"))
+
+
+def judge_reference_digest(reference: Mapping[str, object]) -> str:
+    """Hash a JudgeReference without its ``reference_sha256`` self field."""
+
+    return sha256_digest(_without_field(reference, "reference_sha256"))
+
+
+def provider_attestation_digest(attestation: Mapping[str, object]) -> str:
+    """Hash provider attribution without its ``attestation_sha256`` self field."""
+
+    return sha256_digest(_without_field(attestation, "attestation_sha256"))
+
+
+def model_visible_context_digest(context: Mapping[str, object]) -> str:
+    """Hash exact model-visible context without its self field."""
+
+    return sha256_digest(_without_field(context, "context_sha256"))
+
+
+def runtime_failure_digest(failure: Mapping[str, object]) -> str:
+    """Hash a runtime Failure without its ``failure_sha256`` self field."""
+
+    return sha256_digest(_without_field(failure, "failure_sha256"))

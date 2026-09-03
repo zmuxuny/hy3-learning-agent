@@ -17,6 +17,20 @@ SCHEMA_FILENAMES = {
     "aggregate-result-v1": "aggregate-result-v1.schema.json",
     "aggregate-track-result-v1": "aggregate-track-result-v1.schema.json",
     "aggregate-run-manifest-v1": "aggregate-run-manifest-v1.schema.json",
+    "case-spec-v1": "case-spec-v1.schema.json",
+    "judge-reference-v1": "judge-reference-v1.schema.json",
+    "provider-attestation-v1": "provider-attestation-v1.schema.json",
+    "environment-manifest-v2": "environment-manifest-v2.schema.json",
+    "decision-episode-v3": "decision-episode-v3.schema.json",
+    "runtime-failure-v1": "runtime-failure-v1.schema.json",
+    "runtime-run-manifest-v2": "runtime-run-manifest-v2.schema.json",
+    "rule-result-v2": "rule-result-v2.schema.json",
+    "rule-run-manifest-v2": "rule-run-manifest-v2.schema.json",
+    "judge-result-v2": "judge-result-v2.schema.json",
+    "judge-run-manifest-v2": "judge-run-manifest-v2.schema.json",
+    "aggregate-result-v2": "aggregate-result-v2.schema.json",
+    "aggregate-track-result-v2": "aggregate-track-result-v2.schema.json",
+    "aggregate-run-manifest-v2": "aggregate-run-manifest-v2.schema.json",
 }
 
 

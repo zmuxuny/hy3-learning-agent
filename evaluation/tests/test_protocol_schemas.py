@@ -26,6 +26,20 @@ def test_committed_json_schemas_match_source_models() -> None:
         "aggregate-result-v1.schema.json",
         "aggregate-track-result-v1.schema.json",
         "aggregate-run-manifest-v1.schema.json",
+        "case-spec-v1.schema.json",
+        "judge-reference-v1.schema.json",
+        "provider-attestation-v1.schema.json",
+        "environment-manifest-v2.schema.json",
+        "decision-episode-v3.schema.json",
+        "runtime-failure-v1.schema.json",
+        "runtime-run-manifest-v2.schema.json",
+        "rule-result-v2.schema.json",
+        "rule-run-manifest-v2.schema.json",
+        "judge-result-v2.schema.json",
+        "judge-run-manifest-v2.schema.json",
+        "aggregate-result-v2.schema.json",
+        "aggregate-track-result-v2.schema.json",
+        "aggregate-run-manifest-v2.schema.json",
     }
     for filename, expected in generated.items():
         committed = json.loads((SCHEMA_ROOT / filename).read_text(encoding="utf-8"))
