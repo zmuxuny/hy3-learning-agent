@@ -6,12 +6,31 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 from .aggregate import AggregateEvaluationError, aggregate_results
+from .aggregate_v2 import AggregateEvaluationV2Error, aggregate_results_v2
 from .judge import JudgeEvaluationError, evaluate_judges
+from .judge_v2 import JudgeEvaluationV2Error, evaluate_judges_v2
 from .rule_runner import RuleEvaluationError, evaluate_run_rules
+from .rule_runner_v2 import RuleEvaluationV2Error, evaluate_run_rules_v2
 from .runner import RunAgentError, run_agent
+from .runner_v3 import RunAgentV3Error, run_agent_v3
 from .validator import validate_dataset
+
+
+def _document_version(path: str) -> str | None:
+    """Best-effort dispatch hint; selected runners still validate the document."""
+
+    try:
+        document = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    return str(document.get("schema_version")) if isinstance(document, dict) else None
+
+
+def _run_manifest_version(root: str) -> str | None:
+    return _document_version(str(Path(root) / "run-manifest.json"))
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -24,7 +43,7 @@ def _parser() -> argparse.ArgumentParser:
     validate.add_argument("--dataset", required=True)
     run = commands.add_parser(
         "run-agent",
-        help="run isolated Runtime fixtures and export DecisionEpisode v2",
+        help="run isolated CaseSpecs and export active DecisionEpisode v3 artifacts",
     )
     run.add_argument("--dataset", required=True)
     run.add_argument("--manifest", required=True)
@@ -38,7 +57,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--allow-real-model", action="store_true")
     rules = commands.add_parser(
         "evaluate-rules",
-        help="run E2 completeness and deterministic Rules over v2 Runtime output",
+        help="run deterministic Rules over active v3 Runtime output",
     )
     rules.add_argument("--input", required=True)
     rules.add_argument("--output", required=True)
@@ -49,7 +68,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     judge = commands.add_parser(
         "evaluate-judge",
-        help="run the E3 blind structured Judge over matched v2 and Rule artifacts",
+        help="run the blind structured Judge over matched v3 and Rule v2 artifacts",
     )
     judge.add_argument("--episodes", required=True)
     judge.add_argument("--rules", required=True)
@@ -64,7 +83,7 @@ def _parser() -> argparse.ArgumentParser:
     judge.add_argument("--stub-response")
     aggregate = commands.add_parser(
         "aggregate-results",
-        help="deterministically aggregate E3 Rule and Judge results",
+        help="deterministically aggregate active v3 Rule and Judge results",
     )
     aggregate.add_argument("--episodes", required=True)
     aggregate.add_argument("--rules", required=True)
@@ -93,14 +112,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"dataset_valid episodes={report.stats.episodes} tracks={counts}")
         return 0
     if arguments.command == "evaluate-rules":
+        active_v3 = _run_manifest_version(arguments.input) == "runtime-run-manifest-v2"
         try:
-            summary = evaluate_run_rules(
+            evaluator = evaluate_run_rules_v2 if active_v3 else evaluate_run_rules
+            summary = evaluator(
                 input_path=arguments.input,
                 output=arguments.output,
                 episode_ids=set(arguments.episode_id) or None,
                 track=arguments.track,
             )
-        except RuleEvaluationError as exc:
+        except (RuleEvaluationError, RuleEvaluationV2Error) as exc:
             print(
                 json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
                 file=sys.stderr,
@@ -113,6 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             "evaluate_rules_ok "
             f"episodes={len(summary.episode_ids)} tracks={track_counts} "
+            f"runtime_failures={len(getattr(summary, 'runtime_failure_ids', ()))} "
             f"failed_episodes={len(summary.failed_episode_ids)} "
             f"invalid_input_episodes={len(summary.invalid_episode_ids)} "
             f"hard_gate_episodes={len(summary.hard_gate_episode_ids)} "
@@ -124,8 +146,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
         return 3 if summary.failed_episode_ids else 0
     if arguments.command == "evaluate-judge":
+        active_v3 = (
+            _run_manifest_version(arguments.episodes) == "runtime-run-manifest-v2"
+        )
         try:
-            summary = evaluate_judges(
+            evaluator = evaluate_judges_v2 if active_v3 else evaluate_judges
+            summary = evaluator(
                 episodes=arguments.episodes,
                 rules=arguments.rules,
                 output=arguments.output,
@@ -135,7 +161,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 episode_ids=set(arguments.episode_id) or None,
                 track=arguments.track,
             )
-        except JudgeEvaluationError as exc:
+        except (JudgeEvaluationError, JudgeEvaluationV2Error) as exc:
             print(
                 json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
                 file=sys.stderr,
@@ -154,6 +180,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "evaluate_judge_ok "
             f"episodes={len(summary.episode_ids)} tracks={track_counts} "
             f"judge_mode={arguments.judge_mode} complete={complete} "
+            f"runtime_failures={len(getattr(summary, 'runtime_failure_ids', ()))} "
             f"invalid_input={len(summary.invalid_episode_ids)} "
             f"judge_errors={len(summary.judge_error_episode_ids)} "
             f"repairs={len(summary.repair_attempted_episode_ids)} "
@@ -163,8 +190,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         return 2 if summary.judge_error_episode_ids else 0
     if arguments.command == "aggregate-results":
+        active_v3 = _run_manifest_version(arguments.judges) == "judge-run-manifest-v2"
         try:
-            summary = aggregate_results(
+            aggregator = aggregate_results_v2 if active_v3 else aggregate_results
+            summary = aggregator(
                 episodes=arguments.episodes,
                 rules=arguments.rules,
                 judges=arguments.judges,
@@ -172,7 +201,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 episode_ids=set(arguments.episode_id) or None,
                 track=arguments.track,
             )
-        except AggregateEvaluationError as exc:
+        except (AggregateEvaluationError, AggregateEvaluationV2Error) as exc:
             print(
                 json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
                 file=sys.stderr,
@@ -185,6 +214,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             "aggregate_results_ok "
             f"episodes={len(summary.episode_ids)} tracks={track_counts} "
+            f"runtime_failures={len(getattr(summary, 'runtime_failure_ids', ()))} "
             f"failed={len(summary.failed_episode_ids)} "
             f"invalid_input={len(summary.invalid_episode_ids)} "
             f"judge_errors={len(summary.judge_error_episode_ids)} "
@@ -195,8 +225,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if summary.judge_error_episode_ids:
             return 2
         return 3 if summary.failed_episode_ids else 0
+    active_v3 = _document_version(arguments.manifest) == "case-suite-manifest-v1"
     try:
-        summary = run_agent(
+        runner = run_agent_v3 if active_v3 else run_agent
+        summary = runner(
             dataset=arguments.dataset,
             manifest=arguments.manifest,
             output=arguments.output,
@@ -205,17 +237,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             model_mode=arguments.model_mode,
             allow_real_model=arguments.allow_real_model,
         )
-    except RunAgentError as exc:
-        print(json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")), file=sys.stderr)
+    except (RunAgentError, RunAgentV3Error) as exc:
+        print(
+            json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
+            file=sys.stderr,
+        )
         return 1
     track_counts = ",".join(
-        f"{track}:{summary.tracks.count(track)}" for track in sorted(set(summary.tracks))
+        f"{track}:{summary.tracks.count(track)}"
+        for track in sorted(set(summary.tracks))
     )
     print(
         "run_agent_ok "
         f"episodes={len(summary.episode_ids)} tracks={track_counts} "
+        f"runtime_failures={len(getattr(summary, 'failure_ids', ()))} "
         f"invocation_mode={summary.invocation_mode} "
-        "formal_evaluation_result=false "
-        "evaluation_status=not_a_formal_model_evaluation"
+        f"formal_evaluation_result="
+        f"{str(getattr(summary, 'formal_evaluation_result', False)).lower()} "
+        f"evaluation_status="
+        f"{'formal_model_evaluation' if getattr(summary, 'formal_evaluation_result', False) else 'not_a_formal_model_evaluation'}"
     )
-    return 0
+    return 2 if getattr(summary, "failure_ids", ()) else 0
