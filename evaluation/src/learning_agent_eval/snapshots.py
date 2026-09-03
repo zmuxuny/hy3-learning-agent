@@ -415,7 +415,14 @@ _CONTAINER_ID_TYPES = {
     "submissions": "submission",
     "tasks": "task",
 }
-_PUBLIC_ID_FIELDS = {"call_id", "provider_id", "tool_call_id", "trigger_id"}
+_PUBLIC_ID_FIELDS = {
+    "call_id",
+    "parent_call_id",
+    "provider_id",
+    "provider_request_id",
+    "tool_call_id",
+    "trigger_id",
+}
 _TASK_EVENT_SOURCE = re.compile(r"^task:([^:]+):event:([^:]+)$")
 _OPERATION_UNDO_SOURCE = re.compile(r"^([^:]+):undo:(\d+):([^:]+)$")
 
@@ -465,13 +472,31 @@ async def _load_rows(
             if stage_ids
             else []
         )
+        owner_runs = await _rows(
+            db,
+            models.AgentRun,
+            models.AgentRun.owner_id == owner_id,
+        )
+        scoped_run_ids = {run_id}
+        while True:
+            descendants = {
+                row.id
+                for row in owner_runs
+                if row.parent_run_id in scoped_run_ids
+            }
+            expanded = scoped_run_ids | descendants
+            if expanded == scoped_run_ids:
+                break
+            scoped_run_ids = expanded
+        agent_runs = [row for row in owner_runs if row.id in scoped_run_ids]
+        ordered_run_ids = sorted(scoped_run_ids)
         outbox = await _rows(db, models.OutboxAction, models.OutboxAction.owner_id == owner_id)
         outbox_ids = [row.id for row in outbox]
         return {
             "learner": owners,
             "profiles": profiles,
             "session": sessions,
-            "agent_run": await _rows(db, models.AgentRun, models.AgentRun.id == run_id),
+            "agent_run": agent_runs,
             "context_snapshot": await _rows(
                 db, models.ContextSnapshot, models.ContextSnapshot.owner_id == owner_id
             ),
@@ -507,13 +532,25 @@ async def _load_rows(
                 db, models.LearningEvent, models.LearningEvent.owner_id == owner_id
             ),
             "tool_invocation": await _rows(
-                db, models.ToolInvocation, models.ToolInvocation.run_id == run_id
+                db,
+                models.ToolInvocation,
+                models.ToolInvocation.run_id.in_(ordered_run_ids),
             ),
             "run_approval": await _rows(
-                db, models.RunApproval, models.RunApproval.run_id == run_id
+                db,
+                models.RunApproval,
+                models.RunApproval.run_id.in_(ordered_run_ids),
             ),
-            "run_event": await _rows(db, models.RunEvent, models.RunEvent.run_id == run_id),
-            "operation": await _rows(db, models.Operation, models.Operation.run_id == run_id),
+            "run_event": await _rows(
+                db,
+                models.RunEvent,
+                models.RunEvent.run_id.in_(ordered_run_ids),
+            ),
+            "operation": await _rows(
+                db,
+                models.Operation,
+                models.Operation.run_id.in_(ordered_run_ids),
+            ),
             "proactive_decision": await _rows(
                 db,
                 models.ProactiveDecision,

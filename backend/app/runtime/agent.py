@@ -3,20 +3,22 @@ import json
 from datetime import datetime
 from types import SimpleNamespace
 
-from openai import AsyncOpenAI
-from sqlalchemy import select
-
 from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.context.provenance import canonical_digest
 from app.core.config import settings
+from app.core.prompt_envelope import ensure_request_fits
 from app.core.redaction import redact_data, redact_text
 from app.core.time import canonical_utc, utc_now
 from app.db.database import AsyncSessionLocal
-from app.db.uow import commit as commit_uow, flush as flush_uow, rollback as rollback_uow
+from app.db.uow import commit as commit_uow
+from app.db.uow import flush as flush_uow
+from app.db.uow import rollback as rollback_uow
 from app.models import AgentRun, ChatMessage, PlanProposal, Session
 from app.runtime.budget import (
     budget_reason as shared_budget_reason,
+)
+from app.runtime.budget import (
     default_budget,
     normalize_budget,
     record_model_usage,
@@ -26,8 +28,11 @@ from app.runtime.budget import (
 )
 from app.runtime.checkpoints import make_checkpoint, normalize_checkpoint
 from app.runtime.events import emit_event, publish_stream_event
+from app.runtime.model_clients import (
+    create_model_client,
+    model_call_scope,
+)
 from app.runtime.prompt import SYSTEM_PROMPT
-from app.core.prompt_envelope import ensure_request_fits
 from app.runtime.retry import is_transient_model_error
 from app.runtime.session_titles import generate_session_title, initial_session_title
 from app.runtime.state import (
@@ -46,6 +51,7 @@ from app.runtime.state import (
     terminate_run,
 )
 from app.runtime.tasks import start_tracked_task
+from sqlalchemy import select
 
 
 class AgentModelTimeout(RuntimeError):
@@ -225,7 +231,7 @@ async def _proposal_snapshot(proposal_id: str) -> dict | None:
 
 class AgentRuntime:
     def __init__(self):
-        self.client: AsyncOpenAI | None = None
+        self.client = None
 
     async def run(
         self,
@@ -253,10 +259,7 @@ class AgentRuntime:
                     if not settings.OPENAI_API_KEY:
                         raise RuntimeError("OPENAI_API_KEY is not configured")
                     if self.client is None:
-                        self.client = AsyncOpenAI(
-                            api_key=settings.OPENAI_API_KEY,
-                            base_url=settings.OPENAI_API_BASE,
-                        )
+                        self.client = create_model_client()
                     checkpoint = normalize_checkpoint(
                         lease.checkpoint,
                         kind="subagent" if run.trigger == "subagent" else "agent",
@@ -815,14 +818,28 @@ class AgentRuntime:
             # Release the read snapshot before the optional title provider.
             # The title write is committed only after the external wait ends.
             await commit_uow(db)
-            await generate_session_title(
-                stored_session,
-                objective=stored_run.objective,
-                answer=stored_run.output,
-                client=self.client,
-            )
+            with model_call_scope(
+                run_id=run.id,
+                parent_run_id=run.parent_run_id,
+                call_purpose="session_title",
+                decision_relevant=False,
+                depth=0 if run.parent_run_id is None else 1,
+            ):
+                await generate_session_title(
+                    stored_session,
+                    objective=stored_run.objective,
+                    answer=stored_run.output,
+                    client=self.client,
+                )
             await commit_uow(db)
-            await MemoryManager(db).compress_session(stored_session, self.client)
+            with model_call_scope(
+                run_id=run.id,
+                parent_run_id=run.parent_run_id,
+                call_purpose="memory_compression",
+                decision_relevant=False,
+                depth=0 if run.parent_run_id is None else 1,
+            ):
+                await MemoryManager(db).compress_session(stored_session, self.client)
             await commit_uow(db)
 
     async def _call_model(self, db, run: AgentRun, messages: list[dict], failure_guard: ToolFailureGuard, step: int):
@@ -860,28 +877,35 @@ class AgentRuntime:
         if model_tools:
             request.update({"tools": model_tools, "tool_choice": "auto"})
         try:
-            try:
-                response = await asyncio.wait_for(
-                    self.client.chat.completions.create(
-                        **request,
-                        stream=True,
-                        stream_options={"include_usage": True},
-                    ),
-                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-                )
-            except Exception as stream_exc:
-                if "stream_options" not in str(stream_exc):
-                    raise
-                response = await asyncio.wait_for(
-                    self.client.chat.completions.create(**request, stream=True),
-                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-                )
-            if hasattr(response, "__aiter__"):
-                return await asyncio.wait_for(
-                    self._drain_stream(response, run, step),
-                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-                )
-            return response.choices[0].message, getattr(response, "usage", None)
+            with model_call_scope(
+                run_id=run.id,
+                parent_run_id=run.parent_run_id,
+                call_purpose="decision",
+                decision_relevant=True,
+                depth=0 if run.parent_run_id is None else 1,
+            ):
+                try:
+                    response = await asyncio.wait_for(
+                        self.client.chat.completions.create(
+                            **request,
+                            stream=True,
+                            stream_options={"include_usage": True},
+                        ),
+                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                    )
+                except Exception as stream_exc:
+                    if "stream_options" not in str(stream_exc):
+                        raise
+                    response = await asyncio.wait_for(
+                        self.client.chat.completions.create(**request, stream=True),
+                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                    )
+                if hasattr(response, "__aiter__"):
+                    return await asyncio.wait_for(
+                        self._drain_stream(response, run, step),
+                        timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                    )
+                return response.choices[0].message, getattr(response, "usage", None)
         except TimeoutError as exc:
             raise AgentModelTimeout("模型响应超时") from exc
         except Exception as exc:

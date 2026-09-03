@@ -19,7 +19,6 @@ from learning_agent_eval.isolation import (
 from learning_agent_eval.privacy import privacy_issues
 from learning_agent_eval.recorder import (
     EvaluationModelRecorder,
-    RecorderPrivacyError,
     public_projection,
 )
 from learning_agent_eval.resources import EvaluationSnapshotProvider
@@ -410,9 +409,6 @@ def test_isolation_guard_rejects_synthetic_env_and_database_canaries(
         ({"government_id": "synthetic"}, "privacy.personal_identifier_field"),
         ({"chain-of-thought": "private"}, "privacy.private_reasoning"),
         ({"internal-analysis": "private"}, "privacy.private_reasoning"),
-        ({"note": "reasoning"}, "privacy.private_reasoning_value"),
-        ({"note": "chain of thought"}, "privacy.private_reasoning_value"),
-        ({"note": "思维链"}, "privacy.private_reasoning_value"),
     ],
 )
 def test_e1_publication_reuses_strict_e0_privacy(
@@ -420,6 +416,16 @@ def test_e1_publication_reuses_strict_e0_privacy(
     code: str,
 ) -> None:
     assert code in {issue.code for issue in privacy_issues(payload)}
+
+
+@pytest.mark.parametrize(
+    "business_text",
+    ["reasoning", "chain of thought", "思维链", "推理过程"],
+)
+def test_privacy_does_not_treat_normal_business_vocabulary_as_private_work(
+    business_text: str,
+) -> None:
+    assert privacy_issues({"note": business_text}) == []
 
 
 def test_cli_failure_is_nonzero_and_structured(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -492,7 +498,7 @@ async def test_recorder_preserves_stream_chunks_and_nonstream_response_identity(
     assert response is fixed.response
     assert recorder.records[0]["visible_messages"][0] == {
         "role": "system",
-        "content": "[system prompt body omitted; see version and digest]",
+        "content": "public system",
     }
     assert recorder.records[0]["system_prompt"]["digest"] == sha256_digest(
         "public system"
@@ -510,14 +516,14 @@ async def test_recorder_preserves_stream_chunks_and_nonstream_response_identity(
 
 
 @pytest.mark.asyncio
-async def test_recorder_fails_closed_on_private_work_terms_in_public_text() -> None:
+async def test_recorder_preserves_public_discussion_of_reasoning_terms() -> None:
     class FixedCompletions:
         async def create(self, **_: Any) -> Any:
             return SimpleNamespace(
                 choices=[
                     SimpleNamespace(
                         message=SimpleNamespace(
-                            content="private chain of thought",
+                            content="A lesson discusses reasoning and 推理过程.",
                             tool_calls=None,
                         )
                     )
@@ -528,8 +534,10 @@ async def test_recorder_fails_closed_on_private_work_terms_in_public_text() -> N
         SimpleNamespace(chat=SimpleNamespace(completions=FixedCompletions())),
         invocation_mode="stub",
     )
-    with pytest.raises(RecorderPrivacyError, match="public projection"):
-        await recorder.chat.completions.create(messages=[], tools=[])
+    await recorder.chat.completions.create(messages=[], tools=[])
+    assert recorder.records[0]["assistant_text"] == (
+        "A lesson discusses reasoning and 推理过程."
+    )
 
 
 def test_recorder_projection_never_reads_private_reasoning_values() -> None:

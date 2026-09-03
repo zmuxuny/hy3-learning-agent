@@ -18,11 +18,11 @@ from app.db.uow import flush as flush_uow
 from app.models import AgentRun, PlanningIntake, PlanProposal, RunEvent, Session
 from app.runtime.checkpoints import make_checkpoint
 from app.runtime.events import emit_event
+from app.runtime.model_clients import create_model_client
 from app.runtime.tasks import start_tracked_task
 from app.schemas import PlanCreate
 from app.services.plans import plan_completeness_issues
 from app.tools.base import EmptyArgs, ToolContext, ToolDefinition, ToolEffectKind
-from openai import AsyncOpenAI
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
@@ -242,10 +242,7 @@ async def _run_planning_child(
         context=context,
         allowlist=_planning_allowlist(),
         max_steps=4,
-        client_factory=lambda: AsyncOpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            base_url=settings.OPENAI_API_BASE,
-        ),
+        client_factory=create_model_client,
     )
 
 

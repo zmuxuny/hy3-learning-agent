@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from typing import Any
 
 from .canonical import canonical_json, sha256_digest
@@ -12,9 +13,6 @@ from .privacy import is_private_reasoning_field, privacy_issues
 
 class RecorderPrivacyError(RuntimeError):
     """A projected public record failed the existing E0 privacy boundary."""
-
-
-_SYSTEM_MESSAGE_MARKER = "[system prompt body omitted; see version and digest]"
 
 
 def public_projection(value: object) -> object:
@@ -65,6 +63,12 @@ class _RecordedStream:
         except StopAsyncIteration:
             self._recorder._finish_stream(self._pending)
             raise
+        except asyncio.CancelledError:
+            self._recorder._finish_error(self._pending, status="cancelled")
+            raise
+        except Exception:
+            self._recorder._finish_error(self._pending, status="provider_error")
+            raise
         self._recorder._observe_chunk(self._pending, chunk)
         return chunk
 
@@ -76,10 +80,17 @@ class _CompletionsDecorator:
 
     async def create(self, **request: Any) -> Any:
         pending = self._recorder._begin(request)
-        response = await self._delegate.create(**request)
+        try:
+            response = await self._delegate.create(**request)
+        except asyncio.CancelledError:
+            self._recorder._finish_error(pending, status="cancelled")
+            raise
+        except Exception:
+            self._recorder._finish_error(pending, status="provider_error")
+            raise
         if hasattr(response, "__aiter__"):
             return _RecordedStream(response.__aiter__(), self._recorder, pending)
-        self._recorder._finish_message(pending, response.choices[0].message)
+        self._recorder._finish_message(pending, response)
         return response
 
 
@@ -91,35 +102,52 @@ class _ChatDecorator:
 class EvaluationModelRecorder:
     """OpenAI-compatible client decorator with a deliberately narrow projection."""
 
-    def __init__(self, client: Any, *, invocation_mode: str):
+    def __init__(
+        self,
+        client: Any,
+        *,
+        invocation_mode: str,
+        metadata_provider: Callable[[], object | None] | None = None,
+    ):
         if invocation_mode not in {"stub", "real"}:
             raise ValueError("invocation_mode must be stub or real")
         self.chat = _ChatDecorator(self, client.chat)
         self.invocation_mode = invocation_mode
+        self._metadata_provider = metadata_provider
         self.records: list[dict[str, Any]] = []
 
     def _begin(self, request: Mapping[str, Any]) -> dict[str, Any]:
         projected_messages = public_projection(request.get("messages") or [])
         tools = public_projection(request.get("tools") or [])
         system_text = ""
-        visible_messages: list[object] = []
         if isinstance(projected_messages, list):
             for message in projected_messages:
                 if isinstance(message, dict) and message.get("role") == "system":
                     system_text = str(message.get("content") or "")
-                    visible_messages.append(
-                        {"role": "system", "content": _SYSTEM_MESSAGE_MARKER}
-                    )
-                    continue
-                visible_messages.append(message)
+        visible_messages = projected_messages if isinstance(projected_messages, list) else []
         allowlist = [
             str(tool.get("function", {}).get("name", ""))
             for tool in tools
             if isinstance(tool, dict)
         ] if isinstance(tools, list) else []
+        ordinal = len(self.records) + 1
+        metadata = self._metadata_provider() if self._metadata_provider else None
         pending = {
-            "ordinal": len(self.records) + 1,
+            "call_id": f"model-call:{ordinal:03d}",
+            "ordinal": ordinal,
+            "run_id": str(getattr(metadata, "run_id", "unscoped-run")),
+            "parent_run_id": getattr(metadata, "parent_run_id", None),
+            "parent_call_id": getattr(metadata, "parent_call_id", None),
+            "depth": int(getattr(metadata, "depth", 0)),
+            "call_purpose": str(getattr(metadata, "call_purpose", "decision")),
+            "decision_relevant": bool(
+                getattr(metadata, "decision_relevant", True)
+            ),
             "visible_messages": visible_messages,
+            "visible_tool_schemas": tools,
+            "visible_context_digest": sha256_digest(
+                {"messages": visible_messages, "tool_schemas": tools}
+            ),
             "visible_input_digest": sha256_digest(visible_messages),
             "system_prompt": {
                 "version": "agent-system-prompt-v1",
@@ -131,6 +159,21 @@ class EvaluationModelRecorder:
             },
             "assistant_text": "",
             "function_calls": [],
+            "request_model": str(request.get("model") or "unspecified-model"),
+            "request_config": {
+                "temperature": request.get("temperature"),
+                "max_tokens": request.get("max_tokens"),
+                "effort_setting": (
+                    request.get("extra_body", {}).get("reasoning_effort")
+                    if isinstance(request.get("extra_body"), Mapping)
+                    else None
+                ),
+                "stream": bool(request.get("stream", False)),
+            },
+            "response_model": None,
+            "provider_request_id": None,
+            "response_status": "pending",
+            "response_digest": None,
             "invocation_mode": self.invocation_mode,
             "_stream_calls": {},
         }
@@ -138,6 +181,10 @@ class EvaluationModelRecorder:
         return pending
 
     def _observe_chunk(self, pending: dict[str, Any], chunk: Any) -> None:
+        if getattr(chunk, "model", None):
+            pending["response_model"] = str(chunk.model)
+        if getattr(chunk, "id", None):
+            pending["provider_request_id"] = str(chunk.id)
         choices = getattr(chunk, "choices", None) or []
         if not choices:
             return
@@ -179,14 +226,39 @@ class EvaluationModelRecorder:
                 }
             )
         pending["function_calls"] = calls
+        pending["response_status"] = "completed"
+        pending["response_digest"] = sha256_digest(
+            {
+                "assistant_text": pending["assistant_text"],
+                "function_calls": pending["function_calls"],
+            }
+        )
         self._publish(pending)
 
-    def _finish_message(self, pending: dict[str, Any], message: Any) -> None:
+    def _finish_message(self, pending: dict[str, Any], response: Any) -> None:
         pending.pop("_stream_calls")
+        message = response.choices[0].message
         pending["assistant_text"] = str(getattr(message, "content", None) or "")
         pending["function_calls"] = [
             _tool_call(call) for call in (getattr(message, "tool_calls", None) or [])
         ]
+        if getattr(response, "model", None):
+            pending["response_model"] = str(response.model)
+        if getattr(response, "id", None):
+            pending["provider_request_id"] = str(response.id)
+        pending["response_status"] = "completed"
+        pending["response_digest"] = sha256_digest(
+            {
+                "assistant_text": pending["assistant_text"],
+                "function_calls": pending["function_calls"],
+            }
+        )
+        self._publish(pending)
+
+    def _finish_error(self, pending: dict[str, Any], *, status: str) -> None:
+        pending.pop("_stream_calls", None)
+        pending["response_status"] = status
+        pending["response_digest"] = None
         self._publish(pending)
 
     def _publish(self, record: dict[str, Any]) -> None:

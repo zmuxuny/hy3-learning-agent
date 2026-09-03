@@ -583,7 +583,7 @@ async def test_planning_delegate_child_has_checkpoint_before_model_wait(monkeypa
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=BlockingCompletions())
 
-    monkeypatch.setattr(planning_tools, "AsyncOpenAI", BlockingClient)
+    monkeypatch.setattr(planning_tools, "create_model_client", BlockingClient)
 
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="规划子 Run 检查点")
@@ -654,7 +654,7 @@ async def test_planning_delegate_child_uses_unified_durable_claim(monkeypatch):
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=completions)
 
-    monkeypatch.setattr(planning_tools, "AsyncOpenAI", BlockingClient)
+    monkeypatch.setattr(planning_tools, "create_model_client", BlockingClient)
     assignment = planning_tools.PlanningAssignment(
         role="课程调查",
         objective="验证统一子 Run claim",
@@ -724,7 +724,7 @@ async def test_terminal_child_repairs_missing_parent_completion_event(monkeypatc
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=completions)
 
-    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", ChildClient)
+    monkeypatch.setattr(subagent_tools, "create_model_client", ChildClient)
 
     async with AsyncSessionLocal() as db:
         parent = AgentRun(
@@ -796,7 +796,7 @@ async def test_subagent_retries_transient_model_failure(monkeypatch):
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=completions)
 
-    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", FlakyChildClient)
+    monkeypatch.setattr(subagent_tools, "create_model_client", FlakyChildClient)
 
     async with AsyncSessionLocal() as db:
         parent = AgentRun(
@@ -858,7 +858,7 @@ async def test_subagent_persists_model_tool_and_elapsed_budget(monkeypatch):
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=completions)
 
-    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", BudgetChildClient)
+    monkeypatch.setattr(subagent_tools, "create_model_client", BudgetChildClient)
 
     async with AsyncSessionLocal() as db:
         parent = AgentRun(

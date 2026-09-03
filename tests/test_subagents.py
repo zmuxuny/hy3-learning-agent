@@ -69,7 +69,7 @@ async def test_subagent_spawn_status_and_join_return_report(monkeypatch):
                 final_message("调研结论：优先使用官方教程，并安排一次动手实验。"),
             ]))
 
-    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", FakeClient)
+    monkeypatch.setattr(subagent_tools, "create_model_client", FakeClient)
     async with AsyncSessionLocal() as db:
         parent = AgentRun(owner_id="local", trigger="user_message", objective="调研资源")
         db.add(parent)
@@ -131,7 +131,7 @@ async def test_subagent_allowlist_never_exposes_write_tools(monkeypatch):
                     final_message("写工具被拒绝，我只返回建议。"),
                 ]))
 
-        monkeypatch.setattr(subagent_tools, "AsyncOpenAI", FakeClient)
+        monkeypatch.setattr(subagent_tools, "create_model_client", FakeClient)
         spawned = await execute_tool(
             "subagent_spawn",
             json.dumps({"role": "受限调查", "objective": "尝试修改计划", "tool_whitelist": ["plan_get", "plan_patch"]}),
@@ -177,7 +177,7 @@ async def test_subagent_cancel_stops_child(monkeypatch):
                 cleanup_started.set()
                 await release_cleanup.wait()
 
-    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", SlowClient)
+    monkeypatch.setattr(subagent_tools, "create_model_client", SlowClient)
     async with AsyncSessionLocal() as db:
         parent = AgentRun(owner_id="local", trigger="user_message", objective="取消子任务")
         db.add(parent)
@@ -268,7 +268,7 @@ async def test_subagent_failure_reaches_terminal_state_and_notifies_parent(monke
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=BrokenCompletions())
 
-    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", BrokenClient)
+    monkeypatch.setattr(subagent_tools, "create_model_client", BrokenClient)
     async with AsyncSessionLocal() as db:
         parent = AgentRun(owner_id="local", trigger="user_message", objective="验证失败收口")
         db.add(parent)
@@ -305,7 +305,7 @@ async def test_checkpointed_subagent_resumes_with_its_own_runtime(monkeypatch):
                 final_message("恢复后的调查结论。"),
             ]))
 
-    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", FakeClient)
+    monkeypatch.setattr(subagent_tools, "create_model_client", FakeClient)
     async with AsyncSessionLocal() as db:
         parent = AgentRun(owner_id="local", trigger="user_message", objective="恢复父任务")
         db.add(parent)
@@ -360,7 +360,7 @@ async def test_subagent_reserves_a_tools_disabled_turn_for_final_report(monkeypa
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=completions)
 
-    monkeypatch.setattr(subagent_tools, "AsyncOpenAI", ResearchClient)
+    monkeypatch.setattr(subagent_tools, "create_model_client", ResearchClient)
     async with AsyncSessionLocal() as db:
         parent = AgentRun(owner_id="local", trigger="user_message", objective="持续调用工具的调查")
         db.add(parent)

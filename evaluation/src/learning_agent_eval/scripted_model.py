@@ -61,11 +61,13 @@ def _usage() -> Any:
 class _Completions:
     def __init__(self, turns: list[dict[str, Any]]):
         self._turns = list(turns)
+        self._ordinal = 0
 
     async def create(self, **request: Any) -> Any:
         del request
         if not self._turns:
             raise ScriptExhaustedError("scripted model has no remaining turn")
+        self._ordinal += 1
         turn = self._turns.pop(0)
         calls = [
             _ToolCall(item["call_id"], item["name"], item["arguments"])
@@ -78,7 +80,12 @@ class _Completions:
                 reasoning_content=_PRIVATE_SENTINEL,
                 tool_calls=calls or None,
             )
-            return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=_usage())
+            return SimpleNamespace(
+                id=f"stub-response-{self._ordinal:03d}",
+                model="e1-scripted-model",
+                choices=[SimpleNamespace(message=message)],
+                usage=_usage(),
+            )
         delta_calls = [
             SimpleNamespace(index=index, id=call.id, function=call.function)
             for index, call in enumerate(calls)
@@ -90,8 +97,18 @@ class _Completions:
         )
         return _Stream(
             [
-                SimpleNamespace(choices=[SimpleNamespace(delta=delta)], usage=None),
-                SimpleNamespace(choices=[], usage=_usage()),
+                SimpleNamespace(
+                    id=f"stub-response-{self._ordinal:03d}",
+                    model="e1-scripted-model",
+                    choices=[SimpleNamespace(delta=delta)],
+                    usage=None,
+                ),
+                SimpleNamespace(
+                    id=f"stub-response-{self._ordinal:03d}",
+                    model="e1-scripted-model",
+                    choices=[],
+                    usage=_usage(),
+                ),
             ]
         )
 

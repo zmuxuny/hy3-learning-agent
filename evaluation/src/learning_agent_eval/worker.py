@@ -256,6 +256,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
     app_config = import_module("app.core.config")
     database = import_module("app.db.database")
     agent_module = import_module("app.runtime.agent")
+    model_clients = import_module("app.runtime.model_clients")
 
     frozen = datetime.fromisoformat(fixture["frozen_time"].replace("Z", "+00:00"))
     frozen_timestamp = normalize_rfc3339(fixture["frozen_time"])
@@ -285,9 +286,13 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
                 api_key=app_config.settings.OPENAI_API_KEY,
                 base_url=app_config.settings.OPENAI_API_BASE,
             )
-        recorder = EvaluationModelRecorder(client, invocation_mode=request["model_mode"])
+        recorder = EvaluationModelRecorder(
+            client,
+            invocation_mode=request["model_mode"],
+            metadata_provider=model_clients.current_model_call_metadata,
+        )
+        stack.enter_context(model_clients.use_model_client_factory(lambda: recorder))
         runtime = agent_module.AgentRuntime()
-        runtime.client = recorder
         await runtime.run(fixture["run_id"])
         if request["model_mode"] == "stub" and client.remaining_turns != 0:
             raise WorkerFailure("script_not_consumed", "runtime", "Runtime did not consume the scripted turns")
@@ -328,9 +333,10 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
                 **{
                     key: value
                     for key, value in record.items()
-                    if key != "visible_messages"
+                    if key not in {"visible_messages", "visible_tool_schemas"}
                 },
                 "visible_messages_omitted": True,
+                "visible_tool_schemas_omitted": True,
             }
             for record in recorder.records
         ]
@@ -358,7 +364,12 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
         episode = build_decision_episode_v2(
             fixture=fixture,
             oracle=oracle,
-            model_records=recorder.records,
+            model_records=[
+                record
+                for record in recorder.records
+                if record["decision_relevant"]
+                and record["response_status"] == "completed"
+            ],
             state_before=before_capture.document,
             state_after=after_capture.document,
             state_delta=delta,

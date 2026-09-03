@@ -3,9 +3,6 @@ from __future__ import annotations
 import asyncio
 from uuid import NAMESPACE_URL, uuid5
 
-from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
-
 from app.context import ContextAssembler
 from app.core.config import settings
 from app.core.trust import project_child_result_authority
@@ -14,7 +11,8 @@ from app.db.uow import commit as commit_uow
 from app.models import AgentRun
 from app.runtime.checkpoints import make_checkpoint
 from app.runtime.events import emit_event
-from app.runtime.tasks import cancel_and_wait_tracked_task, start_tracked_task
+from app.runtime.model_clients import create_model_client
+from app.runtime.state import terminate_run
 from app.runtime.subagents import (
     READ_ONLY_TOOL_NAMES,
     SUBAGENT_SYSTEM_PROMPT,
@@ -22,8 +20,9 @@ from app.runtime.subagents import (
     subagent_user_prefix,
     wait_for_child,
 )
-from app.runtime.state import terminate_run
+from app.runtime.tasks import cancel_and_wait_tracked_task, start_tracked_task
 from app.tools.base import ToolContext, ToolDefinition, ToolEffectKind
+from pydantic import BaseModel, Field
 
 
 class SubagentSpawnArgs(BaseModel):
@@ -116,10 +115,7 @@ async def _run_child_async(
         context=context,
         allowlist=allowlist,
         max_steps=max_steps,
-        client_factory=lambda: AsyncOpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            base_url=settings.OPENAI_API_BASE,
-        ),
+        client_factory=create_model_client,
     )
 
 

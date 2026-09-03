@@ -86,15 +86,6 @@ _IDENTITY_PATTERNS = (
     re.compile(r"(?<!\d)\d{17}[0-9Xx](?!\d)"),
 )
 _SHA256_VALUE = re.compile(r"^[0-9a-f]{64}$")
-_PRIVATE_REASONING_VALUE_PATTERNS = (
-    re.compile(r"(?i)\breasoning(?:[_ -]content)?\b"),
-    re.compile(r"(?i)\bchain[-_ ]of[-_ ]thought\b"),
-    re.compile(
-        r"(?i)\b(?:internal|private)[-_ ](?:analysis|deliberation|thoughts?)\b"
-    ),
-    re.compile(r"(?i)\b(?:scratchpad|thought[-_ ]process)\b"),
-    re.compile(r"思维链|推理过程|内部推理"),
-)
 _RESERVED_EMAIL_DOMAINS = {
     "example.com",
     "example.net",
@@ -198,15 +189,6 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
             return
         if not isinstance(item, str):
             return
-        if any(pattern.search(item) for pattern in _PRIVATE_REASONING_VALUE_PATTERNS):
-            issues.append(
-                ValidationIssue(
-                    code="privacy.private_reasoning_value",
-                    path=path,
-                    message="Private model-work text is prohibited.",
-                    file=file,
-                )
-            )
         if any(pattern.search(item) for pattern in _SECRET_PATTERNS):
             issues.append(
                 ValidationIssue(

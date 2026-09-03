@@ -1300,7 +1300,7 @@ async def test_planning_delegate_creates_joined_child_runs(monkeypatch):
         def __init__(self, **_kwargs):
             self.chat = SimpleNamespace(completions=SpecialistCompletions())
 
-    monkeypatch.setattr(planning_tools, "AsyncOpenAI", SpecialistClient)
+    monkeypatch.setattr(planning_tools, "create_model_client", SpecialistClient)
     async with AsyncSessionLocal() as db:
         session = Session(owner_id="local", title="子 Agent 规划")
         db.add(session)

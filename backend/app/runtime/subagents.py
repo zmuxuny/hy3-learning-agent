@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Awaitable, Callable
-
-from sqlalchemy import select
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from app.core.config import settings
+from app.core.prompt_envelope import ensure_request_fits
 from app.db.database import AsyncSessionLocal
 from app.db.uow import rollback as rollback_uow
 from app.models import AgentRun
@@ -18,9 +18,9 @@ from app.runtime.budget import (
     reserve_model_call,
     reserve_tool_call,
 )
-from app.core.prompt_envelope import ensure_request_fits
 from app.runtime.checkpoints import make_checkpoint, normalize_checkpoint
 from app.runtime.events import emit_event
+from app.runtime.model_clients import model_call_scope
 from app.runtime.retry import is_transient_model_error
 from app.runtime.state import (
     RunLeaseLostError,
@@ -32,7 +32,7 @@ from app.runtime.state import (
     terminate_run,
 )
 from app.runtime.tasks import cancel_and_wait_tracked_task
-
+from sqlalchemy import select
 
 READ_ONLY_TOOL_NAMES: set[str] = {
     "profile_get",
@@ -204,18 +204,27 @@ async def run_restricted_child(
             ensure_request_fits(messages=messages, tools=schemas)
             reserve_model_call(budget)
             await save_checkpoint("awaiting_model")
-            response = await asyncio.wait_for(
-                client.chat.completions.create(
-                    model=settings.MODEL_NAME,
-                    messages=messages,
-                    tools=schemas,
-                    tool_choice="auto",
-                    temperature=settings.MODEL_TEMPERATURE,
-                    max_tokens=settings.AGENT_OUTPUT_TOKEN_RESERVE,
-                    extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
-                ),
-                timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-            )
+            with model_call_scope(
+                run_id=child.id,
+                parent_run_id=getattr(child, "parent_run_id", None),
+                call_purpose="subagent_decision",
+                decision_relevant=True,
+                depth=1,
+            ):
+                response = await asyncio.wait_for(
+                    client.chat.completions.create(
+                        model=settings.MODEL_NAME,
+                        messages=messages,
+                        tools=schemas,
+                        tool_choice="auto",
+                        temperature=settings.MODEL_TEMPERATURE,
+                        max_tokens=settings.AGENT_OUTPUT_TOKEN_RESERVE,
+                        extra_body={
+                            "reasoning_effort": settings.MODEL_REASONING_EFFORT
+                        },
+                    ),
+                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                )
             message = response.choices[0].message
             usage = getattr(response, "usage", None)
             record_model_usage(budget, usage)
@@ -335,16 +344,25 @@ async def run_restricted_child(
             ensure_request_fits(messages=synthesis_messages, tools=[])
             reserve_model_call(budget)
             await save_checkpoint("awaiting_model")
-            response = await asyncio.wait_for(
-                client.chat.completions.create(
-                    model=settings.MODEL_NAME,
-                    messages=synthesis_messages,
-                    temperature=settings.MODEL_TEMPERATURE,
-                    max_tokens=settings.AGENT_OUTPUT_TOKEN_RESERVE,
-                    extra_body={"reasoning_effort": settings.MODEL_REASONING_EFFORT},
-                ),
-                timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-            )
+            with model_call_scope(
+                run_id=child.id,
+                parent_run_id=getattr(child, "parent_run_id", None),
+                call_purpose="subagent_synthesis",
+                decision_relevant=True,
+                depth=1,
+            ):
+                response = await asyncio.wait_for(
+                    client.chat.completions.create(
+                        model=settings.MODEL_NAME,
+                        messages=synthesis_messages,
+                        temperature=settings.MODEL_TEMPERATURE,
+                        max_tokens=settings.AGENT_OUTPUT_TOKEN_RESERVE,
+                        extra_body={
+                            "reasoning_effort": settings.MODEL_REASONING_EFFORT
+                        },
+                    ),
+                    timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
+                )
             record_model_usage(budget, getattr(response, "usage", None))
             final_text = (response.choices[0].message.content or "").strip()
     final_text = final_text or "子 Agent 已完成调查，但模型没有生成最终报告。"

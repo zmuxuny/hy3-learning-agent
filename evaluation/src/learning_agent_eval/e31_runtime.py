@@ -1,0 +1,240 @@
+"""Deterministic v3 trajectory, attribution, and terminal artifact builders."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
+
+from .canonical import sha256_digest
+from .integrity import (
+    artifact_manifest_digest,
+    model_visible_context_digest,
+    provider_attestation_digest,
+    runtime_failure_digest,
+)
+from .models import (
+    ModelCallV3,
+    ProviderAttestationV1,
+    RuntimeFailureV1,
+    RuntimeRunManifestV2,
+)
+
+
+class E31RuntimeArtifactError(ValueError):
+    """A recorded call cannot be represented without guessing."""
+
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
+
+
+def _message_projection(message: object, ordinal: int) -> dict[str, object]:
+    if not isinstance(message, Mapping):
+        raise E31RuntimeArtifactError("trajectory.message_not_object")
+    role = message.get("role")
+    if role not in {"system", "developer", "user", "assistant", "tool"}:
+        raise E31RuntimeArtifactError("trajectory.message_role_invalid")
+    payload = {str(key): value for key, value in message.items() if key != "role"}
+    return {"ordinal": ordinal, "role": role, "payload": payload}
+
+
+def build_model_calls_v3(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    normalize_run_id: Callable[[str], str] | None = None,
+) -> list[dict[str, Any]]:
+    """Build a strict hierarchical trace from the public recorder projection."""
+
+    normalize = normalize_run_id or (lambda value: value)
+    calls: list[dict[str, Any]] = []
+    for ordinal, record in enumerate(records, 1):
+        if record.get("ordinal") != ordinal:
+            raise E31RuntimeArtifactError("trajectory.call_order_invalid")
+        raw_run_id = str(record.get("run_id") or "")
+        if not raw_run_id or raw_run_id == "unscoped-run":
+            raise E31RuntimeArtifactError("trajectory.call_scope_missing")
+        raw_parent = record.get("parent_run_id")
+        messages = [
+            _message_projection(message, index)
+            for index, message in enumerate(record.get("visible_messages") or [], 1)
+        ]
+        tools = record.get("visible_tool_schemas") or []
+        if not isinstance(tools, list):
+            raise E31RuntimeArtifactError("trajectory.tool_schemas_invalid")
+        context = {
+            "context_version": "model-visible-context-v1",
+            "messages": messages,
+            "tool_schemas": tools,
+            "context_sha256": "0" * 64,
+        }
+        context["context_sha256"] = model_visible_context_digest(context)
+        function_calls = record.get("function_calls") or []
+        if not isinstance(function_calls, list):
+            raise E31RuntimeArtifactError("trajectory.function_calls_invalid")
+        status = str(record.get("response_status") or "")
+        if status not in {"completed", "provider_error", "framework_error", "cancelled"}:
+            raise E31RuntimeArtifactError("trajectory.response_status_invalid")
+        call = {
+            "call_id": str(record.get("call_id") or f"model-call:{ordinal:03d}"),
+            "ordinal": ordinal,
+            "run_id": normalize(raw_run_id),
+            "parent_run_id": normalize(str(raw_parent)) if raw_parent is not None else None,
+            "parent_call_id": record.get("parent_call_id"),
+            "depth": int(record.get("depth") or 0),
+            "call_purpose": str(record.get("call_purpose") or ""),
+            "decision_relevant": bool(record.get("decision_relevant")),
+            "visible_context": context,
+            "request_model": str(record.get("request_model") or "unspecified-model"),
+            "assistant_text": (
+                str(record.get("assistant_text") or "") if status == "completed" else None
+            ),
+            "tool_call_refs": [
+                str(item.get("call_id"))
+                for item in function_calls
+                if isinstance(item, Mapping) and item.get("call_id")
+            ],
+            "status": status,
+            "response_sha256": record.get("response_digest"),
+        }
+        calls.append(ModelCallV3.model_validate(call).model_dump(mode="json"))
+    return calls
+
+
+def build_stub_provider_attestation(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    scope: str,
+    configured_model: str,
+    frozen_time: str,
+    git_commit: str,
+    dependency_lock_version: str,
+    dependency_lock_sha256: str,
+    endpoint_policy_version: str,
+    endpoint_policy_sha256: str,
+) -> dict[str, Any]:
+    """Describe a fixed stub honestly; it can never receive formal status."""
+
+    calls = []
+    for record in records:
+        status = str(record.get("response_status") or "framework_error")
+        if status not in {"completed", "provider_error", "framework_error"}:
+            status = "framework_error"
+        calls.append(
+            {
+                "call_id": str(record.get("call_id") or "missing-call"),
+                "request_model": str(record.get("request_model") or configured_model),
+                "response_model": (
+                    str(record.get("response_model") or "unreported")
+                    if status == "completed"
+                    else None
+                ),
+                "provider_request_id": (
+                    str(record["provider_request_id"])
+                    if record.get("provider_request_id") is not None
+                    else None
+                ),
+                "requested_at": frozen_time,
+                "responded_at": frozen_time if status == "completed" else None,
+                "status": status,
+            }
+        )
+    attestation = {
+        "schema_version": "provider-attestation-v1",
+        "scope": scope,
+        "invocation_mode": "stub",
+        "provider_id": "none",
+        "endpoint_policy_version": endpoint_policy_version,
+        "endpoint_policy_sha256": endpoint_policy_sha256,
+        "endpoint_id": None,
+        "endpoint_origin": None,
+        "configured_model": configured_model,
+        "calls": calls,
+        "configuration_sha256": sha256_digest(
+            {
+                "mode": "stub",
+                "model": configured_model,
+                "scope": scope,
+            }
+        ),
+        "git_commit": git_commit,
+        "worktree_clean": True,
+        "dependency_lock_version": dependency_lock_version,
+        "dependency_lock_sha256": dependency_lock_sha256,
+        "attribution_status": "ineligible_stub",
+        "reason_codes": ["provider.stub"],
+        "attestation_sha256": "0" * 64,
+    }
+    attestation["attestation_sha256"] = provider_attestation_digest(attestation)
+    return ProviderAttestationV1.model_validate(attestation).model_dump(mode="json")
+
+
+def build_runtime_failure(
+    *,
+    case_id: str,
+    case_spec_sha256: str,
+    stage: str,
+    failure_class: str,
+    reason_code: str,
+    public_summary: str,
+    model_calls: Sequence[Mapping[str, Any]],
+    provider_attestation: Mapping[str, Any],
+    isolation_evidence: Mapping[str, Any] | None,
+    started_at: str,
+    failed_at: str,
+) -> dict[str, Any]:
+    """Create a safe Failure without retaining exceptions or provider payloads."""
+
+    failure = {
+        "schema_version": "runtime-failure-v1",
+        "failure_id": f"failure:{case_id}",
+        "case_id": case_id,
+        "case_spec_sha256": case_spec_sha256,
+        "stage": stage,
+        "failure_class": failure_class,
+        "reason_code": reason_code,
+        "public_summary": public_summary,
+        "model_calls": list(model_calls),
+        "provider_attestation": dict(provider_attestation),
+        "isolation_evidence": (
+            dict(isolation_evidence) if isolation_evidence is not None else None
+        ),
+        "started_at": started_at,
+        "failed_at": failed_at,
+        "formal_evaluation_result": False,
+        "evaluation_status": "not_a_formal_model_evaluation",
+        "failure_sha256": "0" * 64,
+    }
+    failure["failure_sha256"] = runtime_failure_digest(failure)
+    return RuntimeFailureV1.model_validate(failure).model_dump(mode="json")
+
+
+def build_runtime_manifest_v2(
+    *,
+    dataset_version: str,
+    invocation_mode: str,
+    terminals: Sequence[Mapping[str, Any]],
+    git_commit: str,
+    dependency_lock_version: str,
+    dependency_lock_sha256: str,
+) -> dict[str, Any]:
+    """Build the exhaustive one-terminal-per-case batch manifest."""
+
+    ordered = sorted((dict(item) for item in terminals), key=lambda item: item["case_id"])
+    manifest = {
+        "schema_version": "runtime-run-manifest-v2",
+        "dataset_version": dataset_version,
+        "case_schema_version": "case-spec-v1",
+        "episode_schema_version": "decision-episode-v3",
+        "failure_schema_version": "runtime-failure-v1",
+        "invocation_mode": invocation_mode,
+        "selected_case_ids": [item["case_id"] for item in ordered],
+        "terminals": ordered,
+        "formal_evaluation_result": False,
+        "evaluation_status": "not_a_formal_model_evaluation",
+        "git_commit": git_commit,
+        "dependency_lock_version": dependency_lock_version,
+        "dependency_lock_sha256": dependency_lock_sha256,
+        "manifest_sha256": "0" * 64,
+    }
+    manifest["manifest_sha256"] = artifact_manifest_digest(manifest)
+    return RuntimeRunManifestV2.model_validate(manifest).model_dump(mode="json")
