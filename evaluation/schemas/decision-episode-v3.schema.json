@@ -1,11 +1,11 @@
 {
   "$defs": {
-    "DecisionLayersV2": {
+    "DecisionLayersV3": {
       "additionalProperties": false,
       "properties": {
         "model_attempts": {
           "items": {
-            "$ref": "#/$defs/ModelAttemptV2"
+            "$ref": "#/$defs/ModelAttemptV3"
           },
           "title": "Model Attempts",
           "type": "array"
@@ -22,7 +22,7 @@
         },
         "final_effects": {
           "items": {
-            "$ref": "#/$defs/FinalEffectV2"
+            "$ref": "#/$defs/FinalEffectV3"
           },
           "minItems": 1,
           "title": "Final Effects",
@@ -74,10 +74,10 @@
         "durable_status",
         "formal_evaluation_eligibility"
       ],
-      "title": "DecisionLayersV2",
+      "title": "DecisionLayersV3",
       "type": "object"
     },
-    "DecisionResultV2": {
+    "DecisionResultV3": {
       "additionalProperties": false,
       "properties": {
         "action_class": {
@@ -127,7 +127,7 @@
           "$ref": "#/$defs/GuardDecisionSummaryV2"
         },
         "layers": {
-          "$ref": "#/$defs/DecisionLayersV2"
+          "$ref": "#/$defs/DecisionLayersV3"
         }
       },
       "required": [
@@ -138,7 +138,7 @@
         "guard",
         "layers"
       ],
-      "title": "DecisionResultV2",
+      "title": "DecisionResultV3",
       "type": "object"
     },
     "EnvironmentManifestV2": {
@@ -258,7 +258,7 @@
       "title": "EpisodeCompletenessV3",
       "type": "object"
     },
-    "FinalEffectV2": {
+    "FinalEffectV3": {
       "additionalProperties": false,
       "properties": {
         "effect_id": {
@@ -313,7 +313,7 @@
         },
         "source_refs": {
           "items": {
-            "$ref": "#/$defs/TypedSourceRefV2"
+            "$ref": "#/$defs/TypedSourceRefV3"
           },
           "minItems": 1,
           "title": "Source Refs",
@@ -328,7 +328,7 @@
         "entity_refs",
         "source_refs"
       ],
-      "title": "FinalEffectV2",
+      "title": "FinalEffectV3",
       "type": "object"
     },
     "GuardDecisionSummaryV2": {
@@ -522,7 +522,7 @@
       "type": "object"
     },
     "JsonValue": {},
-    "ModelAttemptV2": {
+    "ModelAttemptV3": {
       "additionalProperties": false,
       "properties": {
         "attempt_id": {
@@ -537,11 +537,11 @@
           "title": "Ordinal",
           "type": "integer"
         },
-        "turn_ref": {
+        "call_ref": {
           "maxLength": 128,
           "minLength": 1,
           "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-          "title": "Turn Ref",
+          "title": "Call Ref",
           "type": "string"
         },
         "attempted_action": {
@@ -568,11 +568,11 @@
       "required": [
         "attempt_id",
         "ordinal",
-        "turn_ref",
+        "call_ref",
         "attempted_action",
         "invocation_refs"
       ],
-      "title": "ModelAttemptV2",
+      "title": "ModelAttemptV3",
       "type": "object"
     },
     "ModelCallV3": {
@@ -2308,6 +2308,37 @@
       "title": "TypedSourceRefV2",
       "type": "object"
     },
+    "TypedSourceRefV3": {
+      "additionalProperties": false,
+      "properties": {
+        "source_type": {
+          "enum": [
+            "runtime",
+            "model_call",
+            "tool_invocation",
+            "guard_decision",
+            "operation",
+            "run_event",
+            "entity"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "ref": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_type",
+        "ref"
+      ],
+      "title": "TypedSourceRefV3",
+      "type": "object"
+    },
     "VisibleMessageV1": {
       "additionalProperties": false,
       "properties": {
@@ -2423,7 +2454,7 @@
       "$ref": "#/$defs/ObservableTraceV3"
     },
     "result": {
-      "$ref": "#/$defs/DecisionResultV2"
+      "$ref": "#/$defs/DecisionResultV3"
     },
     "completeness": {
       "$ref": "#/$defs/EpisodeCompletenessV3"

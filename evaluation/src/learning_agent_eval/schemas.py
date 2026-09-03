@@ -24,6 +24,7 @@ SCHEMA_FILENAMES = {
     "decision-episode-v3": "decision-episode-v3.schema.json",
     "runtime-failure-v1": "runtime-failure-v1.schema.json",
     "runtime-run-manifest-v2": "runtime-run-manifest-v2.schema.json",
+    "case-suite-manifest-v1": "case-suite-manifest-v1.schema.json",
     "rule-result-v2": "rule-result-v2.schema.json",
     "rule-run-manifest-v2": "rule-run-manifest-v2.schema.json",
     "judge-result-v2": "judge-result-v2.schema.json",

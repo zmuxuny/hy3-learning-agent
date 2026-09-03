@@ -111,6 +111,7 @@ def build_stub_provider_attestation(
     dependency_lock_sha256: str,
     endpoint_policy_version: str,
     endpoint_policy_sha256: str,
+    worktree_clean: bool = True,
 ) -> dict[str, Any]:
     """Describe a fixed stub honestly; it can never receive formal status."""
 
@@ -157,7 +158,7 @@ def build_stub_provider_attestation(
             }
         ),
         "git_commit": git_commit,
-        "worktree_clean": True,
+        "worktree_clean": worktree_clean,
         "dependency_lock_version": dependency_lock_version,
         "dependency_lock_sha256": dependency_lock_sha256,
         "attribution_status": "ineligible_stub",

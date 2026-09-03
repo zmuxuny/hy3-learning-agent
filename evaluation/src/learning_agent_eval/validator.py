@@ -30,14 +30,19 @@ from .exporter import (
 from .integrity import (
     aggregate_result_digest,
     artifact_manifest_digest,
+    case_spec_digest,
     context_summary_digest,
     decision_episode_digest,
     environment_manifest_digest,
     episode_completeness_digest,
     integrity_result_digest,
+    judge_reference_digest,
     judge_result_digest,
+    model_visible_context_digest,
     oracle_envelope_digest,
+    provider_attestation_digest,
     rule_result_digest,
+    runtime_failure_digest,
     snapshot_entity_digest,
     state_delta_digest,
     state_snapshot_digest,
@@ -48,10 +53,15 @@ from .privacy import privacy_issues
 from .rubric import (
     DIMENSION_WEIGHTS,
     JUDGE_CONFIG_SHA256,
+    JUDGE_CONFIG_SHA256_V2,
     JUDGE_CONFIG_VERSION,
+    JUDGE_CONFIG_VERSION_V2,
     JUDGE_PROMPT_SHA256,
+    JUDGE_PROMPT_SHA256_V2,
     JUDGE_PROMPT_VERSION,
+    JUDGE_PROMPT_VERSION_V2,
     JUDGE_VERSION,
+    JUDGE_VERSION_V2,
     REPAIR_LIMIT,
     RUBRIC_SHA256,
     RUBRIC_VERSION,
@@ -115,6 +125,24 @@ _EVIDENCE_ROOTS_V2 = {
     "state_delta",
     "completeness",
     "isolation_evidence",
+}
+_EVIDENCE_ROOTS_V3 = {
+    "schema_version",
+    "episode_id",
+    "case_spec_sha256",
+    "judge_reference_sha256",
+    "scenario_family_id",
+    "track",
+    "trigger",
+    "state_before",
+    "state_after",
+    "state_delta",
+    "environment",
+    "observable_trace",
+    "result",
+    "completeness",
+    "isolation_evidence",
+    "provenance",
 }
 _PATH_SEGMENT = re.compile(
     r"^(?P<name>[A-Za-z_][A-Za-z0-9_-]*)(?P<indexes>(?:\[(?:0|[1-9]\d*)\])*)$"
@@ -184,7 +212,9 @@ def _load_json(path: Path, *, file: str) -> tuple[object | None, list[Validation
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return None, [
-            _issue("file.unreadable", "$", "Dataset file is not valid UTF-8.", file=file)
+            _issue(
+                "file.unreadable", "$", "Dataset file is not valid UTF-8.", file=file
+            )
         ]
     try:
         value = json.loads(
@@ -257,7 +287,10 @@ def _schema_issues(
             "string_too_short": ("schema.length", "String is shorter than allowed."),
             "string_too_long": ("schema.length", "String is longer than allowed."),
             "too_short": ("schema.length", "Array has fewer items than required."),
-            "greater_than_equal": ("schema.range", "Number is below the allowed range."),
+            "greater_than_equal": (
+                "schema.range",
+                "Number is below the allowed range.",
+            ),
             "less_than_equal": ("schema.range", "Number is above the allowed range."),
         }
         for error in exc.errors(include_input=False, include_url=False):
@@ -300,9 +333,12 @@ def resolve_evidence_path(
     """Resolve one public Evidence Path and return its actual value."""
 
     segments = path.split(".")
+    version = document.get("schema_version")
     allowed_roots = roots or (
-        _EVIDENCE_ROOTS_V2
-        if document.get("schema_version") == "decision-episode-v2"
+        _EVIDENCE_ROOTS_V3
+        if version == "decision-episode-v3"
+        else _EVIDENCE_ROOTS_V2
+        if version == "decision-episode-v2"
         else _EVIDENCE_ROOTS_V1
     )
     if not segments or segments[0] not in allowed_roots:
@@ -430,7 +466,9 @@ def _episode_semantic_issues(
                     file=file,
                 )
             )
-    for index, reference in enumerate(episode["state_before"]["context"]["source_refs"]):
+    for index, reference in enumerate(
+        episode["state_before"]["context"]["source_refs"]
+    ):
         if reference not in entity_ids:
             issues.append(
                 _issue(
@@ -594,7 +632,9 @@ def _episode_semantic_issues(
                     file=file,
                 )
             )
-        if any(trace[collection] for collection in trace if collection != "capture_mode"):
+        if any(
+            trace[collection] for collection in trace if collection != "capture_mode"
+        ):
             issues.append(
                 _issue(
                     "provenance.manual_fixture_trace",
@@ -766,10 +806,7 @@ def _raw_identity_field_issues(
             if (
                 key == "id"
                 or key.endswith("_ids")
-                or (
-                    key.endswith("_id")
-                    and key not in _PUBLIC_NESTED_ID_FIELDS
-                )
+                or (key.endswith("_id") and key not in _PUBLIC_NESTED_ID_FIELDS)
             ):
                 issues.append(
                     _issue(
@@ -779,15 +816,11 @@ def _raw_identity_field_issues(
                         file=file,
                     )
                 )
-            issues.extend(
-                _raw_identity_field_issues(child, path=child_path, file=file)
-            )
+            issues.extend(_raw_identity_field_issues(child, path=child_path, file=file))
     elif isinstance(value, list):
         for index, child in enumerate(value):
             issues.extend(
-                _raw_identity_field_issues(
-                    child, path=f"{path}[{index}]", file=file
-                )
+                _raw_identity_field_issues(child, path=f"{path}[{index}]", file=file)
             )
     return issues
 
@@ -809,10 +842,7 @@ def _episode_v2_semantic_issues(
         canonical_time_values = [normalize_rfc3339(value) for value in canonical_times]
     except NormalizationError:
         canonical_time_values = []
-    if (
-        canonical_time_values != canonical_times
-        or len(set(canonical_time_values)) != 1
-    ):
+    if canonical_time_values != canonical_times or len(set(canonical_time_values)) != 1:
         issues.append(
             _issue(
                 "environment.frozen_time_mismatch",
@@ -829,7 +859,10 @@ def _episode_v2_semantic_issues(
             file=file,
         )
     )
-    snapshots = (("state_before", episode["state_before"]), ("state_after", episode["state_after"]))
+    snapshots = (
+        ("state_before", episode["state_before"]),
+        ("state_after", episode["state_after"]),
+    )
     snapshot_maps: dict[str, dict[str, Mapping[str, Any]]] = {}
     for root, snapshot in snapshots:
         entities = snapshot["logical_entities"]
@@ -842,9 +875,7 @@ def _episode_v2_semantic_issues(
             )
         )
         issues.extend(
-            _check_ordinals(
-                entities, path=f"$.{root}.logical_entities", file=file
-            )
+            _check_ordinals(entities, path=f"$.{root}.logical_entities", file=file)
         )
         snapshot_maps[root] = {item["logical_id"]: item for item in entities}
         if (
@@ -917,7 +948,10 @@ def _episode_v2_semantic_issues(
                         file=file,
                     )
                 )
-            if entity["scope_ref"] is not None and entity["scope_ref"] not in entity_ids:
+            if (
+                entity["scope_ref"] is not None
+                and entity["scope_ref"] not in entity_ids
+            ):
                 issues.append(
                     _issue(
                         "reference.missing_scope",
@@ -1109,9 +1143,7 @@ def _episode_v2_semantic_issues(
         )
     )
     issues.extend(
-        _check_ordinals(
-            attempts, path="$.result.layers.model_attempts", file=file
-        )
+        _check_ordinals(attempts, path="$.result.layers.model_attempts", file=file)
     )
     issues.extend(
         _v2_unique_ids(
@@ -1192,7 +1224,10 @@ def _episode_v2_semantic_issues(
                     file=file,
                 )
             )
-        if operation["invocation_ref"] is not None and operation["invocation_ref"] not in invocation_ids:
+        if (
+            operation["invocation_ref"] is not None
+            and operation["invocation_ref"] not in invocation_ids
+        ):
             issues.append(
                 _issue(
                     "reference.missing_invocation",
@@ -1241,7 +1276,10 @@ def _episode_v2_semantic_issues(
                     )
                 )
     for index, guard in enumerate(trace["guard_decisions"]):
-        if guard["invocation_ref"] is not None and guard["invocation_ref"] not in invocation_ids:
+        if (
+            guard["invocation_ref"] is not None
+            and guard["invocation_ref"] not in invocation_ids
+        ):
             issues.append(
                 _issue(
                     "reference.missing_invocation",
@@ -1368,10 +1406,13 @@ def _episode_v2_semantic_issues(
         item
         for item in episode["state_after"]["logical_entities"]
         if item["entity_type"] == "agent_run"
+        and item["data"].get("parent_run_ref") is None
     ]
-    if len(run_entities) != 1 or run_entities[0]["data"].get("status") != episode[
-        "result"
-    ]["layers"]["run_status"]:
+    if (
+        len(run_entities) != 1
+        or run_entities[0]["data"].get("status")
+        != episode["result"]["layers"]["run_status"]
+    ):
         issues.append(
             _issue(
                 "trace.terminal_state_mismatch",
@@ -1445,9 +1486,10 @@ def _episode_v2_semantic_issues(
             )
         )
     delta = episode["state_delta"]
-    if delta["before_snapshot_sha256"] != episode["state_before"]["snapshot_sha256"] or delta[
-        "after_snapshot_sha256"
-    ] != episode["state_after"]["snapshot_sha256"]:
+    if (
+        delta["before_snapshot_sha256"] != episode["state_before"]["snapshot_sha256"]
+        or delta["after_snapshot_sha256"] != episode["state_after"]["snapshot_sha256"]
+    ):
         issues.append(
             _issue(
                 "delta.snapshot_digest_mismatch",
@@ -1506,9 +1548,12 @@ def _episode_v2_semantic_issues(
         )
         for side in ("before_path", "after_path"):
             evidence_path = change[side]
-            if evidence_path is not None and not resolve_evidence_path(
-                episode, evidence_path, roots=_EVIDENCE_ROOTS_V2
-            )[0]:
+            if (
+                evidence_path is not None
+                and not resolve_evidence_path(
+                    episode, evidence_path, roots=_EVIDENCE_ROOTS_V2
+                )[0]
+            ):
                 issues.append(
                     _issue(
                         "delta.invalid_evidence_path",
@@ -1518,10 +1563,14 @@ def _episode_v2_semantic_issues(
                     )
                 )
     try:
-        recomputed_delta = build_state_delta(episode["state_before"], episode["state_after"])
+        recomputed_delta = build_state_delta(
+            episode["state_before"], episode["state_after"]
+        )
     except DeltaConstructionError:
         recomputed_delta = None
-    if recomputed_delta is None or canonical_json_bytes(recomputed_delta) != canonical_json_bytes(delta):
+    if recomputed_delta is None or canonical_json_bytes(
+        recomputed_delta
+    ) != canonical_json_bytes(delta):
         issues.append(
             _issue(
                 "delta.recompute_mismatch",
@@ -1557,9 +1606,9 @@ def _episode_v2_semantic_issues(
         for path in requirement["evidence_paths"]
     ] + [effect["path"] for effect in oracle["expected_effects"]]
     for index, evidence_path in enumerate(evidence_paths):
-        if not resolve_evidence_path(
-            episode, evidence_path, roots=_EVIDENCE_ROOTS_V2
-        )[0]:
+        if not resolve_evidence_path(episode, evidence_path, roots=_EVIDENCE_ROOTS_V2)[
+            0
+        ]:
             issues.append(
                 _issue(
                     "oracle.invalid_evidence_path",
@@ -1657,9 +1706,9 @@ def _episode_v2_semantic_issues(
             )
         )
     for index, evidence_path in enumerate(completeness["verified_evidence_paths"]):
-        if not resolve_evidence_path(
-            episode, evidence_path, roots=_EVIDENCE_ROOTS_V2
-        )[0]:
+        if not resolve_evidence_path(episode, evidence_path, roots=_EVIDENCE_ROOTS_V2)[
+            0
+        ]:
             issues.append(
                 _issue(
                     "completeness.invalid_evidence_path",
@@ -1678,7 +1727,10 @@ def _episode_v2_semantic_issues(
                 file=file,
             )
         )
-    if not provenance["runtime_executed"] or provenance["construction_method"] != "runtime_recorded":
+    if (
+        not provenance["runtime_executed"]
+        or provenance["construction_method"] != "runtime_recorded"
+    ):
         issues.append(
             _issue(
                 "provenance.runtime_boundary",
@@ -1740,9 +1792,10 @@ def _episode_v2_semantic_issues(
     if episode["result"]["guard"]["status"] in {"blocked", "deferred"}:
         prohibited = {"intervention", "notification", "outbox_action", "outbox_receipt"}
         changed_types = {
-            snapshot_maps["state_after"].get(change["entity_ref"], snapshot_maps["state_before"].get(change["entity_ref"]))[
-                "entity_type"
-            ]
+            snapshot_maps["state_after"].get(
+                change["entity_ref"],
+                snapshot_maps["state_before"].get(change["entity_ref"]),
+            )["entity_type"]
             for change in delta["changes"]
         }
         if changed_types & prohibited:
@@ -1769,6 +1822,321 @@ def _episode_v2_semantic_issues(
     return issues
 
 
+def _v3_v2_validation_projection(episode: Mapping[str, Any]) -> dict[str, Any]:
+    """Reuse frozen E2 state/trace checks without importing answer criteria."""
+
+    projected = dict(episode)
+    projected["schema_version"] = "decision-episode-v2"
+    projected["tags"] = ["v3_structural_validation"]
+    attestation = episode["environment"]["provider_attestation"]
+    environment = {
+        "schema_version": "environment-manifest-v1",
+        "frozen_time": episode["environment"]["frozen_time"],
+        "timezone": episode["environment"]["timezone"],
+        "model": {
+            "provider": attestation["provider_id"],
+            "name": attestation["configured_model"],
+            "invocation_mode": attestation["invocation_mode"],
+            "temperature": 0.0,
+            "reasoning_effort": "none",
+            "max_tokens": 0,
+        },
+        "prompt": episode["environment"]["prompt"],
+        "tools": episode["environment"]["tools"],
+        "policies": episode["environment"]["policies"],
+        "resources": episode["environment"]["resources"],
+        "runtime": {
+            "git_commit": episode["environment"]["runtime"]["git_commit"],
+            "database_mode": "temporary_fixture",
+            "fixture_db_sha256": episode["environment"]["runtime"]["fixture_db_sha256"],
+        },
+        "isolation": episode["environment"]["isolation"],
+        "manifest_sha256": "0" * 64,
+    }
+    environment["manifest_sha256"] = environment_manifest_digest(environment)
+    projected["environment"] = environment
+
+    calls = {
+        item["call_id"]: item for item in episode["observable_trace"]["model_calls"]
+    }
+    call_to_turn: dict[str, str] = {}
+    turns: list[dict[str, Any]] = []
+    attempts: list[dict[str, Any]] = []
+    for attempt in episode["result"]["layers"]["model_attempts"]:
+        call = calls[attempt["call_ref"]]
+        turn_id = f"turn:{episode['episode_id']}:{attempt['ordinal']:03d}"
+        call_to_turn[call["call_id"]] = turn_id
+        turns.append(
+            {
+                "turn_id": turn_id,
+                "ordinal": attempt["ordinal"],
+                "visible_input_digest": call["visible_context"]["context_sha256"],
+                "assistant_text": call["assistant_text"],
+                "tool_call_refs": attempt["invocation_refs"],
+            }
+        )
+        attempts.append(
+            {
+                "attempt_id": attempt["attempt_id"],
+                "ordinal": attempt["ordinal"],
+                "turn_ref": turn_id,
+                "attempted_action": attempt["attempted_action"],
+                "invocation_refs": attempt["invocation_refs"],
+            }
+        )
+    trace = {
+        "capture_mode": "runtime_recording",
+        "model_turns": turns,
+        "tool_invocations": episode["observable_trace"]["tool_invocations"],
+        "run_events": episode["observable_trace"]["run_events"],
+        "operations": episode["observable_trace"]["operations"],
+        "guard_decisions": episode["observable_trace"]["guard_decisions"],
+    }
+    projected["observable_trace"] = trace
+    result = {
+        **episode["result"],
+        "layers": {
+            **episode["result"]["layers"],
+            "model_attempts": attempts,
+            "final_effects": [
+                {
+                    **effect,
+                    "source_refs": [
+                        {
+                            "source_type": (
+                                "model_turn"
+                                if source["source_type"] == "model_call"
+                                else source["source_type"]
+                            ),
+                            "ref": (
+                                call_to_turn[source["ref"]]
+                                if source["source_type"] == "model_call"
+                                else source["ref"]
+                            ),
+                        }
+                        for source in effect["source_refs"]
+                    ],
+                }
+                for effect in episode["result"]["layers"]["final_effects"]
+            ],
+        },
+    }
+    projected["result"] = result
+    action = episode["result"]["action_class"]
+    envelope = {
+        "schema_version": "acceptable-action-envelope-v1",
+        "allowed_action_classes": [action],
+        "must_satisfy": [
+            {
+                "id": "v3.structural.action",
+                "statement": "The exported action is structurally present.",
+                "evidence_paths": ["result.action_class"],
+            }
+        ],
+        "must_not": [
+            {
+                "id": "v3.structural.no-private-reasoning",
+                "statement": "Private model work is excluded from artifacts.",
+                "criticality": "critical",
+            }
+        ],
+        "expected_effects": [
+            {"path": "result.action_class", "relation": "equals", "value": action}
+        ],
+        "acceptable_variations": ["Decision correctness is evaluated downstream."],
+        "critical_failures": ["Structural evidence is missing or inconsistent."],
+        "oracle_author": "v3_structure_adapter",
+        "oracle_reviewer": "v3_structure_reviewer",
+        "adjudication_note": None,
+        "envelope_sha256": "0" * 64,
+    }
+    envelope["envelope_sha256"] = oracle_envelope_digest(envelope)
+    projected["oracle"] = envelope
+    completeness = {
+        "status": episode["completeness"]["status"],
+        "error_codes": episode["completeness"]["evidence_error_codes"],
+        "verified_evidence_paths": [
+            "state_before.snapshot_sha256",
+            "state_after.snapshot_sha256",
+            "state_delta.delta_sha256",
+            "observable_trace.model_turns",
+            "observable_trace.run_events",
+            "result.layers",
+            "isolation_evidence",
+            "result.action_class",
+        ],
+        "completeness_sha256": "0" * 64,
+    }
+    completeness["completeness_sha256"] = episode_completeness_digest(completeness)
+    projected["completeness"] = completeness
+    provenance = {
+        **episode["provenance"],
+        "author_role": "v3_runtime_recorder",
+        "reviewer_role": "v3_protocol_reviewer",
+        "purpose": "Validate v3 Runtime evidence through frozen E2 structural checks.",
+        "dataset_role": (
+            "protocol_mini_fixture"
+            if episode["provenance"]["dataset_role"] == "engineering_mini"
+            else episode["provenance"]["dataset_role"]
+        ),
+        "episode_sha256": "0" * 64,
+    }
+    projected["provenance"] = provenance
+    projected.pop("case_spec_sha256", None)
+    projected.pop("judge_reference_sha256", None)
+    provenance["episode_sha256"] = decision_episode_digest(projected)
+    return projected
+
+
+def _episode_v3_semantic_issues(
+    episode: dict[str, Any], *, file: str
+) -> list[ValidationIssue]:
+    """Validate v3 evidence without consulting decision correctness criteria."""
+
+    issues: list[ValidationIssue] = []
+    trace = episode["observable_trace"]
+    call_ids = {item["call_id"] for item in trace["model_calls"]}
+    invocation_ids = {item["invocation_id"] for item in trace["tool_invocations"]}
+    run_ids = {
+        item["logical_id"]
+        for item in episode["state_after"]["logical_entities"]
+        if item["entity_type"] == "agent_run"
+    }
+    for index, call in enumerate(trace["model_calls"]):
+        context = call["visible_context"]
+        if context["context_sha256"] != model_visible_context_digest(context):
+            issues.append(
+                _issue(
+                    "digest.model_context_mismatch",
+                    f"$.observable_trace.model_calls[{index}].visible_context.context_sha256",
+                    "Model-visible context digest does not match its exact messages and tools.",
+                    file=file,
+                )
+            )
+        if call["run_id"] not in run_ids or (
+            call["parent_run_id"] is not None and call["parent_run_id"] not in run_ids
+        ):
+            issues.append(
+                _issue(
+                    "reference.model_run_missing",
+                    f"$.observable_trace.model_calls[{index}].run_id",
+                    "Model call hierarchy must resolve to captured AgentRuns.",
+                    file=file,
+                )
+            )
+        if not set(call["tool_call_refs"]).issubset(invocation_ids):
+            issues.append(
+                _issue(
+                    "reference.model_invocation_missing",
+                    f"$.observable_trace.model_calls[{index}].tool_call_refs",
+                    "Model call tool references must resolve to captured invocations.",
+                    file=file,
+                )
+            )
+        if call["status"] == "completed":
+            expected_response = sha256_digest(
+                {
+                    "assistant_text": call["assistant_text"] or "",
+                    "tool_call_refs": call["tool_call_refs"],
+                }
+            )
+            if call["response_sha256"] != expected_response:
+                issues.append(
+                    _issue(
+                        "digest.model_response_mismatch",
+                        f"$.observable_trace.model_calls[{index}].response_sha256",
+                        "Public model response digest is not recomputable.",
+                        file=file,
+                    )
+                )
+    attempts = episode["result"]["layers"]["model_attempts"]
+    if any(item["call_ref"] not in call_ids for item in attempts):
+        issues.append(
+            _issue(
+                "reference.model_call_missing",
+                "$.result.layers.model_attempts",
+                "Every decision attempt must reference a captured model call.",
+                file=file,
+            )
+        )
+    for path_index, path in enumerate(
+        episode["completeness"]["verified_evidence_paths"]
+    ):
+        if not resolve_evidence_path(episode, path, roots=_EVIDENCE_ROOTS_V3)[0]:
+            issues.append(
+                _issue(
+                    "completeness.invalid_evidence_path",
+                    f"$.completeness.verified_evidence_paths[{path_index}]",
+                    "Verified Evidence Path does not resolve in DecisionEpisode v3.",
+                    file=file,
+                )
+            )
+    completeness = episode["completeness"]
+    if completeness["completeness_sha256"] != episode_completeness_digest(completeness):
+        issues.append(
+            _issue(
+                "digest.completeness_mismatch",
+                "$.completeness.completeness_sha256",
+                "Completeness digest does not match canonical evidence fields.",
+                file=file,
+            )
+        )
+    environment = episode["environment"]
+    if environment["manifest_sha256"] != environment_manifest_digest(environment):
+        issues.append(
+            _issue(
+                "digest.environment_mismatch",
+                "$.environment.manifest_sha256",
+                "Environment Manifest digest does not match canonical content.",
+                file=file,
+            )
+        )
+    attestation = environment["provider_attestation"]
+    if attestation["attestation_sha256"] != provider_attestation_digest(attestation):
+        issues.append(
+            _issue(
+                "digest.provider_attestation_mismatch",
+                "$.environment.provider_attestation.attestation_sha256",
+                "Provider attribution digest does not match canonical content.",
+                file=file,
+            )
+        )
+    if episode["provenance"]["episode_sha256"] != decision_episode_digest(episode):
+        issues.append(
+            _issue(
+                "digest.episode_mismatch",
+                "$.provenance.episode_sha256",
+                "Decision Episode digest does not match canonical content.",
+                file=file,
+            )
+        )
+    if completeness["status"] != "complete" or completeness["evidence_error_codes"]:
+        issues.append(
+            _issue(
+                "completeness.invalid",
+                "$.completeness.status",
+                "Only evidence-complete v3 Episodes may enter Rules.",
+                file=file,
+            )
+        )
+    try:
+        structural_projection = _v3_v2_validation_projection(episode)
+        structural_issues = _episode_v2_semantic_issues(
+            structural_projection, file=file
+        )
+    except (CanonicalizationError, ExportError, KeyError, TypeError, ValueError):
+        structural_issues = [
+            _issue(
+                "schema.semantic_shape",
+                "$",
+                "v3 Runtime evidence cannot be reduced to the frozen structural checks.",
+                file=file,
+            )
+        ]
+    issues.extend(structural_issues)
+    return issues
+
+
 def validate_episode(
     value: object,
     *,
@@ -1789,7 +2157,11 @@ def validate_episode(
             ),
         )
     version = value.get("schema_version")
-    if version not in {"decision-episode-v1", "decision-episode-v2"}:
+    if version not in {
+        "decision-episode-v1",
+        "decision-episode-v2",
+        "decision-episode-v3",
+    }:
         return (
             _issue(
                 "schema.version",
@@ -1806,7 +2178,21 @@ def validate_episode(
             _episode_semantic_issues(dict(value), file=source)
             if version == "decision-episode-v1"
             else _episode_v2_semantic_issues(dict(value), file=source)
+            if version == "decision-episode-v2"
+            else _episode_v3_semantic_issues(dict(value), file=source)
         )
+        if (
+            version in {"decision-episode-v1", "decision-episode-v2"}
+            and value["provenance"]["formal_evaluation_result"]
+        ):
+            semantic_issues.append(
+                _issue(
+                    "provenance.legacy_nonformal",
+                    "$.provenance.formal_evaluation_result",
+                    "Only DecisionEpisode v3 can represent a formal evaluation.",
+                    file=source,
+                )
+            )
     except CanonicalizationError:
         semantic_issues = [
             _issue(
@@ -1917,7 +2303,12 @@ def _document_issues(
         return issues, None
     if not isinstance(value, Mapping):
         return [
-            _issue("schema.root_type", "$", "Dataset document must be an object.", file=file)
+            _issue(
+                "schema.root_type",
+                "$",
+                "Dataset document must be an object.",
+                file=file,
+            )
         ], None
     version = value.get("schema_version")
     if not isinstance(version, str):
@@ -1956,6 +2347,20 @@ def _document_issues(
         "aggregate-result-v1": "result_sha256",
         "aggregate-track-result-v1": "result_sha256",
         "aggregate-run-manifest-v1": "manifest_sha256",
+        "case-spec-v1": "case_spec_sha256",
+        "judge-reference-v1": "reference_sha256",
+        "provider-attestation-v1": "attestation_sha256",
+        "environment-manifest-v2": "manifest_sha256",
+        "runtime-failure-v1": "failure_sha256",
+        "runtime-run-manifest-v2": "manifest_sha256",
+        "case-suite-manifest-v1": "manifest_sha256",
+        "rule-result-v2": "result_sha256",
+        "rule-run-manifest-v2": "manifest_sha256",
+        "judge-result-v2": "result_sha256",
+        "judge-run-manifest-v2": "manifest_sha256",
+        "aggregate-result-v2": "result_sha256",
+        "aggregate-track-result-v2": "result_sha256",
+        "aggregate-run-manifest-v2": "manifest_sha256",
     }
     digest_field = digest_fields.get(version)
     if digest_field is not None:
@@ -1969,10 +2374,24 @@ def _document_issues(
             "judge-result-v1": judge_result_digest,
             "aggregate-result-v1": aggregate_result_digest,
             "aggregate-track-result-v1": aggregate_result_digest,
+            "case-spec-v1": case_spec_digest,
+            "judge-reference-v1": judge_reference_digest,
+            "provider-attestation-v1": provider_attestation_digest,
+            "runtime-failure-v1": runtime_failure_digest,
+            "runtime-run-manifest-v2": artifact_manifest_digest,
+            "case-suite-manifest-v1": artifact_manifest_digest,
+            "rule-result-v2": rule_result_digest,
+            "rule-run-manifest-v2": artifact_manifest_digest,
+            "judge-result-v2": judge_result_digest,
+            "judge-run-manifest-v2": artifact_manifest_digest,
+            "aggregate-result-v2": aggregate_result_digest,
+            "aggregate-track-result-v2": aggregate_result_digest,
+            "aggregate-run-manifest-v2": artifact_manifest_digest,
+            "environment-manifest-v2": environment_manifest_digest,
         }
-        digest = digest_functions.get(version, lambda document: sha256_digest(document))(
-            {key: item for key, item in value.items() if key != digest_field}
-        )
+        digest = digest_functions.get(
+            version, lambda document: sha256_digest(document)
+        )({key: item for key, item in value.items() if key != digest_field})
         if value[digest_field] != digest:
             return [
                 _issue(
@@ -1982,9 +2401,13 @@ def _document_issues(
                     file=file,
                 )
             ], None
-    if version == "aggregate-result-v1":
+    if version in {"aggregate-result-v1", "aggregate-result-v2"}:
         return _aggregate_result_semantic_issues(dict(value), file=file), None
-    if version not in {"decision-episode-v1", "decision-episode-v2"}:
+    if version not in {
+        "decision-episode-v1",
+        "decision-episode-v2",
+        "decision-episode-v3",
+    }:
         return [], None
     episode = dict(value)
     try:
@@ -1992,7 +2415,21 @@ def _document_issues(
             _episode_semantic_issues(episode, file=file)
             if version == "decision-episode-v1"
             else _episode_v2_semantic_issues(episode, file=file)
+            if version == "decision-episode-v2"
+            else _episode_v3_semantic_issues(episode, file=file)
         )
+        if (
+            version in {"decision-episode-v1", "decision-episode-v2"}
+            and episode["provenance"]["formal_evaluation_result"]
+        ):
+            semantic_issues.append(
+                _issue(
+                    "provenance.legacy_nonformal",
+                    "$.provenance.formal_evaluation_result",
+                    "Only DecisionEpisode v3 can represent a formal evaluation.",
+                    file=file,
+                )
+            )
     except CanonicalizationError:
         semantic_issues = [
             _issue(
@@ -2012,6 +2449,405 @@ def _document_issues(
             )
         ]
     return semantic_issues, _EpisodeRecord(file=file, value=episode)
+
+
+def _e31_artifact_inventory_issues(
+    by_version: Mapping[str, list[tuple[str, dict[str, Any]]]],
+    episodes: list[_EpisodeRecord],
+) -> list[ValidationIssue]:
+    """Validate every active v3 output directory as a closed inventory."""
+
+    issues: list[ValidationIssue] = []
+
+    def add(code: str, path: str, message: str, file: str) -> None:
+        issues.append(_issue(code, path, message, file=file))
+
+    suites = by_version["case-suite-manifest-v1"]
+    if len(suites) > 1:
+        for file, _ in suites[1:]:
+            add(
+                "manifest.duplicate_case_suite",
+                "$.schema_version",
+                "Dataset contains more than one CaseSuite manifest.",
+                file,
+            )
+    for file, manifest in suites[:1]:
+        cases = {name: document for name, document in by_version["case-spec-v1"]}
+        if set(cases) != set(manifest["case_files"]):
+            add(
+                "manifest.case_inventory_mismatch",
+                "$.case_files",
+                "CaseSpec inventory differs from the CaseSuite manifest.",
+                file,
+            )
+        available_files = {name for values in by_version.values() for name, _ in values}
+        if manifest["resource_snapshot_file"] not in available_files:
+            add(
+                "manifest.resource_snapshot_missing",
+                "$.resource_snapshot_file",
+                "CaseSuite resource Snapshot is missing.",
+                file,
+            )
+
+    runtime_manifests = by_version["runtime-run-manifest-v2"]
+    if len(runtime_manifests) > 1:
+        for file, _ in runtime_manifests[1:]:
+            add(
+                "manifest.duplicate_runtime_v2",
+                "$.schema_version",
+                "Runtime output contains more than one v2 manifest.",
+                file,
+            )
+    for file, manifest in runtime_manifests[:1]:
+        v3_episodes = {
+            item.value["episode_id"]: item.value
+            for item in episodes
+            if item.value["schema_version"] == "decision-episode-v3"
+        }
+        failures = {
+            document["failure_id"]: document
+            for _, document in by_version["runtime-failure-v1"]
+        }
+        references = {
+            Path(name).stem: document
+            for name, document in by_version["judge-reference-v1"]
+        }
+        terminals = {item["artifact_id"]: item for item in manifest["terminals"]}
+        episode_terminals = {
+            key: item
+            for key, item in terminals.items()
+            if item["terminal_kind"] == "episode"
+        }
+        failure_terminals = {
+            key: item
+            for key, item in terminals.items()
+            if item["terminal_kind"] == "failure"
+        }
+        if (
+            set(v3_episodes) != set(episode_terminals)
+            or set(references) != set(episode_terminals)
+            or set(failures) != set(failure_terminals)
+        ):
+            add(
+                "manifest.runtime_v2_inventory_mismatch",
+                "$.terminals",
+                "v3 Episode, JudgeReference, and Failure inventories differ from terminals.",
+                file,
+            )
+        for episode_id in sorted(
+            set(v3_episodes) & set(episode_terminals) & set(references)
+        ):
+            episode = v3_episodes[episode_id]
+            terminal = episode_terminals[episode_id]
+            reference = references[episode_id]
+            if (
+                terminal["artifact_sha256"] != episode["provenance"]["episode_sha256"]
+                or terminal["case_spec_sha256"] != episode["case_spec_sha256"]
+                or terminal["track"] != episode["track"]
+                or reference["reference_sha256"] != episode["judge_reference_sha256"]
+                or reference["case_spec_sha256"] != episode["case_spec_sha256"]
+                or reference["track"] != episode["track"]
+            ):
+                add(
+                    "manifest.runtime_v2_episode_mismatch",
+                    f"$.terminals.{episode_id}",
+                    "v3 terminal, Episode, or JudgeReference linkage differs.",
+                    file,
+                )
+        for failure_id in sorted(set(failures) & set(failure_terminals)):
+            failure = failures[failure_id]
+            terminal = failure_terminals[failure_id]
+            if (
+                terminal["artifact_sha256"] != failure["failure_sha256"]
+                or terminal["case_spec_sha256"] != failure["case_spec_sha256"]
+            ):
+                add(
+                    "manifest.runtime_v2_failure_mismatch",
+                    f"$.terminals.{failure_id}",
+                    "Runtime Failure digest or CaseSpec linkage differs.",
+                    file,
+                )
+        expected_formal = (
+            not failure_terminals
+            and bool(v3_episodes)
+            and all(
+                item["provenance"]["formal_evaluation_result"]
+                for item in v3_episodes.values()
+            )
+        )
+        if manifest["formal_evaluation_result"] != expected_formal:
+            add(
+                "manifest.runtime_v2_formal_mismatch",
+                "$.formal_evaluation_result",
+                "Runtime v2 formal state differs from its terminal artifacts.",
+                file,
+            )
+
+    rule_manifests = by_version["rule-run-manifest-v2"]
+    if len(rule_manifests) > 1:
+        for file, _ in rule_manifests[1:]:
+            add(
+                "manifest.duplicate_rule_run_v2",
+                "$.schema_version",
+                "Rule output contains more than one v2 manifest.",
+                file,
+            )
+    for file, manifest in rule_manifests[:1]:
+        results = {
+            document["episode_id"]: document
+            for _, document in by_version["rule-result-v2"]
+        }
+        expected_ids = set(manifest["episode_ids"])
+        if set(results) != expected_ids or len(results) != len(
+            by_version["rule-result-v2"]
+        ):
+            add(
+                "manifest.rule_v2_inventory_mismatch",
+                "$.episode_ids",
+                "Rule Result v2 inventory differs from its manifest.",
+                file,
+            )
+        for episode_id in sorted(expected_ids & set(results)):
+            result = results[episode_id]
+            if (
+                result["episode_sha256"]
+                != manifest["input_episode_digests"][episode_id]
+                or result["judge_reference_sha256"]
+                != manifest["input_reference_digests"][episode_id]
+                or result["result_sha256"]
+                != manifest["rule_result_digests"][episode_id]
+                or result["evaluator_version"] != manifest["evaluator_version"]
+                or result["rule_pack_version"] != manifest["rule_pack_version"]
+                or result["rule_pack_sha256"] != manifest["rule_pack_sha256"]
+            ):
+                add(
+                    "manifest.rule_v2_result_mismatch",
+                    f"$.rule_result_digests.{episode_id}",
+                    "Rule Result v2 differs from its manifest.",
+                    file,
+                )
+        expected_formal = (
+            not manifest["runtime_failure_ids"]
+            and bool(results)
+            and all(item["formal_evaluation_result"] for item in results.values())
+        )
+        if manifest["formal_evaluation_result"] != expected_formal:
+            add(
+                "manifest.rule_v2_formal_mismatch",
+                "$.formal_evaluation_result",
+                "Rule v2 formal state differs from results and runtime failures.",
+                file,
+            )
+
+    judge_manifests = by_version["judge-run-manifest-v2"]
+    if len(judge_manifests) > 1:
+        for file, _ in judge_manifests[1:]:
+            add(
+                "manifest.duplicate_judge_run_v2",
+                "$.schema_version",
+                "Judge output contains more than one v2 manifest.",
+                file,
+            )
+    for file, manifest in judge_manifests[:1]:
+        results = {
+            document["episode_id"]: document
+            for _, document in by_version["judge-result-v2"]
+        }
+        expected_ids = set(manifest["episode_ids"])
+        expected_config = {
+            "judge_version": JUDGE_VERSION_V2,
+            "judge_config_version": JUDGE_CONFIG_VERSION_V2,
+            "judge_config_sha256": JUDGE_CONFIG_SHA256_V2,
+            "judge_prompt_version": JUDGE_PROMPT_VERSION_V2,
+            "judge_prompt_sha256": JUDGE_PROMPT_SHA256_V2,
+            "rubric_version": RUBRIC_VERSION,
+            "rubric_sha256": RUBRIC_SHA256,
+            "track_anchor_version": TRACK_ANCHOR_VERSION,
+            "track_anchor_sha256": TRACK_ANCHOR_SHA256,
+            "repair_limit": REPAIR_LIMIT,
+        }
+        if any(manifest[key] != value for key, value in expected_config.items()):
+            add(
+                "manifest.judge_v2_config_mismatch",
+                "$.judge_config_sha256",
+                "Judge v2 manifest does not use the frozen configuration.",
+                file,
+            )
+        if set(results) != expected_ids or len(results) != len(
+            by_version["judge-result-v2"]
+        ):
+            add(
+                "manifest.judge_v2_inventory_mismatch",
+                "$.episode_ids",
+                "Judge Result v2 inventory differs from its manifest.",
+                file,
+            )
+        for episode_id in sorted(expected_ids & set(results)):
+            result = results[episode_id]
+            expected = (
+                result["episode_sha256"]
+                == manifest["input_episode_digests"][episode_id]
+                and result["rule_result_sha256"]
+                == manifest["input_rule_result_digests"][episode_id]
+                and result["judge_reference_sha256"]
+                == manifest["input_reference_digests"][episode_id]
+                and result["blind_input_sha256"]
+                == manifest["blind_input_digests"][episode_id]
+                and result["result_sha256"]
+                == manifest["judge_result_digests"][episode_id]
+                and result["status"] == manifest["result_statuses"][episode_id]
+                and result["judge_mode"] == manifest["judge_mode"]
+            )
+            if not expected:
+                add(
+                    "manifest.judge_v2_result_mismatch",
+                    f"$.judge_result_digests.{episode_id}",
+                    "Judge Result v2 differs from its manifest.",
+                    file,
+                )
+        expected_formal = (
+            not manifest["runtime_failure_ids"]
+            and bool(results)
+            and all(item["formal_evaluation_result"] for item in results.values())
+        )
+        if manifest["formal_evaluation_result"] != expected_formal:
+            add(
+                "manifest.judge_v2_formal_mismatch",
+                "$.formal_evaluation_result",
+                "Judge v2 formal state differs from results and runtime failures.",
+                file,
+            )
+
+    aggregate_manifests = by_version["aggregate-run-manifest-v2"]
+    if len(aggregate_manifests) > 1:
+        for file, _ in aggregate_manifests[1:]:
+            add(
+                "manifest.duplicate_aggregate_run_v2",
+                "$.schema_version",
+                "Aggregate output contains more than one v2 manifest.",
+                file,
+            )
+    for file, manifest in aggregate_manifests[:1]:
+        results = {
+            document["episode_id"]: document
+            for _, document in by_version["aggregate-result-v2"]
+        }
+        tracks = {
+            document["track"]: document
+            for _, document in by_version["aggregate-track-result-v2"]
+        }
+        expected_ids = set(manifest["episode_ids"])
+        if set(results) != expected_ids or len(results) != len(
+            by_version["aggregate-result-v2"]
+        ):
+            add(
+                "manifest.aggregate_v2_inventory_mismatch",
+                "$.episode_ids",
+                "Aggregate Result v2 inventory differs from its manifest.",
+                file,
+            )
+        if set(tracks) != set(manifest["track_result_digests"]) or len(tracks) != len(
+            by_version["aggregate-track-result-v2"]
+        ):
+            add(
+                "manifest.aggregate_v2_track_inventory_mismatch",
+                "$.track_result_digests",
+                "Track Aggregate v2 inventory differs from its manifest.",
+                file,
+            )
+        for episode_id in sorted(expected_ids & set(results)):
+            result = results[episode_id]
+            if (
+                result["episode_sha256"]
+                != manifest["input_episode_digests"][episode_id]
+                or result["rule_result_sha256"]
+                != manifest["input_rule_result_digests"][episode_id]
+                or result["judge_result_sha256"]
+                != manifest["input_judge_result_digests"][episode_id]
+                or result["judge_reference_sha256"]
+                != manifest["input_reference_digests"][episode_id]
+                or result["result_sha256"]
+                != manifest["aggregate_result_digests"][episode_id]
+                or result["status"] != manifest["result_statuses"][episode_id]
+                or result["aggregator_version"] != manifest["aggregator_version"]
+            ):
+                add(
+                    "manifest.aggregate_v2_result_mismatch",
+                    f"$.aggregate_result_digests.{episode_id}",
+                    "Aggregate Result v2 differs from its manifest.",
+                    file,
+                )
+        for track, result in sorted(tracks.items()):
+            track_episodes = sorted(
+                (item for item in results.values() if item["track"] == track),
+                key=lambda item: item["episode_id"],
+            )
+            complete = [item for item in track_episodes if item["status"] == "complete"]
+            scores = [float(item["final_score"]) for item in complete]
+            runtime_failure_ids = sorted(
+                failure_id
+                for failure_id, failure_track in manifest[
+                    "runtime_failure_tracks"
+                ].items()
+                if failure_track == track
+            )
+            track_formal = (
+                bool(track_episodes)
+                and not runtime_failure_ids
+                and all(item["formal_evaluation_result"] for item in track_episodes)
+            )
+            expected_fields = {
+                "episode_ids": [item["episode_id"] for item in track_episodes],
+                "complete_episode_ids": [item["episode_id"] for item in complete],
+                "failed_episode_ids": [
+                    item["episode_id"]
+                    for item in complete
+                    if item["episode_outcome"] == "fail"
+                ],
+                "invalid_input_episode_ids": [
+                    item["episode_id"]
+                    for item in track_episodes
+                    if item["status"] == "invalid_input"
+                ],
+                "judge_error_episode_ids": [
+                    item["episode_id"]
+                    for item in track_episodes
+                    if item["status"] == "judge_error"
+                ],
+                "runtime_failure_ids": runtime_failure_ids,
+                "score_count": len(scores),
+                "mean_score": round(sum(scores) / len(scores), 6) if scores else None,
+                "formal_evaluation_result": track_formal,
+                "evaluation_status": (
+                    "formal_model_evaluation"
+                    if track_formal
+                    else "not_a_formal_model_evaluation"
+                ),
+            }
+            if (
+                result["result_sha256"] != manifest["track_result_digests"].get(track)
+                or result["aggregator_version"] != manifest["aggregator_version"]
+                or any(result[key] != value for key, value in expected_fields.items())
+            ):
+                add(
+                    "manifest.aggregate_v2_track_mismatch",
+                    f"$.track_result_digests.{track}",
+                    "Track Aggregate v2 differs from Episode and Failure inputs.",
+                    file,
+                )
+        expected_formal = (
+            not manifest["runtime_failure_ids"]
+            and bool(results)
+            and all(item["formal_evaluation_result"] for item in results.values())
+        )
+        if manifest["formal_evaluation_result"] != expected_formal:
+            add(
+                "manifest.aggregate_v2_formal_mismatch",
+                "$.formal_evaluation_result",
+                "Aggregate v2 formal state differs from results and runtime failures.",
+                file,
+            )
+    return issues
 
 
 def _artifact_inventory_issues(
@@ -2037,7 +2873,9 @@ def _artifact_inventory_issues(
                 )
             )
     for file, manifest in runtime_manifests[:1]:
-        episode_by_id = {record.value["episode_id"]: record.value for record in episodes}
+        episode_by_id = {
+            record.value["episode_id"]: record.value for record in episodes
+        }
         expected_ids = set(manifest["episode_ids"])
         if set(episode_by_id) != expected_ids:
             issues.append(
@@ -2071,10 +2909,9 @@ def _artifact_inventory_issues(
             document["episode_id"]: document
             for _, document in by_version["e1-capture-artifact-v1"]
         }
-        if (
-            set(captures) != expected_ids
-            or len(by_version["e1-capture-artifact-v1"]) != len(expected_ids)
-        ):
+        if set(captures) != expected_ids or len(
+            by_version["e1-capture-artifact-v1"]
+        ) != len(expected_ids):
             issues.append(
                 _issue(
                     "manifest.capture_inventory_mismatch",
@@ -2084,9 +2921,10 @@ def _artifact_inventory_issues(
                 )
             )
         for episode_id in sorted(expected_ids & set(captures)):
-            if captures[episode_id]["capture_sha256"] != manifest["capture_digests"][
-                episode_id
-            ]:
+            if (
+                captures[episode_id]["capture_sha256"]
+                != manifest["capture_digests"][episode_id]
+            ):
                 issues.append(
                     _issue(
                         "manifest.capture_digest_mismatch",
@@ -2138,8 +2976,7 @@ def _artifact_inventory_issues(
                 rule["episode_sha256"] != manifest["input_episode_digests"][episode_id]
                 or check["episode_sha256"]
                 != manifest["input_episode_digests"][episode_id]
-                or rule["result_sha256"]
-                != manifest["rule_result_digests"][episode_id]
+                or rule["result_sha256"] != manifest["rule_result_digests"][episode_id]
                 or check["result_sha256"]
                 != manifest["integrity_result_digests"][episode_id]
                 or rule["evaluator_version"] != manifest["evaluator_version"]
@@ -2210,8 +3047,7 @@ def _artifact_inventory_issues(
                 )
             )
         if manifest["selected_track"] is not None and any(
-            result["track"] != manifest["selected_track"]
-            for result in results.values()
+            result["track"] != manifest["selected_track"] for result in results.values()
         ):
             issues.append(
                 _issue(
@@ -2235,16 +3071,12 @@ def _artifact_inventory_issues(
                 or result["status"] != manifest["result_statuses"][episode_id]
                 or result["judge_version"] != manifest["judge_version"]
                 or result["judge_mode"] != manifest["judge_mode"]
-                or result["judge_prompt_version"]
-                != manifest["judge_prompt_version"]
-                or result["judge_prompt_sha256"]
-                != manifest["judge_prompt_sha256"]
+                or result["judge_prompt_version"] != manifest["judge_prompt_version"]
+                or result["judge_prompt_sha256"] != manifest["judge_prompt_sha256"]
                 or result["rubric_version"] != manifest["rubric_version"]
                 or result["rubric_sha256"] != manifest["rubric_sha256"]
-                or result["track_anchor_version"]
-                != manifest["track_anchor_version"]
-                or result["track_anchor_sha256"]
-                != manifest["track_anchor_sha256"]
+                or result["track_anchor_version"] != manifest["track_anchor_version"]
+                or result["track_anchor_sha256"] != manifest["track_anchor_sha256"]
             ):
                 issues.append(
                     _issue(
@@ -2401,9 +3233,7 @@ def _artifact_inventory_issues(
                 document["formal_evaluation_result"] for document in track_episodes
             )
             expected_track_fields = {
-                "episode_ids": [
-                    document["episode_id"] for document in track_episodes
-                ],
+                "episode_ids": [document["episode_id"] for document in track_episodes],
                 "complete_episode_ids": [
                     document["episode_id"] for document in complete
                 ],
@@ -2423,9 +3253,7 @@ def _artifact_inventory_issues(
                     if document["status"] == "judge_error"
                 ],
                 "score_count": len(scores),
-                "mean_score": (
-                    round(sum(scores) / len(scores), 6) if scores else None
-                ),
+                "mean_score": (round(sum(scores) / len(scores), 6) if scores else None),
                 "formal_evaluation_result": track_formal,
                 "evaluation_status": (
                     "formal_model_evaluation"
@@ -2457,6 +3285,7 @@ def _artifact_inventory_issues(
                     file=file,
                 )
             )
+    issues.extend(_e31_artifact_inventory_issues(by_version, episodes))
     return issues
 
 
@@ -2471,7 +3300,10 @@ def validate_dataset(dataset: str | Path) -> ValidationReport:
         return ValidationReport((issue,), DatasetStats.from_counts({}))
     if root.is_symlink():
         issue = _issue(
-            "dataset.symlink", "$", "Dataset path must not be a symbolic link.", file="."
+            "dataset.symlink",
+            "$",
+            "Dataset path must not be a symbolic link.",
+            file=".",
         )
         return ValidationReport((issue,), DatasetStats.from_counts({}))
     if root.is_file():
@@ -2494,11 +3326,16 @@ def validate_dataset(dataset: str | Path) -> ValidationReport:
                 tuple(sorted(issues, key=ValidationIssue.sort_key)),
                 DatasetStats.from_counts({}),
             )
-        candidates = [path for path in entries if path.is_file() and path.suffix == ".json"]
+        candidates = [
+            path for path in entries if path.is_file() and path.suffix == ".json"
+        ]
         base = root
     else:
         issue = _issue(
-            "dataset.invalid_path", "$", "Dataset path is not a file or directory.", file="."
+            "dataset.invalid_path",
+            "$",
+            "Dataset path is not a file or directory.",
+            file=".",
         )
         return ValidationReport((issue,), DatasetStats.from_counts({}))
     if not candidates:
@@ -2526,6 +3363,19 @@ def validate_dataset(dataset: str | Path) -> ValidationReport:
             "aggregate-result-v1",
             "aggregate-track-result-v1",
             "aggregate-run-manifest-v1",
+            "case-spec-v1",
+            "judge-reference-v1",
+            "provider-attestation-v1",
+            "runtime-failure-v1",
+            "runtime-run-manifest-v2",
+            "case-suite-manifest-v1",
+            "rule-result-v2",
+            "rule-run-manifest-v2",
+            "judge-result-v2",
+            "judge-run-manifest-v2",
+            "aggregate-result-v2",
+            "aggregate-track-result-v2",
+            "aggregate-run-manifest-v2",
         }:
             saw_non_episode_artifact = True
         document_issues, record = _document_issues(value, file=file)

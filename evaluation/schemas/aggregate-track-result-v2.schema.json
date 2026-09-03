@@ -110,6 +110,16 @@
       "pattern": "^[0-9a-f]{64}$",
       "title": "Result Sha256",
       "type": "string"
+    },
+    "runtime_failure_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+        "type": "string"
+      },
+      "title": "Runtime Failure Ids",
+      "type": "array"
     }
   },
   "required": [
@@ -125,7 +135,8 @@
     "mean_score",
     "formal_evaluation_result",
     "evaluation_status",
-    "result_sha256"
+    "result_sha256",
+    "runtime_failure_ids"
   ],
   "title": "AggregateTrackResultV2",
   "type": "object"

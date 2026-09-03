@@ -1924,6 +1924,84 @@ class EpisodeCompletenessV3(StrictContractModel):
         return self
 
 
+class TypedSourceRefV3(StrictContractModel):
+    source_type: Literal[
+        "runtime",
+        "model_call",
+        "tool_invocation",
+        "guard_decision",
+        "operation",
+        "run_event",
+        "entity",
+    ]
+    ref: StableId
+
+
+class ModelAttemptV3(StrictContractModel):
+    attempt_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    call_ref: StableId
+    attempted_action: Literal["tool_call", "respond", "wait", "no_op"]
+    invocation_refs: list[StableId]
+
+
+class FinalEffectV3(StrictContractModel):
+    effect_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    effect_type: Literal[
+        "plan_proposal",
+        "intervention",
+        "assessment_verdict",
+        "reversible_patch",
+        "approval_request",
+        "wait",
+        "no_op",
+        "blocked",
+        "deferred",
+        "failed",
+    ]
+    status: Literal["applied", "blocked", "deferred", "pending", "no_change", "failed"]
+    entity_refs: list[StableId]
+    source_refs: Annotated[list[TypedSourceRefV3], Field(min_length=1)]
+
+
+class DecisionLayersV3(StrictContractModel):
+    model_attempts: list[ModelAttemptV3]
+    guard_decision_refs: list[StableId]
+    final_effects: Annotated[list[FinalEffectV3], Field(min_length=1)]
+    run_status: Literal[
+        "queued",
+        "running",
+        "waiting_approval",
+        "retry_wait",
+        "completed",
+        "failed",
+        "cancelled",
+        "needs_reconciliation",
+    ]
+    durable_status: Literal[
+        "committed",
+        "pending",
+        "partial",
+        "blocked",
+        "deferred",
+        "failed",
+        "needs_reconciliation",
+    ]
+    formal_evaluation_eligibility: Literal[
+        "eligible", "ineligible_stub", "ineligible_engineering", "invalid"
+    ]
+
+
+class DecisionResultV3(StrictContractModel):
+    action_class: ActionClass
+    action_mapping_version: StableId
+    action_mapping_sha256: Sha256
+    user_visible_output: str | None
+    guard: GuardDecisionSummaryV2
+    layers: DecisionLayersV3
+
+
 class ProvenanceV3(StrictContractModel):
     source_type: Literal["runtime_export"]
     construction_method: Literal["runtime_recorded"]
@@ -1969,7 +2047,7 @@ class DecisionEpisodeV3(StrictContractModel):
     state_delta: StateDeltaV2
     environment: EnvironmentManifestV2
     observable_trace: ObservableTraceV3
-    result: DecisionResultV2
+    result: DecisionResultV3
     completeness: EpisodeCompletenessV3
     isolation_evidence: RuntimeIsolationEvidenceV2
     provenance: ProvenanceV3
@@ -1979,10 +2057,8 @@ class DecisionEpisodeV3(StrictContractModel):
         eligible = (
             self.environment.provider_attestation.attribution_status == "eligible"
         )
-        if self.provenance.formal_evaluation_result != eligible:
-            raise ValueError(
-                "v3 formal state must match provider attribution eligibility"
-            )
+        if self.provenance.formal_evaluation_result and not eligible:
+            raise ValueError("formal v3 Episodes require eligible provider attribution")
         return self
 
 
@@ -2017,6 +2093,7 @@ class RuntimeFailureV1(StrictContractModel):
 class RuntimeTerminalRecordV2(StrictContractModel):
     case_id: StableId
     case_spec_sha256: Sha256
+    track: Track
     terminal_kind: Literal["episode", "failure"]
     artifact_id: StableId
     artifact_sha256: Sha256
@@ -2069,6 +2146,36 @@ class RuntimeRunManifestV2(StrictContractModel):
             raise ValueError(
                 "runtime batches containing failures cannot be formal results"
             )
+        return self
+
+
+class CaseSuiteManifestV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/case-suite-manifest-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["case-suite-manifest-v1"]
+    dataset_version: StableId
+    case_files: Annotated[list[str], Field(min_length=1)]
+    resource_snapshot_file: str
+    default_model_mode: Literal["stub", "real"]
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_case_suite(self) -> Self:
+        if self.case_files != sorted(set(self.case_files)):
+            raise ValueError("CaseSpec paths must be sorted and unique")
+        if any(not path or path.startswith(("/", "../")) for path in self.case_files):
+            raise ValueError("CaseSpec paths must be contained relative paths")
+        if not self.resource_snapshot_file or self.resource_snapshot_file.startswith(
+            ("/", "../")
+        ):
+            raise ValueError("resource Snapshot path must be contained and relative")
         return self
 
 
@@ -2137,9 +2244,16 @@ class RuleRunManifestV2(StrictContractModel):
     evaluator_version: StableId
     rule_pack_version: StableId
     rule_pack_sha256: Sha256
+    input_runtime_manifest_sha256: Sha256
+    invocation_mode: Literal["stub", "real"]
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
     episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    runtime_failure_ids: list[StableId]
     input_episode_digests: dict[str, Sha256]
     input_reference_digests: dict[str, Sha256]
+    input_runtime_failure_digests: dict[str, Sha256]
+    runtime_failure_tracks: dict[str, Track]
     rule_result_digests: dict[str, Sha256]
     formal_evaluation_result: bool
     git_commit: GitCommit
@@ -2149,6 +2263,14 @@ class RuleRunManifestV2(StrictContractModel):
     def validate_rule_manifest(self) -> Self:
         if self.episode_ids != sorted(set(self.episode_ids)):
             raise ValueError("Rule manifest Episode IDs must be sorted and unique")
+        if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
+            raise ValueError("requested Rule Episode IDs must be sorted and unique")
+        if self.requested_episode_ids and set(self.requested_episode_ids) != set(
+            self.episode_ids
+        ):
+            raise ValueError("requested Rule Episode IDs must match selected output")
+        if self.runtime_failure_ids != sorted(set(self.runtime_failure_ids)):
+            raise ValueError("Rule runtime Failure IDs must be sorted and unique")
         ids = set(self.episode_ids)
         if any(
             set(mapping) != ids
@@ -2159,6 +2281,12 @@ class RuleRunManifestV2(StrictContractModel):
             )
         ):
             raise ValueError("Rule manifest mappings must match Episode IDs")
+        failure_ids = set(self.runtime_failure_ids)
+        if (
+            set(self.input_runtime_failure_digests) != failure_ids
+            or set(self.runtime_failure_tracks) != failure_ids
+        ):
+            raise ValueError("Rule failure mappings must match runtime Failure IDs")
         return self
 
 
@@ -2215,10 +2343,12 @@ class JudgeResultV2(StrictContractModel):
         if self.formal_evaluation_result != expected:
             raise ValueError("Judge Result formal state is inconsistent")
         eligible = self.provider_attestation.attribution_status == "eligible"
-        if expected != (self.status == "complete" and eligible):
+        if expected and not (self.status == "complete" and eligible):
             raise ValueError(
                 "formal Judge Results require eligible complete attribution"
             )
+        if self.judge_mode == "stub" and expected:
+            raise ValueError("stub Judge Results cannot be formal")
         if self.judge_mode != self.provider_attestation.invocation_mode:
             raise ValueError("Judge mode must match provider attestation")
         return self
@@ -2241,12 +2371,25 @@ class JudgeRunManifestV2(StrictContractModel):
     judge_version: StableId
     judge_config_version: StableId
     judge_config_sha256: Sha256
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
     repair_limit: Literal[1]
     judge_mode: Literal["stub", "real"]
+    input_runtime_manifest_sha256: Sha256
+    input_rule_manifest_sha256: Sha256
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
     episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    runtime_failure_ids: list[StableId]
     input_episode_digests: dict[str, Sha256]
     input_rule_result_digests: dict[str, Sha256]
     input_reference_digests: dict[str, Sha256]
+    input_runtime_failure_digests: dict[str, Sha256]
+    runtime_failure_tracks: dict[str, Track]
     blind_input_digests: dict[str, Sha256]
     judge_result_digests: dict[str, Sha256]
     result_statuses: dict[str, JudgeStatus]
@@ -2259,6 +2402,14 @@ class JudgeRunManifestV2(StrictContractModel):
     def validate_judge_manifest(self) -> Self:
         if self.episode_ids != sorted(set(self.episode_ids)):
             raise ValueError("Judge manifest Episode IDs must be sorted and unique")
+        if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
+            raise ValueError("requested Judge Episode IDs must be sorted and unique")
+        if self.requested_episode_ids and set(self.requested_episode_ids) != set(
+            self.episode_ids
+        ):
+            raise ValueError("requested Judge Episode IDs must match selected output")
+        if self.runtime_failure_ids != sorted(set(self.runtime_failure_ids)):
+            raise ValueError("Judge runtime Failure IDs must be sorted and unique")
         ids = set(self.episode_ids)
         mappings = (
             self.input_episode_digests,
@@ -2270,6 +2421,12 @@ class JudgeRunManifestV2(StrictContractModel):
         )
         if any(set(mapping) != ids for mapping in mappings):
             raise ValueError("Judge manifest mappings must match Episode IDs")
+        failure_ids = set(self.runtime_failure_ids)
+        if (
+            set(self.input_runtime_failure_digests) != failure_ids
+            or set(self.runtime_failure_tracks) != failure_ids
+        ):
+            raise ValueError("Judge failure mappings must match runtime Failure IDs")
         expected = self.evaluation_status == "formal_model_evaluation"
         if self.formal_evaluation_result != expected:
             raise ValueError("Judge manifest formal state is inconsistent")
@@ -2353,6 +2510,13 @@ class AggregateTrackResultV2(AggregateTrackResultV1):
     )
 
     schema_version: Literal["aggregate-track-result-v2"]  # type: ignore[assignment]
+    runtime_failure_ids: list[StableId]
+
+    @model_validator(mode="after")
+    def validate_runtime_failures(self) -> Self:
+        if self.runtime_failure_ids != sorted(set(self.runtime_failure_ids)):
+            raise ValueError("track runtime Failure IDs must be sorted and unique")
+        return self
 
 
 class AggregateRunManifestV2(StrictContractModel):
@@ -2367,12 +2531,27 @@ class AggregateRunManifestV2(StrictContractModel):
 
     schema_version: Literal["aggregate-run-manifest-v2"]
     aggregator_version: StableId
+    judge_version: StableId
+    judge_config_version: StableId
+    judge_config_sha256: Sha256
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
+    judge_mode: Literal["stub", "real"]
     input_judge_manifest_sha256: Sha256
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
     episode_ids: Annotated[list[StableId], Field(min_length=1)]
+    runtime_failure_ids: list[StableId]
     input_episode_digests: dict[str, Sha256]
     input_rule_result_digests: dict[str, Sha256]
     input_judge_result_digests: dict[str, Sha256]
     input_reference_digests: dict[str, Sha256]
+    input_runtime_failure_digests: dict[str, Sha256]
+    runtime_failure_tracks: dict[str, Track]
     aggregate_result_digests: dict[str, Sha256]
     result_statuses: dict[str, JudgeStatus]
     track_result_digests: dict[str, Sha256]
@@ -2385,6 +2564,18 @@ class AggregateRunManifestV2(StrictContractModel):
     def validate_aggregate_manifest(self) -> Self:
         if self.episode_ids != sorted(set(self.episode_ids)):
             raise ValueError("aggregate manifest Episode IDs must be sorted and unique")
+        if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
+            raise ValueError(
+                "requested aggregate Episode IDs must be sorted and unique"
+            )
+        if self.requested_episode_ids and set(self.requested_episode_ids) != set(
+            self.episode_ids
+        ):
+            raise ValueError(
+                "requested aggregate Episode IDs must match selected output"
+            )
+        if self.runtime_failure_ids != sorted(set(self.runtime_failure_ids)):
+            raise ValueError("aggregate runtime Failure IDs must be sorted and unique")
         ids = set(self.episode_ids)
         mappings = (
             self.input_episode_digests,
@@ -2396,6 +2587,14 @@ class AggregateRunManifestV2(StrictContractModel):
         )
         if any(set(mapping) != ids for mapping in mappings):
             raise ValueError("aggregate manifest mappings must match Episode IDs")
+        failure_ids = set(self.runtime_failure_ids)
+        if (
+            set(self.input_runtime_failure_digests) != failure_ids
+            or set(self.runtime_failure_tracks) != failure_ids
+        ):
+            raise ValueError(
+                "aggregate failure mappings must match runtime Failure IDs"
+            )
         if not self.track_result_digests:
             raise ValueError("aggregate manifest requires per-track results")
         expected = self.evaluation_status == "formal_model_evaluation"
@@ -2422,6 +2621,7 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "decision-episode-v3": DecisionEpisodeV3,
     "runtime-failure-v1": RuntimeFailureV1,
     "runtime-run-manifest-v2": RuntimeRunManifestV2,
+    "case-suite-manifest-v1": CaseSuiteManifestV1,
     "rule-result-v2": RuleResultV2,
     "rule-run-manifest-v2": RuleRunManifestV2,
     "judge-result-v2": JudgeResultV2,

@@ -15,6 +15,16 @@
           "title": "Case Spec Sha256",
           "type": "string"
         },
+        "track": {
+          "enum": [
+            "planning",
+            "intervention",
+            "assessment",
+            "revision"
+          ],
+          "title": "Track",
+          "type": "string"
+        },
         "terminal_kind": {
           "enum": [
             "episode",
@@ -39,6 +49,7 @@
       "required": [
         "case_id",
         "case_spec_sha256",
+        "track",
         "terminal_kind",
         "artifact_id",
         "artifact_sha256"

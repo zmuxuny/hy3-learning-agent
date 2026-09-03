@@ -37,6 +37,46 @@
       "title": "Rule Pack Sha256",
       "type": "string"
     },
+    "input_runtime_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Input Runtime Manifest Sha256",
+      "type": "string"
+    },
+    "invocation_mode": {
+      "enum": [
+        "stub",
+        "real"
+      ],
+      "title": "Invocation Mode",
+      "type": "string"
+    },
+    "requested_episode_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+        "type": "string"
+      },
+      "title": "Requested Episode Ids",
+      "type": "array"
+    },
+    "selected_track": {
+      "anyOf": [
+        {
+          "enum": [
+            "planning",
+            "intervention",
+            "assessment",
+            "revision"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Selected Track"
+    },
     "episode_ids": {
       "items": {
         "maxLength": 128,
@@ -46,6 +86,16 @@
       },
       "minItems": 1,
       "title": "Episode Ids",
+      "type": "array"
+    },
+    "runtime_failure_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+        "type": "string"
+      },
+      "title": "Runtime Failure Ids",
       "type": "array"
     },
     "input_episode_digests": {
@@ -62,6 +112,27 @@
         "type": "string"
       },
       "title": "Input Reference Digests",
+      "type": "object"
+    },
+    "input_runtime_failure_digests": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Input Runtime Failure Digests",
+      "type": "object"
+    },
+    "runtime_failure_tracks": {
+      "additionalProperties": {
+        "enum": [
+          "planning",
+          "intervention",
+          "assessment",
+          "revision"
+        ],
+        "type": "string"
+      },
+      "title": "Runtime Failure Tracks",
       "type": "object"
     },
     "rule_result_digests": {
@@ -94,9 +165,16 @@
     "evaluator_version",
     "rule_pack_version",
     "rule_pack_sha256",
+    "input_runtime_manifest_sha256",
+    "invocation_mode",
+    "requested_episode_ids",
+    "selected_track",
     "episode_ids",
+    "runtime_failure_ids",
     "input_episode_digests",
     "input_reference_digests",
+    "input_runtime_failure_digests",
+    "runtime_failure_tracks",
     "rule_result_digests",
     "formal_evaluation_result",
     "git_commit",

@@ -248,6 +248,7 @@ def test_failure_and_manifest_preserve_one_terminal_per_case() -> None:
             {
                 "case_id": "case-success",
                 "case_spec_sha256": SHA,
+                "track": "planning",
                 "terminal_kind": "episode",
                 "artifact_id": "episode-success",
                 "artifact_sha256": SHA,
@@ -255,6 +256,7 @@ def test_failure_and_manifest_preserve_one_terminal_per_case() -> None:
             {
                 "case_id": "case-failure",
                 "case_spec_sha256": SHA,
+                "track": "assessment",
                 "terminal_kind": "failure",
                 "artifact_id": failure["failure_id"],
                 "artifact_sha256": failure["failure_sha256"],

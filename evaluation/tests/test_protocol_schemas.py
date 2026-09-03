@@ -33,6 +33,7 @@ def test_committed_json_schemas_match_source_models() -> None:
         "decision-episode-v3.schema.json",
         "runtime-failure-v1.schema.json",
         "runtime-run-manifest-v2.schema.json",
+        "case-suite-manifest-v1.schema.json",
         "rule-result-v2.schema.json",
         "rule-run-manifest-v2.schema.json",
         "judge-result-v2.schema.json",

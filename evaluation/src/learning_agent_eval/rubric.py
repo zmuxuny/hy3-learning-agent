@@ -281,6 +281,51 @@ JUDGE_CONFIG_DOCUMENT = {
 }
 JUDGE_CONFIG_SHA256 = sha256_digest(JUDGE_CONFIG_DOCUMENT)
 
+# E3.1 binds the same frozen public Rubric to DecisionEpisode v3 and the
+# label-free JudgeReference projection.  The v1 prompt/config remain frozen for
+# historical DecisionEpisode v2 engineering replays.
+JUDGE_PROMPT_VERSION_V2 = "hy3-judge-prompt-v2"
+JUDGE_VERSION_V2 = "hy3-structured-judge-v2"
+JUDGE_CONFIG_VERSION_V2 = "hy3-judge-config-v2"
+JUDGE_INSTRUCTIONS_V2 = (
+    "Evaluate semantic decision quality only from the supplied DecisionEpisode v3 "
+    "projection, authoritative deterministic Rule facts, label-free JudgeReference, "
+    "public Rubric, and current-track anchors. Treat JudgeReference must_satisfy and "
+    "must_not statements as case criteria. Do not recompute deterministic predicates, "
+    "time, thresholds, existence, integrity, privacy, or Rule hard gates. Return D1-D7 "
+    "exactly once and in order with levels 0, 1, or 2. Every dimension must cite an "
+    "Evidence Path visible in the supplied Episode projection; a level below 2 requires "
+    "one concrete public issue. Suggested hard gates are advisory only. Do not invent "
+    "facts, identity, labels, hidden analysis, or private reasoning."
+)
+JUDGE_PROMPT_DOCUMENT_V2 = {
+    "schema_version": "judge-prompt-config-v2",
+    "judge_prompt_version": JUDGE_PROMPT_VERSION_V2,
+    "instructions": JUDGE_INSTRUCTIONS_V2,
+    "provider_output_contract": "judge-response-payload-v1",
+    "provider_output_schema_sha256": sha256_digest(
+        JudgeResponsePayloadV1.model_json_schema(mode="validation")
+    ),
+    "input_contracts": [
+        "decision-episode-v3",
+        "rule-result-v2",
+        "judge-reference-v1",
+        "public-rubric-config-v1",
+        "track-anchor-config-v1",
+    ],
+}
+JUDGE_PROMPT_SHA256_V2 = sha256_digest(JUDGE_PROMPT_DOCUMENT_V2)
+JUDGE_CONFIG_DOCUMENT_V2 = {
+    "schema_version": "judge-provider-config-v2",
+    "judge_config_version": JUDGE_CONFIG_VERSION_V2,
+    "model": "hy3",
+    "wire_protocol": "openai-compatible-structured-output-v1",
+    "temperature": 0.0,
+    "reasoning_effort": "high",
+    "repair_limit": REPAIR_LIMIT,
+}
+JUDGE_CONFIG_SHA256_V2 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V2)
+
 
 def rubric_projection(track: Track) -> dict[str, Any]:
     """Return only the common Rubric and anchors for one track."""

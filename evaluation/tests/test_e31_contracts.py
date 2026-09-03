@@ -148,6 +148,7 @@ def test_e31_schema_set_is_strict_and_versioned() -> None:
         "decision-episode-v3.schema.json",
         "runtime-failure-v1.schema.json",
         "runtime-run-manifest-v2.schema.json",
+        "case-suite-manifest-v1.schema.json",
         "rule-result-v2.schema.json",
         "rule-run-manifest-v2.schema.json",
         "judge-result-v2.schema.json",
@@ -282,6 +283,7 @@ def test_runtime_manifest_requires_one_terminal_per_selected_case() -> None:
             {
                 "case_id": "case-a",
                 "case_spec_sha256": SHA,
+                "track": "planning",
                 "terminal_kind": "episode",
                 "artifact_id": "episode-a",
                 "artifact_sha256": SHA,
@@ -289,6 +291,7 @@ def test_runtime_manifest_requires_one_terminal_per_selected_case() -> None:
             {
                 "case_id": "case-b",
                 "case_spec_sha256": SHA,
+                "track": "assessment",
                 "terminal_kind": "failure",
                 "artifact_id": "failure-b",
                 "artifact_sha256": SHA,

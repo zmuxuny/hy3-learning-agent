@@ -1065,7 +1065,11 @@ def build_decision_episode_v2(
         effects=effects,
     )
     trace["guard_decisions"] = guards
-    run_entities = _entities(state_after, "agent_run")
+    run_entities = [
+        item
+        for item in _entities(state_after, "agent_run")
+        if item["data"].get("parent_run_ref") is None
+    ]
     if len(run_entities) != 1:
         raise ExportError("export.run_state_missing")
     run = run_entities[0]["data"]
