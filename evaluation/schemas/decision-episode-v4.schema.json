@@ -1,5 +1,133 @@
 {
   "$defs": {
+    "ActiveArtifactProvenanceV1": {
+      "additionalProperties": false,
+      "properties": {
+        "benchmark_release_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Benchmark Release Id",
+          "type": "string"
+        },
+        "benchmark_release_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Benchmark Release Sha256",
+          "type": "string"
+        },
+        "construction_method": {
+          "const": "runtime_recorded",
+          "title": "Construction Method",
+          "type": "string"
+        },
+        "created_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset_role": {
+          "enum": [
+            "engineering_mini",
+            "primary_episode",
+            "calibration_output"
+          ],
+          "title": "Dataset Role",
+          "type": "string"
+        },
+        "episode_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Episode Sha256",
+          "type": "string"
+        },
+        "evaluation_protocol_release_id": {
+          "const": "evaluation-protocol-release-1.0",
+          "title": "Evaluation Protocol Release Id",
+          "type": "string"
+        },
+        "evaluation_protocol_release_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Evaluation Protocol Release Sha256",
+          "type": "string"
+        },
+        "evaluation_status": {
+          "const": "not_a_formal_model_evaluation",
+          "title": "Evaluation Status",
+          "type": "string"
+        },
+        "formal_evaluation_result": {
+          "const": false,
+          "title": "Formal Evaluation Result",
+          "type": "boolean"
+        },
+        "protocol_eligible": {
+          "title": "Protocol Eligible",
+          "type": "boolean"
+        },
+        "provider_eligible": {
+          "title": "Provider Eligible",
+          "type": "boolean"
+        },
+        "runtime_executed": {
+          "const": true,
+          "title": "Runtime Executed",
+          "type": "boolean"
+        },
+        "runtime_run_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Runtime Run Id",
+          "type": "string"
+        },
+        "runtime_source_bundle_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Runtime Source Bundle Sha256",
+          "type": "string"
+        },
+        "runtime_source_bundle_version": {
+          "const": "evaluation-source-bundle-v2",
+          "title": "Runtime Source Bundle Version",
+          "type": "string"
+        },
+        "source_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "source_type": {
+          "const": "runtime_export",
+          "title": "Source Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_type",
+        "construction_method",
+        "dataset_role",
+        "runtime_executed",
+        "protocol_eligible",
+        "provider_eligible",
+        "evaluation_protocol_release_id",
+        "evaluation_protocol_release_sha256",
+        "benchmark_release_id",
+        "benchmark_release_sha256",
+        "runtime_run_id",
+        "runtime_source_bundle_version",
+        "runtime_source_bundle_sha256",
+        "formal_evaluation_result",
+        "evaluation_status",
+        "created_at",
+        "source_refs",
+        "episode_sha256"
+      ],
+      "title": "ActiveArtifactProvenanceV1",
+      "type": "object"
+    },
     "DecisionLayersV4": {
       "additionalProperties": false,
       "properties": {
@@ -24,16 +152,6 @@
           "title": "Final Effects",
           "type": "array"
         },
-        "formal_evaluation_eligibility": {
-          "enum": [
-            "eligible",
-            "ineligible_stub",
-            "ineligible_engineering",
-            "invalid"
-          ],
-          "title": "Formal Evaluation Eligibility",
-          "type": "string"
-        },
         "guard_decision_refs": {
           "items": {
             "maxLength": 128,
@@ -50,6 +168,14 @@
           },
           "title": "Model Attempts",
           "type": "array"
+        },
+        "protocol_eligibility": {
+          "enum": [
+            "eligible",
+            "invalid"
+          ],
+          "title": "Protocol Eligibility",
+          "type": "string"
         },
         "run_status": {
           "enum": [
@@ -72,7 +198,7 @@
         "final_effects",
         "run_status",
         "durable_status",
-        "formal_evaluation_eligibility"
+        "protocol_eligibility"
       ],
       "title": "DecisionLayersV4",
       "type": "object"
@@ -697,7 +823,7 @@
           "type": "string"
         },
         "action_protocol_version": {
-          "const": "model-action-declaration-v1",
+          "const": "model-action-declaration-v2",
           "title": "Action Protocol Version",
           "type": "string"
         },
@@ -1181,80 +1307,6 @@
         "digest"
       ],
       "title": "PromptManifest",
-      "type": "object"
-    },
-    "ProvenanceV3": {
-      "additionalProperties": false,
-      "properties": {
-        "construction_method": {
-          "const": "runtime_recorded",
-          "title": "Construction Method",
-          "type": "string"
-        },
-        "created_at": {
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
-          "title": "Created At",
-          "type": "string"
-        },
-        "dataset_role": {
-          "enum": [
-            "engineering_mini",
-            "primary_episode",
-            "calibration_output"
-          ],
-          "title": "Dataset Role",
-          "type": "string"
-        },
-        "episode_sha256": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Episode Sha256",
-          "type": "string"
-        },
-        "evaluation_status": {
-          "enum": [
-            "not_a_formal_model_evaluation",
-            "formal_model_evaluation"
-          ],
-          "title": "Evaluation Status",
-          "type": "string"
-        },
-        "formal_evaluation_result": {
-          "title": "Formal Evaluation Result",
-          "type": "boolean"
-        },
-        "runtime_executed": {
-          "const": true,
-          "title": "Runtime Executed",
-          "type": "boolean"
-        },
-        "source_refs": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Source Refs",
-          "type": "array"
-        },
-        "source_type": {
-          "const": "runtime_export",
-          "title": "Source Type",
-          "type": "string"
-        }
-      },
-      "required": [
-        "source_type",
-        "construction_method",
-        "dataset_role",
-        "runtime_executed",
-        "formal_evaluation_result",
-        "evaluation_status",
-        "created_at",
-        "source_refs",
-        "episode_sha256"
-      ],
-      "title": "ProvenanceV3",
       "type": "object"
     },
     "ProviderAttestationV1": {
@@ -2573,7 +2625,7 @@
       "$ref": "#/$defs/ObservableTraceV4"
     },
     "provenance": {
-      "$ref": "#/$defs/ProvenanceV3"
+      "$ref": "#/$defs/ActiveArtifactProvenanceV1"
     },
     "result": {
       "$ref": "#/$defs/DecisionResultV4"

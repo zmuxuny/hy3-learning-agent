@@ -126,3 +126,33 @@ def runtime_failure_digest(failure: Mapping[str, object]) -> str:
     """Hash a runtime Failure without its ``failure_sha256`` self field."""
 
     return sha256_digest(_without_field(failure, "failure_sha256"))
+
+
+def protocol_release_digest(release: Mapping[str, object]) -> str:
+    """Hash an Evaluation Protocol Release without its self field."""
+
+    return sha256_digest(_without_field(release, "release_sha256"))
+
+
+def benchmark_release_digest(release: Mapping[str, object]) -> str:
+    """Hash a Benchmark Release Manifest without its self field."""
+
+    return sha256_digest(_without_field(release, "manifest_sha256"))
+
+
+def source_bundle_digest(bundle: Mapping[str, object]) -> str:
+    """Hash a source bundle manifest without its self field."""
+
+    return sha256_digest(_without_field(bundle, "bundle_sha256"))
+
+
+def schema_lock_digest(lock: Mapping[str, object]) -> str:
+    """Hash a Schema Lock Manifest without its self field."""
+
+    return sha256_digest(_without_field(lock, "manifest_sha256"))
+
+
+def trusted_registry_digest(registry: Mapping[str, object]) -> str:
+    """Hash a trusted Benchmark registry without its self field."""
+
+    return sha256_digest(_without_field(registry, "registry_sha256"))

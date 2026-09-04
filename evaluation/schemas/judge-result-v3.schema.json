@@ -444,6 +444,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "benchmark_release_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Benchmark Release Id",
+      "type": "string"
+    },
+    "benchmark_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Benchmark Release Sha256",
+      "type": "string"
+    },
     "blind_input_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Blind Input Sha256",
@@ -482,6 +494,16 @@
       ],
       "title": "Error Code"
     },
+    "evaluation_protocol_release_id": {
+      "const": "evaluation-protocol-release-1.0",
+      "title": "Evaluation Protocol Release Id",
+      "type": "string"
+    },
+    "evaluation_protocol_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Evaluation Protocol Release Sha256",
+      "type": "string"
+    },
     "evaluation_status": {
       "enum": [
         "not_a_formal_model_evaluation",
@@ -491,14 +513,17 @@
       "type": "string"
     },
     "formal_evaluation_result": {
+      "const": false,
       "title": "Formal Evaluation Result",
       "type": "boolean"
     },
     "input_episode_formal_evaluation_result": {
+      "const": false,
       "title": "Input Episode Formal Evaluation Result",
       "type": "boolean"
     },
     "input_rule_manifest_formal_evaluation_result": {
+      "const": false,
       "title": "Input Rule Manifest Formal Evaluation Result",
       "type": "boolean"
     },
@@ -507,7 +532,12 @@
       "title": "Input Rule Manifest Sha256",
       "type": "string"
     },
+    "input_rule_manifest_trusted_benchmark_run": {
+      "title": "Input Rule Manifest Trusted Benchmark Run",
+      "type": "boolean"
+    },
     "input_rule_result_formal_evaluation_result": {
+      "const": false,
       "title": "Input Rule Result Formal Evaluation Result",
       "type": "boolean"
     },
@@ -536,6 +566,16 @@
       "title": "Judge Reference Sha256",
       "type": "string"
     },
+    "judge_source_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Judge Source Bundle Sha256",
+      "type": "string"
+    },
+    "judge_source_bundle_version": {
+      "const": "evaluation-source-bundle-v2",
+      "title": "Judge Source Bundle Version",
+      "type": "string"
+    },
     "judge_version": {
       "maxLength": 128,
       "minLength": 1,
@@ -543,8 +583,16 @@
       "title": "Judge Version",
       "type": "string"
     },
+    "protocol_eligible": {
+      "title": "Protocol Eligible",
+      "type": "boolean"
+    },
     "provider_attestation": {
       "$ref": "#/$defs/ProviderAttestationV1"
+    },
+    "provider_eligible": {
+      "title": "Provider Eligible",
+      "type": "boolean"
     },
     "result_sha256": {
       "pattern": "^[0-9a-f]{64}$",
@@ -566,6 +614,13 @@
     "rule_result_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Rule Result Sha256",
+      "type": "string"
+    },
+    "runtime_run_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Runtime Run Id",
       "type": "string"
     },
     "schema_version": {
@@ -626,6 +681,10 @@
       "title": "Track Anchor Version",
       "type": "string"
     },
+    "trusted_benchmark_run": {
+      "title": "Trusted Benchmark Run",
+      "type": "boolean"
+    },
     "worktree_clean": {
       "title": "Worktree Clean",
       "type": "boolean"
@@ -656,12 +715,23 @@
     "evaluation_status",
     "error_code",
     "result_sha256",
+    "evaluation_protocol_release_id",
+    "evaluation_protocol_release_sha256",
+    "benchmark_release_id",
+    "benchmark_release_sha256",
+    "runtime_run_id",
+    "judge_source_bundle_version",
+    "judge_source_bundle_sha256",
     "input_rule_manifest_sha256",
     "input_rule_manifest_formal_evaluation_result",
     "input_episode_formal_evaluation_result",
     "input_rule_result_formal_evaluation_result",
+    "input_rule_manifest_trusted_benchmark_run",
     "selection_mode",
-    "worktree_clean"
+    "worktree_clean",
+    "protocol_eligible",
+    "provider_eligible",
+    "trusted_benchmark_run"
   ],
   "title": "JudgeResultV3",
   "type": "object"

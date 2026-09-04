@@ -156,6 +156,20 @@ def load_e31_inputs(
         rule_manifest["input_runtime_manifest_sha256"]
         != runtime_manifest["manifest_sha256"]
         or rule_manifest["invocation_mode"] != runtime_manifest["invocation_mode"]
+        or (
+            active
+            and any(
+                rule_manifest[key] != runtime_manifest[key]
+                for key in (
+                    "runtime_run_id",
+                    "evaluation_protocol_release_id",
+                    "evaluation_protocol_release_sha256",
+                    "benchmark_release_id",
+                    "benchmark_release_sha256",
+                    "case_suite_sha256",
+                )
+            )
+        )
     ):
         raise E31InputError(
             "manifest_linkage_invalid",
@@ -247,6 +261,16 @@ def load_e31_inputs(
             != failure["failure_sha256"]
             or rule_manifest["runtime_failure_tracks"].get(failure_id)
             != terminal["track"]
+            or (
+                active
+                and (
+                    failure["runtime_run_id"] != runtime_manifest["runtime_run_id"]
+                    or failure["evaluation_protocol_release_sha256"]
+                    != runtime_manifest["evaluation_protocol_release_sha256"]
+                    or failure["benchmark_release_sha256"]
+                    != runtime_manifest["benchmark_release_sha256"]
+                )
+            )
         ):
             raise E31InputError(
                 "failure_linkage_invalid",
@@ -314,12 +338,38 @@ def load_e31_inputs(
                     != runtime_manifest["manifest_sha256"]
                     or rule_result["input_runtime_formal_evaluation_result"]
                     != runtime_manifest["formal_evaluation_result"]
+                    or rule_result["input_runtime_trusted_benchmark_run"]
+                    != runtime_manifest["trusted_benchmark_run"]
                     or rule_result["selection_mode"]
                     != rule_manifest["selection_mode"]
                     or rule_result["worktree_clean"]
                     != rule_manifest["worktree_clean"]
                     or rule_result["evaluator_implementation_sha256"]
                     != rule_manifest["evaluator_implementation_sha256"]
+                    or rule_result["trusted_benchmark_run"]
+                    != rule_manifest["result_trusted_benchmark_states"].get(
+                        episode_id
+                    )
+                    or any(
+                        rule_result[key] != runtime_manifest[key]
+                        for key in (
+                            "runtime_run_id",
+                            "evaluation_protocol_release_id",
+                            "evaluation_protocol_release_sha256",
+                            "benchmark_release_id",
+                            "benchmark_release_sha256",
+                        )
+                    )
+                    or any(
+                        episode["provenance"][key] != runtime_manifest[key]
+                        for key in (
+                            "runtime_run_id",
+                            "evaluation_protocol_release_id",
+                            "evaluation_protocol_release_sha256",
+                            "benchmark_release_id",
+                            "benchmark_release_sha256",
+                        )
+                    )
                 )
             )
         ):

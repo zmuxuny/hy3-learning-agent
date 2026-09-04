@@ -16,11 +16,28 @@ from typing import Any
 
 import pytest
 import pywebpush
-from learning_agent_eval.aggregate import (
+from historical_execution import (
+    aggregate_results_v1 as aggregate_results,
+)
+from historical_execution import (
+    evaluate_judges_v1 as evaluate_judges,
+)
+from historical_execution import (
+    evaluate_run_rules_v1 as evaluate_run_rules,
+)
+from historical_execution import (
+    run_agent_v2 as run_agent,
+)
+from learning_agent_eval._historical_aggregate import (
     _track_result,
     aggregate_episode,
-    aggregate_results,
     validate_aggregate_result,
+)
+from learning_agent_eval._historical_judge import (
+    FixedResponseJudgeProvider,
+    JudgeEvaluationError,
+    build_provider_request,
+    validate_judge_result,
 )
 from learning_agent_eval.blinding import build_blind_judge_input
 from learning_agent_eval.canonical import (
@@ -35,13 +52,6 @@ from learning_agent_eval.integrity import (
     integrity_result_digest,
     judge_result_digest,
     rule_result_digest,
-)
-from learning_agent_eval.judge import (
-    FixedResponseJudgeProvider,
-    JudgeEvaluationError,
-    build_provider_request,
-    evaluate_judges,
-    validate_judge_result,
 )
 from learning_agent_eval.models import (
     AggregateResultV1,
@@ -62,8 +72,6 @@ from learning_agent_eval.rubric import (
     TRACK_ANCHOR_SHA256,
     TRACK_ANCHORS,
 )
-from learning_agent_eval.rule_runner import evaluate_run_rules
-from learning_agent_eval.runner import run_agent
 from learning_agent_eval.schemas import schema_documents
 from learning_agent_eval.validator import validate_dataset
 from pydantic import ValidationError
@@ -729,8 +737,10 @@ def test_judge_and_aggregate_outputs_are_byte_deterministic(
     assert _files(aggregate_a) == _files(aggregate_b)
 
 
-def test_episode_and_track_filters_are_stable_for_both_e3_clis(
-    e3_batch: dict[str, Path], tmp_path: Path
+def test_historical_judge_and_aggregate_clis_are_disabled_before_output(
+    e3_batch: dict[str, Path],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     judge_episode = tmp_path / "judge-episode"
     assert (
@@ -751,33 +761,12 @@ def test_episode_and_track_filters_are_stable_for_both_e3_clis(
                 "P-E1-MINI-001",
             ]
         )
-        == 0
+        == 1
     )
-    assert _load(judge_episode / "run-manifest.json")["episode_ids"] == [
-        "P-E1-MINI-001"
-    ]
-    judge_track = tmp_path / "judge-track"
-    assert (
-        cli_main(
-            [
-                "evaluate-judge",
-                "--episodes",
-                str(e3_batch["runtime"]),
-                "--rules",
-                str(e3_batch["rules"]),
-                "--output",
-                str(judge_track),
-                "--judge-mode",
-                "stub",
-                "--stub-response",
-                str(FIXED_RESPONSES),
-                "--track",
-                "intervention",
-            ]
-        )
-        == 0
+    assert json.loads(capsys.readouterr().err)["error_code"] == (
+        "legacy_execution_disabled"
     )
-    assert _load(judge_track / "run-manifest.json")["episode_ids"] == ["I-E1-MINI-001"]
+    assert not judge_episode.exists()
     aggregate_episode_output = tmp_path / "aggregate-episode"
     assert (
         cli_main(
@@ -795,33 +784,12 @@ def test_episode_and_track_filters_are_stable_for_both_e3_clis(
                 "R-E1-MINI-001",
             ]
         )
-        == 0
+        == 1
     )
-    assert _load(aggregate_episode_output / "run-manifest.json")["episode_ids"] == [
-        "R-E1-MINI-001"
-    ]
-    aggregate_track_output = tmp_path / "aggregate-track"
-    assert (
-        cli_main(
-            [
-                "aggregate-results",
-                "--episodes",
-                str(e3_batch["runtime"]),
-                "--rules",
-                str(e3_batch["rules"]),
-                "--judges",
-                str(e3_batch["judges"]),
-                "--output",
-                str(aggregate_track_output),
-                "--track",
-                "assessment",
-            ]
-        )
-        == 0
+    assert json.loads(capsys.readouterr().err)["error_code"] == (
+        "legacy_execution_disabled"
     )
-    assert _load(aggregate_track_output / "run-manifest.json")["episode_ids"] == [
-        "A-E1-MINI-001"
-    ]
+    assert not aggregate_episode_output.exists()
 
 
 def test_manifest_digests_git_commit_and_closed_inventories_are_recomputable(
@@ -882,7 +850,9 @@ def test_existing_output_is_not_overwritten_and_mid_publish_failure_is_atomic(
             "git_commit_unavailable", "publish", "batch", "commit unavailable"
         )
 
-    monkeypatch.setattr("learning_agent_eval.judge.current_git_commit", fail_commit)
+    monkeypatch.setattr(
+        "learning_agent_eval._historical_judge.current_git_commit", fail_commit
+    )
     target = tmp_path / "atomic-target"
     with pytest.raises(JudgeEvaluationError):
         evaluate_judges(
@@ -978,13 +948,9 @@ def test_cli_errors_are_structured_and_stable(
     )
     assert status == 1
     error = json.loads(capsys.readouterr().err)
-    assert error == {
-        "episode_id": "batch",
-        "error_code": "output_exists",
-        "message": "output directory already exists",
-        "stage": "prepare",
-        "status": "error",
-    }
+    assert error["error_code"] == "legacy_execution_disabled"
+    assert error["stage"] == "preflight"
+    assert list(output.iterdir()) == []
 
     malformed_response = tmp_path / "malformed-response.json"
     malformed_response.write_text("not-json", encoding="utf-8")
@@ -1005,13 +971,8 @@ def test_cli_errors_are_structured_and_stable(
     )
     assert status == 1
     error = json.loads(capsys.readouterr().err)
-    assert error == {
-        "episode_id": "batch",
-        "error_code": "stub_response_invalid",
-        "message": "fixed Judge response document is invalid",
-        "stage": "prepare",
-        "status": "error",
-    }
+    assert error["error_code"] == "legacy_execution_disabled"
+    assert error["stage"] == "preflight"
     assert not (tmp_path / "malformed-output").exists()
 
 

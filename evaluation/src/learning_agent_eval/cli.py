@@ -8,22 +8,11 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from .aggregate import AggregateEvaluationError, aggregate_results
-from .aggregate_v2 import (
-    AggregateEvaluationV2Error,
-    aggregate_results_v2,
-    aggregate_results_v3,
-)
-from .judge import JudgeEvaluationError, evaluate_judges
-from .judge_v2 import JudgeEvaluationV2Error, evaluate_judges_v2, evaluate_judges_v3
-from .rule_runner import RuleEvaluationError, evaluate_run_rules
-from .rule_runner_v2 import (
-    RuleEvaluationV2Error,
-    evaluate_run_rules_v2,
-    evaluate_run_rules_v3,
-)
-from .runner import RunAgentError, run_agent
-from .runner_v3 import RunAgentV3Error, run_agent_v3, run_agent_v4
+from .active_aggregate import AggregateEvaluationV2Error, aggregate_active_results
+from .active_judge import JudgeEvaluationV2Error, evaluate_active_judges
+from .active_rules import RuleEvaluationV2Error, evaluate_active_rules
+from .active_runtime import RunAgentV3Error, run_active_runtime
+from .legacy import LegacyExecutionDisabledError
 from .validator import validate_dataset
 
 
@@ -39,6 +28,17 @@ def _document_version(path: str) -> str | None:
 
 def _run_manifest_version(root: str) -> str | None:
     return _document_version(str(Path(root) / "run-manifest.json"))
+
+
+def _rule_manifest_version(root: str) -> str | None:
+    return _document_version(str(Path(root) / "rule-manifest.json"))
+
+
+def _reject_historical_version(
+    actual: str | None, historical: frozenset[str], *, entrypoint: str
+) -> None:
+    if actual in historical:
+        raise LegacyExecutionDisabledError(entrypoint)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -120,22 +120,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"dataset_valid episodes={report.stats.episodes} tracks={counts}")
         return 0
     if arguments.command == "evaluate-rules":
-        manifest_version = _run_manifest_version(arguments.input)
         try:
-            evaluator = (
-                evaluate_run_rules_v3
-                if manifest_version == "runtime-run-manifest-v3"
-                else evaluate_run_rules_v2
-                if manifest_version == "runtime-run-manifest-v2"
-                else evaluate_run_rules
+            _reject_historical_version(
+                _run_manifest_version(arguments.input),
+                frozenset({"e2-run-output-manifest-v1", "runtime-run-manifest-v2"}),
+                entrypoint="evaluate-rules",
             )
-            summary = evaluator(
+            summary = evaluate_active_rules(
                 input_path=arguments.input,
                 output=arguments.output,
                 episode_ids=set(arguments.episode_id) or None,
                 track=arguments.track,
             )
-        except (RuleEvaluationError, RuleEvaluationV2Error) as exc:
+        except (LegacyExecutionDisabledError, RuleEvaluationV2Error) as exc:
             print(
                 json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
                 file=sys.stderr,
@@ -152,6 +149,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"failed_episodes={len(summary.failed_episode_ids)} "
             f"invalid_input_episodes={len(summary.invalid_episode_ids)} "
             f"hard_gate_episodes={len(summary.hard_gate_episode_ids)} "
+            f"protocol_eligible={str(summary.protocol_eligible).lower()} "
+            f"provider_eligible={str(summary.provider_eligible).lower()} "
+            f"trusted_benchmark_run={str(summary.trusted_benchmark_run).lower()} "
             f"formal_evaluation_result={str(summary.formal_evaluation_result).lower()}"
         )
         if summary.invalid_episode_ids:
@@ -160,16 +160,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
         return 3 if summary.failed_episode_ids else 0
     if arguments.command == "evaluate-judge":
-        manifest_version = _run_manifest_version(arguments.episodes)
         try:
-            evaluator = (
-                evaluate_judges_v3
-                if manifest_version == "runtime-run-manifest-v3"
-                else evaluate_judges_v2
-                if manifest_version == "runtime-run-manifest-v2"
-                else evaluate_judges
+            _reject_historical_version(
+                _run_manifest_version(arguments.episodes),
+                frozenset({"e2-run-output-manifest-v1", "runtime-run-manifest-v2"}),
+                entrypoint="evaluate-judge",
             )
-            summary = evaluator(
+            _reject_historical_version(
+                _rule_manifest_version(arguments.rules),
+                frozenset({"rule-run-manifest-v1", "rule-run-manifest-v2"}),
+                entrypoint="evaluate-judge",
+            )
+            summary = evaluate_active_judges(
                 episodes=arguments.episodes,
                 rules=arguments.rules,
                 output=arguments.output,
@@ -179,7 +181,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 episode_ids=set(arguments.episode_id) or None,
                 track=arguments.track,
             )
-        except (JudgeEvaluationError, JudgeEvaluationV2Error) as exc:
+        except (LegacyExecutionDisabledError, JudgeEvaluationV2Error) as exc:
             print(
                 json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
                 file=sys.stderr,
@@ -202,22 +204,32 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"invalid_input={len(summary.invalid_episode_ids)} "
             f"judge_errors={len(summary.judge_error_episode_ids)} "
             f"repairs={len(summary.repair_attempted_episode_ids)} "
+            f"protocol_eligible={str(summary.protocol_eligible).lower()} "
+            f"provider_eligible={str(summary.provider_eligible).lower()} "
+            f"trusted_benchmark_run={str(summary.trusted_benchmark_run).lower()} "
             f"formal_evaluation_result={str(summary.formal_evaluation_result).lower()}"
         )
         if summary.invalid_episode_ids:
             return 1
         return 2 if summary.judge_error_episode_ids else 0
     if arguments.command == "aggregate-results":
-        manifest_version = _run_manifest_version(arguments.judges)
         try:
-            aggregator = (
-                aggregate_results_v3
-                if manifest_version == "judge-run-manifest-v3"
-                else aggregate_results_v2
-                if manifest_version == "judge-run-manifest-v2"
-                else aggregate_results
+            _reject_historical_version(
+                _run_manifest_version(arguments.episodes),
+                frozenset({"e2-run-output-manifest-v1", "runtime-run-manifest-v2"}),
+                entrypoint="aggregate-results",
             )
-            summary = aggregator(
+            _reject_historical_version(
+                _rule_manifest_version(arguments.rules),
+                frozenset({"rule-run-manifest-v1", "rule-run-manifest-v2"}),
+                entrypoint="aggregate-results",
+            )
+            _reject_historical_version(
+                _run_manifest_version(arguments.judges),
+                frozenset({"judge-run-manifest-v1", "judge-run-manifest-v2"}),
+                entrypoint="aggregate-results",
+            )
+            summary = aggregate_active_results(
                 episodes=arguments.episodes,
                 rules=arguments.rules,
                 judges=arguments.judges,
@@ -225,7 +237,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 episode_ids=set(arguments.episode_id) or None,
                 track=arguments.track,
             )
-        except (AggregateEvaluationError, AggregateEvaluationV2Error) as exc:
+        except (LegacyExecutionDisabledError, AggregateEvaluationV2Error) as exc:
             print(
                 json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
                 file=sys.stderr,
@@ -242,6 +254,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"failed={len(summary.failed_episode_ids)} "
             f"invalid_input={len(summary.invalid_episode_ids)} "
             f"judge_errors={len(summary.judge_error_episode_ids)} "
+            f"protocol_eligible={str(summary.protocol_eligible).lower()} "
+            f"provider_eligible={str(summary.provider_eligible).lower()} "
+            f"trusted_benchmark_run={str(summary.trusted_benchmark_run).lower()} "
+            f"formal_capability_result="
+            f"{str(summary.formal_capability_result).lower()} "
             f"formal_evaluation_result={str(summary.formal_evaluation_result).lower()}"
         )
         if summary.invalid_episode_ids:
@@ -249,16 +266,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         if summary.judge_error_episode_ids:
             return 2
         return 3 if summary.failed_episode_ids else 0
-    manifest_version = _document_version(arguments.manifest)
     try:
-        runner = (
-            run_agent_v4
-            if manifest_version == "case-suite-manifest-v2"
-            else run_agent_v3
-            if manifest_version == "case-suite-manifest-v1"
-            else run_agent
+        _reject_historical_version(
+            _document_version(arguments.manifest),
+            frozenset({"e1-run-manifest-v1", "case-suite-manifest-v1"}),
+            entrypoint="run-agent",
         )
-        summary = runner(
+        summary = run_active_runtime(
             dataset=arguments.dataset,
             manifest=arguments.manifest,
             output=arguments.output,
@@ -267,7 +281,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             model_mode=arguments.model_mode,
             allow_real_model=arguments.allow_real_model,
         )
-    except (RunAgentError, RunAgentV3Error) as exc:
+    except (LegacyExecutionDisabledError, RunAgentV3Error) as exc:
         print(
             json.dumps(exc.as_dict(), sort_keys=True, separators=(",", ":")),
             file=sys.stderr,
@@ -282,6 +296,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"episodes={len(summary.episode_ids)} tracks={track_counts} "
         f"runtime_failures={len(getattr(summary, 'failure_ids', ()))} "
         f"invocation_mode={summary.invocation_mode} "
+        f"protocol_eligible={str(summary.protocol_eligible).lower()} "
+        f"provider_eligible={str(summary.provider_eligible).lower()} "
+        f"trusted_benchmark_run={str(summary.trusted_benchmark_run).lower()} "
         f"formal_evaluation_result="
         f"{str(getattr(summary, 'formal_evaluation_result', False)).lower()} "
         f"evaluation_status="

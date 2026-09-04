@@ -230,22 +230,34 @@ async def _run_planning_child(
     assignment: PlanningAssignment,
     context: str,
     parent_call_id: str | None = None,
+    terminal_predecessor: asyncio.Event | None = None,
+    terminal_signal: asyncio.Event | None = None,
 ) -> None:
     """Resume one deterministic planning child through the shared state machine."""
 
     from app.runtime.subagents import execute_durable_child
 
     del action_key, assignment_index
-    await execute_durable_child(
-        child_id,
-        role=assignment.role,
-        objective=assignment.objective,
-        context=context,
-        allowlist=_planning_allowlist(),
-        max_steps=4,
-        client_factory=create_model_client,
-        parent_call_id=parent_call_id,
-    )
+
+    async def await_predecessor() -> None:
+        if terminal_predecessor is not None:
+            await terminal_predecessor.wait()
+
+    try:
+        await execute_durable_child(
+            child_id,
+            role=assignment.role,
+            objective=assignment.objective,
+            context=context,
+            allowlist=_planning_allowlist(),
+            max_steps=4,
+            client_factory=create_model_client,
+            parent_call_id=parent_call_id,
+            before_terminal_commit=await_predecessor,
+        )
+    finally:
+        if terminal_signal is not None:
+            terminal_signal.set()
 
 
 async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dict:
@@ -370,10 +382,12 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
     ]
     try:
         active_tasks = []
+        terminal_events = [asyncio.Event() for _ in args.assignments]
         for index, (child, assignment) in enumerate(
             zip(child_runs, args.assignments, strict=True)
         ):
             if child.status in {"completed", "failed", "cancelled"}:
+                terminal_events[index].set()
                 continue
             checkpoint = dict(child.checkpoint or {})
             context = str(checkpoint.get("context") or snapshot_markdown)
@@ -386,6 +400,10 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
                     assignment=assignment,
                     context=context,
                     parent_call_id=ctx.source_model_call_id,
+                    terminal_predecessor=(
+                        terminal_events[index - 1] if index > 0 else None
+                    ),
+                    terminal_signal=terminal_events[index],
                 ),
             ))
         if active_tasks:

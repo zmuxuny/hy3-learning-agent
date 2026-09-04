@@ -13,14 +13,26 @@ from learning_agent_eval.action_protocol import (
     parse_action_declaration,
     render_action_declaration,
 )
-from learning_agent_eval.aggregate_v2 import (
+from learning_agent_eval.active_aggregate import (
     AGGREGATOR_IMPLEMENTATION_SHA256_V3,
-    aggregate_results_v3,
+    aggregate_active_results,
+    aggregate_episode_v3,
 )
+from learning_agent_eval.active_judge import (
+    FixedResponseJudgeProviderV3,
+    _evaluate_one_v3,
+    evaluate_active_judges,
+)
+from learning_agent_eval.active_rules import (
+    RuleEvaluationV2Error,
+    evaluate_active_rules,
+)
+from learning_agent_eval.active_runtime import run_active_runtime
 from learning_agent_eval.blinding_v2 import build_blind_judge_input_v3
 from learning_agent_eval.canonical import canonical_json_bytes
 from learning_agent_eval.case_specs import episode_id_for_case
 from learning_agent_eval.cli import main as cli_main
+from learning_agent_eval.e3_io import current_git_commit
 from learning_agent_eval.e31_io import load_e311_inputs
 from learning_agent_eval.exporter_v4 import (
     ACTION_EFFECT_TYPES_V2,
@@ -28,22 +40,23 @@ from learning_agent_eval.exporter_v4 import (
     _effects_and_result,
 )
 from learning_agent_eval.integrity import (
+    aggregate_result_digest,
     artifact_manifest_digest,
     decision_episode_digest,
+    rule_result_digest,
 )
-from learning_agent_eval.judge_v2 import evaluate_judges_v3
 from learning_agent_eval.models import (
+    AggregateRunManifestV3,
     CaseSpecV2,
     DecisionEpisodeV4,
     RuleResultV3,
     RuleRunManifestV3,
 )
-from learning_agent_eval.rule_runner_v2 import evaluate_run_rules_v3
 from learning_agent_eval.rules import (
     RULE_IMPLEMENTATION_SHA256_V3,
     evaluate_rules_v3,
 )
-from learning_agent_eval.runner_v3 import run_agent_v4
+from learning_agent_eval.runtime_metadata import dependency_lock_sha256
 from learning_agent_eval.schemas import schema_documents
 from learning_agent_eval.validator import validate_dataset, validate_episode
 from pydantic import ValidationError
@@ -78,21 +91,21 @@ def e311_chain(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     rules = root / "rules"
     judges = root / "judges"
     aggregate = root / "aggregate"
-    runtime_summary = run_agent_v4(
+    runtime_summary = run_active_runtime(
         dataset=DATASET,
         manifest=CASE_MANIFEST,
         output=runtime,
         model_mode="stub",
     )
-    rule_summary = evaluate_run_rules_v3(input_path=runtime, output=rules)
-    judge_summary = evaluate_judges_v3(
+    rule_summary = evaluate_active_rules(input_path=runtime, output=rules)
+    judge_summary = evaluate_active_judges(
         episodes=runtime,
         rules=rules,
         output=judges,
         judge_mode="stub",
         stub_response=FIXED_RESPONSES,
     )
-    aggregate_summary = aggregate_results_v3(
+    aggregate_summary = aggregate_active_results(
         episodes=runtime,
         rules=rules,
         judges=judges,
@@ -152,34 +165,78 @@ def test_active_contract_schemas_are_strict_and_committed() -> None:
 
 
 def test_all_fourteen_actions_have_exact_nonheuristic_projection() -> None:
-    text = render_action_declaration("Public answer.", ACTION_CLASSES)
-    status, declared, public_text = parse_action_declaration(text)
-    assert status == "valid"
-    assert declared == ACTION_CLASSES
-    assert public_text == "Public answer."
+    for action in ACTION_CLASSES:
+        text = render_action_declaration("Public answer.", [action])
+        status, declared, public_text = parse_action_declaration(text)
+        assert (status, declared, public_text) == (
+            "valid",
+            (action,),
+            "Public answer.",
+        )
+        call = {
+            "call_id": "model-call:001",
+            "call_purpose": "decision",
+            "decision_relevant": True,
+            "status": "completed",
+            "tool_call_refs": [],
+            "action_declaration_status": "valid",
+            "declared_action_classes": [action],
+        }
+        attempts, effects, actions, issues = _effects_and_result(
+            episode_id="episode-action-coverage",
+            calls=[call],
+            trace={"operations": [], "tool_invocations": []},
+            state_after={"logical_entities": []},
+            state_delta={"changes": []},
+        )
+        assert actions == [action]
+        assert issues == []
+        assert attempts[0]["declared_action_classes"] == [action]
+        assert [item["effect_type"] for item in effects] == [
+            ACTION_EFFECT_TYPES_V2[action]
+        ]
 
-    call = {
-        "call_id": "model-call:001",
-        "call_purpose": "decision",
-        "decision_relevant": True,
-        "status": "completed",
-        "tool_call_refs": [],
-        "action_declaration_status": "valid",
-        "declared_action_classes": list(ACTION_CLASSES),
-    }
+    combined = render_action_declaration(
+        "Please clarify.", ["INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"]
+    )
+    assert parse_action_declaration(combined)[0] == "valid"
+    with pytest.raises(ValueError, match="ambiguous"):
+        render_action_declaration("Invalid combination.", ACTION_CLASSES)
+
+
+def test_declared_action_and_observed_tool_mismatch_remains_scoreable() -> None:
     attempts, effects, actions, issues = _effects_and_result(
-        episode_id="episode-action-coverage",
-        calls=[call],
-        trace={"operations": [], "tool_invocations": []},
+        episode_id="episode-action-tool-mismatch",
+        calls=[
+            {
+                "call_id": "model-call:001",
+                "call_purpose": "decision",
+                "decision_relevant": True,
+                "tool_call_refs": ["invocation:001"],
+                "action_declaration_status": "valid",
+                "declared_action_classes": ["WAIT"],
+            }
+        ],
+        trace={
+            "operations": [],
+            "tool_invocations": [
+                {
+                    "invocation_id": "invocation:001",
+                    "tool_name": "notification.send",
+                    "observation_status": "completed",
+                    "durable_status": "committed",
+                    "operation_refs": [],
+                    "result": {},
+                }
+            ],
+        },
         state_after={"logical_entities": []},
         state_delta={"changes": []},
     )
-    assert actions == list(ACTION_CLASSES)
-    assert issues == []
-    assert attempts[0]["declared_action_classes"] == list(ACTION_CLASSES)
-    assert [item["effect_type"] for item in effects] == [
-        ACTION_EFFECT_TYPES_V2[action] for action in ACTION_CLASSES
-    ]
+    assert attempts[0]["declared_action_classes"] == ["WAIT"]
+    assert effects[0]["action_classes"] == ["INTERVENE_MESSAGE"]
+    assert actions == ["WAIT", "INTERVENE_MESSAGE"]
+    assert issues == ["action.declaration_effect_mismatch"]
 
 
 def test_full_active_chain_keeps_every_terminal_and_validates(
@@ -187,6 +244,11 @@ def test_full_active_chain_keeps_every_terminal_and_validates(
 ) -> None:
     assert len(e311_chain["runtime_summary"].episode_ids) == 11
     assert e311_chain["runtime_summary"].failure_ids == (RUNTIME_FAILURE_ID,)
+    failure = _load(
+        e311_chain["runtime"] / "failures" / f"{RUNTIME_FAILURE_ID}.json"
+    )
+    assert failure["isolation_evidence"] is None
+    assert failure["protocol_eligible"] is False
     for key in ("runtime", "rules", "judges", "aggregate"):
         report = validate_dataset(e311_chain[key])
         assert report.ok, [item.render() for item in report.issues]
@@ -197,7 +259,21 @@ def test_full_active_chain_keeps_every_terminal_and_validates(
         e311_chain["aggregate_summary"],
     ):
         assert summary.formal_evaluation_result is False
-    assert "mean_score" not in _load(e311_chain["aggregate"] / "run-manifest.json")
+    manifests = [
+        _load(e311_chain["runtime"] / "run-manifest.json"),
+        _load(e311_chain["rules"] / "rule-manifest.json"),
+        _load(e311_chain["judges"] / "run-manifest.json"),
+        _load(e311_chain["aggregate"] / "run-manifest.json"),
+    ]
+    assert all(item["git_commit"] == current_git_commit() for item in manifests)
+    assert all(item["trusted_benchmark_run"] is False for item in manifests)
+    aggregate_manifest = manifests[-1]
+    assert aggregate_manifest["formal_capability_result"] is False
+    assert aggregate_manifest["capability_blockers"] == [
+        "capability.run_not_trusted",
+        "capability.runtime_failure",
+    ]
+    assert "mean_score" not in aggregate_manifest
 
 
 def test_wrong_cross_track_combined_and_missing_actions_remain_scoreable(
@@ -340,6 +416,8 @@ def test_prohibited_file_access_is_a_critical_scoreable_failure(
 ) -> None:
     episode = deepcopy(_artifact(e311_chain, "episode", "family-e31-a-positive"))
     episode["isolation_evidence"]["prohibited_file_access"] = 1
+    episode["result"]["layers"]["protocol_eligibility"] = "invalid"
+    episode["provenance"]["protocol_eligible"] = False
     episode["provenance"]["episode_sha256"] = decision_episode_digest(episode)
     assert validate_episode(episode, source="prohibited-file-access.json") == ()
 
@@ -450,11 +528,13 @@ def test_formal_state_cannot_be_recovered_by_posthoc_cli_filter(
     for manifest in (rule_manifest, judge_manifest, aggregate_manifest):
         assert manifest["formal_evaluation_result"] is False
         assert manifest["runtime_failure_ids"] == [RUNTIME_FAILURE_ID]
+    assert aggregate_manifest["formal_capability_result"] is False
+    assert "capability.posthoc_filter" in aggregate_manifest["capability_blockers"]
     assert _load(track_rules / "rule-manifest.json")["selected_track"] == ("assessment")
 
     promoted = _load(rules / "rules" / f"{positive_id}.json")
     promoted["formal_evaluation_result"] = True
-    with pytest.raises(ValidationError, match="monotonically inherit Runtime"):
+    with pytest.raises(ValidationError, match="Input should be False"):
         RuleResultV3.model_validate(promoted)
     retroactive_selection = deepcopy(rule_manifest)
     retroactive_selection["selection_mode"] = "inherited"
@@ -471,14 +551,14 @@ def test_failure_only_partition_reaches_aggregate_without_judge_call(
     rules = tmp_path / "rules-failure-only"
     judges = tmp_path / "judges-failure-only"
     aggregate = tmp_path / "aggregate-failure-only"
-    run_agent_v4(
+    run_active_runtime(
         dataset=DATASET,
         manifest=CASE_MANIFEST,
         output=runtime,
         episode_ids={expected_episode_id},
         model_mode="stub",
     )
-    evaluate_run_rules_v3(input_path=runtime, output=rules)
+    evaluate_active_rules(input_path=runtime, output=rules)
 
     class NoCallProvider:
         mode = "stub"
@@ -489,14 +569,14 @@ def test_failure_only_partition_reaches_aggregate_without_judge_call(
             raise AssertionError("failure-only Judge must not call a Provider")
 
     provider = NoCallProvider()
-    evaluate_judges_v3(
+    evaluate_active_judges(
         episodes=runtime,
         rules=rules,
         output=judges,
         judge_mode="stub",
         provider=provider,
     )
-    aggregate_results_v3(
+    aggregate_active_results(
         episodes=runtime,
         rules=rules,
         judges=judges,
@@ -511,6 +591,313 @@ def test_failure_only_partition_reaches_aggregate_without_judge_call(
     assert planning["score_count"] == 0
     assert planning["mean_score"] is None
     assert planning["runtime_failure_ids"] == [RUNTIME_FAILURE_ID]
+
+
+def test_active_judge_error_is_disclosed_and_excluded_from_track_mean(
+    e311_chain: dict[str, Any], tmp_path: Path
+) -> None:
+    episode_id = e311_chain["by_family"]["family-e31-a-positive"]
+    episode = _artifact(e311_chain, "episode", "family-e31-a-positive")
+    provider = FixedResponseJudgeProviderV3(
+        [{"invalid": 1}, {"still_invalid": 2}],
+        frozen_time=episode["environment"]["frozen_time"],
+    )
+    judges = tmp_path / "judge-error"
+    aggregate = tmp_path / "aggregate-error"
+    summary = evaluate_active_judges(
+        episodes=e311_chain["runtime"],
+        rules=e311_chain["rules"],
+        output=judges,
+        judge_mode="stub",
+        provider=provider,
+        episode_ids={episode_id},
+    )
+    aggregate_active_results(
+        episodes=e311_chain["runtime"],
+        rules=e311_chain["rules"],
+        judges=judges,
+        output=aggregate,
+    )
+    assert provider.calls == 2
+    assert summary.judge_error_episode_ids == (episode_id,)
+    assessment = _load(aggregate / "tracks" / "assessment.json")
+    assert assessment["judge_error_episode_ids"] == [episode_id]
+    assert assessment["score_count"] == 0
+    assert assessment["mean_score"] is None
+    manifest = _load(aggregate / "run-manifest.json")
+    assert "capability.judge_error" in manifest["capability_blockers"]
+    assert manifest["formal_capability_result"] is False
+
+
+def test_active_invalid_input_is_unscored_and_never_calls_judge(
+    e311_chain: dict[str, Any]
+) -> None:
+    inputs = load_e311_inputs(
+        episodes=e311_chain["runtime"], rules=e311_chain["rules"]
+    )
+    bundle = next(
+        item
+        for item in inputs.bundles
+        if item.episode["scenario_family_id"] == "family-e31-a-positive"
+    )
+    rule = deepcopy(bundle.rule_result)
+    rule["checks"][0]["status"] = "invalid_input"
+    rule["checks"][0]["reason_code"] = "evidence_missing"
+    rule["hard_gates"] = []
+    rule["status"] = "invalid_input"
+    rule["result_sha256"] = rule_result_digest(rule)
+    RuleResultV3.model_validate(rule)
+    provider = FixedResponseJudgeProviderV3(
+        [{"must_not_be_used": True}],
+        frozen_time=bundle.episode["environment"]["frozen_time"],
+    )
+    judge, repaired = _evaluate_one_v3(
+        episode=bundle.episode,
+        rule_result=rule,
+        reference=bundle.judge_reference,
+        rule_manifest=inputs.rule_manifest,
+        judge_mode="stub",
+        provider=provider,
+        selection_mode="adhoc_filter",
+        git_commit=current_git_commit(),
+        worktree_clean=False,
+        dependency_digest=dependency_lock_sha256(),
+    )
+    assert provider.calls == 0
+    assert repaired is False
+    assert judge["status"] == "invalid_input"
+    assert judge["dimensions"] == []
+    aggregate = aggregate_episode_v3(
+        episode=bundle.episode,
+        rule_result=rule,
+        judge_result=judge,
+        judge_manifest=_load(e311_chain["judges"] / "run-manifest.json"),
+        selection_mode="adhoc_filter",
+        worktree_clean=False,
+    )
+    assert aggregate["status"] == "invalid_input"
+    assert aggregate["raw_score"] is None
+    assert aggregate["final_score"] is None
+
+
+def test_trusted_run_and_publishable_capability_are_independent_states(
+    e311_chain: dict[str, Any]
+) -> None:
+    engineering = _load(e311_chain["aggregate"] / "run-manifest.json")
+    forged = deepcopy(engineering)
+    forged.update(
+        {
+            "capability_blockers": [],
+            "formal_capability_result": True,
+            "formal_evaluation_result": True,
+            "evaluation_status": "formal_model_evaluation",
+        }
+    )
+    with pytest.raises(ValidationError, match="formal capability"):
+        AggregateRunManifestV3.model_validate(forged)
+
+    trusted_with_failure = deepcopy(engineering)
+    trusted_with_failure.update(
+        {
+            "input_judge_manifest_trusted_benchmark_run": True,
+            "judge_mode": "real",
+            "selection_mode": "inherited",
+            "worktree_clean": True,
+            "protocol_eligible": True,
+            "provider_eligible": True,
+            "trusted_benchmark_run": True,
+            "result_trusted_benchmark_states": {
+                episode_id: True for episode_id in engineering["episode_ids"]
+            },
+            "runtime_terminals": [
+                {
+                    **terminal,
+                    "protocol_eligible": True,
+                    "provider_eligible": True,
+                }
+                for terminal in engineering["runtime_terminals"]
+            ],
+            "capability_blockers": ["capability.runtime_failure"],
+            "formal_capability_result": False,
+            "formal_evaluation_result": False,
+            "evaluation_status": "not_a_formal_model_evaluation",
+        }
+    )
+    trusted_with_failure["manifest_sha256"] = artifact_manifest_digest(
+        trusted_with_failure
+    )
+    validated = AggregateRunManifestV3.model_validate(trusted_with_failure)
+    assert validated.trusted_benchmark_run is True
+    assert validated.formal_capability_result is False
+
+    publishable = deepcopy(trusted_with_failure)
+    failure_track = publishable["runtime_failure_tracks"].pop(RUNTIME_FAILURE_ID)
+    assert failure_track == "planning"
+    publishable["input_runtime_failure_digests"].pop(RUNTIME_FAILURE_ID)
+    publishable["runtime_failure_ids"] = []
+    publishable["runtime_terminals"] = [
+        terminal
+        for terminal in publishable["runtime_terminals"]
+        if terminal["artifact_id"] != RUNTIME_FAILURE_ID
+    ]
+    publishable["expected_total_cases"] = len(publishable["episode_ids"])
+    publishable["expected_track_counts"]["planning"] -= 1
+    publishable.update(
+        {
+            "judge_mode": "real",
+            "capability_blockers": [],
+            "formal_capability_result": True,
+            "formal_evaluation_result": True,
+            "evaluation_status": "formal_model_evaluation",
+        }
+    )
+    publishable["manifest_sha256"] = artifact_manifest_digest(publishable)
+    validated_publishable = AggregateRunManifestV3.model_validate(publishable)
+    assert validated_publishable.trusted_benchmark_run is True
+    assert validated_publishable.formal_capability_result is True
+
+
+def test_unregistered_aggregate_cannot_self_promote_to_formal(
+    e311_chain: dict[str, Any], tmp_path: Path
+) -> None:
+    forged_root = tmp_path / "unregistered-formal-aggregate"
+    shutil.copytree(e311_chain["aggregate"], forged_root)
+    manifest = _load(forged_root / "run-manifest.json")
+
+    for path in sorted((forged_root / "episodes").glob("*.json")):
+        result = _load(path)
+        result.update(
+            {
+                "input_judge_manifest_trusted_benchmark_run": True,
+                "worktree_clean": True,
+                "protocol_eligible": True,
+                "provider_eligible": True,
+                "trusted_benchmark_run": True,
+            }
+        )
+        result["result_sha256"] = aggregate_result_digest(result)
+        path.write_bytes(canonical_json_bytes(result))
+        manifest["aggregate_result_digests"][result["episode_id"]] = result[
+            "result_sha256"
+        ]
+        manifest["result_trusted_benchmark_states"][result["episode_id"]] = True
+
+    for path in sorted((forged_root / "tracks").glob("*.json")):
+        result = _load(path)
+        result.update(
+            {
+                "input_judge_manifest_trusted_benchmark_run": True,
+                "runtime_failure_ids": [],
+                "result_trusted_benchmark_states": {
+                    episode_id: True for episode_id in result["episode_ids"]
+                },
+                "worktree_clean": True,
+                "protocol_eligible": True,
+                "provider_eligible": True,
+                "trusted_benchmark_run": True,
+            }
+        )
+        result["result_sha256"] = aggregate_result_digest(result)
+        path.write_bytes(canonical_json_bytes(result))
+        manifest["track_result_digests"][result["track"]] = result["result_sha256"]
+
+    failure_track = manifest["runtime_failure_tracks"].pop(RUNTIME_FAILURE_ID)
+    assert failure_track == "planning"
+    manifest["input_runtime_failure_digests"].pop(RUNTIME_FAILURE_ID)
+    manifest["runtime_failure_ids"] = []
+    manifest["runtime_terminals"] = [
+        {
+            **terminal,
+            "protocol_eligible": True,
+            "provider_eligible": True,
+        }
+        for terminal in manifest["runtime_terminals"]
+        if terminal["artifact_id"] != RUNTIME_FAILURE_ID
+    ]
+    manifest["expected_total_cases"] = len(manifest["episode_ids"])
+    manifest["expected_track_counts"] = {
+        track: sum(value == track for value in manifest["episode_tracks"].values())
+        for track in ("planning", "intervention", "assessment", "revision")
+    }
+    manifest.update(
+        {
+            "judge_mode": "real",
+            "input_judge_manifest_trusted_benchmark_run": True,
+            "worktree_clean": True,
+            "protocol_eligible": True,
+            "provider_eligible": True,
+            "trusted_benchmark_run": True,
+            "capability_blockers": [],
+            "formal_capability_result": True,
+            "formal_evaluation_result": True,
+            "evaluation_status": "formal_model_evaluation",
+        }
+    )
+    manifest["manifest_sha256"] = artifact_manifest_digest(manifest)
+    AggregateRunManifestV3.model_validate(manifest)
+    (forged_root / "run-manifest.json").write_bytes(canonical_json_bytes(manifest))
+
+    report = validate_dataset(forged_root)
+    assert report.ok is False
+    assert "manifest.aggregate_v3_capability_mismatch" in {
+        issue.code for issue in report.issues
+    }
+
+
+def test_deleting_runtime_failure_breaks_closed_inventory_before_rules(
+    e311_chain: dict[str, Any], tmp_path: Path
+) -> None:
+    runtime = tmp_path / "runtime-with-deleted-failure"
+    output = tmp_path / "rules-must-not-publish"
+    shutil.copytree(e311_chain["runtime"], runtime)
+    (runtime / "failures" / f"{RUNTIME_FAILURE_ID}.json").unlink()
+    report = validate_dataset(runtime)
+    assert not report.ok
+    assert "manifest.runtime_v3_inventory_mismatch" in {
+        item.code for item in report.issues
+    }
+    with pytest.raises(RuleEvaluationV2Error, match="failed validation"):
+        evaluate_active_rules(input_path=runtime, output=output)
+    assert not output.exists()
+
+
+def test_track_partition_remains_auditable_but_never_formal(
+    e311_chain: dict[str, Any], tmp_path: Path
+) -> None:
+    rules = tmp_path / "track-rules"
+    judges = tmp_path / "track-judges"
+    aggregate = tmp_path / "track-aggregate"
+    evaluate_active_rules(
+        input_path=e311_chain["runtime"], output=rules, track="assessment"
+    )
+    evaluate_active_judges(
+        episodes=e311_chain["runtime"],
+        rules=rules,
+        output=judges,
+        judge_mode="stub",
+        stub_response=FIXED_RESPONSES,
+    )
+    aggregate_active_results(
+        episodes=e311_chain["runtime"],
+        rules=rules,
+        judges=judges,
+        output=aggregate,
+    )
+    for root in (rules, judges, aggregate):
+        report = validate_dataset(root)
+        assert report.ok, [item.render() for item in report.issues]
+    manifest = _load(aggregate / "run-manifest.json")
+    assert manifest["selected_track"] is None
+    assert manifest["selection_mode"] == "adhoc_filter"
+    assert manifest["formal_capability_result"] is False
+    assert manifest["trusted_benchmark_run"] is False
+    assert {
+        "capability.case_inventory_incomplete",
+        "capability.four_tracks_incomplete",
+        "capability.posthoc_filter",
+        "capability.run_not_trusted",
+        "capability.track_inventory_mismatch",
+    } <= set(manifest["capability_blockers"])
 
 
 def test_source_digests_are_executable_and_tampering_fails_closed(
@@ -538,25 +925,50 @@ def test_source_digests_are_executable_and_tampering_fails_closed(
         item.code for item in report.issues
     }
 
+    tampered_aggregate = tmp_path / "tampered-aggregate"
+    shutil.copytree(e311_chain["aggregate"], tampered_aggregate)
+    aggregate_path = tampered_aggregate / "run-manifest.json"
+    aggregate = _load(aggregate_path)
+    aggregate["aggregate_source_bundle_sha256"] = "0" * 64
+    aggregate["aggregator_implementation_sha256"] = "0" * 64
+    aggregate["manifest_sha256"] = artifact_manifest_digest(aggregate)
+    aggregate_path.write_bytes(canonical_json_bytes(aggregate))
+    aggregate_report = validate_dataset(tampered_aggregate)
+    assert not aggregate_report.ok
+    assert "manifest.aggregate_v3_implementation_mismatch" in {
+        item.code for item in aggregate_report.issues
+    }
 
-def test_judge_and_aggregate_are_byte_deterministic(
+
+def test_two_complete_active_chains_are_byte_deterministic(
     e311_chain: dict[str, Any], tmp_path: Path
 ) -> None:
+    runtime = tmp_path / "runtime-second"
+    rules = tmp_path / "rules-second"
     judges = tmp_path / "judges-second"
     aggregate = tmp_path / "aggregate-second"
-    evaluate_judges_v3(
-        episodes=e311_chain["runtime"],
-        rules=e311_chain["rules"],
+    run_active_runtime(
+        dataset=DATASET,
+        manifest=CASE_MANIFEST,
+        output=runtime,
+        model_mode="stub",
+    )
+    evaluate_active_rules(input_path=runtime, output=rules)
+    evaluate_active_judges(
+        episodes=runtime,
+        rules=rules,
         output=judges,
         judge_mode="stub",
         stub_response=FIXED_RESPONSES,
     )
-    aggregate_results_v3(
-        episodes=e311_chain["runtime"],
-        rules=e311_chain["rules"],
+    aggregate_active_results(
+        episodes=runtime,
+        rules=rules,
         judges=judges,
         output=aggregate,
     )
+    assert _files(runtime) == _files(e311_chain["runtime"])
+    assert _files(rules) == _files(e311_chain["rules"])
     assert _files(judges) == _files(e311_chain["judges"])
     assert _files(aggregate) == _files(e311_chain["aggregate"])
 

@@ -20,7 +20,7 @@
           "type": "string"
         },
         "action_protocol_version": {
-          "const": "model-action-declaration-v1",
+          "const": "model-action-declaration-v2",
           "title": "Action Protocol Version",
           "type": "string"
         },
@@ -675,6 +675,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "benchmark_release_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Benchmark Release Id",
+      "type": "string"
+    },
+    "benchmark_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Benchmark Release Sha256",
+      "type": "string"
+    },
     "case_id": {
       "maxLength": 128,
       "minLength": 1,
@@ -685,6 +697,16 @@
     "case_spec_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Case Spec Sha256",
+      "type": "string"
+    },
+    "evaluation_protocol_release_id": {
+      "const": "evaluation-protocol-release-1.0",
+      "title": "Evaluation Protocol Release Id",
+      "type": "string"
+    },
+    "evaluation_protocol_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Evaluation Protocol Release Sha256",
       "type": "string"
     },
     "evaluation_status": {
@@ -741,8 +763,16 @@
       "title": "Model Calls",
       "type": "array"
     },
+    "protocol_eligible": {
+      "title": "Protocol Eligible",
+      "type": "boolean"
+    },
     "provider_attestation": {
       "$ref": "#/$defs/ProviderAttestationV1"
+    },
+    "provider_eligible": {
+      "title": "Provider Eligible",
+      "type": "boolean"
     },
     "public_summary": {
       "maxLength": 4000,
@@ -755,6 +785,23 @@
       "minLength": 1,
       "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
       "title": "Reason Code",
+      "type": "string"
+    },
+    "runtime_run_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Runtime Run Id",
+      "type": "string"
+    },
+    "runtime_source_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Runtime Source Bundle Sha256",
+      "type": "string"
+    },
+    "runtime_source_bundle_version": {
+      "const": "evaluation-source-bundle-v2",
+      "title": "Runtime Source Bundle Version",
       "type": "string"
     },
     "schema_version": {
@@ -791,7 +838,16 @@
     "failed_at",
     "formal_evaluation_result",
     "evaluation_status",
-    "failure_sha256"
+    "failure_sha256",
+    "protocol_eligible",
+    "provider_eligible",
+    "evaluation_protocol_release_id",
+    "evaluation_protocol_release_sha256",
+    "benchmark_release_id",
+    "benchmark_release_sha256",
+    "runtime_run_id",
+    "runtime_source_bundle_version",
+    "runtime_source_bundle_sha256"
   ],
   "title": "RuntimeFailureV2",
   "type": "object"

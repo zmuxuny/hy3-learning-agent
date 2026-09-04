@@ -528,6 +528,20 @@
           "title": "Ordinal",
           "type": "integer"
         },
+        "stub_request_user_prefix": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stub Request User Prefix"
+        },
         "tool_calls": {
           "items": {
             "$ref": "#/$defs/ScriptedFunctionCall"

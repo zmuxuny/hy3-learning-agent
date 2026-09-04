@@ -3,6 +3,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "benchmark_release_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Benchmark Release Id",
+      "type": "string"
+    },
+    "benchmark_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Benchmark Release Sha256",
+      "type": "string"
+    },
     "blind_input_digests": {
       "additionalProperties": {
         "pattern": "^[0-9a-f]{64}$",
@@ -10,6 +22,11 @@
       },
       "title": "Blind Input Digests",
       "type": "object"
+    },
+    "case_suite_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Case Suite Sha256",
+      "type": "string"
     },
     "episode_ids": {
       "items": {
@@ -21,15 +38,36 @@
       "title": "Episode Ids",
       "type": "array"
     },
+    "episode_tracks": {
+      "additionalProperties": {
+        "enum": [
+          "planning",
+          "intervention",
+          "assessment",
+          "revision"
+        ],
+        "type": "string"
+      },
+      "title": "Episode Tracks",
+      "type": "object"
+    },
+    "evaluation_protocol_release_id": {
+      "const": "evaluation-protocol-release-1.0",
+      "title": "Evaluation Protocol Release Id",
+      "type": "string"
+    },
+    "evaluation_protocol_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Evaluation Protocol Release Sha256",
+      "type": "string"
+    },
     "evaluation_status": {
-      "enum": [
-        "not_a_formal_model_evaluation",
-        "formal_model_evaluation"
-      ],
+      "const": "not_a_formal_model_evaluation",
       "title": "Evaluation Status",
       "type": "string"
     },
     "formal_evaluation_result": {
+      "const": false,
       "title": "Formal Evaluation Result",
       "type": "boolean"
     },
@@ -70,6 +108,7 @@
       "type": "string"
     },
     "input_rule_manifest_formal_evaluation_result": {
+      "const": false,
       "title": "Input Rule Manifest Formal Evaluation Result",
       "type": "boolean"
     },
@@ -77,6 +116,10 @@
       "pattern": "^[0-9a-f]{64}$",
       "title": "Input Rule Manifest Sha256",
       "type": "string"
+    },
+    "input_rule_manifest_trusted_benchmark_run": {
+      "title": "Input Rule Manifest Trusted Benchmark Run",
+      "type": "boolean"
     },
     "input_rule_result_digests": {
       "additionalProperties": {
@@ -144,6 +187,16 @@
       "title": "Judge Result Digests",
       "type": "object"
     },
+    "judge_source_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Judge Source Bundle Sha256",
+      "type": "string"
+    },
+    "judge_source_bundle_version": {
+      "const": "evaluation-source-bundle-v2",
+      "title": "Judge Source Bundle Version",
+      "type": "string"
+    },
     "judge_version": {
       "maxLength": 128,
       "minLength": 1,
@@ -155,6 +208,14 @@
       "pattern": "^[0-9a-f]{64}$",
       "title": "Manifest Sha256",
       "type": "string"
+    },
+    "protocol_eligible": {
+      "title": "Protocol Eligible",
+      "type": "boolean"
+    },
+    "provider_eligible": {
+      "title": "Provider Eligible",
+      "type": "boolean"
     },
     "repair_limit": {
       "const": 1,
@@ -173,6 +234,7 @@
     },
     "result_formal_evaluation_states": {
       "additionalProperties": {
+        "const": false,
         "type": "boolean"
       },
       "title": "Result Formal Evaluation States",
@@ -188,6 +250,13 @@
         "type": "string"
       },
       "title": "Result Statuses",
+      "type": "object"
+    },
+    "result_trusted_benchmark_states": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Result Trusted Benchmark States",
       "type": "object"
     },
     "rubric_sha256": {
@@ -224,6 +293,13 @@
       },
       "title": "Runtime Failure Tracks",
       "type": "object"
+    },
+    "runtime_run_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Runtime Run Id",
+      "type": "string"
     },
     "schema_version": {
       "const": "judge-run-manifest-v3",
@@ -267,6 +343,10 @@
       "title": "Track Anchor Version",
       "type": "string"
     },
+    "trusted_benchmark_run": {
+      "title": "Trusted Benchmark Run",
+      "type": "boolean"
+    },
     "worktree_clean": {
       "title": "Worktree Clean",
       "type": "boolean"
@@ -274,6 +354,12 @@
   },
   "required": [
     "schema_version",
+    "runtime_run_id",
+    "evaluation_protocol_release_id",
+    "evaluation_protocol_release_sha256",
+    "benchmark_release_id",
+    "benchmark_release_sha256",
+    "case_suite_sha256",
     "input_episode_schema_version",
     "input_rule_schema_version",
     "input_reference_schema_version",
@@ -289,9 +375,12 @@
     "track_anchor_sha256",
     "repair_limit",
     "judge_mode",
+    "judge_source_bundle_version",
+    "judge_source_bundle_sha256",
     "input_runtime_manifest_sha256",
     "input_rule_manifest_sha256",
     "input_rule_manifest_formal_evaluation_result",
+    "input_rule_manifest_trusted_benchmark_run",
     "selection_mode",
     "requested_episode_ids",
     "selected_track",
@@ -301,11 +390,16 @@
     "input_rule_result_digests",
     "input_reference_digests",
     "input_runtime_failure_digests",
+    "episode_tracks",
     "runtime_failure_tracks",
     "blind_input_digests",
     "judge_result_digests",
     "result_statuses",
     "result_formal_evaluation_states",
+    "result_trusted_benchmark_states",
+    "protocol_eligible",
+    "provider_eligible",
+    "trusted_benchmark_run",
     "formal_evaluation_result",
     "evaluation_status",
     "worktree_clean",

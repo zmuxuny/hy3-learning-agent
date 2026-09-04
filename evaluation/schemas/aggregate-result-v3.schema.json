@@ -233,6 +233,18 @@
       "title": "Applied Caps",
       "type": "array"
     },
+    "benchmark_release_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Benchmark Release Id",
+      "type": "string"
+    },
+    "benchmark_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Benchmark Release Sha256",
+      "type": "string"
+    },
     "dimensions": {
       "items": {
         "$ref": "#/$defs/AggregateDimensionV1"
@@ -262,6 +274,16 @@
       "title": "Episode Sha256",
       "type": "string"
     },
+    "evaluation_protocol_release_id": {
+      "const": "evaluation-protocol-release-1.0",
+      "title": "Evaluation Protocol Release Id",
+      "type": "string"
+    },
+    "evaluation_protocol_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Evaluation Protocol Release Sha256",
+      "type": "string"
+    },
     "evaluation_status": {
       "enum": [
         "not_a_formal_model_evaluation",
@@ -284,14 +306,17 @@
       "title": "Final Score"
     },
     "formal_evaluation_result": {
+      "const": false,
       "title": "Formal Evaluation Result",
       "type": "boolean"
     },
     "input_episode_formal_evaluation_result": {
+      "const": false,
       "title": "Input Episode Formal Evaluation Result",
       "type": "boolean"
     },
     "input_judge_manifest_formal_evaluation_result": {
+      "const": false,
       "title": "Input Judge Manifest Formal Evaluation Result",
       "type": "boolean"
     },
@@ -300,11 +325,17 @@
       "title": "Input Judge Manifest Sha256",
       "type": "string"
     },
+    "input_judge_manifest_trusted_benchmark_run": {
+      "title": "Input Judge Manifest Trusted Benchmark Run",
+      "type": "boolean"
+    },
     "input_judge_result_formal_evaluation_result": {
+      "const": false,
       "title": "Input Judge Result Formal Evaluation Result",
       "type": "boolean"
     },
     "input_rule_result_formal_evaluation_result": {
+      "const": false,
       "title": "Input Rule Result Formal Evaluation Result",
       "type": "boolean"
     },
@@ -339,6 +370,14 @@
       "title": "Judge Suggested Hard Gates",
       "type": "array"
     },
+    "protocol_eligible": {
+      "title": "Protocol Eligible",
+      "type": "boolean"
+    },
+    "provider_eligible": {
+      "title": "Provider Eligible",
+      "type": "boolean"
+    },
     "raw_score": {
       "anyOf": [
         {
@@ -367,6 +406,13 @@
     "rule_result_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Rule Result Sha256",
+      "type": "string"
+    },
+    "runtime_run_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Runtime Run Id",
       "type": "string"
     },
     "schema_version": {
@@ -401,6 +447,10 @@
       "title": "Track",
       "type": "string"
     },
+    "trusted_benchmark_run": {
+      "title": "Trusted Benchmark Run",
+      "type": "boolean"
+    },
     "worktree_clean": {
       "title": "Worktree Clean",
       "type": "boolean"
@@ -428,6 +478,11 @@
     "evaluation_status",
     "invalid_reason_code",
     "result_sha256",
+    "evaluation_protocol_release_id",
+    "evaluation_protocol_release_sha256",
+    "benchmark_release_id",
+    "benchmark_release_sha256",
+    "runtime_run_id",
     "aggregator_implementation_version",
     "aggregator_implementation_sha256",
     "input_judge_manifest_sha256",
@@ -435,8 +490,12 @@
     "input_episode_formal_evaluation_result",
     "input_rule_result_formal_evaluation_result",
     "input_judge_result_formal_evaluation_result",
+    "input_judge_manifest_trusted_benchmark_run",
     "selection_mode",
-    "worktree_clean"
+    "worktree_clean",
+    "protocol_eligible",
+    "provider_eligible",
+    "trusted_benchmark_run"
   ],
   "title": "AggregateResultV3",
   "type": "object"

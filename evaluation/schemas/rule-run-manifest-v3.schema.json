@@ -3,6 +3,23 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "benchmark_release_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Benchmark Release Id",
+      "type": "string"
+    },
+    "benchmark_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Benchmark Release Sha256",
+      "type": "string"
+    },
+    "case_suite_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Case Suite Sha256",
+      "type": "string"
+    },
     "episode_ids": {
       "items": {
         "maxLength": 128,
@@ -12,6 +29,16 @@
       },
       "title": "Episode Ids",
       "type": "array"
+    },
+    "evaluation_protocol_release_id": {
+      "const": "evaluation-protocol-release-1.0",
+      "title": "Evaluation Protocol Release Id",
+      "type": "string"
+    },
+    "evaluation_protocol_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Evaluation Protocol Release Sha256",
+      "type": "string"
     },
     "evaluator_implementation_sha256": {
       "pattern": "^[0-9a-f]{64}$",
@@ -33,6 +60,7 @@
       "type": "string"
     },
     "formal_evaluation_result": {
+      "const": false,
       "title": "Formal Evaluation Result",
       "type": "boolean"
     },
@@ -81,6 +109,7 @@
       "type": "object"
     },
     "input_runtime_formal_evaluation_result": {
+      "const": false,
       "title": "Input Runtime Formal Evaluation Result",
       "type": "boolean"
     },
@@ -88,6 +117,10 @@
       "pattern": "^[0-9a-f]{64}$",
       "title": "Input Runtime Manifest Sha256",
       "type": "string"
+    },
+    "input_runtime_trusted_benchmark_run": {
+      "title": "Input Runtime Trusted Benchmark Run",
+      "type": "boolean"
     },
     "invocation_mode": {
       "enum": [
@@ -102,6 +135,14 @@
       "title": "Manifest Sha256",
       "type": "string"
     },
+    "protocol_eligible": {
+      "title": "Protocol Eligible",
+      "type": "boolean"
+    },
+    "provider_eligible": {
+      "title": "Provider Eligible",
+      "type": "boolean"
+    },
     "requested_episode_ids": {
       "items": {
         "maxLength": 128,
@@ -114,9 +155,17 @@
     },
     "result_formal_evaluation_states": {
       "additionalProperties": {
+        "const": false,
         "type": "boolean"
       },
       "title": "Result Formal Evaluation States",
+      "type": "object"
+    },
+    "result_trusted_benchmark_states": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Result Trusted Benchmark States",
       "type": "object"
     },
     "rule_pack_sha256": {
@@ -162,6 +211,13 @@
       "title": "Runtime Failure Tracks",
       "type": "object"
     },
+    "runtime_run_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Runtime Run Id",
+      "type": "string"
+    },
     "schema_version": {
       "const": "rule-run-manifest-v3",
       "title": "Schema Version",
@@ -192,6 +248,10 @@
       "title": "Selection Mode",
       "type": "string"
     },
+    "trusted_benchmark_run": {
+      "title": "Trusted Benchmark Run",
+      "type": "boolean"
+    },
     "worktree_clean": {
       "title": "Worktree Clean",
       "type": "boolean"
@@ -199,6 +259,12 @@
   },
   "required": [
     "schema_version",
+    "runtime_run_id",
+    "evaluation_protocol_release_id",
+    "evaluation_protocol_release_sha256",
+    "benchmark_release_id",
+    "benchmark_release_sha256",
+    "case_suite_sha256",
     "input_episode_schema_version",
     "input_reference_schema_version",
     "input_failure_schema_version",
@@ -209,6 +275,7 @@
     "rule_pack_sha256",
     "input_runtime_manifest_sha256",
     "input_runtime_formal_evaluation_result",
+    "input_runtime_trusted_benchmark_run",
     "invocation_mode",
     "selection_mode",
     "requested_episode_ids",
@@ -221,6 +288,10 @@
     "runtime_failure_tracks",
     "rule_result_digests",
     "result_formal_evaluation_states",
+    "result_trusted_benchmark_states",
+    "protocol_eligible",
+    "provider_eligible",
+    "trusted_benchmark_run",
     "formal_evaluation_result",
     "worktree_clean",
     "git_commit",

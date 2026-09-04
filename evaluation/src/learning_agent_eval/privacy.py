@@ -16,7 +16,6 @@ _PRIVATE_REASONING_KEYS = {
     "internal_thoughts",
     "model_thoughts",
     "private_reasoning",
-    "reasoning",
     "reasoning_content",
     "scratchpad",
     "thought_process",
@@ -103,6 +102,24 @@ def is_private_reasoning_field(key: object) -> bool:
     return _normalized_key(key) in _PRIVATE_REASONING_KEYS
 
 
+def is_model_private_reasoning_field(key: object) -> bool:
+    """Apply the stricter provider-message boundary used by the Recorder."""
+
+    return is_private_reasoning_field(key) or _normalized_key(key) == "reasoning"
+
+
+def _model_payload_path(path: str) -> bool:
+    return any(
+        segment in path
+        for segment in (
+            ".model_calls[",
+            ".model_turns[",
+            ".visible_messages[",
+            ".provider_response",
+        )
+    )
+
+
 def _child_path(path: str, key: str) -> str:
     return f"{path}.{key}" if path != "$" else f"$.{key}"
 
@@ -132,7 +149,9 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
                 key = str(raw_key)
                 child_path = _child_path(path, key)
                 normalized = _normalized_key(key)
-                if is_private_reasoning_field(key):
+                if is_private_reasoning_field(key) or (
+                    normalized == "reasoning" and _model_payload_path(path)
+                ):
                     issues.append(
                         ValidationIssue(
                             code="privacy.private_reasoning",

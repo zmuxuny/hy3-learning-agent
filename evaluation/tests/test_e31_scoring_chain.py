@@ -7,31 +7,33 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from learning_agent_eval.aggregate_v2 import (
+from historical_execution import (
+    aggregate_results_v2,
+    evaluate_judges_v2,
+    evaluate_run_rules_v2,
+    run_agent_v3,
+)
+from learning_agent_eval.active_aggregate import (
     AggregateEvaluationV2Error,
     aggregate_episode_v2,
-    aggregate_results_v2,
     validate_aggregate_result_v2,
+)
+from learning_agent_eval.active_judge import (
+    FixedResponseJudgeProviderV2,
+    JudgeEvaluationV2Error,
+    JudgeProviderReplyV2,
+    _evaluate_one,
 )
 from learning_agent_eval.blinding_v2 import build_blind_judge_input_v2
 from learning_agent_eval.canonical import canonical_json_bytes
 from learning_agent_eval.cli import main as cli_main
 from learning_agent_eval.e31_io import load_e31_inputs
 from learning_agent_eval.integrity import judge_result_digest, rule_result_digest
-from learning_agent_eval.judge_v2 import (
-    FixedResponseJudgeProviderV2,
-    JudgeEvaluationV2Error,
-    JudgeProviderReplyV2,
-    _evaluate_one,
-    evaluate_judges_v2,
-)
 from learning_agent_eval.models import (
     AggregateResultV2,
     JudgeResultV2,
     RuleResultV2,
 )
-from learning_agent_eval.rule_runner_v2 import evaluate_run_rules_v2
-from learning_agent_eval.runner_v3 import run_agent_v3
 from learning_agent_eval.runtime_metadata import dependency_lock_sha256
 from learning_agent_eval.validator import validate_dataset, validate_episode
 from pydantic import ValidationError
@@ -562,7 +564,7 @@ def test_all_e31_outputs_validate_and_remain_nonformal(
     assert e31_chain["aggregate_summary"].formal_evaluation_result is False
 
 
-def test_cli_routes_active_v3_and_preserves_filters(
+def test_historical_v3_cli_chain_is_disabled_before_side_effects(
     e31_chain: dict[str, Any], tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     runtime = tmp_path / "runtime-filtered"
@@ -570,8 +572,8 @@ def test_cli_routes_active_v3_and_preserves_filters(
     judges = tmp_path / "judges-filtered"
     aggregate = tmp_path / "aggregate-filtered"
 
-    assert (
-        cli_main(
+    invocations = (
+        (
             [
                 "run-agent",
                 "--dataset",
@@ -580,72 +582,49 @@ def test_cli_routes_active_v3_and_preserves_filters(
                 str(CASE_MANIFEST),
                 "--output",
                 str(runtime),
-                "--episode-id",
-                PLANNING_ID,
-            ]
-        )
-        == 0
-    )
-    assert (
-        cli_main(
+            ],
+            runtime,
+        ),
+        (
             [
                 "evaluate-rules",
                 "--input",
-                str(runtime),
+                str(e31_chain["runtime"]),
                 "--output",
                 str(rules),
-                "--track",
-                "planning",
-            ]
-        )
-        == 0
-    )
-    assert (
-        cli_main(
+            ],
+            rules,
+        ),
+        (
             [
                 "evaluate-judge",
                 "--episodes",
-                str(runtime),
+                str(e31_chain["runtime"]),
                 "--rules",
-                str(rules),
+                str(e31_chain["rules"]),
                 "--output",
                 str(judges),
-                "--judge-mode",
-                "stub",
-                "--stub-response",
-                str(FIXED_RESPONSES),
-                "--track",
-                "planning",
-            ]
-        )
-        == 0
-    )
-    assert (
-        cli_main(
+            ],
+            judges,
+        ),
+        (
             [
                 "aggregate-results",
                 "--episodes",
-                str(runtime),
+                str(e31_chain["runtime"]),
                 "--rules",
-                str(rules),
+                str(e31_chain["rules"]),
                 "--judges",
-                str(judges),
+                str(e31_chain["judges"]),
                 "--output",
                 str(aggregate),
-                "--episode-id",
-                PLANNING_ID,
-            ]
-        )
-        == 0
+            ],
+            aggregate,
+        ),
     )
-    assert _load(runtime / "run-manifest.json")["selected_case_ids"] == [
-        "case-e31-p-positive"
-    ]
-    assert _load(rules / "rule-manifest.json")["selected_track"] == "planning"
-    assert _load(judges / "run-manifest.json")["selected_track"] == "planning"
-    assert _load(aggregate / "run-manifest.json")["requested_episode_ids"] == [
-        PLANNING_ID
-    ]
-    output = capsys.readouterr()
-    assert "runtime_failures=0" in output.out
-    assert output.err == ""
+    for arguments, output in invocations:
+        assert cli_main(arguments) == 1
+        error = json.loads(capsys.readouterr().err)
+        assert error["error_code"] == "legacy_execution_disabled"
+        assert error["stage"] == "preflight"
+        assert not output.exists()

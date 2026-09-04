@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from .canonical import CanonicalizationError, canonical_json_bytes, sha256_digest
 from .deltas import DeltaConstructionError, build_state_delta, operation_affected_refs
+from .eligibility import isolation_evidence_protocol_eligible
 from .errors import DatasetStats, ValidationIssue, ValidationReport
 from .exporter import (
     ACTION_MAPPING_SHA256,
@@ -32,6 +33,7 @@ from .exporter import (
 from .integrity import (
     aggregate_result_digest,
     artifact_manifest_digest,
+    benchmark_release_digest,
     case_spec_digest,
     context_summary_digest,
     decision_episode_digest,
@@ -42,12 +44,16 @@ from .integrity import (
     judge_result_digest,
     model_visible_context_digest,
     oracle_envelope_digest,
+    protocol_release_digest,
     provider_attestation_digest,
     rule_result_digest,
     runtime_failure_digest,
+    schema_lock_digest,
     snapshot_entity_digest,
+    source_bundle_digest,
     state_delta_digest,
     state_snapshot_digest,
+    trusted_registry_digest,
 )
 from .models import DATASET_DOCUMENT_MODELS
 from .normalizers import NormalizationError, normalize_rfc3339
@@ -2230,6 +2236,39 @@ def _v4_v3_validation_projection(episode: Mapping[str, Any]) -> dict[str, Any]:
             effect["effect_type"], effect["effect_type"]
         )
         effect.pop("action_classes", None)
+    result["layers"].pop("protocol_eligibility", None)
+    attestation = episode["environment"]["provider_attestation"]
+    dataset_role = episode["provenance"]["dataset_role"]
+    legacy_formal = bool(
+        attestation["invocation_mode"] == "real"
+        and dataset_role == "primary_episode"
+        and attestation["attribution_status"] == "eligible"
+    )
+    result["layers"]["formal_evaluation_eligibility"] = (
+        "ineligible_stub"
+        if attestation["invocation_mode"] == "stub"
+        else "ineligible_engineering"
+        if dataset_role != "primary_episode"
+        else "eligible"
+        if legacy_formal
+        else "invalid"
+    )
+    active_provenance = episode["provenance"]
+    projected["provenance"] = {
+        "source_type": active_provenance["source_type"],
+        "construction_method": active_provenance["construction_method"],
+        "dataset_role": dataset_role,
+        "runtime_executed": active_provenance["runtime_executed"],
+        "formal_evaluation_result": legacy_formal,
+        "evaluation_status": (
+            "formal_model_evaluation"
+            if legacy_formal
+            else "not_a_formal_model_evaluation"
+        ),
+        "created_at": active_provenance["created_at"],
+        "source_refs": active_provenance["source_refs"],
+        "episode_sha256": "0" * 64,
+    }
     projected["provenance"]["episode_sha256"] = "0" * 64
     projected["provenance"]["episode_sha256"] = decision_episode_digest(projected)
     return projected
@@ -2293,6 +2332,61 @@ def _episode_v4_semantic_issues(
                 "result.action_mapping_mismatch",
                 "$.result.action_mapping_sha256",
                 "Active action projection mapping is unknown or has drifted.",
+                file=file,
+            )
+        )
+    provenance = episode["provenance"]
+    expected_protocol_eligible = bool(
+        episode["completeness"]["status"] == "complete"
+        and not episode["completeness"]["evidence_error_codes"]
+        and isolation_evidence_protocol_eligible(episode["isolation_evidence"])
+    )
+    if (
+        provenance["protocol_eligible"] != expected_protocol_eligible
+        or episode["result"]["layers"]["protocol_eligibility"]
+        != ("eligible" if expected_protocol_eligible else "invalid")
+    ):
+        issues.append(
+            _issue(
+                "provenance.protocol_eligibility_invalid",
+                "$.result.layers.protocol_eligibility",
+                "Active protocol eligibility must match completeness and isolation.",
+                file=file,
+            )
+        )
+    if provenance["provider_eligible"] != (
+        episode["environment"]["provider_attestation"]["attribution_status"]
+        == "eligible"
+    ):
+        issues.append(
+            _issue(
+                "provenance.provider_eligibility_mismatch",
+                "$.provenance.provider_eligible",
+                "Artifact Provider eligibility must match attestation.",
+                file=file,
+            )
+        )
+    try:
+        from .release_governance import load_protocol_release
+        from .source_bundles import SOURCE_BUNDLE_VERSION, source_bundle_sha256
+
+        protocol = load_protocol_release()
+        release_valid = (
+            provenance["evaluation_protocol_release_sha256"]
+            == protocol["release_sha256"]
+            and provenance["runtime_source_bundle_version"]
+            == SOURCE_BUNDLE_VERSION
+            and provenance["runtime_source_bundle_sha256"]
+            == source_bundle_sha256("runtime")
+        )
+    except (OSError, ValueError):
+        release_valid = False
+    if not release_valid:
+        issues.append(
+            _issue(
+                "provenance.release_binding_mismatch",
+                "$.provenance.evaluation_protocol_release_sha256",
+                "Episode Protocol Release or Runtime source bundle binding differs.",
                 file=file,
             )
         )
@@ -2589,6 +2683,11 @@ def _document_issues(
         "aggregate-result-v3": "result_sha256",
         "aggregate-track-result-v3": "result_sha256",
         "aggregate-run-manifest-v3": "manifest_sha256",
+        "evaluation-protocol-release-v1": "release_sha256",
+        "benchmark-release-manifest-v1": "manifest_sha256",
+        "source-bundle-manifest-v1": "bundle_sha256",
+        "schema-lock-manifest-v1": "manifest_sha256",
+        "trusted-benchmark-registry-v1": "registry_sha256",
     }
     digest_field = digest_fields.get(version)
     if digest_field is not None:
@@ -2628,6 +2727,11 @@ def _document_issues(
             "aggregate-result-v3": aggregate_result_digest,
             "aggregate-track-result-v3": aggregate_result_digest,
             "aggregate-run-manifest-v3": artifact_manifest_digest,
+            "evaluation-protocol-release-v1": protocol_release_digest,
+            "benchmark-release-manifest-v1": benchmark_release_digest,
+            "source-bundle-manifest-v1": source_bundle_digest,
+            "schema-lock-manifest-v1": schema_lock_digest,
+            "trusted-benchmark-registry-v1": trusted_registry_digest,
         }
         digest = digest_functions.get(
             version, lambda document: sha256_digest(document)
@@ -2638,6 +2742,47 @@ def _document_issues(
                     "digest.e1_artifact_mismatch",
                     f"$.{digest_field}",
                     "E1 artifact digest does not match canonical content.",
+                    file=file,
+                )
+            ], None
+    if version == "evaluation-protocol-release-v1":
+        from .release_governance import protocol_release_reason_codes
+
+        reasons = protocol_release_reason_codes(value)
+        if reasons:
+            return [
+                _issue(
+                    "protocol_release.binding_mismatch",
+                    "$",
+                    "Protocol Release bindings do not match repository assets: "
+                    + ",".join(reasons),
+                    file=file,
+                )
+            ], None
+    if version == "schema-lock-manifest-v1":
+        from .release_governance import schema_lock_reason_codes
+
+        reasons = schema_lock_reason_codes(value)
+        if reasons:
+            return [
+                _issue(
+                    "schema_lock.binding_mismatch",
+                    "$.entries",
+                    "Schema lock differs from repository assets: "
+                    + ",".join(reasons),
+                    file=file,
+                )
+            ], None
+    if version == "source-bundle-manifest-v1":
+        from .source_bundles import build_source_bundle
+
+        expected = build_source_bundle(value["component"])
+        if canonical_json_bytes(value) != canonical_json_bytes(expected):
+            return [
+                _issue(
+                    "source_bundle.binding_mismatch",
+                    "$.bundle_sha256",
+                    "Source bundle differs from current repository source bytes.",
                     file=file,
                 )
             ], None
@@ -2829,6 +2974,23 @@ def _e31_artifact_inventory_issues(
                 or reference["track"] != episode["track"]
                 or terminal["formal_evaluation_result"]
                 != episode["provenance"]["formal_evaluation_result"]
+                or terminal["runtime_run_id"] != manifest["runtime_run_id"]
+                or terminal["protocol_eligible"]
+                != episode["provenance"]["protocol_eligible"]
+                or terminal["provider_eligible"]
+                != episode["provenance"]["provider_eligible"]
+                or any(
+                    episode["provenance"][key] != manifest[key]
+                    for key in (
+                        "runtime_run_id",
+                        "evaluation_protocol_release_id",
+                        "evaluation_protocol_release_sha256",
+                        "benchmark_release_id",
+                        "benchmark_release_sha256",
+                        "runtime_source_bundle_version",
+                        "runtime_source_bundle_sha256",
+                    )
+                )
             ):
                 add(
                     "manifest.runtime_v3_episode_mismatch",
@@ -2844,6 +3006,21 @@ def _e31_artifact_inventory_issues(
                 or terminal["case_spec_sha256"] != failure["case_spec_sha256"]
                 or terminal["formal_evaluation_result"]
                 != failure["formal_evaluation_result"]
+                or terminal["runtime_run_id"] != manifest["runtime_run_id"]
+                or terminal["protocol_eligible"] != failure["protocol_eligible"]
+                or terminal["provider_eligible"] != failure["provider_eligible"]
+                or any(
+                    failure[key] != manifest[key]
+                    for key in (
+                        "runtime_run_id",
+                        "evaluation_protocol_release_id",
+                        "evaluation_protocol_release_sha256",
+                        "benchmark_release_id",
+                        "benchmark_release_sha256",
+                        "runtime_source_bundle_version",
+                        "runtime_source_bundle_sha256",
+                    )
+                )
             ):
                 add(
                     "manifest.runtime_v3_failure_mismatch",
@@ -2851,22 +3028,110 @@ def _e31_artifact_inventory_issues(
                     "Active Runtime Failure linkage differs.",
                     file,
                 )
-        expected_formal = bool(
-            manifest["invocation_mode"] == "real"
-            and manifest["selection_mode"] == "full_suite"
-            and manifest["worktree_clean"]
-            and not failure_terminals
-            and active_episodes
-            and all(
-                item["provenance"]["formal_evaluation_result"]
-                for item in active_episodes.values()
-            )
+        from .release_governance import (
+            load_production_registry,
+            load_protocol_release,
+            load_registered_benchmark_release,
+            protocol_release_reason_codes,
         )
-        if manifest["formal_evaluation_result"] != expected_formal:
+        from .source_bundles import SOURCE_BUNDLE_VERSION, source_bundle_sha256
+
+        try:
+            protocol = load_protocol_release()
+            expected_protocol_verified = bool(
+                not protocol_release_reason_codes(protocol)
+                and manifest["evaluation_protocol_release_sha256"]
+                == protocol["release_sha256"]
+                and manifest["runtime_source_bundle_version"]
+                == SOURCE_BUNDLE_VERSION
+                and manifest["runtime_source_bundle_sha256"]
+                == source_bundle_sha256("runtime")
+            )
+        except (OSError, ValueError):
+            expected_protocol_verified = False
+        try:
+            registry = load_production_registry()
+            expected_release_trusted = any(
+                entry["benchmark_release_id"] == manifest["benchmark_release_id"]
+                and entry["benchmark_release_sha256"]
+                == manifest["benchmark_release_sha256"]
+                and entry["case_suite_sha256"] == manifest["case_suite_sha256"]
+                and entry["expected_total_cases"]
+                == manifest["benchmark_expected_total_cases"]
+                and entry["expected_track_counts"]
+                == manifest["benchmark_expected_track_counts"]
+                and entry["evaluation_protocol_release_sha256"]
+                == manifest["evaluation_protocol_release_sha256"]
+                for entry in registry["entries"]
+            )
+        except (OSError, ValueError):
+            expected_release_trusted = False
+        try:
+            registered_release = load_registered_benchmark_release(
+                manifest["benchmark_release_id"],
+                manifest["benchmark_release_sha256"],
+            )
+        except (OSError, ValueError):
+            registered_release = None
+        expected_suite_complete: bool | None = None
+        if registered_release is not None:
+            expected_terminals = sorted(
+                (
+                    {
+                        "case_id": item["case_id"],
+                        "case_spec_sha256": item["case_spec_sha256"],
+                        "track": item["track"],
+                    }
+                    for item in registered_release["cases"]
+                ),
+                key=lambda item: item["case_id"],
+            )
+            actual_terminals = [
+                {
+                    "case_id": item["case_id"],
+                    "case_spec_sha256": item["case_spec_sha256"],
+                    "track": item["track"],
+                }
+                for item in manifest["terminals"]
+            ]
+            expected_suite_complete = bool(
+                manifest["selection_mode"] == "unfiltered_suite"
+                and actual_terminals == expected_terminals
+                and manifest["case_suite_sha256"]
+                == registered_release["case_suite_sha256"]
+            )
+        expected_protocol_eligible = bool(
+            manifest["worktree_clean"]
+            and expected_protocol_verified
+            and all(item["protocol_eligible"] for item in terminals.values())
+        )
+        expected_provider_eligible = bool(
+            manifest["invocation_mode"] == "real"
+            and all(item["provider_eligible"] for item in terminals.values())
+        )
+        expected_trust = bool(
+            expected_protocol_eligible
+            and expected_provider_eligible
+            and expected_release_trusted
+            and manifest["suite_complete"]
+            and manifest["selection_mode"] == "unfiltered_suite"
+        )
+        if (
+            manifest["protocol_release_verified"] != expected_protocol_verified
+            or manifest["benchmark_release_trusted"] != expected_release_trusted
+            or (
+                expected_suite_complete is not None
+                and manifest["suite_complete"] != expected_suite_complete
+            )
+            or manifest["protocol_eligible"] != expected_protocol_eligible
+            or manifest["provider_eligible"] != expected_provider_eligible
+            or manifest["trusted_benchmark_run"] != expected_trust
+            or manifest["formal_evaluation_result"] is not False
+        ):
             add(
-                "manifest.runtime_v3_formal_mismatch",
-                "$.formal_evaluation_result",
-                "Active Runtime formal state is not monotonic and exhaustive.",
+                "manifest.runtime_v3_trust_mismatch",
+                "$.trusted_benchmark_run",
+                "Active Runtime trust, protocol, or Provider state is inconsistent.",
                 file,
             )
 
@@ -3243,13 +3508,14 @@ def _e31_artifact_inventory_issues(
                 file,
             )
     for file, manifest in active_rule_manifests[:1]:
+        from .release_governance import load_protocol_release
         from .rules import (
             EVALUATOR_VERSION_V3,
             RULE_IMPLEMENTATION_SHA256_V3,
             RULE_PACK_SHA256_V3,
             RULE_PACK_VERSION_V3,
         )
-        from .runtime_metadata import SOURCE_BUNDLE_VERSION
+        from .source_bundles import SOURCE_BUNDLE_VERSION, source_bundle_sha256
 
         results = {
             document["episode_id"]: document
@@ -3263,7 +3529,16 @@ def _e31_artifact_inventory_issues(
             "rule_pack_version": RULE_PACK_VERSION_V3,
             "rule_pack_sha256": RULE_PACK_SHA256_V3,
         }
-        if any(manifest[key] != value for key, value in expected_config.items()):
+        try:
+            protocol_sha256 = load_protocol_release()["release_sha256"]
+        except (OSError, ValueError):
+            protocol_sha256 = None
+        if (
+            any(manifest[key] != value for key, value in expected_config.items())
+            or manifest["evaluator_implementation_sha256"]
+            != source_bundle_sha256("rules")
+            or manifest["evaluation_protocol_release_sha256"] != protocol_sha256
+        ):
             add(
                 "manifest.rule_v3_implementation_mismatch",
                 "$.evaluator_implementation_sha256",
@@ -3303,6 +3578,16 @@ def _e31_artifact_inventory_issues(
                 == manifest["input_runtime_formal_evaluation_result"]
                 and result["selection_mode"] == manifest["selection_mode"]
                 and result["worktree_clean"] == manifest["worktree_clean"]
+                and result["runtime_run_id"] == manifest["runtime_run_id"]
+                and result["evaluation_protocol_release_sha256"]
+                == manifest["evaluation_protocol_release_sha256"]
+                and result["benchmark_release_sha256"]
+                == manifest["benchmark_release_sha256"]
+                and result["input_runtime_trusted_benchmark_run"]
+                == manifest["input_runtime_trusted_benchmark_run"]
+                and result["provider_eligible"] == manifest["provider_eligible"]
+                and result["trusted_benchmark_run"]
+                == manifest["result_trusted_benchmark_states"][episode_id]
             )
             if not expected:
                 add(
@@ -3311,19 +3596,22 @@ def _e31_artifact_inventory_issues(
                     "Active Rule Result differs from its manifest or source bundle.",
                     file,
                 )
-        expected_formal = bool(
-            manifest["input_runtime_formal_evaluation_result"]
+        expected_trust = bool(
+            manifest["input_runtime_trusted_benchmark_run"]
             and manifest["selection_mode"] == "inherited"
             and manifest["worktree_clean"]
-            and results
-            and not manifest["runtime_failure_ids"]
-            and all(item["formal_evaluation_result"] for item in results.values())
+            and manifest["protocol_eligible"]
+            and manifest["provider_eligible"]
+            and all(item["trusted_benchmark_run"] for item in results.values())
         )
-        if manifest["formal_evaluation_result"] != expected_formal:
+        if (
+            manifest["trusted_benchmark_run"] != expected_trust
+            or manifest["formal_evaluation_result"] is not False
+        ):
             add(
-                "manifest.rule_v3_formal_mismatch",
-                "$.formal_evaluation_result",
-                "Active Rule formal state must monotonically inherit Runtime.",
+                "manifest.rule_v3_trust_mismatch",
+                "$.trusted_benchmark_run",
+                "Active Rule trust must monotonically inherit Runtime.",
                 file,
             )
 
@@ -3337,6 +3625,10 @@ def _e31_artifact_inventory_issues(
                 file,
             )
     for file, manifest in active_judge_manifests[:1]:
+        from .active_judge import JUDGE_SOURCE_BUNDLE_SHA256_V3
+        from .release_governance import load_protocol_release
+        from .source_bundles import SOURCE_BUNDLE_VERSION, source_bundle_sha256
+
         results = {
             document["episode_id"]: document
             for _, document in by_version["judge-result-v3"]
@@ -3354,7 +3646,19 @@ def _e31_artifact_inventory_issues(
             "track_anchor_sha256": TRACK_ANCHOR_SHA256,
             "repair_limit": REPAIR_LIMIT,
         }
-        if any(manifest[key] != value for key, value in expected_config.items()):
+        try:
+            protocol_sha256 = load_protocol_release()["release_sha256"]
+        except (OSError, ValueError):
+            protocol_sha256 = None
+        if (
+            any(manifest[key] != value for key, value in expected_config.items())
+            or manifest["judge_source_bundle_version"] != SOURCE_BUNDLE_VERSION
+            or manifest["judge_source_bundle_sha256"]
+            != JUDGE_SOURCE_BUNDLE_SHA256_V3
+            or manifest["judge_source_bundle_sha256"]
+            != source_bundle_sha256("judge")
+            or manifest["evaluation_protocol_release_sha256"] != protocol_sha256
+        ):
             add(
                 "manifest.judge_v3_config_mismatch",
                 "$.judge_config_sha256",
@@ -3393,6 +3697,18 @@ def _e31_artifact_inventory_issues(
                 == manifest["input_rule_manifest_sha256"]
                 and result["input_rule_manifest_formal_evaluation_result"]
                 == manifest["input_rule_manifest_formal_evaluation_result"]
+                and result["runtime_run_id"] == manifest["runtime_run_id"]
+                and result["evaluation_protocol_release_sha256"]
+                == manifest["evaluation_protocol_release_sha256"]
+                and result["benchmark_release_sha256"]
+                == manifest["benchmark_release_sha256"]
+                and result["judge_source_bundle_sha256"]
+                == manifest["judge_source_bundle_sha256"]
+                and result["input_rule_manifest_trusted_benchmark_run"]
+                == manifest["input_rule_manifest_trusted_benchmark_run"]
+                and result["protocol_eligible"] == manifest["protocol_eligible"]
+                and result["trusted_benchmark_run"]
+                == manifest["result_trusted_benchmark_states"][episode_id]
             )
             if not expected:
                 add(
@@ -3401,19 +3717,22 @@ def _e31_artifact_inventory_issues(
                     "Active Judge Result differs from its manifest.",
                     file,
                 )
-        expected_formal = bool(
-            manifest["input_rule_manifest_formal_evaluation_result"]
+        expected_trust = bool(
+            manifest["input_rule_manifest_trusted_benchmark_run"]
             and manifest["selection_mode"] == "inherited"
             and manifest["worktree_clean"]
-            and results
-            and not manifest["runtime_failure_ids"]
-            and all(item["formal_evaluation_result"] for item in results.values())
+            and manifest["protocol_eligible"]
+            and manifest["provider_eligible"]
+            and all(item["trusted_benchmark_run"] for item in results.values())
         )
-        if manifest["formal_evaluation_result"] != expected_formal:
+        if (
+            manifest["trusted_benchmark_run"] != expected_trust
+            or manifest["formal_evaluation_result"] is not False
+        ):
             add(
-                "manifest.judge_v3_formal_mismatch",
-                "$.formal_evaluation_result",
-                "Active Judge formal state must monotonically inherit Rules.",
+                "manifest.judge_v3_trust_mismatch",
+                "$.trusted_benchmark_run",
+                "Active Judge trust must monotonically inherit Rules.",
                 file,
             )
 
@@ -3427,11 +3746,15 @@ def _e31_artifact_inventory_issues(
                 file,
             )
     for file, manifest in active_aggregate_manifests[:1]:
-        from .aggregate_v2 import (
+        from .active_aggregate import (
             AGGREGATOR_IMPLEMENTATION_SHA256_V3,
             AGGREGATOR_VERSION_V3,
         )
-        from .runtime_metadata import SOURCE_BUNDLE_VERSION
+        from .release_governance import (
+            load_protocol_release,
+            load_registered_benchmark_release,
+        )
+        from .source_bundles import SOURCE_BUNDLE_VERSION, source_bundle_sha256
 
         results = {
             document["episode_id"]: document
@@ -3442,12 +3765,19 @@ def _e31_artifact_inventory_issues(
             for _, document in by_version["aggregate-track-result-v3"]
         }
         expected_ids = set(manifest["episode_ids"])
+        try:
+            protocol_sha256 = load_protocol_release()["release_sha256"]
+        except (OSError, ValueError):
+            protocol_sha256 = None
         if (
             manifest["aggregator_version"] != AGGREGATOR_VERSION_V3
             or manifest["aggregator_implementation_version"]
             != SOURCE_BUNDLE_VERSION
             or manifest["aggregator_implementation_sha256"]
             != AGGREGATOR_IMPLEMENTATION_SHA256_V3
+            or manifest["aggregate_source_bundle_sha256"]
+            != source_bundle_sha256("aggregate")
+            or manifest["evaluation_protocol_release_sha256"] != protocol_sha256
         ):
             add(
                 "manifest.aggregate_v3_implementation_mismatch",
@@ -3464,6 +3794,64 @@ def _e31_artifact_inventory_issues(
                 "Active Aggregate Result inventory differs from its manifest.",
                 file,
             )
+        terminal_bindings = sorted(
+            (
+                {
+                    "case_id": item["case_id"],
+                    "case_spec_sha256": item["case_spec_sha256"],
+                    "track": item["track"],
+                }
+                for item in manifest["runtime_terminals"]
+            ),
+            key=lambda item: item["case_id"],
+        )
+        try:
+            registered_release = load_registered_benchmark_release(
+                manifest["benchmark_release_id"],
+                manifest["benchmark_release_sha256"],
+            )
+        except (OSError, ValueError):
+            registered_release = None
+        registered_case_bindings = (
+            sorted(
+                (
+                    {
+                        "case_id": item["case_id"],
+                        "case_spec_sha256": item["case_spec_sha256"],
+                        "track": item["track"],
+                    }
+                    for item in registered_release["cases"]
+                ),
+                key=lambda item: item["case_id"],
+            )
+            if registered_release is not None
+            else []
+        )
+        registered_track_counts = (
+            {
+                track: sum(
+                    item["track"] == track for item in registered_release["cases"]
+                )
+                for track in ("planning", "intervention", "assessment", "revision")
+            }
+            if registered_release is not None
+            else {}
+        )
+        release_inventory_trusted = bool(
+            registered_release is not None
+            and registered_release["release_status"] == "released"
+            and manifest["selection_mode"] == "inherited"
+            and manifest["case_suite_sha256"]
+            == registered_release["case_suite_sha256"]
+            and manifest["evaluation_protocol_release_id"]
+            == registered_release["evaluation_protocol_release_id"]
+            and manifest["evaluation_protocol_release_sha256"]
+            == registered_release["evaluation_protocol_release_sha256"]
+            and manifest["expected_total_cases"]
+            == registered_release["expected_total_cases"]
+            and manifest["expected_track_counts"] == registered_track_counts
+            and terminal_bindings == registered_case_bindings
+        )
         if set(tracks) != set(manifest["track_result_digests"]) or len(
             tracks
         ) != len(by_version["aggregate-track-result-v3"]):
@@ -3498,6 +3886,16 @@ def _e31_artifact_inventory_issues(
                 == manifest["input_judge_manifest_formal_evaluation_result"]
                 and result["selection_mode"] == manifest["selection_mode"]
                 and result["worktree_clean"] == manifest["worktree_clean"]
+                and result["runtime_run_id"] == manifest["runtime_run_id"]
+                and result["evaluation_protocol_release_sha256"]
+                == manifest["evaluation_protocol_release_sha256"]
+                and result["benchmark_release_sha256"]
+                == manifest["benchmark_release_sha256"]
+                and result["input_judge_manifest_trusted_benchmark_run"]
+                == manifest["input_judge_manifest_trusted_benchmark_run"]
+                and result["protocol_eligible"] == manifest["protocol_eligible"]
+                and result["trusted_benchmark_run"]
+                == manifest["result_trusted_benchmark_states"][episode_id]
             )
             if not expected:
                 add(
@@ -3520,15 +3918,13 @@ def _e31_artifact_inventory_issues(
                 ].items()
                 if failure_track == track_name
             )
-            track_formal = bool(
-                manifest["input_judge_manifest_formal_evaluation_result"]
+            track_trusted = bool(
+                manifest["input_judge_manifest_trusted_benchmark_run"]
                 and manifest["selection_mode"] == "inherited"
                 and manifest["worktree_clean"]
-                and track_episodes
-                and not runtime_failure_ids
-                and all(
-                    item["formal_evaluation_result"] for item in track_episodes
-                )
+                and result["protocol_eligible"]
+                and result["provider_eligible"]
+                and all(item["trusted_benchmark_run"] for item in track_episodes)
             )
             expected_fields = {
                 "episode_ids": [item["episode_id"] for item in track_episodes],
@@ -3557,12 +3953,13 @@ def _e31_artifact_inventory_issues(
                     item["episode_id"]: item["formal_evaluation_result"]
                     for item in track_episodes
                 },
-                "formal_evaluation_result": track_formal,
-                "evaluation_status": (
-                    "formal_model_evaluation"
-                    if track_formal
-                    else "not_a_formal_model_evaluation"
-                ),
+                "result_trusted_benchmark_states": {
+                    item["episode_id"]: item["trusted_benchmark_run"]
+                    for item in track_episodes
+                },
+                "trusted_benchmark_run": track_trusted,
+                "formal_evaluation_result": False,
+                "evaluation_status": "not_a_formal_model_evaluation",
             }
             if (
                 result["result_sha256"]
@@ -3580,19 +3977,62 @@ def _e31_artifact_inventory_issues(
                     "Active Track Aggregate differs from Episode and Failure inputs.",
                     file,
                 )
-        expected_formal = bool(
-            manifest["input_judge_manifest_formal_evaluation_result"]
+        expected_trust = bool(
+            release_inventory_trusted
+            and manifest["input_judge_manifest_trusted_benchmark_run"]
+            and manifest["judge_mode"] == "real"
             and manifest["selection_mode"] == "inherited"
             and manifest["worktree_clean"]
-            and results
-            and not manifest["runtime_failure_ids"]
-            and all(item["formal_evaluation_result"] for item in results.values())
+            and manifest["protocol_eligible"]
+            and manifest["provider_eligible"]
+            and all(item["trusted_benchmark_run"] for item in results.values())
+            and all(item["protocol_eligible"] for item in manifest["runtime_terminals"])
+            and all(item["provider_eligible"] for item in manifest["runtime_terminals"])
         )
-        if manifest["formal_evaluation_result"] != expected_formal:
+        observed_track_counts = {
+            track: sum(value == track for value in manifest["episode_tracks"].values())
+            + sum(
+                value == track
+                for value in manifest["runtime_failure_tracks"].values()
+            )
+            for track in ("planning", "intervention", "assessment", "revision")
+        }
+        expected_blockers: set[str] = set()
+        if not expected_trust:
+            expected_blockers.add("capability.run_not_trusted")
+        if manifest["selection_mode"] != "inherited":
+            expected_blockers.add("capability.posthoc_filter")
+        if manifest["runtime_failure_ids"]:
+            expected_blockers.add("capability.runtime_failure")
+        if any(item["status"] == "invalid_input" for item in results.values()):
+            expected_blockers.add("capability.invalid_input")
+        if any(item["status"] == "judge_error" for item in results.values()):
+            expected_blockers.add("capability.judge_error")
+        if len(results) + len(manifest["runtime_failure_ids"]) != manifest[
+            "expected_total_cases"
+        ]:
+            expected_blockers.add("capability.case_inventory_incomplete")
+        if observed_track_counts != manifest["expected_track_counts"]:
+            expected_blockers.add("capability.track_inventory_mismatch")
+        if set(tracks) != {"planning", "intervention", "assessment", "revision"}:
+            expected_blockers.add("capability.four_tracks_incomplete")
+        expected_capability = not expected_blockers
+        if (
+            manifest["trusted_benchmark_run"] != expected_trust
+            or manifest["capability_blockers"] != sorted(expected_blockers)
+            or manifest["formal_capability_result"] != expected_capability
+            or manifest["formal_evaluation_result"] != expected_capability
+            or manifest["evaluation_status"]
+            != (
+                "formal_model_evaluation"
+                if expected_capability
+                else "not_a_formal_model_evaluation"
+            )
+        ):
             add(
-                "manifest.aggregate_v3_formal_mismatch",
-                "$.formal_evaluation_result",
-                "Active Aggregate formal state must monotonically inherit Judge.",
+                "manifest.aggregate_v3_capability_mismatch",
+                "$.formal_capability_result",
+                "Capability publication differs from trust, inventory, or failures.",
                 file,
             )
     return issues
@@ -4136,6 +4576,11 @@ def validate_dataset(dataset: str | Path) -> ValidationReport:
             "aggregate-result-v3",
             "aggregate-track-result-v3",
             "aggregate-run-manifest-v3",
+            "evaluation-protocol-release-v1",
+            "benchmark-release-manifest-v1",
+            "source-bundle-manifest-v1",
+            "schema-lock-manifest-v1",
+            "trusted-benchmark-registry-v1",
         }:
             saw_non_episode_artifact = True
         document_issues, record = _document_issues(value, file=file)

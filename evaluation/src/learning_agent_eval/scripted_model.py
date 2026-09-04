@@ -63,14 +63,55 @@ def _usage() -> Any:
 class _Completions:
     def __init__(self, turns: list[dict[str, Any]]):
         self._turns = list(turns)
-        self._ordinal = 0
+        self._fallback_response_ordinal = 0
+
+    @staticmethod
+    def _user_contents(request: dict[str, Any]) -> tuple[str, ...]:
+        messages = request.get("messages")
+        if not isinstance(messages, list):
+            return ()
+        return tuple(
+            str(message.get("content") or "")
+            for message in messages
+            if isinstance(message, dict) and message.get("role") == "user"
+        )
+
+    def _select_turn(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Route concurrent fixture calls by explicit public request identity.
+
+        Selectors exist only in fixed engineering fixtures. They do not infer
+        behavior or scores from model text; they prevent concurrently scheduled
+        child calls from consuming one another's predetermined response.
+        """
+
+        user_contents = self._user_contents(request)
+        matching = [
+            (index, turn)
+            for index, turn in enumerate(self._turns)
+            if (
+                (prefix := turn.get("stub_request_user_prefix")) is not None
+                and any(content.startswith(str(prefix)) for content in user_contents)
+            )
+        ]
+        if len(matching) > 1:
+            raise ScriptExhaustedError("scripted request matches multiple turns")
+        if matching:
+            index, _ = matching[0]
+            return self._turns.pop(index)
+        for index, turn in enumerate(self._turns):
+            if turn.get("stub_request_user_prefix") is None:
+                return self._turns.pop(index)
+        raise ScriptExhaustedError("scripted request has no matching turn")
 
     async def create(self, **request: Any) -> Any:
-        del request
         if not self._turns:
             raise ScriptExhaustedError("scripted model has no remaining turn")
-        self._ordinal += 1
-        turn = self._turns.pop(0)
+        turn = self._select_turn(request)
+        if turn.get("ordinal") is None:
+            self._fallback_response_ordinal += 1
+            response_ordinal = self._fallback_response_ordinal
+        else:
+            response_ordinal = int(turn["ordinal"])
         calls = [
             _ToolCall(item["call_id"], item["name"], item["arguments"])
             for item in turn.get("tool_calls", [])
@@ -86,7 +127,7 @@ class _Completions:
                 tool_calls=calls or None,
             )
             return SimpleNamespace(
-                id=f"stub-response-{self._ordinal:03d}",
+                id=f"stub-response-{response_ordinal:03d}",
                 model="e1-scripted-model",
                 choices=[SimpleNamespace(message=message)],
                 usage=_usage(),
@@ -103,13 +144,13 @@ class _Completions:
         return _Stream(
             [
                 SimpleNamespace(
-                    id=f"stub-response-{self._ordinal:03d}",
+                    id=f"stub-response-{response_ordinal:03d}",
                     model="e1-scripted-model",
                     choices=[SimpleNamespace(delta=delta)],
                     usage=None,
                 ),
                 SimpleNamespace(
-                    id=f"stub-response-{self._ordinal:03d}",
+                    id=f"stub-response-{response_ordinal:03d}",
                     model="e1-scripted-model",
                     choices=[],
                     usage=_usage(),

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -14,11 +15,30 @@ from learning_agent_eval.integrity import (
     case_spec_digest,
     context_summary_digest,
 )
-from learning_agent_eval.models import CaseSpecV2, CaseSuiteManifestV2
+from learning_agent_eval.models import CaseSpecV2
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOURCE = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v1"
 TARGET = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v4-engineering"
+
+
+def _assert_release_not_committed() -> None:
+    """Never rewrite fixture inputs once Protocol Release 1.0 is in Git."""
+
+    completed = subprocess.run(
+        [
+            "git",
+            "cat-file",
+            "-e",
+            "HEAD:evaluation/releases/evaluation-protocol-release-1.0.json",
+        ],
+        cwd=PROJECT_ROOT,
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if completed.returncode == 0:
+        raise RuntimeError("engineering_case_release_is_immutable")
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -203,6 +223,8 @@ def _base_case(prefix: str) -> dict[str, Any]:
     }
     for turn in case["runtime_setup"]["scripted_turns"]:
         turn["declared_actions"] = list(oracle["allowed_action_classes"])
+    case = CaseSpecV2.model_validate(case).model_dump(mode="json")
+    case["case_spec_sha256"] = "0" * 64
     case["case_spec_sha256"] = case_spec_digest(case)
     return CaseSpecV2.model_validate(case).model_dump(mode="json")
 
@@ -447,6 +469,10 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
                 "The synthetic learner has four hours per week and needs a measured kernel report."
             ),
             "declared_actions": [],
+            "stub_request_user_prefix": (
+                "Assignment: evidence analyst: Summarize the public synthetic "
+                "planning constraints."
+            ),
             "tool_calls": [],
         },
         {
@@ -456,6 +482,10 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
                 "The synthetic four-hour budget is compatible with a bounded proposal."
             ),
             "declared_actions": [],
+            "stub_request_user_prefix": (
+                "Assignment: feasibility analyst: Check the public synthetic time "
+                "and resource limits."
+            ),
             "tool_calls": [],
         },
         proposal_turn,
@@ -525,6 +555,10 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
         quiz_review,
     ):
         case["case_spec_sha256"] = "0" * 64
+        normalized = CaseSpecV2.model_validate(case).model_dump(mode="json")
+        case.clear()
+        case.update(normalized)
+        case["case_spec_sha256"] = "0" * 64
         case["case_spec_sha256"] = case_spec_digest(case)
         CaseSpecV2.model_validate(case)
     return [
@@ -540,6 +574,7 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def main() -> None:
+    _assert_release_not_committed()
     base = {prefix: _base_case(prefix) for prefix in ("A", "I", "P", "R")}
     assessment = base["A"]
     submission_content = (
@@ -618,7 +653,6 @@ def main() -> None:
         "manifest_sha256": "0" * 64,
     }
     manifest["manifest_sha256"] = artifact_manifest_digest(manifest)
-    CaseSuiteManifestV2.model_validate(manifest)
     (TARGET / "manifest.json").write_bytes(canonical_json_bytes(manifest))
 
 

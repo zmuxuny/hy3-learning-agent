@@ -7,6 +7,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from historical_execution import (
+    evaluate_run_rules_v1 as evaluate_run_rules,
+)
+from historical_execution import (
+    run_agent_v2 as run_agent,
+)
 from learning_agent_eval import (
     canonical_json_bytes,
     decision_episode_digest,
@@ -18,6 +24,7 @@ from learning_agent_eval import (
     validate_dataset,
     validate_episode,
 )
+from learning_agent_eval._historical_worker import _execute
 from learning_agent_eval.cli import main as cli_main
 from learning_agent_eval.deltas import build_state_delta
 from learning_agent_eval.exporter import (
@@ -38,14 +45,10 @@ from learning_agent_eval.normalizers import (
     normalize_rfc3339,
 )
 from learning_agent_eval.privacy import privacy_issues
-from learning_agent_eval.rule_runner import (
-    RuleEvaluationError,
-    evaluate_run_rules,
-)
+from learning_agent_eval.rule_runner import RuleEvaluationError
 from learning_agent_eval.rules import evaluate_rules
-from learning_agent_eval.runner import RunAgentSummary, run_agent
+from learning_agent_eval.runner import RunAgentSummary
 from learning_agent_eval.snapshots import normalize_reference_fields
-from learning_agent_eval.worker import _execute
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATASET = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v1"
@@ -1485,32 +1488,31 @@ def test_evaluate_rules_cli_is_atomic_filterable_and_byte_deterministic(
     assert marker.read_text(encoding="utf-8") == "preserve"
 
 
-def test_evaluate_rules_cli_failure_is_structured_and_publishes_nothing(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+def test_historical_rules_cli_is_disabled_and_publishes_nothing(
+    e2_batch: tuple[Path, RunAgentSummary],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
+    runtime, _ = e2_batch
     output = tmp_path / "not-published"
     code = cli_main(
         [
             "evaluate-rules",
             "--input",
-            str(tmp_path / "missing"),
+            str(runtime),
             "--output",
             str(output),
         ]
     )
     error = json.loads(capsys.readouterr().err)
     assert code == 1
-    assert error == {
-        "episode_id": "batch",
-        "error_code": "input_invalid",
-        "message": "Runtime output directory is invalid",
-        "stage": "load",
-        "status": "error",
-    }
+    assert error["error_code"] == "legacy_execution_disabled"
+    assert error["entrypoint"] == "evaluate-rules"
+    assert error["stage"] == "preflight"
     assert not output.exists()
 
 
-def test_evaluate_rules_cli_exit_codes_distinguish_invalid_and_failures(
+def test_historical_rules_cli_never_executes_score_variants(
     e2_batch: tuple[Path, RunAgentSummary],
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -1542,58 +1544,33 @@ def test_evaluate_rules_cli_exit_codes_distinguish_invalid_and_failures(
         assert validate_dataset(root).ok
         return root
 
-    invalid = variant("invalid", lambda payload: payload.pop("deadline"))
-    assert (
-        cli_main(
-            [
-                "evaluate-rules",
-                "--input",
-                str(invalid),
-                "--output",
-                str(tmp_path / "invalid-output"),
-            ]
-        )
-        == 1
-    )
-    assert (tmp_path / "invalid-output/rules/P-E1-MINI-001.json").is_file()
-    assert "invalid_input_episodes=1" in capsys.readouterr().out
-
-    hard_gate = variant(
-        "hard-gate",
-        lambda payload: payload["stages"][0]["tasks"][0].update(
-            evidence_required=False
+    variants = (
+        variant("invalid", lambda payload: payload.pop("deadline")),
+        variant(
+            "hard-gate",
+            lambda payload: payload["stages"][0]["tasks"][0].update(
+                evidence_required=False
+            ),
         ),
+        variant("noncritical", lambda payload: payload.update(deadline="")),
     )
-    assert (
-        cli_main(
-            [
-                "evaluate-rules",
-                "--input",
-                str(hard_gate),
-                "--output",
-                str(tmp_path / "hard-gate-output"),
-            ]
+    for index, source in enumerate(variants):
+        output = tmp_path / f"legacy-output-{index}"
+        assert (
+            cli_main(
+                [
+                    "evaluate-rules",
+                    "--input",
+                    str(source),
+                    "--output",
+                    str(output),
+                ]
+            )
+            == 1
         )
-        == 2
-    )
-    assert "hard_gate_episodes=1" in capsys.readouterr().out
-
-    noncritical = variant("noncritical", lambda payload: payload.update(deadline=""))
-    assert (
-        cli_main(
-            [
-                "evaluate-rules",
-                "--input",
-                str(noncritical),
-                "--output",
-                str(tmp_path / "noncritical-output"),
-            ]
-        )
-        == 3
-    )
-    summary = capsys.readouterr().out
-    assert "failed_episodes=1" in summary
-    assert "hard_gate_episodes=0" in summary
+        error = json.loads(capsys.readouterr().err)
+        assert error["error_code"] == "legacy_execution_disabled"
+        assert not output.exists()
 
 
 def test_v2_and_rule_contracts_reject_unknown_fields(

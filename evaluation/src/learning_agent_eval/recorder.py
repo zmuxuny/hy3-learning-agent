@@ -11,7 +11,7 @@ from typing import Any
 
 from .canonical import canonical_json, sha256_digest
 from .normalizers import utc_timestamp
-from .privacy import is_private_reasoning_field, privacy_issues
+from .privacy import is_model_private_reasoning_field, privacy_issues
 
 
 class RecorderPrivacyError(RuntimeError):
@@ -24,7 +24,7 @@ def public_projection(value: object) -> object:
     if isinstance(value, Mapping):
         projected: dict[str, object] = {}
         for key in value:
-            if is_private_reasoning_field(key):
+            if is_model_private_reasoning_field(key):
                 continue
             projected[str(key)] = public_projection(value[key])
         return projected

@@ -11,6 +11,7 @@ from .action_protocol import (
     parse_action_declaration,
 )
 from .canonical import sha256_digest
+from .eligibility import isolation_evidence_protocol_eligible
 from .integrity import (
     artifact_manifest_digest,
     model_visible_context_digest,
@@ -46,6 +47,106 @@ class E31RuntimeArtifactError(ValueError):
     def __init__(self, code: str):
         super().__init__(code)
         self.code = code
+
+
+def canonicalize_concurrent_model_records(
+    records: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return a stable causal linearization of concurrent model-call branches.
+
+    Calls retain their order inside each Run. Child Runs follow the parent call
+    that created them, while concurrent siblings are ordered by their already
+    normalized stable Run identity. This records the causal partial order
+    without pretending that scheduler-dependent wall-clock order is semantic.
+    """
+
+    copied = [dict(record) for record in records]
+    call_ids = [str(record.get("call_id") or "") for record in copied]
+    if any(not call_id for call_id in call_ids) or len(call_ids) != len(set(call_ids)):
+        raise E31RuntimeArtifactError("trajectory.call_identity_invalid")
+
+    by_run: dict[str, list[dict[str, Any]]] = {}
+    for record in sorted(copied, key=lambda item: int(item.get("ordinal") or 0)):
+        run_id = str(record.get("run_id") or "")
+        if not run_id:
+            raise E31RuntimeArtifactError("trajectory.call_scope_missing")
+        by_run.setdefault(run_id, []).append(record)
+
+    run_parent: dict[str, tuple[str | None, str | None]] = {}
+    children_by_call: dict[str, list[str]] = {}
+    roots: list[str] = []
+    for run_id, run_records in by_run.items():
+        relationships = {
+            (
+                str(record["parent_run_id"])
+                if record.get("parent_run_id") is not None
+                else None,
+                str(record["parent_call_id"])
+                if record.get("parent_call_id") is not None
+                else None,
+            )
+            for record in run_records
+        }
+        if len(relationships) != 1:
+            raise E31RuntimeArtifactError("trajectory.run_parent_inconsistent")
+        parent_run_id, parent_call_id = relationships.pop()
+        run_parent[run_id] = (parent_run_id, parent_call_id)
+        if parent_run_id is None:
+            if parent_call_id is not None:
+                raise E31RuntimeArtifactError("trajectory.root_parent_invalid")
+            roots.append(run_id)
+        else:
+            if parent_call_id is None:
+                raise E31RuntimeArtifactError("trajectory.parent_call_missing")
+            children_by_call.setdefault(parent_call_id, []).append(run_id)
+
+    ordered: list[dict[str, Any]] = []
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(run_id: str) -> None:
+        if run_id in visiting:
+            raise E31RuntimeArtifactError("trajectory.run_cycle")
+        if run_id in visited:
+            raise E31RuntimeArtifactError("trajectory.run_reused")
+        visiting.add(run_id)
+        for record in by_run[run_id]:
+            ordered.append(record)
+            for child_run_id in sorted(
+                children_by_call.get(str(record["call_id"]), [])
+            ):
+                parent_run_id, _ = run_parent[child_run_id]
+                if parent_run_id != run_id:
+                    raise E31RuntimeArtifactError("trajectory.parent_run_mismatch")
+                visit(child_run_id)
+        visiting.remove(run_id)
+        visited.add(run_id)
+
+    for root_run_id in sorted(roots):
+        visit(root_run_id)
+    if visited != set(by_run):
+        raise E31RuntimeArtifactError("trajectory.call_unreachable")
+
+    remapped_ids = {
+        str(record["call_id"]): f"model-call:{ordinal:03d}"
+        for ordinal, record in enumerate(ordered, 1)
+    }
+    result: list[dict[str, Any]] = []
+    for ordinal, record in enumerate(ordered, 1):
+        parent_call_id = record.get("parent_call_id")
+        result.append(
+            {
+                **record,
+                "call_id": remapped_ids[str(record["call_id"])],
+                "ordinal": ordinal,
+                "parent_call_id": (
+                    remapped_ids[str(parent_call_id)]
+                    if parent_call_id is not None
+                    else None
+                ),
+            }
+        )
+    return result
 
 
 def _message_projection(message: object, ordinal: int) -> dict[str, object]:
@@ -339,6 +440,12 @@ def build_runtime_failure_v2(
     isolation_evidence: Mapping[str, Any] | None,
     started_at: str,
     failed_at: str,
+    evaluation_protocol_release_sha256: str,
+    benchmark_release_id: str,
+    benchmark_release_sha256: str,
+    runtime_run_id: str,
+    runtime_source_bundle_version: str,
+    runtime_source_bundle_sha256: str,
 ) -> dict[str, Any]:
     """Create an active Failure carrying the v4 model-call contract."""
 
@@ -358,6 +465,18 @@ def build_runtime_failure_v2(
         ),
         "started_at": started_at,
         "failed_at": failed_at,
+        "protocol_eligible": bool(
+            failure_class != "isolation_violation"
+            and isolation_evidence_protocol_eligible(isolation_evidence)
+        ),
+        "provider_eligible": provider_attestation["attribution_status"] == "eligible",
+        "evaluation_protocol_release_id": "evaluation-protocol-release-1.0",
+        "evaluation_protocol_release_sha256": evaluation_protocol_release_sha256,
+        "benchmark_release_id": benchmark_release_id,
+        "benchmark_release_sha256": benchmark_release_sha256,
+        "runtime_run_id": runtime_run_id,
+        "runtime_source_bundle_version": runtime_source_bundle_version,
+        "runtime_source_bundle_sha256": runtime_source_bundle_sha256,
         "formal_evaluation_result": False,
         "evaluation_status": "not_a_formal_model_evaluation",
         "failure_sha256": "0" * 64,
@@ -413,7 +532,14 @@ def build_runtime_manifest_v2(
 
 def build_runtime_manifest_v3(
     *,
+    runtime_run_id: str,
     dataset_version: str,
+    evaluation_protocol_release_sha256: str,
+    benchmark_release_id: str,
+    benchmark_release_sha256: str,
+    case_suite_sha256: str,
+    benchmark_expected_total_cases: int,
+    benchmark_expected_track_counts: Mapping[str, int],
     invocation_mode: str,
     terminals: Sequence[Mapping[str, Any]],
     requested_episode_ids: Sequence[str],
@@ -422,27 +548,57 @@ def build_runtime_manifest_v3(
     worktree_clean: bool,
     dependency_lock_version: str,
     dependency_lock_sha256: str,
+    runtime_source_bundle_version: str,
+    runtime_source_bundle_sha256: str,
+    protocol_release_verified: bool,
+    benchmark_release_trusted: bool,
+    suite_complete: bool,
+    trust_reason_codes: Sequence[str],
 ) -> dict[str, Any]:
     """Build the active exhaustive manifest with pre-run selection provenance."""
 
     ordered = sorted((dict(item) for item in terminals), key=lambda item: item["case_id"])
     selection_mode = (
-        "adhoc_filter" if requested_episode_ids or selected_track is not None else "full_suite"
+        "adhoc_filter"
+        if requested_episode_ids or selected_track is not None
+        else "unfiltered_suite"
     )
-    formal = bool(
+    provider_eligible = bool(
         invocation_mode == "real"
-        and selection_mode == "full_suite"
-        and worktree_clean
         and ordered
-        and all(
-            item["terminal_kind"] == "episode"
-            and item["formal_evaluation_result"]
-            for item in ordered
-        )
+        and all(item["provider_eligible"] for item in ordered)
     )
+    protocol_eligible = bool(
+        worktree_clean
+        and protocol_release_verified
+        and ordered
+        and all(item["protocol_eligible"] for item in ordered)
+    )
+    trusted = bool(
+        protocol_eligible
+        and provider_eligible
+        and benchmark_release_trusted
+        and suite_complete
+        and selection_mode == "unfiltered_suite"
+    )
+    reasons = set(trust_reason_codes)
+    if not worktree_clean:
+        reasons.add("runtime.worktree_dirty")
+    if not protocol_release_verified:
+        reasons.add("runtime.protocol_release_unverified")
+    if not provider_eligible:
+        reasons.add("runtime.provider_ineligible")
     manifest = {
         "schema_version": "runtime-run-manifest-v3",
+        "runtime_run_id": runtime_run_id,
         "dataset_version": dataset_version,
+        "evaluation_protocol_release_id": "evaluation-protocol-release-1.0",
+        "evaluation_protocol_release_sha256": evaluation_protocol_release_sha256,
+        "benchmark_release_id": benchmark_release_id,
+        "benchmark_release_sha256": benchmark_release_sha256,
+        "case_suite_sha256": case_suite_sha256,
+        "benchmark_expected_total_cases": benchmark_expected_total_cases,
+        "benchmark_expected_track_counts": dict(benchmark_expected_track_counts),
         "case_schema_version": "case-spec-v2",
         "episode_schema_version": "decision-episode-v4",
         "failure_schema_version": "runtime-failure-v2",
@@ -452,12 +608,17 @@ def build_runtime_manifest_v3(
         "selected_track": selected_track,
         "selected_case_ids": [item["case_id"] for item in ordered],
         "terminals": ordered,
-        "formal_evaluation_result": formal,
-        "evaluation_status": (
-            "formal_model_evaluation"
-            if formal
-            else "not_a_formal_model_evaluation"
-        ),
+        "runtime_source_bundle_version": runtime_source_bundle_version,
+        "runtime_source_bundle_sha256": runtime_source_bundle_sha256,
+        "protocol_release_verified": protocol_release_verified,
+        "protocol_eligible": protocol_eligible,
+        "provider_eligible": provider_eligible,
+        "benchmark_release_trusted": benchmark_release_trusted,
+        "suite_complete": suite_complete,
+        "trusted_benchmark_run": trusted,
+        "trust_reason_codes": sorted(reasons),
+        "formal_evaluation_result": False,
+        "evaluation_status": "not_a_formal_model_evaluation",
         "git_commit": git_commit,
         "worktree_clean": worktree_clean,
         "dependency_lock_version": dependency_lock_version,

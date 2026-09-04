@@ -16,6 +16,8 @@ from pydantic import (
     model_validator,
 )
 
+from .eligibility import isolation_evidence_protocol_eligible
+
 SCHEMA_BASE_URI = "https://zmuxuny.github.io/hy3-learning-agent/evaluation/schemas"
 SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
 
@@ -2665,8 +2667,456 @@ ActionDeclarationStatusV1 = Literal[
 ]
 
 
+# E3.1.2 release-governance contracts.  Artifact schema versions remain
+# independent from the top-level Evaluation Protocol Release version.
+class ActionDeclarationFramingV2(StrictContractModel):
+    prefix: Literal["<model-action-v2>"]
+    suffix: Literal["</model-action-v2>"]
+    position: Literal["first_nonempty_content"]
+    duplicate_policy: Literal["reject"]
+
+
+class ActionDeclarationJsonContractV2(StrictContractModel):
+    required_fields: list[Literal["action_classes"]]
+    allowed_fields: list[Literal["action_classes"]]
+    unknown_fields: Literal["reject"]
+    insignificant_formatting: list[
+        Literal["json_whitespace", "object_key_order"]
+    ]
+    canonicalize_after_parse: Literal[True]
+
+
+ActionProtocolInstruction = Annotated[
+    str, StringConstraints(min_length=1, max_length=20_000)
+]
+
+
+class ActionMeaningV2(StrictContractModel):
+    track: Literal[
+        "planning",
+        "intervention",
+        "assessment",
+        "revision",
+        "planning_or_intervention",
+    ]
+    decision_semantics: NonEmptyText
+    required_fields: list[Literal["action_classes"]]
+    allowed_fields: list[Literal["action_classes"]]
+    forbidden_fields: list[StableId]
+    boundary: NonEmptyText
+    positive_example: NonEmptyText
+    negative_example: NonEmptyText
+    combinable_with: list[ActionClass]
+    missing_declaration_policy: Literal["record_as_scoreable_behavior_failure"]
+
+
+class ActionDeclarationProtocolV2(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/action-declaration-protocol-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["action-declaration-protocol-v2"]
+    version: Literal["model-action-declaration-v2"]
+    framing: ActionDeclarationFramingV2
+    json_contract: ActionDeclarationJsonContractV2
+    actions: dict[ActionClass, ActionMeaningV2]
+    allowed_combinations: list[list[ActionClass]]
+    missing_or_invalid_policy: Literal["retain_episode_and_score_behavior_failure"]
+    instruction: ActionProtocolInstruction
+
+    @model_validator(mode="after")
+    def validate_dictionary(self) -> Self:
+        expected = set(ActionClass.__args__)  # type: ignore[attr-defined]
+        if set(self.actions) != expected or len(self.actions) != len(expected):
+            raise ValueError("action dictionary must contain all 14 canonical actions")
+        if self.allowed_combinations != [
+            ["INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"]
+        ]:
+            raise ValueError("action combinations must match the frozen protocol")
+        return self
+
+
+class ActiveArtifactChainV1(StrictContractModel):
+    case_spec: Literal["case-spec-v2"]
+    decision_episode: Literal["decision-episode-v4"]
+    runtime_failure: Literal["runtime-failure-v2"]
+    runtime_manifest: Literal["runtime-run-manifest-v3"]
+    rule_result: Literal["rule-result-v3"]
+    rule_manifest: Literal["rule-run-manifest-v3"]
+    judge_result: Literal["judge-result-v3"]
+    judge_manifest: Literal["judge-run-manifest-v3"]
+    aggregate_result: Literal["aggregate-result-v3"]
+    aggregate_track_result: Literal["aggregate-track-result-v3"]
+    aggregate_manifest: Literal["aggregate-run-manifest-v3"]
+
+
+class ProtocolSchemaBindingV1(StrictContractModel):
+    schema_version: StableId
+    relative_path: NonEmptyText
+    schema_id: NonEmptyText
+    raw_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_relative_path(self) -> Self:
+        path = self.relative_path
+        if path.startswith("/") or ".." in path.split("/"):
+            raise ValueError("protocol schema paths must be contained and relative")
+        return self
+
+
+class ProtocolSourceBundleBindingV1(StrictContractModel):
+    component: Literal["runtime", "rules", "judge", "aggregate"]
+    bundle_version: StableId
+    bundle_sha256: Sha256
+
+
+class FormalCapabilityPolicyV1(StrictContractModel):
+    single_artifact_claim: Literal["forbidden"]
+    trusted_registry_required: Literal[True]
+    posthoc_filter_policy: Literal["blocks_formal_capability"]
+    runtime_failure_policy: Literal["disclose_and_block_formal_capability"]
+    invalid_input_policy: Literal["disclose_exclude_from_mean_and_block"]
+    judge_error_policy: Literal["disclose_exclude_from_mean_and_block"]
+    track_reporting_policy: Literal["four_tracks_no_overall"]
+
+
+class EvaluationProtocolReleaseV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/evaluation-protocol-release-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["evaluation-protocol-release-v1"]
+    protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    protocol_version: Literal["1.0"]
+    release_status: Literal["active"]
+    active_chain: ActiveArtifactChainV1
+    artifact_schemas: Annotated[list[ProtocolSchemaBindingV1], Field(min_length=1)]
+    schema_lock_version: Literal["evaluation-schema-lock-v1"]
+    schema_lock_sha256: Sha256
+    canonicalization_version: StableId
+    canonicalization_sha256: Sha256
+    digest_algorithm: Literal["sha256"]
+    action_protocol_version: StableId
+    action_protocol_relative_path: Literal[
+        "evaluation/releases/model-action-declaration-v2.json"
+    ]
+    action_protocol_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
+    rule_pack_version: StableId
+    rule_pack_sha256: Sha256
+    judge_version: StableId
+    judge_config_version: StableId
+    judge_config_sha256: Sha256
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    aggregator_version: StableId
+    source_bundles: Annotated[
+        list[ProtocolSourceBundleBindingV1], Field(min_length=4, max_length=4)
+    ]
+    blinding_policy_version: StableId
+    blinding_policy_sha256: Sha256
+    evidence_path_policy_version: StableId
+    evidence_path_policy_sha256: Sha256
+    formal_capability_policy: FormalCapabilityPolicyV1
+    release_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_protocol_release(self) -> Self:
+        schema_versions = [item.schema_version for item in self.artifact_schemas]
+        if schema_versions != sorted(set(schema_versions)):
+            raise ValueError("protocol schema bindings must be sorted and unique")
+        components = [item.component for item in self.source_bundles]
+        if components != ["aggregate", "judge", "rules", "runtime"]:
+            raise ValueError("protocol source bundles must use fixed component order")
+        return self
+
+
+class BenchmarkCaseBindingV1(StrictContractModel):
+    ordinal: Annotated[int, Field(ge=1)]
+    relative_path: NonEmptyText
+    case_id: StableId
+    case_spec_sha256: Sha256
+    dataset_role: DatasetRoleV3
+    split: Split
+    track: Track
+
+    @model_validator(mode="after")
+    def validate_relative_path(self) -> Self:
+        path = self.relative_path
+        if path.startswith("/") or ".." in path.split("/"):
+            raise ValueError("Benchmark Case paths must be contained and relative")
+        return self
+
+
+class BenchmarkTrackCountsV1(StrictContractModel):
+    planning: Annotated[int, Field(ge=0)]
+    intervention: Annotated[int, Field(ge=0)]
+    assessment: Annotated[int, Field(ge=0)]
+    revision: Annotated[int, Field(ge=0)]
+
+
+class BenchmarkPartitionV1(StrictContractModel):
+    dataset_role: DatasetRoleV3
+    case_ids: list[StableId]
+    expected_track_counts: BenchmarkTrackCountsV1
+
+    @model_validator(mode="after")
+    def validate_case_ids(self) -> Self:
+        if self.case_ids != sorted(set(self.case_ids)):
+            raise ValueError("Benchmark partition Case IDs must be sorted and unique")
+        return self
+
+
+class BenchmarkResourceBindingV1(StrictContractModel):
+    snapshot_version: StableId
+    relative_path: NonEmptyText
+    snapshot_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_relative_path(self) -> Self:
+        path = self.relative_path
+        if path.startswith("/") or ".." in path.split("/"):
+            raise ValueError("Benchmark resource paths must be contained and relative")
+        return self
+
+
+class BenchmarkProtocolBindingsV1(StrictContractModel):
+    schema_set_sha256: Sha256
+    action_protocol_sha256: Sha256
+    rubric_sha256: Sha256
+    track_anchor_sha256: Sha256
+    rule_pack_sha256: Sha256
+    judge_prompt_sha256: Sha256
+    runtime_source_bundle_sha256: Sha256
+    rules_source_bundle_sha256: Sha256
+    judge_source_bundle_sha256: Sha256
+    aggregate_source_bundle_sha256: Sha256
+
+
+class BenchmarkReleaseManifestV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/benchmark-release-manifest-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["benchmark-release-manifest-v1"]
+    benchmark_release_id: StableId
+    benchmark_version: StableId
+    release_status: Literal["engineering", "candidate", "released", "retired"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    case_schema_version: Literal["case-spec-v2"]
+    case_ordering: Literal["fixed_ordinal"]
+    case_suite_digest_rule: Literal["ordered-case-bindings-and-resource-v1"]
+    cases: Annotated[list[BenchmarkCaseBindingV1], Field(min_length=1)]
+    case_suite_sha256: Sha256
+    partitions: Annotated[list[BenchmarkPartitionV1], Field(min_length=3, max_length=3)]
+    expected_total_cases: Annotated[int, Field(ge=1)]
+    mutation_source_lineage_sha256: Sha256
+    resource_snapshots: Annotated[
+        list[BenchmarkResourceBindingV1], Field(min_length=1)
+    ]
+    protocol_bindings: BenchmarkProtocolBindingsV1
+    canonicalization_version: StableId
+    digest_algorithm: Literal["sha256"]
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_benchmark_release(self) -> Self:
+        if [item.ordinal for item in self.cases] != list(
+            range(1, len(self.cases) + 1)
+        ):
+            raise ValueError("Benchmark Cases must use contiguous fixed ordinals")
+        case_ids = [item.case_id for item in self.cases]
+        case_paths = [item.relative_path for item in self.cases]
+        if len(case_ids) != len(set(case_ids)) or len(case_paths) != len(
+            set(case_paths)
+        ):
+            raise ValueError("Benchmark Cases and paths must be unique")
+        if self.expected_total_cases != len(self.cases):
+            raise ValueError("Benchmark expected total must match bound Cases")
+        roles = [item.dataset_role for item in self.partitions]
+        if roles != ["calibration_output", "engineering_mini", "primary_episode"]:
+            raise ValueError("Benchmark partitions must use fixed role order")
+        partition_ids = [case_id for item in self.partitions for case_id in item.case_ids]
+        if len(partition_ids) != len(set(partition_ids)) or set(partition_ids) != set(
+            case_ids
+        ):
+            raise ValueError("Benchmark partitions must exactly partition Cases")
+        cases_by_id = {item.case_id: item for item in self.cases}
+        for partition in self.partitions:
+            if any(
+                cases_by_id[case_id].dataset_role != partition.dataset_role
+                for case_id in partition.case_ids
+            ):
+                raise ValueError("Benchmark partition role differs from Case binding")
+            observed = {
+                track: sum(
+                    cases_by_id[case_id].track == track
+                    for case_id in partition.case_ids
+                )
+                for track in ("planning", "intervention", "assessment", "revision")
+            }
+            if partition.expected_track_counts.model_dump() != observed:
+                raise ValueError("Benchmark partition track counts differ from Cases")
+        resource_paths = [item.relative_path for item in self.resource_snapshots]
+        if resource_paths != sorted(set(resource_paths)):
+            raise ValueError("Benchmark resources must be sorted and unique")
+        return self
+
+
+class SourceBundleFileV1(StrictContractModel):
+    relative_path: NonEmptyText
+    size: Annotated[int, Field(ge=0)]
+    sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_relative_path(self) -> Self:
+        path = self.relative_path
+        if path.startswith("/") or ".." in path.split("/"):
+            raise ValueError("source bundle paths must be contained and relative")
+        return self
+
+
+class SourceBundleManifestV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/source-bundle-manifest-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["source-bundle-manifest-v1"]
+    bundle_version: Literal["evaluation-source-bundle-v2"]
+    component: Literal["runtime", "rules", "judge", "aggregate"]
+    inclusion_policy: Literal[
+        "evaluation-package-conservative-v1",
+        "evaluation-and-product-runtime-conservative-v1",
+    ]
+    files: Annotated[list[SourceBundleFileV1], Field(min_length=1)]
+    bundle_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_bundle_files(self) -> Self:
+        paths = [item.relative_path for item in self.files]
+        if paths != sorted(set(paths)):
+            raise ValueError("source bundle files must be sorted and unique")
+        expected_policy = (
+            "evaluation-and-product-runtime-conservative-v1"
+            if self.component == "runtime"
+            else "evaluation-package-conservative-v1"
+        )
+        if self.inclusion_policy != expected_policy:
+            raise ValueError("source bundle component and policy differ")
+        return self
+
+
+class SchemaLockEntryV1(StrictContractModel):
+    relative_path: NonEmptyText
+    schema_version: StableId
+    schema_id: NonEmptyText
+    raw_sha256: Sha256
+    frozen_in: StableId
+    status: Literal["historical_frozen", "active_release"]
+
+    @model_validator(mode="after")
+    def validate_relative_path(self) -> Self:
+        path = self.relative_path
+        if path.startswith("/") or ".." in path.split("/"):
+            raise ValueError("Schema lock paths must be contained and relative")
+        return self
+
+
+class SchemaLockManifestV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/schema-lock-manifest-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["schema-lock-manifest-v1"]
+    lock_version: Literal["evaluation-schema-lock-v1"]
+    entries: Annotated[list[SchemaLockEntryV1], Field(min_length=1)]
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_lock_entries(self) -> Self:
+        versions = [item.schema_version for item in self.entries]
+        paths = [item.relative_path for item in self.entries]
+        if versions != sorted(set(versions)) or paths != sorted(set(paths)):
+            raise ValueError("Schema lock entries must be sorted and unique")
+        return self
+
+
+class TrustedBenchmarkReleaseV1(StrictContractModel):
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    manifest_relative_path: NonEmptyText
+    case_suite_sha256: Sha256
+    expected_total_cases: Annotated[int, Field(ge=1)]
+    expected_track_counts: BenchmarkTrackCountsV1
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_manifest_path(self) -> Self:
+        path = self.manifest_relative_path
+        if path.startswith("/") or ".." in path.split("/"):
+            raise ValueError("trusted Benchmark paths must be contained and relative")
+        return self
+
+
+class TrustedBenchmarkRegistryV1(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/trusted-benchmark-registry-v1.schema.json",
+        },
+    )
+
+    schema_version: Literal["trusted-benchmark-registry-v1"]
+    registry_version: Literal[
+        "production-trusted-benchmark-registry-v1",
+        "test-only-trusted-benchmark-registry-v1",
+    ]
+    entries: list[TrustedBenchmarkReleaseV1]
+    registry_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_registry_entries(self) -> Self:
+        ids = [item.benchmark_release_id for item in self.entries]
+        if ids != sorted(set(ids)):
+            raise ValueError("trusted Benchmark registry entries must be sorted and unique")
+        return self
+
+
 class ScriptedModelTurnV2(ScriptedModelTurn):
     declared_actions: list[ActionClass]
+    stub_request_user_prefix: NonEmptyText | None = None
 
     @model_validator(mode="after")
     def validate_declared_actions(self) -> Self:
@@ -2677,6 +3127,25 @@ class ScriptedModelTurnV2(ScriptedModelTurn):
 
 class CaseRuntimeSetupV2(CaseRuntimeSetupV1):
     scripted_turns: list[ScriptedModelTurnV2]
+
+    @model_validator(mode="after")
+    def validate_active_script(self) -> Self:
+        ordinals = [turn.ordinal for turn in self.scripted_turns]
+        if ordinals != list(range(1, len(ordinals) + 1)):
+            raise ValueError("scripted turn ordinals must be consecutive")
+        call_ids = [
+            call.call_id for turn in self.scripted_turns for call in turn.tool_calls
+        ]
+        if len(call_ids) != len(set(call_ids)):
+            raise ValueError("scripted tool call IDs must be unique")
+        prefixes = [
+            turn.stub_request_user_prefix
+            for turn in self.scripted_turns
+            if turn.stub_request_user_prefix is not None
+        ]
+        if len(prefixes) != len(set(prefixes)):
+            raise ValueError("stub request user prefixes must be unique")
+        return self
 
 
 class CaseJudgeCriteriaV2(CaseJudgeCriteriaV1):
@@ -2722,7 +3191,7 @@ class JudgeReferenceV2(JudgeReferenceV1):
 
 
 class ModelCallV4(ModelCallV3):
-    action_protocol_version: Literal["model-action-declaration-v1"]
+    action_protocol_version: Literal["model-action-declaration-v2"]
     action_protocol_sha256: Sha256
     action_declaration_status: ActionDeclarationStatusV1
     declared_action_classes: list[ActionClass]
@@ -2828,9 +3297,7 @@ class DecisionLayersV4(StrictContractModel):
         "failed",
         "needs_reconciliation",
     ]
-    formal_evaluation_eligibility: Literal[
-        "eligible", "ineligible_stub", "ineligible_engineering", "invalid"
-    ]
+    protocol_eligibility: Literal["eligible", "invalid"]
 
 
 class DecisionResultV4(StrictContractModel):
@@ -2852,6 +3319,27 @@ class DecisionResultV4(StrictContractModel):
         if self.classification_issues != sorted(set(self.classification_issues)):
             raise ValueError("classification issues must be sorted and unique")
         return self
+
+
+class ActiveArtifactProvenanceV1(StrictContractModel):
+    source_type: Literal["runtime_export"]
+    construction_method: Literal["runtime_recorded"]
+    dataset_role: DatasetRoleV3
+    runtime_executed: Literal[True]
+    protocol_eligible: bool
+    provider_eligible: bool
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    runtime_run_id: StableId
+    runtime_source_bundle_version: Literal["evaluation-source-bundle-v2"]
+    runtime_source_bundle_sha256: Sha256
+    formal_evaluation_result: Literal[False]
+    evaluation_status: Literal["not_a_formal_model_evaluation"]
+    created_at: Rfc3339
+    source_refs: list[StableId]
+    episode_sha256: Sha256
 
 
 class DecisionEpisodeV4(StrictContractModel):
@@ -2881,15 +3369,29 @@ class DecisionEpisodeV4(StrictContractModel):
     result: DecisionResultV4
     completeness: EpisodeCompletenessV3
     isolation_evidence: RuntimeIsolationEvidenceV2
-    provenance: ProvenanceV3
+    provenance: ActiveArtifactProvenanceV1
 
     @model_validator(mode="after")
     def validate_episode_formal_state(self) -> Self:
-        eligible = (
+        provider_eligible = (
             self.environment.provider_attestation.attribution_status == "eligible"
         )
-        if self.provenance.formal_evaluation_result and not eligible:
-            raise ValueError("formal v4 Episodes require eligible provider attribution")
+        if self.provenance.provider_eligible != provider_eligible:
+            raise ValueError("Episode provider eligibility must match attestation")
+        protocol_eligible = (
+            self.completeness.status == "complete"
+            and not self.completeness.evidence_error_codes
+            and isolation_evidence_protocol_eligible(
+                self.isolation_evidence.model_dump(mode="json", by_alias=True)
+            )
+        )
+        if self.provenance.protocol_eligible != protocol_eligible:
+            raise ValueError(
+                "Episode protocol eligibility must match completeness and isolation"
+            )
+        expected_layer = "eligible" if protocol_eligible else "invalid"
+        if self.result.layers.protocol_eligibility != expected_layer:
+            raise ValueError("Episode protocol layer must match isolation evidence")
         return self
 
 
@@ -2905,6 +3407,40 @@ class RuntimeFailureV2(RuntimeFailureV1):
 
     schema_version: Literal["runtime-failure-v2"]  # type: ignore[assignment]
     model_calls: list[ModelCallV4]
+    protocol_eligible: bool
+    provider_eligible: bool
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    runtime_run_id: StableId
+    runtime_source_bundle_version: Literal["evaluation-source-bundle-v2"]
+    runtime_source_bundle_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_failure_eligibility(self) -> Self:
+        expected = self.provider_attestation.attribution_status == "eligible"
+        if self.provider_eligible != expected:
+            raise ValueError("Failure provider eligibility must match attestation")
+        isolation = (
+            self.isolation_evidence.model_dump(mode="json", by_alias=True)
+            if self.isolation_evidence is not None
+            else None
+        )
+        expected_protocol = bool(
+            self.failure_class != "isolation_violation"
+            and isolation_evidence_protocol_eligible(isolation)
+        )
+        if self.protocol_eligible != expected_protocol:
+            raise ValueError("Failure protocol eligibility must match isolation evidence")
+        return self
+
+
+class RuntimeTerminalRecordV3(RuntimeTerminalRecordV2):
+    runtime_run_id: StableId
+    protocol_eligible: bool
+    provider_eligible: bool
+    formal_evaluation_result: Literal[False]  # type: ignore[assignment]
 
 
 class CaseSuiteManifestV2(CaseSuiteManifestV1):
@@ -2919,6 +3455,21 @@ class CaseSuiteManifestV2(CaseSuiteManifestV1):
 
     schema_version: Literal["case-suite-manifest-v2"]  # type: ignore[assignment]
     case_schema_version: Literal["case-spec-v2"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_file: NonEmptyText
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    case_suite_sha256: Sha256
+    benchmark_expected_total_cases: Annotated[int, Field(ge=1)]
+    benchmark_expected_track_counts: BenchmarkTrackCountsV1
+
+    @model_validator(mode="after")
+    def validate_release_path(self) -> Self:
+        path = self.benchmark_release_file
+        if path.startswith("/") or ".." in path.split("/"):
+            raise ValueError("Benchmark Release path must be contained and relative")
+        return self
 
 
 class RuntimeRunManifestV3(StrictContractModel):
@@ -2932,18 +3483,35 @@ class RuntimeRunManifestV3(StrictContractModel):
     )
 
     schema_version: Literal["runtime-run-manifest-v3"]
+    runtime_run_id: StableId
     dataset_version: StableId
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    case_suite_sha256: Sha256
+    benchmark_expected_total_cases: Annotated[int, Field(ge=1)]
+    benchmark_expected_track_counts: BenchmarkTrackCountsV1
     case_schema_version: Literal["case-spec-v2"]
     episode_schema_version: Literal["decision-episode-v4"]
     failure_schema_version: Literal["runtime-failure-v2"]
     invocation_mode: Literal["stub", "real"]
-    selection_mode: Literal["full_suite", "adhoc_filter"]
+    selection_mode: Literal["unfiltered_suite", "adhoc_filter"]
     requested_episode_ids: list[StableId]
     selected_track: Track | None
     selected_case_ids: Annotated[list[StableId], Field(min_length=1)]
-    terminals: Annotated[list[RuntimeTerminalRecordV2], Field(min_length=1)]
-    formal_evaluation_result: bool
-    evaluation_status: EvaluationStatus
+    terminals: Annotated[list[RuntimeTerminalRecordV3], Field(min_length=1)]
+    runtime_source_bundle_version: Literal["evaluation-source-bundle-v2"]
+    runtime_source_bundle_sha256: Sha256
+    protocol_release_verified: bool
+    protocol_eligible: bool
+    provider_eligible: bool
+    benchmark_release_trusted: bool
+    suite_complete: bool
+    trusted_benchmark_run: bool
+    trust_reason_codes: list[StableId]
+    formal_evaluation_result: Literal[False]
+    evaluation_status: Literal["not_a_formal_model_evaluation"]
     git_commit: GitCommit
     worktree_clean: bool
     dependency_lock_version: StableId
@@ -2962,29 +3530,38 @@ class RuntimeRunManifestV3(StrictContractModel):
         artifact_ids = [item.artifact_id for item in self.terminals]
         if len(artifact_ids) != len(set(artifact_ids)):
             raise ValueError("runtime terminal artifact IDs must be unique")
+        if any(item.runtime_run_id != self.runtime_run_id for item in self.terminals):
+            raise ValueError("runtime terminals must bind the same Runtime Run")
         if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
             raise ValueError("requested Episode IDs must be sorted and unique")
-        expected = bool(
+        expected_provider = bool(
             self.invocation_mode == "real"
-            and self.selection_mode == "full_suite"
-            and self.worktree_clean
-            and all(
-                item.terminal_kind == "episode" and item.formal_evaluation_result
-                for item in self.terminals
-            )
+            and all(item.provider_eligible for item in self.terminals)
         )
-        if self.formal_evaluation_result != expected:
-            raise ValueError("runtime formal state must match its complete suite")
-        if self.evaluation_status != (
-            "formal_model_evaluation"
-            if expected
-            else "not_a_formal_model_evaluation"
-        ):
-            raise ValueError("runtime evaluation status is inconsistent")
-        if self.selection_mode == "full_suite" and (
+        if self.provider_eligible != expected_provider:
+            raise ValueError("runtime Provider eligibility must match all terminals")
+        expected_protocol = bool(
+            self.worktree_clean
+            and self.protocol_release_verified
+            and all(item.protocol_eligible for item in self.terminals)
+        )
+        if self.protocol_eligible != expected_protocol:
+            raise ValueError("runtime protocol eligibility must match its terminals")
+        expected_trust = bool(
+            self.protocol_eligible
+            and self.provider_eligible
+            and self.benchmark_release_trusted
+            and self.suite_complete
+            and self.selection_mode == "unfiltered_suite"
+        )
+        if self.trusted_benchmark_run != expected_trust:
+            raise ValueError("trusted Benchmark Run state is inconsistent")
+        if self.trust_reason_codes != sorted(set(self.trust_reason_codes)):
+            raise ValueError("Runtime trust reason codes must be sorted and unique")
+        if self.selection_mode == "unfiltered_suite" and (
             self.requested_episode_ids or self.selected_track is not None
         ):
-            raise ValueError("full-suite execution cannot claim an ad-hoc filter")
+            raise ValueError("unfiltered execution cannot claim an ad-hoc filter")
         if self.selection_mode == "adhoc_filter" and not (
             self.requested_episode_ids or self.selected_track is not None
         ):
@@ -3001,7 +3578,9 @@ def _selection_mode_matches_filters(
     selected_track: str | None,
 ) -> bool:
     filtered = bool(requested_episode_ids or selected_track is not None)
-    return selection_mode == ("adhoc_filter" if filtered else "inherited")
+    if filtered:
+        return selection_mode == "adhoc_filter"
+    return selection_mode in {"inherited", "adhoc_filter"}
 
 
 class RuleResultV3(RuleResultV2):
@@ -3017,22 +3596,33 @@ class RuleResultV3(RuleResultV2):
     schema_version: Literal["rule-result-v3"]  # type: ignore[assignment]
     evaluator_implementation_version: StableId
     evaluator_implementation_sha256: Sha256
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    runtime_run_id: StableId
     input_runtime_manifest_sha256: Sha256
-    input_runtime_formal_evaluation_result: bool
-    input_episode_formal_evaluation_result: bool
+    input_runtime_formal_evaluation_result: Literal[False]
+    input_episode_formal_evaluation_result: Literal[False]
+    input_runtime_trusted_benchmark_run: bool
     selection_mode: EvaluationSelectionV1
     worktree_clean: bool
+    protocol_eligible: bool
+    provider_eligible: bool
+    trusted_benchmark_run: bool
+    formal_evaluation_result: Literal[False]  # type: ignore[assignment]
 
     @model_validator(mode="after")
     def validate_formal_inheritance(self) -> Self:
         expected = bool(
-            self.input_runtime_formal_evaluation_result
-            and self.input_episode_formal_evaluation_result
+            self.input_runtime_trusted_benchmark_run
             and self.selection_mode == "inherited"
             and self.worktree_clean
+            and self.protocol_eligible
+            and self.provider_eligible
         )
-        if self.formal_evaluation_result != expected:
-            raise ValueError("Rule Result formal state must monotonically inherit Runtime")
+        if self.trusted_benchmark_run != expected:
+            raise ValueError("Rule Result trust must monotonically inherit Runtime")
         return self
 
 
@@ -3047,6 +3637,12 @@ class RuleRunManifestV3(StrictContractModel):
     )
 
     schema_version: Literal["rule-run-manifest-v3"]
+    runtime_run_id: StableId
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    case_suite_sha256: Sha256
     input_episode_schema_version: Literal["decision-episode-v4"]
     input_reference_schema_version: Literal["judge-reference-v2"]
     input_failure_schema_version: Literal["runtime-failure-v2"]
@@ -3056,7 +3652,8 @@ class RuleRunManifestV3(StrictContractModel):
     rule_pack_version: StableId
     rule_pack_sha256: Sha256
     input_runtime_manifest_sha256: Sha256
-    input_runtime_formal_evaluation_result: bool
+    input_runtime_formal_evaluation_result: Literal[False]
+    input_runtime_trusted_benchmark_run: bool
     invocation_mode: Literal["stub", "real"]
     selection_mode: EvaluationSelectionV1
     requested_episode_ids: list[StableId]
@@ -3068,8 +3665,12 @@ class RuleRunManifestV3(StrictContractModel):
     input_runtime_failure_digests: dict[str, Sha256]
     runtime_failure_tracks: dict[str, Track]
     rule_result_digests: dict[str, Sha256]
-    result_formal_evaluation_states: dict[str, bool]
-    formal_evaluation_result: bool
+    result_formal_evaluation_states: dict[str, Literal[False]]
+    result_trusted_benchmark_states: dict[str, bool]
+    protocol_eligible: bool
+    provider_eligible: bool
+    trusted_benchmark_run: bool
+    formal_evaluation_result: Literal[False]
     worktree_clean: bool
     git_commit: GitCommit
     manifest_sha256: Sha256
@@ -3099,6 +3700,7 @@ class RuleRunManifestV3(StrictContractModel):
             self.input_reference_digests,
             self.rule_result_digests,
             self.result_formal_evaluation_states,
+            self.result_trusted_benchmark_states,
         )
         if any(set(mapping) != episode_ids for mapping in episode_mappings):
             raise ValueError("Rule manifest mappings must match Episode IDs")
@@ -3109,15 +3711,15 @@ class RuleRunManifestV3(StrictContractModel):
         ):
             raise ValueError("Rule failure mappings must match Runtime Failure IDs")
         expected = bool(
-            self.input_runtime_formal_evaluation_result
+            self.input_runtime_trusted_benchmark_run
             and self.selection_mode == "inherited"
             and self.worktree_clean
-            and self.episode_ids
-            and not self.runtime_failure_ids
-            and all(self.result_formal_evaluation_states.values())
+            and self.protocol_eligible
+            and self.provider_eligible
+            and all(self.result_trusted_benchmark_states.values())
         )
-        if self.formal_evaluation_result != expected:
-            raise ValueError("Rule manifest formal state must monotonically inherit Runtime")
+        if self.trusted_benchmark_run != expected:
+            raise ValueError("Rule manifest trust must monotonically inherit Runtime")
         return self
 
 
@@ -3132,27 +3734,38 @@ class JudgeResultV3(JudgeResultV2):
     )
 
     schema_version: Literal["judge-result-v3"]  # type: ignore[assignment]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    runtime_run_id: StableId
+    judge_source_bundle_version: Literal["evaluation-source-bundle-v2"]
+    judge_source_bundle_sha256: Sha256
     input_rule_manifest_sha256: Sha256
-    input_rule_manifest_formal_evaluation_result: bool
-    input_episode_formal_evaluation_result: bool
-    input_rule_result_formal_evaluation_result: bool
+    input_rule_manifest_formal_evaluation_result: Literal[False]
+    input_episode_formal_evaluation_result: Literal[False]
+    input_rule_result_formal_evaluation_result: Literal[False]
+    input_rule_manifest_trusted_benchmark_run: bool
     selection_mode: EvaluationSelectionV1
     worktree_clean: bool
+    protocol_eligible: bool
+    provider_eligible: bool
+    trusted_benchmark_run: bool
+    formal_evaluation_result: Literal[False]  # type: ignore[assignment]
 
     @model_validator(mode="after")
     def validate_formal_inheritance(self) -> Self:
         expected = bool(
-            self.status == "complete"
-            and self.judge_mode == "real"
+            self.judge_mode == "real"
             and self.provider_attestation.attribution_status == "eligible"
-            and self.input_rule_manifest_formal_evaluation_result
-            and self.input_episode_formal_evaluation_result
-            and self.input_rule_result_formal_evaluation_result
+            and self.input_rule_manifest_trusted_benchmark_run
             and self.selection_mode == "inherited"
             and self.worktree_clean
+            and self.protocol_eligible
+            and self.provider_eligible
         )
-        if self.formal_evaluation_result != expected:
-            raise ValueError("Judge Result formal state must monotonically inherit Rules")
+        if self.trusted_benchmark_run != expected:
+            raise ValueError("Judge Result trust must monotonically inherit Rules")
         return self
 
 
@@ -3167,6 +3780,12 @@ class JudgeRunManifestV3(StrictContractModel):
     )
 
     schema_version: Literal["judge-run-manifest-v3"]
+    runtime_run_id: StableId
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    case_suite_sha256: Sha256
     input_episode_schema_version: Literal["decision-episode-v4"]
     input_rule_schema_version: Literal["rule-result-v3"]
     input_reference_schema_version: Literal["judge-reference-v2"]
@@ -3182,9 +3801,12 @@ class JudgeRunManifestV3(StrictContractModel):
     track_anchor_sha256: Sha256
     repair_limit: Literal[1]
     judge_mode: Literal["stub", "real"]
+    judge_source_bundle_version: Literal["evaluation-source-bundle-v2"]
+    judge_source_bundle_sha256: Sha256
     input_runtime_manifest_sha256: Sha256
     input_rule_manifest_sha256: Sha256
-    input_rule_manifest_formal_evaluation_result: bool
+    input_rule_manifest_formal_evaluation_result: Literal[False]
+    input_rule_manifest_trusted_benchmark_run: bool
     selection_mode: EvaluationSelectionV1
     requested_episode_ids: list[StableId]
     selected_track: Track | None
@@ -3194,13 +3816,18 @@ class JudgeRunManifestV3(StrictContractModel):
     input_rule_result_digests: dict[str, Sha256]
     input_reference_digests: dict[str, Sha256]
     input_runtime_failure_digests: dict[str, Sha256]
+    episode_tracks: dict[str, Track]
     runtime_failure_tracks: dict[str, Track]
     blind_input_digests: dict[str, Sha256]
     judge_result_digests: dict[str, Sha256]
     result_statuses: dict[str, JudgeStatus]
-    result_formal_evaluation_states: dict[str, bool]
-    formal_evaluation_result: bool
-    evaluation_status: EvaluationStatus
+    result_formal_evaluation_states: dict[str, Literal[False]]
+    result_trusted_benchmark_states: dict[str, bool]
+    protocol_eligible: bool
+    provider_eligible: bool
+    trusted_benchmark_run: bool
+    formal_evaluation_result: Literal[False]
+    evaluation_status: Literal["not_a_formal_model_evaluation"]
     worktree_clean: bool
     git_commit: GitCommit
     manifest_sha256: Sha256
@@ -3233,6 +3860,8 @@ class JudgeRunManifestV3(StrictContractModel):
             self.judge_result_digests,
             self.result_statuses,
             self.result_formal_evaluation_states,
+            self.result_trusted_benchmark_states,
+            self.episode_tracks,
         )
         if any(set(mapping) != episode_ids for mapping in mappings):
             raise ValueError("Judge manifest mappings must match Episode IDs")
@@ -3243,21 +3872,15 @@ class JudgeRunManifestV3(StrictContractModel):
         ):
             raise ValueError("Judge failure mappings must match Runtime Failure IDs")
         expected = bool(
-            self.input_rule_manifest_formal_evaluation_result
+            self.input_rule_manifest_trusted_benchmark_run
             and self.selection_mode == "inherited"
             and self.worktree_clean
-            and self.episode_ids
-            and not self.runtime_failure_ids
-            and all(self.result_formal_evaluation_states.values())
+            and self.protocol_eligible
+            and self.provider_eligible
+            and all(self.result_trusted_benchmark_states.values())
         )
-        if self.formal_evaluation_result != expected:
-            raise ValueError("Judge manifest formal state must monotonically inherit Rules")
-        if self.evaluation_status != (
-            "formal_model_evaluation"
-            if expected
-            else "not_a_formal_model_evaluation"
-        ):
-            raise ValueError("Judge manifest evaluation status is inconsistent")
+        if self.trusted_benchmark_run != expected:
+            raise ValueError("Judge manifest trust must monotonically inherit Rules")
         return self
 
 
@@ -3272,31 +3895,37 @@ class AggregateResultV3(AggregateResultV2):
     )
 
     schema_version: Literal["aggregate-result-v3"]  # type: ignore[assignment]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    runtime_run_id: StableId
     aggregator_implementation_version: StableId
     aggregator_implementation_sha256: Sha256
     input_judge_manifest_sha256: Sha256
-    input_judge_manifest_formal_evaluation_result: bool
-    input_episode_formal_evaluation_result: bool
-    input_rule_result_formal_evaluation_result: bool
-    input_judge_result_formal_evaluation_result: bool
+    input_judge_manifest_formal_evaluation_result: Literal[False]
+    input_episode_formal_evaluation_result: Literal[False]
+    input_rule_result_formal_evaluation_result: Literal[False]
+    input_judge_result_formal_evaluation_result: Literal[False]
+    input_judge_manifest_trusted_benchmark_run: bool
     selection_mode: EvaluationSelectionV1
     worktree_clean: bool
+    protocol_eligible: bool
+    provider_eligible: bool
+    trusted_benchmark_run: bool
+    formal_evaluation_result: Literal[False]  # type: ignore[assignment]
 
     @model_validator(mode="after")
     def validate_formal_inheritance(self) -> Self:
         expected = bool(
-            self.status == "complete"
-            and self.input_judge_manifest_formal_evaluation_result
-            and self.input_episode_formal_evaluation_result
-            and self.input_rule_result_formal_evaluation_result
-            and self.input_judge_result_formal_evaluation_result
+            self.input_judge_manifest_trusted_benchmark_run
             and self.selection_mode == "inherited"
             and self.worktree_clean
+            and self.protocol_eligible
+            and self.provider_eligible
         )
-        if self.formal_evaluation_result != expected:
-            raise ValueError(
-                "Aggregate Result formal state must monotonically inherit Judge"
-            )
+        if self.trusted_benchmark_run != expected:
+            raise ValueError("Aggregate Result trust must monotonically inherit Judge")
         return self
 
 
@@ -3311,6 +3940,11 @@ class AggregateTrackResultV3(StrictContractModel):
     )
 
     schema_version: Literal["aggregate-track-result-v3"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    runtime_run_id: StableId
     aggregator_version: StableId
     aggregator_implementation_version: StableId
     aggregator_implementation_sha256: Sha256
@@ -3323,12 +3957,17 @@ class AggregateTrackResultV3(StrictContractModel):
     runtime_failure_ids: list[StableId]
     score_count: Annotated[int, Field(ge=0)]
     mean_score: Annotated[float, Field(ge=0, le=100)] | None
-    input_judge_manifest_formal_evaluation_result: bool
+    input_judge_manifest_formal_evaluation_result: Literal[False]
+    input_judge_manifest_trusted_benchmark_run: bool
     result_formal_evaluation_states: dict[str, bool]
+    result_trusted_benchmark_states: dict[str, bool]
     selection_mode: EvaluationSelectionV1
     worktree_clean: bool
-    formal_evaluation_result: bool
-    evaluation_status: EvaluationStatus
+    protocol_eligible: bool
+    provider_eligible: bool
+    trusted_benchmark_run: bool
+    formal_evaluation_result: Literal[False]
+    evaluation_status: Literal["not_a_formal_model_evaluation"]
     result_sha256: Sha256
 
     @model_validator(mode="after")
@@ -3362,26 +4001,22 @@ class AggregateTrackResultV3(StrictContractModel):
             raise ValueError("failed Episodes must be complete scored Episodes")
         if set(self.result_formal_evaluation_states) != set(self.episode_ids):
             raise ValueError("track formal mappings must match Episode IDs")
+        if set(self.result_trusted_benchmark_states) != set(self.episode_ids):
+            raise ValueError("track trust mappings must match Episode IDs")
         if self.score_count != len(self.complete_episode_ids):
             raise ValueError("track score count must match complete Episodes")
         if (self.mean_score is None) != (self.score_count == 0):
             raise ValueError("track mean exists exactly when scored Episodes exist")
         expected = bool(
-            self.input_judge_manifest_formal_evaluation_result
+            self.input_judge_manifest_trusted_benchmark_run
             and self.selection_mode == "inherited"
             and self.worktree_clean
-            and self.episode_ids
-            and not self.runtime_failure_ids
-            and all(self.result_formal_evaluation_states.values())
+            and self.protocol_eligible
+            and self.provider_eligible
+            and all(self.result_trusted_benchmark_states.values())
         )
-        if self.formal_evaluation_result != expected:
-            raise ValueError("track formal state must monotonically inherit Judge")
-        if self.evaluation_status != (
-            "formal_model_evaluation"
-            if expected
-            else "not_a_formal_model_evaluation"
-        ):
-            raise ValueError("track evaluation status is inconsistent")
+        if self.trusted_benchmark_run != expected:
+            raise ValueError("track trust must monotonically inherit Judge")
         return self
 
 
@@ -3396,6 +4031,12 @@ class AggregateRunManifestV3(StrictContractModel):
     )
 
     schema_version: Literal["aggregate-run-manifest-v3"]
+    runtime_run_id: StableId
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0"]
+    evaluation_protocol_release_sha256: Sha256
+    benchmark_release_id: StableId
+    benchmark_release_sha256: Sha256
+    case_suite_sha256: Sha256
     aggregator_version: StableId
     aggregator_implementation_version: StableId
     aggregator_implementation_sha256: Sha256
@@ -3409,23 +4050,37 @@ class AggregateRunManifestV3(StrictContractModel):
     track_anchor_version: StableId
     track_anchor_sha256: Sha256
     judge_mode: Literal["stub", "real"]
+    aggregate_source_bundle_version: Literal["evaluation-source-bundle-v2"]
+    aggregate_source_bundle_sha256: Sha256
+    input_runtime_manifest_sha256: Sha256
     input_judge_manifest_sha256: Sha256
-    input_judge_manifest_formal_evaluation_result: bool
+    input_judge_manifest_formal_evaluation_result: Literal[False]
+    input_judge_manifest_trusted_benchmark_run: bool
     selection_mode: EvaluationSelectionV1
     requested_episode_ids: list[StableId]
     selected_track: Track | None
     episode_ids: list[StableId]
     runtime_failure_ids: list[StableId]
+    runtime_terminals: Annotated[list[RuntimeTerminalRecordV3], Field(min_length=1)]
     input_episode_digests: dict[str, Sha256]
     input_rule_result_digests: dict[str, Sha256]
     input_judge_result_digests: dict[str, Sha256]
     input_reference_digests: dict[str, Sha256]
     input_runtime_failure_digests: dict[str, Sha256]
+    episode_tracks: dict[str, Track]
     runtime_failure_tracks: dict[str, Track]
     aggregate_result_digests: dict[str, Sha256]
     result_statuses: dict[str, JudgeStatus]
-    result_formal_evaluation_states: dict[str, bool]
+    result_formal_evaluation_states: dict[str, Literal[False]]
+    result_trusted_benchmark_states: dict[str, bool]
     track_result_digests: dict[str, Sha256]
+    expected_total_cases: Annotated[int, Field(ge=1)]
+    expected_track_counts: BenchmarkTrackCountsV1
+    protocol_eligible: bool
+    provider_eligible: bool
+    trusted_benchmark_run: bool
+    capability_blockers: list[StableId]
+    formal_capability_result: bool
     formal_evaluation_result: bool
     evaluation_status: EvaluationStatus
     worktree_clean: bool
@@ -3460,6 +4115,7 @@ class AggregateRunManifestV3(StrictContractModel):
             self.aggregate_result_digests,
             self.result_statuses,
             self.result_formal_evaluation_states,
+            self.result_trusted_benchmark_states,
         )
         if any(set(mapping) != episode_ids for mapping in mappings):
             raise ValueError("Aggregate manifest mappings must match Episode IDs")
@@ -3469,21 +4125,78 @@ class AggregateRunManifestV3(StrictContractModel):
             or set(self.runtime_failure_tracks) != failure_ids
         ):
             raise ValueError("Aggregate failure mappings must match Runtime Failure IDs")
+        terminal_ids = [item.artifact_id for item in self.runtime_terminals]
+        if terminal_ids != sorted(set(terminal_ids)):
+            raise ValueError("Aggregate runtime terminals must be sorted and unique")
+        if set(terminal_ids) != episode_ids | failure_ids:
+            raise ValueError("Aggregate runtime terminals must bind every selected terminal")
+        if any(
+            item.runtime_run_id != self.runtime_run_id
+            for item in self.runtime_terminals
+        ):
+            raise ValueError("Aggregate runtime terminals must bind the same Runtime Run")
+        for terminal in self.runtime_terminals:
+            artifact_id = terminal.artifact_id
+            if terminal.terminal_kind == "episode":
+                if (
+                    artifact_id not in episode_ids
+                    or terminal.artifact_sha256
+                    != self.input_episode_digests[artifact_id]
+                    or terminal.track != self.episode_tracks[artifact_id]
+                ):
+                    raise ValueError("Aggregate Episode terminal binding differs")
+            elif (
+                artifact_id not in failure_ids
+                or terminal.artifact_sha256
+                != self.input_runtime_failure_digests[artifact_id]
+                or terminal.track != self.runtime_failure_tracks[artifact_id]
+            ):
+                raise ValueError("Aggregate Failure terminal binding differs")
         if not self.track_result_digests:
             raise ValueError("Aggregate manifest requires per-track results")
-        expected = bool(
-            self.input_judge_manifest_formal_evaluation_result
+        expected_trust = bool(
+            self.input_judge_manifest_trusted_benchmark_run
+            and self.judge_mode == "real"
             and self.selection_mode == "inherited"
             and self.worktree_clean
-            and self.episode_ids
-            and not self.runtime_failure_ids
-            and all(self.result_formal_evaluation_states.values())
+            and self.protocol_eligible
+            and self.provider_eligible
+            and all(self.result_trusted_benchmark_states.values())
+            and all(item.protocol_eligible for item in self.runtime_terminals)
+            and all(item.provider_eligible for item in self.runtime_terminals)
         )
-        if self.formal_evaluation_result != expected:
-            raise ValueError("Aggregate formal state must monotonically inherit Judge")
+        if self.trusted_benchmark_run != expected_trust:
+            raise ValueError("Aggregate trust must monotonically inherit Judge")
+        observed_tracks = {
+            track: sum(value == track for value in self.episode_tracks.values())
+            + sum(value == track for value in self.runtime_failure_tracks.values())
+            for track in ("planning", "intervention", "assessment", "revision")
+        }
+        if self.trusted_benchmark_run and (
+            observed_tracks != self.expected_track_counts.model_dump()
+            or len(self.episode_ids) + len(self.runtime_failure_ids)
+            != self.expected_total_cases
+        ):
+            raise ValueError("trusted aggregate inventory differs from Benchmark")
+        if self.capability_blockers != sorted(set(self.capability_blockers)):
+            raise ValueError("capability blockers must be sorted and unique")
+        expected_capability = bool(
+            self.trusted_benchmark_run
+            and len(self.episode_ids) == self.expected_total_cases
+            and not self.runtime_failure_ids
+            and all(status == "complete" for status in self.result_statuses.values())
+            and set(self.track_result_digests)
+            == {"planning", "intervention", "assessment", "revision"}
+            and observed_tracks == self.expected_track_counts.model_dump()
+            and not self.capability_blockers
+        )
+        if self.formal_capability_result != expected_capability:
+            raise ValueError("formal capability state is inconsistent")
+        if self.formal_evaluation_result != self.formal_capability_result:
+            raise ValueError("legacy formal alias must equal capability publication")
         if self.evaluation_status != (
             "formal_model_evaluation"
-            if expected
+            if expected_capability
             else "not_a_formal_model_evaluation"
         ):
             raise ValueError("Aggregate evaluation status is inconsistent")
@@ -3529,6 +4242,12 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "aggregate-result-v3": AggregateResultV3,
     "aggregate-track-result-v3": AggregateTrackResultV3,
     "aggregate-run-manifest-v3": AggregateRunManifestV3,
+    "evaluation-protocol-release-v1": EvaluationProtocolReleaseV1,
+    "benchmark-release-manifest-v1": BenchmarkReleaseManifestV1,
+    "source-bundle-manifest-v1": SourceBundleManifestV1,
+    "schema-lock-manifest-v1": SchemaLockManifestV1,
+    "trusted-benchmark-registry-v1": TrustedBenchmarkRegistryV1,
+    "action-declaration-protocol-v2": ActionDeclarationProtocolV2,
 }
 
 DATASET_DOCUMENT_MODELS: dict[str, type[BaseModel]] = {

@@ -410,10 +410,19 @@ async def execute_durable_child(
     max_steps: int,
     client_factory: Callable[[], Any],
     parent_call_id: str | None = None,
+    before_terminal_commit: Callable[[], Awaitable[None]] | None = None,
 ) -> None:
     """Run every child kind through the same claim/checkpoint/retry protocol."""
 
     client: Any | None = None
+    terminal_barrier_passed = False
+
+    async def await_terminal_order() -> None:
+        nonlocal terminal_barrier_passed
+        if not terminal_barrier_passed and before_terminal_commit is not None:
+            await before_terminal_commit()
+        terminal_barrier_passed = True
+
     while True:
         lease = await claim_run(AsyncSessionLocal, child_id)
         if lease is None:
@@ -422,6 +431,7 @@ async def execute_durable_child(
             child = await db.get(AgentRun, child_id)
             if child is None or child.cancel_requested:
                 await rollback_uow(db)
+                await await_terminal_order()
                 await terminate_run(
                     AsyncSessionLocal,
                     child_id,
@@ -467,7 +477,9 @@ async def execute_durable_child(
                 phase=str(checkpoint.get("phase") or "awaiting_model"),
             )
 
-        async def save_checkpoint(runtime_checkpoint: dict) -> None:
+        async def save_checkpoint(
+            runtime_checkpoint: dict, active_lease: Any = lease
+        ) -> None:
             nonlocal checkpoint
             checkpoint = {
                 **checkpoint,
@@ -482,7 +494,7 @@ async def execute_durable_child(
             async with AsyncSessionLocal() as checkpoint_db:
                 stored = await persist_checkpoint(
                     checkpoint_db,
-                    lease,
+                    active_lease,
                     checkpoint,
                     phase=str(runtime_checkpoint.get("phase") or "awaiting_model"),
                 )
@@ -501,6 +513,7 @@ async def execute_durable_child(
                 event_key=f"run:{child.id}:started",
             )
             if checkpoint.get("phase") == "finalizing" and "final_text" in checkpoint:
+                await await_terminal_order()
                 await finalize_child(
                     AsyncSessionLocal,
                     lease,
@@ -523,6 +536,7 @@ async def execute_durable_child(
                     checkpoint=checkpoint,
                     checkpoint_callback=save_checkpoint,
                 )
+            await await_terminal_order()
             await finalize_child(
                 AsyncSessionLocal,
                 lease,
@@ -535,8 +549,9 @@ async def execute_durable_child(
             raise
         except RunLeaseLostError:
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - child failures become typed terminals
             if not is_transient_model_error(exc):
+                await await_terminal_order()
                 await finalize_child(
                     AsyncSessionLocal,
                     lease,
@@ -547,6 +562,7 @@ async def execute_durable_child(
                 )
                 return
             if int(checkpoint.get("retry_count") or 0) >= settings.AGENT_RUN_MAX_RETRIES:
+                await await_terminal_order()
                 await finalize_child(
                     AsyncSessionLocal,
                     lease,

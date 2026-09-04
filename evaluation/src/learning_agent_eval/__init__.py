@@ -1,5 +1,9 @@
 """Offline, side-effect-free protocol tools for Learning Agent evaluation."""
 
+from .active_aggregate import aggregate_active_results
+from .active_judge import evaluate_active_judges
+from .active_rules import evaluate_active_rules
+from .active_runtime import run_active_runtime
 from .canonical import canonical_json, canonical_json_bytes, sha256_digest
 from .errors import DatasetStats, ValidationIssue, ValidationReport
 from .integrity import (
@@ -23,6 +27,7 @@ __all__ = [
     "DatasetStats",
     "ValidationIssue",
     "ValidationReport",
+    "aggregate_active_results",
     "aggregate_result_digest",
     "artifact_manifest_digest",
     "canonical_json",
@@ -31,11 +36,14 @@ __all__ = [
     "decision_episode_digest",
     "environment_manifest_digest",
     "episode_completeness_digest",
+    "evaluate_active_judges",
+    "evaluate_active_rules",
     "integrity_result_digest",
     "judge_result_digest",
     "oracle_envelope_digest",
     "resolve_evidence_path",
     "rule_result_digest",
+    "run_active_runtime",
     "sha256_digest",
     "snapshot_entity_digest",
     "state_delta_digest",

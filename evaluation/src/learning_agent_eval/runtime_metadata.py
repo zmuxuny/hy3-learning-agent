@@ -40,9 +40,6 @@ AGENT_RUNTIME_CONFIG_SHA256 = sha256_digest(
         "reasoning_effort": "high",
     }
 )
-SOURCE_BUNDLE_VERSION = "evaluation-source-bundle-v1"
-
-
 def dependency_lock_sha256(project_root: Path = PROJECT_ROOT) -> str:
     """Hash the exact committed dependency closure."""
 
@@ -85,32 +82,6 @@ def dependency_environment_reason_codes(
         if actual != expected:
             reasons.add("provider.dependency_version_mismatch")
     return tuple(sorted(reasons))
-
-
-def implementation_source_digest(
-    relative_paths: tuple[str, ...], project_root: Path = PROJECT_ROOT
-) -> str:
-    """Digest exact evaluation implementation bytes under the repository root."""
-
-    if not relative_paths or relative_paths != tuple(sorted(set(relative_paths))):
-        raise ValueError("source bundle paths must be sorted and unique")
-    files: list[dict[str, Any]] = []
-    for relative in relative_paths:
-        path = Path(relative)
-        if path.is_absolute() or ".." in path.parts:
-            raise ValueError("source bundle paths must be contained and relative")
-        absolute = project_root / path
-        payload = absolute.read_bytes()
-        files.append(
-            {
-                "path": relative,
-                "size": len(payload),
-                "sha256": hashlib.sha256(payload).hexdigest(),
-            }
-        )
-    return sha256_digest(
-        {"source_bundle_version": SOURCE_BUNDLE_VERSION, "files": files}
-    )
 
 
 def provider_attribution_reason_codes(

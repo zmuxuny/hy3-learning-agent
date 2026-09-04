@@ -54,6 +54,12 @@ def test_committed_json_schemas_match_source_models() -> None:
         "aggregate-result-v3.schema.json",
         "aggregate-track-result-v3.schema.json",
         "aggregate-run-manifest-v3.schema.json",
+        "action-declaration-protocol-v2.schema.json",
+        "benchmark-release-manifest-v1.schema.json",
+        "evaluation-protocol-release-v1.schema.json",
+        "schema-lock-manifest-v1.schema.json",
+        "source-bundle-manifest-v1.schema.json",
+        "trusted-benchmark-registry-v1.schema.json",
     }
     for filename, expected in generated.items():
         committed = json.loads((SCHEMA_ROOT / filename).read_text(encoding="utf-8"))

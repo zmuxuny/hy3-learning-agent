@@ -45,6 +45,12 @@ SCHEMA_FILENAMES = {
     "aggregate-result-v3": "aggregate-result-v3.schema.json",
     "aggregate-track-result-v3": "aggregate-track-result-v3.schema.json",
     "aggregate-run-manifest-v3": "aggregate-run-manifest-v3.schema.json",
+    "evaluation-protocol-release-v1": "evaluation-protocol-release-v1.schema.json",
+    "benchmark-release-manifest-v1": "benchmark-release-manifest-v1.schema.json",
+    "source-bundle-manifest-v1": "source-bundle-manifest-v1.schema.json",
+    "schema-lock-manifest-v1": "schema-lock-manifest-v1.schema.json",
+    "trusted-benchmark-registry-v1": "trusted-benchmark-registry-v1.schema.json",
+    "action-declaration-protocol-v2": "action-declaration-protocol-v2.schema.json",
 }
 
 

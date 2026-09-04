@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from historical_execution import run_agent_v2 as run_agent
 from learning_agent_eval import oracle_envelope_digest, sha256_digest
 from learning_agent_eval.cli import main as cli_main
 from learning_agent_eval.isolation import (
@@ -22,7 +23,7 @@ from learning_agent_eval.recorder import (
     public_projection,
 )
 from learning_agent_eval.resources import EvaluationSnapshotProvider
-from learning_agent_eval.runner import RunAgentError, RunAgentSummary, run_agent
+from learning_agent_eval.runner import RunAgentError, RunAgentSummary
 from learning_agent_eval.scripted_model import ScriptedModelClient
 from learning_agent_eval.validator import validate_dataset
 
@@ -478,7 +479,10 @@ def test_privacy_does_not_treat_normal_business_vocabulary_as_private_work(
     assert privacy_issues({"note": business_text}) == []
 
 
-def test_cli_failure_is_nonzero_and_structured(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_historical_runtime_cli_is_disabled_before_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = tmp_path / "output"
     code = cli_main(
         [
             "run-agent",
@@ -487,20 +491,18 @@ def test_cli_failure_is_nonzero_and_structured(tmp_path: Path, capsys: pytest.Ca
             "--manifest",
             str(MANIFEST),
             "--output",
-            str(tmp_path / "output"),
+            str(output),
             "--episode-id",
             "P-E1-MISSING",
         ]
     )
     error = json.loads(capsys.readouterr().err)
     assert code == 1
-    assert error == {
-        "status": "error",
-        "error_code": "episode_not_found",
-        "stage": "filter",
-        "episode_id": "batch",
-        "message": "one or more episode IDs were not found",
-    }
+    assert error["status"] == "error"
+    assert error["error_code"] == "legacy_execution_disabled"
+    assert error["stage"] == "preflight"
+    assert error["entrypoint"] == "run-agent"
+    assert not output.exists()
 
 
 @pytest.mark.asyncio

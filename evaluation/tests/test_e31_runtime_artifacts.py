@@ -15,6 +15,7 @@ from learning_agent_eval.e31_runtime import (
     build_runtime_failure,
     build_runtime_manifest_v2,
     build_stub_provider_attestation,
+    canonicalize_concurrent_model_records,
 )
 from learning_agent_eval.integrity import (
     artifact_manifest_digest,
@@ -219,6 +220,118 @@ async def test_recorder_reserves_unique_start_order_before_concurrent_completion
     assert [item["assistant_text"] for item in recorder.records] == [
         "reply-1",
         "reply-2",
+    ]
+
+
+def test_scripted_concurrent_turns_use_explicit_public_request_selectors() -> None:
+    client = ScriptedModelClient(
+        [
+            {
+                "ordinal": 2,
+                "delivery": "nonstream",
+                "assistant_text": "alpha response",
+                "declared_actions": [],
+                "stub_request_user_prefix": "Assignment: alpha",
+                "tool_calls": [],
+            },
+            {
+                "ordinal": 3,
+                "delivery": "nonstream",
+                "assistant_text": "beta response",
+                "declared_actions": [],
+                "stub_request_user_prefix": "Assignment: beta",
+                "tool_calls": [],
+            },
+        ]
+    )
+
+    async def invoke(content: str) -> tuple[str, str]:
+        response = await client.chat.completions.create(
+            messages=[{"role": "user", "content": content}]
+        )
+        return response.id, response.choices[0].message.content
+
+    assert asyncio.run(invoke("Assignment: beta\ncontext")) == (
+        "stub-response-003",
+        "beta response",
+    )
+    assert asyncio.run(invoke("Assignment: alpha\ncontext")) == (
+        "stub-response-002",
+        "alpha response",
+    )
+
+
+def test_concurrent_records_use_stable_causal_linearization() -> None:
+    def record(
+        call_id: str,
+        ordinal: int,
+        run_id: str,
+        text: str,
+        *,
+        parent_run_id: str | None = None,
+        parent_call_id: str | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "call_id": call_id,
+            "ordinal": ordinal,
+            "run_id": run_id,
+            "parent_run_id": parent_run_id,
+            "parent_call_id": parent_call_id,
+            "assistant_text": text,
+        }
+
+    first = [
+        record("raw:1", 1, "run:root", "root-1"),
+        record(
+            "raw:2",
+            2,
+            "run:child:a",
+            "alpha",
+            parent_run_id="run:root",
+            parent_call_id="raw:1",
+        ),
+        record(
+            "raw:3",
+            3,
+            "run:child:b",
+            "beta",
+            parent_run_id="run:root",
+            parent_call_id="raw:1",
+        ),
+        record("raw:4", 4, "run:root", "root-2"),
+    ]
+    second = [
+        record("raw:1", 1, "run:root", "root-1"),
+        record(
+            "raw:2",
+            2,
+            "run:child:b",
+            "beta",
+            parent_run_id="run:root",
+            parent_call_id="raw:1",
+        ),
+        record(
+            "raw:3",
+            3,
+            "run:child:a",
+            "alpha",
+            parent_run_id="run:root",
+            parent_call_id="raw:1",
+        ),
+        record("raw:4", 4, "run:root", "root-2"),
+    ]
+
+    expected = canonicalize_concurrent_model_records(first)
+    assert canonicalize_concurrent_model_records(second) == expected
+    assert [item["assistant_text"] for item in expected] == [
+        "root-1",
+        "alpha",
+        "beta",
+        "root-2",
+    ]
+    assert [item["parent_call_id"] for item in expected[1:3]] == [
+        "model-call:001",
+        "model-call:001",
     ]
 
 

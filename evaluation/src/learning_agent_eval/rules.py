@@ -13,7 +13,7 @@ from .integrity import (
     environment_manifest_digest,
     rule_result_digest,
 )
-from .runtime_metadata import SOURCE_BUNDLE_VERSION, implementation_source_digest
+from .source_bundles import SOURCE_BUNDLE_VERSION, source_bundle_sha256
 from .validator import resolve_evidence_path
 
 EVALUATOR_VERSION = "deterministic-rule-evaluator-v1"
@@ -24,26 +24,7 @@ RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
 EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
 RULE_PACK_VERSION_V3 = "e311-rule-pack-v3"
-RULE_IMPLEMENTATION_SOURCE_FILES_V3 = tuple(
-    sorted(
-        (
-            "evaluation/src/learning_agent_eval/canonical.py",
-            "evaluation/src/learning_agent_eval/case_specs.py",
-            "evaluation/src/learning_agent_eval/e31_io.py",
-            "evaluation/src/learning_agent_eval/exporter_v4.py",
-            "evaluation/src/learning_agent_eval/integrity.py",
-            "evaluation/src/learning_agent_eval/models.py",
-            "evaluation/src/learning_agent_eval/privacy.py",
-            "evaluation/src/learning_agent_eval/rule_runner_v2.py",
-            "evaluation/src/learning_agent_eval/rules.py",
-            "evaluation/src/learning_agent_eval/runtime_metadata.py",
-            "evaluation/src/learning_agent_eval/validator.py",
-        )
-    )
-)
-RULE_IMPLEMENTATION_SHA256_V3 = implementation_source_digest(
-    RULE_IMPLEMENTATION_SOURCE_FILES_V3
-)
+RULE_IMPLEMENTATION_SHA256_V3 = source_bundle_sha256("rules")
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
     "planning": (
@@ -1471,16 +1452,16 @@ def _common_checks_v3(
             paths=[
                 "environment.provider_attestation.invocation_mode",
                 "environment.provider_attestation.attribution_status",
+                "provenance.provider_eligible",
                 "provenance.formal_evaluation_result",
             ],
-            expected="formal requires eligible real attribution",
+            expected="artifact Provider eligibility mirrors attribution; artifact is never formal",
             predicate=lambda values: (
-                values == ["stub", "ineligible_stub", False]
-                or values == ["real", "eligible", True]
-                or values == ["real", "eligible", False]
-                or values == ["real", "invalid", False]
+                values == ["stub", "ineligible_stub", False, False]
+                or values == ["real", "eligible", True, False]
+                or values == ["real", "invalid", False, False]
             ),
-            message="Provider attribution is necessary but not sufficient for formal status.",
+            message="Provider attribution is separate from Benchmark trust and capability publication.",
         ),
         _check(
             episode=episode,
@@ -1924,8 +1905,14 @@ def evaluate_rules_v3(
     *,
     input_runtime_manifest_sha256: str,
     input_runtime_formal_evaluation_result: bool,
-    selection_mode: str,
-    worktree_clean: bool,
+    input_runtime_trusted_benchmark_run: bool = False,
+    evaluation_protocol_release_sha256: str = "0" * 64,
+    benchmark_release_id: str = "unbound-engineering-release",
+    benchmark_release_sha256: str = "0" * 64,
+    runtime_run_id: str = "unbound-engineering-run",
+    provider_eligible: bool = False,
+    selection_mode: str = "adhoc_filter",
+    worktree_clean: bool = False,
 ) -> dict[str, Any]:
     """Evaluate active v4 facts with scoreable behavior and monotonic formality."""
 
@@ -1969,12 +1956,13 @@ def evaluate_rules_v3(
         if any(item["status"] == "fail" for item in checks)
         else "pass"
     )
-    episode_formal = bool(episode["provenance"]["formal_evaluation_result"])
-    formal = bool(
-        input_runtime_formal_evaluation_result
-        and episode_formal
+    protocol_eligible = bool(episode["provenance"]["protocol_eligible"])
+    trusted = bool(
+        input_runtime_trusted_benchmark_run
         and selection_mode == "inherited"
         and worktree_clean
+        and protocol_eligible
+        and provider_eligible
     )
     result = {
         "schema_version": "rule-result-v3",
@@ -2005,16 +1993,25 @@ def evaluate_rules_v3(
             "hard_gate_count": len(hard_gates),
         },
         "status": status,
-        "formal_evaluation_result": formal,
+        "formal_evaluation_result": False,
         "evaluator_implementation_version": SOURCE_BUNDLE_VERSION,
         "evaluator_implementation_sha256": RULE_IMPLEMENTATION_SHA256_V3,
+        "evaluation_protocol_release_id": "evaluation-protocol-release-1.0",
+        "evaluation_protocol_release_sha256": evaluation_protocol_release_sha256,
+        "benchmark_release_id": benchmark_release_id,
+        "benchmark_release_sha256": benchmark_release_sha256,
+        "runtime_run_id": runtime_run_id,
         "input_runtime_manifest_sha256": input_runtime_manifest_sha256,
-        "input_runtime_formal_evaluation_result": bool(
-            input_runtime_formal_evaluation_result
+        "input_runtime_formal_evaluation_result": False,
+        "input_episode_formal_evaluation_result": False,
+        "input_runtime_trusted_benchmark_run": bool(
+            input_runtime_trusted_benchmark_run
         ),
-        "input_episode_formal_evaluation_result": episode_formal,
         "selection_mode": selection_mode,
         "worktree_clean": bool(worktree_clean),
+        "protocol_eligible": protocol_eligible,
+        "provider_eligible": bool(provider_eligible),
+        "trusted_benchmark_run": trusted,
         "result_sha256": "0" * 64,
     }
     result["result_sha256"] = rule_result_digest(result)

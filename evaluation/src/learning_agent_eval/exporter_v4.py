@@ -14,6 +14,7 @@ from .action_protocol import (
 from .canonical import canonical_json_bytes, sha256_digest
 from .case_specs import legacy_runtime_projection_v2
 from .e31_runtime import build_model_calls_v4
+from .eligibility import isolation_evidence_protocol_eligible
 from .exporter import (
     ExportError,
     _durable_status,
@@ -439,6 +440,12 @@ def build_decision_episode_v4(
     provider_attestation: Mapping[str, Any],
     dependency_lock_version: str,
     dependency_lock_sha256: str,
+    evaluation_protocol_release_sha256: str,
+    benchmark_release_id: str,
+    benchmark_release_sha256: str,
+    runtime_run_id: str,
+    runtime_source_bundle_version: str,
+    runtime_source_bundle_sha256: str,
 ) -> dict[str, Any]:
     """Build v4; correctness and action-protocol failures remain scoreable."""
 
@@ -492,17 +499,7 @@ def build_decision_episode_v4(
         guard_status=guard_status,
         effects=effects,
     )
-    formal = bool(
-        invocation_mode == "real"
-        and case_spec["dataset_role"] == "primary_episode"
-        and provider_attestation["attribution_status"] == "eligible"
-    )
-    if invocation_mode == "stub":
-        eligibility = "ineligible_stub"
-    elif case_spec["dataset_role"] != "primary_episode":
-        eligibility = "ineligible_engineering"
-    else:
-        eligibility = "eligible" if formal else "invalid"
+    provider_eligible = provider_attestation["attribution_status"] == "eligible"
     base_environment = _environment(
         fixture=fixture,
         first_record=decision_records[0],
@@ -553,6 +550,7 @@ def build_decision_episode_v4(
         "guard_decisions": guards,
     }
     _, _, public_output = parse_action_declaration(str(run["output"] or ""))
+    isolation_eligible = isolation_evidence_protocol_eligible(isolation_evidence)
     result = {
         "action_class": actions[0],
         "action_classes": actions,
@@ -575,7 +573,7 @@ def build_decision_episode_v4(
             "final_effects": effects,
             "run_status": run["status"],
             "durable_status": durable_status,
-            "formal_evaluation_eligibility": eligibility,
+            "protocol_eligibility": "eligible" if isolation_eligible else "invalid",
         },
     }
     structural_paths = sorted(
@@ -606,6 +604,10 @@ def build_decision_episode_v4(
     evidence_errors = [*state_delta["error_codes"]]
     if missing_structural_paths:
         evidence_errors.append("completeness.structural_path_missing")
+    protocol_eligible = bool(not evidence_errors and isolation_eligible)
+    result["layers"]["protocol_eligibility"] = (
+        "eligible" if protocol_eligible else "invalid"
+    )
     completeness = {
         "status": "complete" if not evidence_errors else "invalid",
         "evidence_error_codes": sorted(set(evidence_errors)),
@@ -637,10 +639,17 @@ def build_decision_episode_v4(
             "construction_method": "runtime_recorded",
             "dataset_role": case_spec["dataset_role"],
             "runtime_executed": True,
-            "formal_evaluation_result": formal,
-            "evaluation_status": (
-                "formal_model_evaluation" if formal else "not_a_formal_model_evaluation"
-            ),
+            "protocol_eligible": protocol_eligible,
+            "provider_eligible": provider_eligible,
+            "evaluation_protocol_release_id": "evaluation-protocol-release-1.0",
+            "evaluation_protocol_release_sha256": evaluation_protocol_release_sha256,
+            "benchmark_release_id": benchmark_release_id,
+            "benchmark_release_sha256": benchmark_release_sha256,
+            "runtime_run_id": runtime_run_id,
+            "runtime_source_bundle_version": runtime_source_bundle_version,
+            "runtime_source_bundle_sha256": runtime_source_bundle_sha256,
+            "formal_evaluation_result": False,
+            "evaluation_status": "not_a_formal_model_evaluation",
             "created_at": frozen_time,
             "source_refs": [
                 f"case-spec:{case_spec['case_spec_sha256']}",

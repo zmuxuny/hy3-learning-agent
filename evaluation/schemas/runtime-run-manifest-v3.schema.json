@@ -1,6 +1,39 @@
 {
   "$defs": {
-    "RuntimeTerminalRecordV2": {
+    "BenchmarkTrackCountsV1": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment": {
+          "minimum": 0,
+          "title": "Assessment",
+          "type": "integer"
+        },
+        "intervention": {
+          "minimum": 0,
+          "title": "Intervention",
+          "type": "integer"
+        },
+        "planning": {
+          "minimum": 0,
+          "title": "Planning",
+          "type": "integer"
+        },
+        "revision": {
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "planning",
+        "intervention",
+        "assessment",
+        "revision"
+      ],
+      "title": "BenchmarkTrackCountsV1",
+      "type": "object"
+    },
+    "RuntimeTerminalRecordV3": {
       "additionalProperties": false,
       "properties": {
         "artifact_id": {
@@ -28,8 +61,24 @@
           "type": "string"
         },
         "formal_evaluation_result": {
+          "const": false,
           "title": "Formal Evaluation Result",
           "type": "boolean"
+        },
+        "protocol_eligible": {
+          "title": "Protocol Eligible",
+          "type": "boolean"
+        },
+        "provider_eligible": {
+          "title": "Provider Eligible",
+          "type": "boolean"
+        },
+        "runtime_run_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Runtime Run Id",
+          "type": "string"
         },
         "terminal_kind": {
           "enum": [
@@ -57,9 +106,12 @@
         "terminal_kind",
         "artifact_id",
         "artifact_sha256",
-        "formal_evaluation_result"
+        "formal_evaluation_result",
+        "runtime_run_id",
+        "protocol_eligible",
+        "provider_eligible"
       ],
-      "title": "RuntimeTerminalRecordV2",
+      "title": "RuntimeTerminalRecordV3",
       "type": "object"
     }
   },
@@ -67,9 +119,38 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "benchmark_expected_total_cases": {
+      "minimum": 1,
+      "title": "Benchmark Expected Total Cases",
+      "type": "integer"
+    },
+    "benchmark_expected_track_counts": {
+      "$ref": "#/$defs/BenchmarkTrackCountsV1"
+    },
+    "benchmark_release_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Benchmark Release Id",
+      "type": "string"
+    },
+    "benchmark_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Benchmark Release Sha256",
+      "type": "string"
+    },
+    "benchmark_release_trusted": {
+      "title": "Benchmark Release Trusted",
+      "type": "boolean"
+    },
     "case_schema_version": {
       "const": "case-spec-v2",
       "title": "Case Schema Version",
+      "type": "string"
+    },
+    "case_suite_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Case Suite Sha256",
       "type": "string"
     },
     "dataset_version": {
@@ -96,11 +177,18 @@
       "title": "Episode Schema Version",
       "type": "string"
     },
+    "evaluation_protocol_release_id": {
+      "const": "evaluation-protocol-release-1.0",
+      "title": "Evaluation Protocol Release Id",
+      "type": "string"
+    },
+    "evaluation_protocol_release_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Evaluation Protocol Release Sha256",
+      "type": "string"
+    },
     "evaluation_status": {
-      "enum": [
-        "not_a_formal_model_evaluation",
-        "formal_model_evaluation"
-      ],
+      "const": "not_a_formal_model_evaluation",
       "title": "Evaluation Status",
       "type": "string"
     },
@@ -110,6 +198,7 @@
       "type": "string"
     },
     "formal_evaluation_result": {
+      "const": false,
       "title": "Formal Evaluation Result",
       "type": "boolean"
     },
@@ -131,6 +220,18 @@
       "title": "Manifest Sha256",
       "type": "string"
     },
+    "protocol_eligible": {
+      "title": "Protocol Eligible",
+      "type": "boolean"
+    },
+    "protocol_release_verified": {
+      "title": "Protocol Release Verified",
+      "type": "boolean"
+    },
+    "provider_eligible": {
+      "title": "Provider Eligible",
+      "type": "boolean"
+    },
     "requested_episode_ids": {
       "items": {
         "maxLength": 128,
@@ -140,6 +241,23 @@
       },
       "title": "Requested Episode Ids",
       "type": "array"
+    },
+    "runtime_run_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Runtime Run Id",
+      "type": "string"
+    },
+    "runtime_source_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Runtime Source Bundle Sha256",
+      "type": "string"
+    },
+    "runtime_source_bundle_version": {
+      "const": "evaluation-source-bundle-v2",
+      "title": "Runtime Source Bundle Version",
+      "type": "string"
     },
     "schema_version": {
       "const": "runtime-run-manifest-v3",
@@ -176,19 +294,37 @@
     },
     "selection_mode": {
       "enum": [
-        "full_suite",
+        "unfiltered_suite",
         "adhoc_filter"
       ],
       "title": "Selection Mode",
       "type": "string"
     },
+    "suite_complete": {
+      "title": "Suite Complete",
+      "type": "boolean"
+    },
     "terminals": {
       "items": {
-        "$ref": "#/$defs/RuntimeTerminalRecordV2"
+        "$ref": "#/$defs/RuntimeTerminalRecordV3"
       },
       "minItems": 1,
       "title": "Terminals",
       "type": "array"
+    },
+    "trust_reason_codes": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+        "type": "string"
+      },
+      "title": "Trust Reason Codes",
+      "type": "array"
+    },
+    "trusted_benchmark_run": {
+      "title": "Trusted Benchmark Run",
+      "type": "boolean"
     },
     "worktree_clean": {
       "title": "Worktree Clean",
@@ -197,7 +333,15 @@
   },
   "required": [
     "schema_version",
+    "runtime_run_id",
     "dataset_version",
+    "evaluation_protocol_release_id",
+    "evaluation_protocol_release_sha256",
+    "benchmark_release_id",
+    "benchmark_release_sha256",
+    "case_suite_sha256",
+    "benchmark_expected_total_cases",
+    "benchmark_expected_track_counts",
     "case_schema_version",
     "episode_schema_version",
     "failure_schema_version",
@@ -207,6 +351,15 @@
     "selected_track",
     "selected_case_ids",
     "terminals",
+    "runtime_source_bundle_version",
+    "runtime_source_bundle_sha256",
+    "protocol_release_verified",
+    "protocol_eligible",
+    "provider_eligible",
+    "benchmark_release_trusted",
+    "suite_complete",
+    "trusted_benchmark_run",
+    "trust_reason_codes",
     "formal_evaluation_result",
     "evaluation_status",
     "git_commit",
