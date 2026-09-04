@@ -1,9 +1,11 @@
 # Learning Agent Evaluation
 
-`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。E3.1.1 在 E3.1 基础上执行了
-新的版本化干净切换：`DecisionEpisode v4` 是唯一可能获得 formal 资格的活动契约；
-v1/v2/v3 及其旧 Rules/Judge/聚合只保留为 engineering-only 历史回归，不再扩展正式能力。
-`DecisionBench v1` 仍只是未来 Benchmark 发布名，不能与 Episode Schema 版本混淆。
+`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。E3.1.2 用
+**Evaluation Protocol Release 1.0** 固定唯一活动链、来源和 formal 政策；
+`DecisionEpisode v4` 是活动 Episode，v1/v2/v3 及其旧 Rules/Judge/聚合只保留为
+engineering-only 历史回归，不再公开执行。生产可信 Benchmark 注册表当前为空，因此
+任何现有数据都不能取得 formal 资格。`DecisionBench v1` 仍只是未来 Benchmark 发布名，
+不能与 Episode Schema 或 Protocol Release 版本混淆。
 
 当前活动链路是：
 
@@ -19,12 +21,13 @@ CaseSpec v2（控制面，含私有标注）
 → 路径级盲化 / 七维 Rubric / 四轨锚点
 → judge-result-v3（最多一次修复）
 → Rule-first aggregate-result-v3
+→ 注册 Benchmark Release / 完整 Runtime 终态清单 / formal 三层重算
 → 全链 canonical / digest / privacy / Evidence Path 校验
 → staging 后原子发布
 ```
 
 默认 Runtime 和 Judge 都使用调用者提供的固定 `stub`。它只证明工程协议、隔离、
-确定性、失败分类和 Hard Gate/cap，不是 Hy3 能力结果。E3.1.1 没有调用真实 Hy3、
+确定性、失败分类和 Hard Gate/cap，不是 Hy3 能力结果。E3.1.2 没有调用真实 Hy3、
 公网、真实数据库、`.env`、邮箱或 Push endpoint，也没有创建 E4 数据。
 
 ## 核心语义
@@ -42,7 +45,8 @@ CaseSpec v2（控制面，含私有标注）
   `run_id/parent_run_id/parent_call_id/depth/call_purpose`。主 Agent、子 Agent和汇总调用
   都可重建；并发调用在开始时原子保留 ordinal，标题和记忆压缩等辅助调用明确标成
   非决策调用。
-- `model-action-declaration-v1` 以严格首行 JSON 记录模型声明的 14 类动作。工具和状态只
+- `model-action-declaration-v2` 以严格首个非空 JSON 帧记录模型声明的 14 类动作，并固定
+  每类行动的轨道、语义、字段、边界、正反例与组合政策。工具和状态只
   校验实际效果，不用关键词、track 或 Case ID 猜测意图；跨轨、组合、缺失声明和无法归类
   状态仍形成可评分 Episode，由 Rules 失败关闭。
 - Judge 不获得 `state_before` 的额外全知投影；决策前事实只能来自
@@ -67,10 +71,15 @@ CaseSpec v2（控制面，含私有标注）
 | `rule-result-v3` / `rule-run-manifest-v3` | v4 确定性规则、源码 bundle 摘要与 Hard Gate |
 | `judge-result-v3` / `judge-run-manifest-v3` | 盲化结构化 Judge、一次修复与 formal 继承 |
 | `aggregate-result-v3` / Track/Manifest v3 | 纯确定性 Rule-first 聚合与源码摘要 |
+| `evaluation-protocol-release-v1` | 对外 Evaluation Protocol Release 1.0 与活动组件绑定 |
+| `benchmark-release-manifest-v1` | 固定 Benchmark Case/资源/partition/协议摘要 |
+| `trusted-benchmark-registry-v1` | 仓库固定的生产信任根；当前注册项为 0 |
+| `source-bundle-manifest-v1` | 四个活动执行组件的保守来源包摘要 |
+| `schema-lock-manifest-v1` | 全部历史与活动 Schema 的独立原始字节锁 |
 
 所有契约使用 strict Pydantic、`extra=forbid`、JSON Schema 2020-12、唯一 canonical
-JSON/SHA-256 和自摘要。已提交 Schema 由漂移测试与源码模型逐项比较；v1/v2 冻结
-Schema 的字节摘要继续锁定。
+JSON/SHA-256 和自摘要。独立 Schema Lock 覆盖全部生成 Schema；即使模型和生成文件同步
+修改，历史锁仍会失败。Release 1.0 的活动 Schema、source bundles 与政策也已固定。
 
 ## 安装与命令
 
@@ -86,6 +95,11 @@ Schema 的字节摘要继续锁定。
 .venv/bin/python -m learning_agent_eval validate-dataset \
   --dataset evaluation/datasets/decisionbench-v1
 ```
+
+历史 Runtime/Rules/Judge/Aggregate Python 入口和历史 Manifest 的执行请求会在创建输出、
+调用 Provider、网络、数据库、通知、subprocess 或 Capture 前返回
+`legacy_execution_disabled`。包级公共 API 只暴露当前 `run_active_runtime`、
+`evaluate_active_rules`、`evaluate_active_judges` 与 `aggregate_active_results`。
 
 活动 v4 engineering suite 包含四轨正例、错误/跨轨/组合/协议失败动作、Guard 阻断、
 Quiz/Review 写入、并发双子 Agent 和一个故意的 Provider Failure。完整批次预期
@@ -167,8 +181,10 @@ ACCEPT 和 REVISION_REQUIRED 都能对齐；无法归因的变化仍失败关闭
 
 `e311-rule-pack-v3` 把结构无效与决策错误分开。结构化谓词和动作边界由 Rules 权威
 执行；时间、阈值、存在性、隐私、完整性和实际 Hard Gate 不交给 Judge 重算。
-规则包和 Manifest 记录实际执行源码 bundle 的内容摘要；Rules/Aggregate 都校验当前工作树，
-formal 不能由未提交实现生成后再恢复。
+四阶段 Manifest 都记录 source bundle digest；Rules/Judge/Aggregate 使用整个 evaluation
+包的保守超集，Runtime 另覆盖生产 `backend/app` seam。它是可审计来源包摘要而非动态调用
+闭包的数学证明。工作树、Git commit 与 bundle 同时校验，formal 不能由未提交实现生成后
+再恢复。
 
 `blind-judge-input-v3` 使用路径级删除和 opaque ID，不按字段名子串或自由文本全局替换。
 所以业务中的 `baseline`、`candidate`、`Good` 和 `candidate_key` 保留，而 Case ID、tag、
@@ -191,6 +207,17 @@ Failure 单列且不按 0 混入均值；四轨分别发布，不生成掩盖弱
 
 ## Provider、隔离与正式性
 
+正式性分为三层：单制品的 `protocol_eligible/provider_eligible`、完整批次的
+`trusted_benchmark_run`、最终 Aggregate Manifest 的 `formal_capability_result`。单个
+Episode/Rule/Judge/Aggregate Result 与所有中间 Run Manifest 都固定
+`formal_evaluation_result=false`。最终能力状态必须从仓库固定 production registry、注册
+Release、完整 Case/终态库存、上游摘要、四轨结果和错误分类重算；调用者自带 Release、修改
+预期数量、删除 Failure 或事后过滤都不能建立信任。
+
+当前 production registry 为 `entries=[]`；活动 engineering Benchmark Release 的状态为
+`engineering` 且未注册，所以即使制品结构通过，也始终 non-formal。RuntimeFailure、
+invalid_input、judge_error 保留审计但阻止能力结论，不按 0 分混入均值。
+
 Provider Attestation 是可审计归因，不是密码学证明。real 资格要求固定 TokenHub HTTPS
 allowlist、请求模型 `hy3`、响应模型 `hy3`、Provider request ID、请求/响应时间、安全
 配置摘要、当前 Git commit、干净工作树和匹配的 `evaluation-runtime-lock-v1`。Agent 和
@@ -212,7 +239,10 @@ v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并�
 缺失、损坏或无法重建的证据仍由 Validator 拒绝。Provider 响应归因能审计声明与响应字段，
 不能证明远端服务的密码学身份；正式运行仍需要组织侧凭据、网络和运行审批。
 
-E4–E8 仍未实现：没有 48 个 Primary、24 个 Calibration、有效性实验、人工盲标、正式
+E4–E8 仍未实现：没有 48 个 Primary、24 个 Calibration、正式 Benchmark Release、有效性实验、人工盲标、正式
 Hy3 运行、Baseline/Candidate 回归、Case、最终报告、Demo 或 Release。当前固定响应和
-engineering 聚合不得用作 Calibration 标签或 Hy3 能力结论。最终验收命令和精确结果
+engineering 聚合不得用作 Calibration 标签或 Hy3 能力结论。进入 E4 前如需验证 Hy3 对
+14 类声明的理解、JSON 修复率和声明/工具一致性，必须另行授权小规模非 Primary 协议试跑，
+不得自动扩大为正式数据。发布治理细节见
+[`../docs/E3.1.2正式评测准入与版本治理.md`](../docs/E3.1.2正式评测准入与版本治理.md)，最终验收命令和精确结果
 记录在 [`../docs/STATUS.md`](../docs/STATUS.md)。

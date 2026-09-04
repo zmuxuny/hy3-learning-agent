@@ -4,7 +4,8 @@
 
 > 历史状态：E3.1.1 已将活动链干净切换到
 > [`decisionbench-v4-engineering`](../decisionbench-v4-engineering/dataset-card.md)。本目录
-> 只保留 E3.1 的 engineering-only 字节与语义回归，不能取得 formal 资格，也不继续增加
+> 只保留 E3.1 的 engineering-only 字节与语义回归；E3.1.2 已禁用历史公共执行入口并用
+> Evaluation Protocol Release 1.0 固定活动链。本目录不能取得 formal 资格，也不继续增加
 > 正式评测能力。
 
 `decisionbench-v3-engineering-v1` 是 E3.1 的公开合成工程验收集，不是 DecisionBench v1

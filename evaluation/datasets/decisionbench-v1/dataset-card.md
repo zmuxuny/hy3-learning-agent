@@ -2,7 +2,7 @@
 
 ## 当前状态与版本边界
 
-`DecisionBench v1` 是未来 Benchmark 的发布名称，不等于 `DecisionEpisode v1`。本目录现已冻结为 E0–E3 的 engineering-only 历史回归输入；E3.1.1 的干净切换使 `DecisionEpisode v4` 成为唯一可能 formal 的活动路径，见 [`../decisionbench-v4-engineering/dataset-card.md`](../decisionbench-v4-engineering/dataset-card.md)。以下 v1/v2 说明记录历史契约，不是正式执行指南。
+`DecisionBench v1` 是未来 Benchmark 的发布名称，不等于 `DecisionEpisode v1`。本目录现已冻结为 E0–E3 的 engineering-only 历史回归输入；Evaluation Protocol Release 1.0 只执行 `DecisionEpisode v4` 活动路径，且生产可信 Benchmark 注册表当前为空，见 [`../decisionbench-v4-engineering/dataset-card.md`](../decisionbench-v4-engineering/dataset-card.md)。以下 v1/v2 说明记录历史契约，不是正式执行指南；历史执行入口已经禁用，只保留 `validate-dataset` 与 test-owned 复现。
 
 本目录包含两个明确分层的 Mini 集合：
 

@@ -1,9 +1,51 @@
 # 项目状态
 
-更新时间：2026-09-04（Asia/Shanghai）
-当前版本：1.1.1
+更新时间：2026-09-05（Asia/Shanghai）
+当前版本：1.1.2
 
-H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0–E3 工程骨架及 E3.1/E3.1.1 评测有效性前置修复已经实现；活动链路已干净切换到 DecisionEpisode v4，v1/v2/v3 永久保留为 engineering-only 历史回归。正式数据、有效性实验、正式评测、版本对比和报告仍属于未启动的 E4–E8。M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+H1–H8 工程门禁已经完成，产品底座可运行、可恢复、可发布。第三阶段“关键决策评测”的 E0–E3 工程骨架及 E3.1/E3.1.1/E3.1.2 正式评测前置修复已经实现；活动链路收敛为 Evaluation Protocol Release 1.0，DecisionEpisode v1/v2/v3 永久保留为 engineering-only 历史回归。生产可信 Benchmark 注册表仍为空，正式数据、有效性实验、正式评测、版本对比和报告属于未启动的 E4–E8。M15–M20 属于另一条 2.0 产品能力路线，不在本阶段范围，也不因评测开发自动恢复。外部真人采用验证尚未执行，当前仍不作 2.0 Alpha 发布声明。
+
+## 2026-09-05 第三阶段 E3.1.2 正式评测准入与版本治理收口
+
+E3.1.2 不新增 Episode 版本，而是在未产生正式数据的活动契约上完成信任分层与发布治理。
+对外唯一协议名为 **Evaluation Protocol Release 1.0**，内部活动链保持：
+
+`case-spec-v2 → decision-episode-v4/runtime-failure-v2 → rule-result-v3 →
+judge-result-v3 → aggregate-result-v3`。
+
+| 准入问题 | 当前结论 | 闭合证据 |
+| --- | --- | --- |
+| Benchmark 信任根 | 已闭合 | `benchmark-release-manifest-v1` 固定 Case/digest/order/split/track/resource/lineage/Protocol；代码固定的 production registry 当前为空，调用者不能用路径、环境变量或自带 Release 建立信任 |
+| 完整 Suite | 已闭合 | `full_suite` 不再等于“无 CLI 过滤”；注册 Release 与 Runtime 的每个 `case_id/case_spec_sha256/track`、总数和四轨数必须完全一致，每 Case 恰有一个 Episode/Failure 终态 |
+| formal 三层语义 | 已闭合 | `protocol_eligible`/`provider_eligible` 表示执行合规，`trusted_benchmark_run` 表示可信完整运行，`formal_capability_result` 只存在于最终闭合 Aggregate Manifest；单制品和中间阶段固定 false |
+| 失败披露 | 已闭合 | RuntimeFailure、invalid_input、judge_error 保留并排除均值，同时阻止能力结论；删除 Failure、替换 Case 或事后 Episode/track 过滤均不能恢复 formal |
+| 活动入口 | 已收敛 | 包级 API 与 CLI 只指向 `active_{runtime,rules,judge,aggregate}`；旧公共模块是 fail-before-side-effect 薄层，完整旧实现只在私有 `_historical_*` 回归 seam 中保留 |
+| 来源归因 | 已闭合 | Runtime/Rules/Judge/Aggregate 记录含仓库相对路径和逐文件摘要的保守 source bundle；Git commit、干净树和 bundle 同时参与 provenance |
+| Schema 冻结 | 已闭合 | 独立 `schema-lock-v1` 覆盖全部 44 个 Schema，历史与活动锁分开；模型和生成文件同时漂移仍失败，Release 1.0 提交后构建脚本只读验证 |
+| 行动协议 | 已闭合 | `model-action-declaration-v2` 为 14 类行动提供 track、语义、字段、边界、正反例和组合政策；JSON 空白/字段顺序无关，未知/重复/歧义严格拒绝，缺失声明仍可评分 |
+| 独立 Aggregate 信任 | 已闭合 | 最终 Manifest 绑定 Runtime Manifest digest 与终态记录；Validator 直接查询 production registry 并逐 Case 对照，局部篡改数量/布尔位不能自我提升 |
+
+当前 [`decisionbench-v4-engineering`](../evaluation/datasets/decisionbench-v4-engineering/dataset-card.md)
+拥有完整但未注册的 `engineering` Benchmark Release。固定 stub 全链仍得到 11 Episode +
+1 RuntimeFailure；即使工作树干净、制品有效，production registry 为空使
+`trusted_benchmark_run=false` 和 `formal_capability_result=false`。
+
+本轮未调用真实 Hy3、未访问公网或生产数据库、未创建 Primary/Calibration、未产生正式
+能力结论。详细设计、版本资产表、精确技术债和未来小规模真实协议试跑门槛见
+[`E3.1.2正式评测准入与版本治理.md`](E3.1.2正式评测准入与版本治理.md)。E4 仍需另行授权。
+
+E3.1.2 提交前实际验收：
+
+- E3.1.2 信任根/历史入口定向：`18 passed in 2.19s`；
+- `.venv/bin/pytest -q evaluation/tests`：`213 passed in 535.01s (0:08:55)`；
+- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 1.65s`；
+- `.venv/bin/pytest -q`：`1288 passed, 2 warnings in 2780.49s (0:46:20)`，0 failed；warning
+  仍为既有 Starlette/httpx 弃用提示和 Python 3.14 tar 提取行为预告；
+- 文档相对链接、仓库自定义 `lint_typecheck`（compileall、致命 Ruff 规则和 JS
+  语法，不声称 mypy/pyright）、Secret Scan、`pip check` 与 `git diff --check`
+  通过；
+- 仓库级 `ruff check .` 的历史基线是 427 条，当前为 425 条；E3.1.2
+  新增/修改 Python 文件为 0 条。本切片不用大范围无关格式化改写历史业务代码。
 
 ## 2026-09-04 第三阶段 E3.1.1 有效性门禁闭合
 
@@ -159,9 +201,9 @@ E2 收口时的已知限制是 Assessment accepted 分支缺少 Plan/Stage Opera
 
 ## 下一阶段 E4–E8 边界
 
-E3.1.1 正式评测前置修复完成后，仍须另行授权才能进入 E4：创建并复核 48 个 Primary Episodes、24 个 Calibration Outputs、Split/Mutation Manifest 与数据说明。E5–E8 才能执行有效性实验、人工盲标、真实 Hy3 正式评测、Baseline/Candidate 版本回归、Case/最终报告、Demo 与 Release。
+E3.1.2 正式评测准入与版本治理收口后，仍须另行授权才能进入 E4：创建并复核 48 个 Primary Episodes、24 个 Calibration Outputs、正式 Benchmark Release、Split/Mutation Manifest 与数据说明。生产可信注册表当前为空，任何现有 Suite 都不能取得 formal 资格。E5–E8 才能执行有效性实验、人工盲标、真实 Hy3 正式评测、Baseline/Candidate 版本回归、Case/最终报告、Demo 与 Release。
 
-当前 fixed-response Judge 与聚合只证明工程协议，不能复用为 Calibration 标签或 Hy3 能力结果。后续阶段仍须显式授权真实 Hy3、保存正式 Run Manifest，并保持 Judge 不进入产品用户流程、不按评分自动修改 Prompt、计划或用户状态。完整 E3.1.1 实现与下一阶段接手边界见 [`第三阶段开发交接.md`](第三阶段开发交接.md)。
+当前 fixed-response Judge 与聚合只证明工程协议，不能复用为 Calibration 标签或 Hy3 能力结果。后续阶段仍须显式授权真实 Hy3、保存正式 Run Manifest，并保持 Judge 不进入产品用户流程、不按评分自动修改 Prompt、计划或用户状态。E4 前可另行授权一个非 Primary 的小规模真实协议试跑，只验证行动声明理解与 JSON 修复率，不能扩大为正式评测。完整 E3.1.2 实现与下一阶段接手边界见 [`第三阶段开发交接.md`](第三阶段开发交接.md)。
 
 ## 2026-09-01 第三阶段 E1 收口
 

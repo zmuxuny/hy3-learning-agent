@@ -2,14 +2,17 @@
 
 ## 状态与用途
 
-这是 E3.1.1 的公开合成工程套件，不是 DecisionBench v1 正式数据集。它只验证活动
+这是 E3.1.1 建立、E3.1.2 纳入 Evaluation Protocol Release 1.0 的公开合成工程套件，
+不是 DecisionBench v1 正式数据集。它只验证活动
 `case-spec-v2 → decision-episode-v4/runtime-failure-v2 → rule-result-v3 →
 judge-result-v3 → aggregate-result-v3` 链路能保留并评价正确、错误、安全阻断、组合行为与
 基础设施失败。全部 Case 都是 `dev + engineering_mini + stub`，永远
 `not_a_formal_model_evaluation`，不能用于 Hy3 能力结论、Calibration 标签或版本排名。
+随附 `benchmark-release.json` 是状态为 `engineering` 的完整发布清单，但没有进入仓库固定
+production trusted registry；内容完整不等于来源可信，也不能自我声明 formal。
 
-E3.1.1 执行一次干净切换：v4 是唯一可能取得 formal 资格的活动 Episode；v3 及更早契约
-仅保留历史工程回归，不继续扩展正式能力。当前没有创建 48 个 Primary 或 24 个
+Release 1.0 只允许 v4 活动 Episode；v3 及更早契约仅保留历史工程回归，不继续扩展正式
+能力或公开执行。当前没有创建 48 个 Primary 或 24 个
 Calibration，也没有调用真实 Hy3 或公网。
 
 ## 内容与覆盖
@@ -30,7 +33,9 @@ Failure：
 - 一个注入的 Provider Failure，验证单例失败不删除同批成功 Episode，并支持
   Failure-only Rules/Judge/Aggregate 分区。
 
-14 个规范动作全部由版本化 `model-action-declaration-v1` 注册并经严格 JSON 首行声明测试；
+14 个规范动作全部由版本化 `model-action-declaration-v2` 注册。每类行动都有 track、决策
+语义、字段、相近边界、正反例与组合政策，并经严格 JSON 首个非空帧测试；标准空白和字段
+顺序不改变语义；
 不从 Episode ID、track、Oracle、scripted answer 或自然语言关键词猜测动作。工具写入只用于
 核对声明与真实效果，工具成功本身不代表决策正确。
 
@@ -74,8 +79,11 @@ Rules、JudgeReference、七维 Rubric 与当前轨锚点。`judge-result-v3` �
 
 `aggregate-result-v3` 保持 Rule-first 语义：Critical cap 39 并强制 Fail，Major cap 69，
 suggested gate 不自动升级；invalid、judge_error 和 Runtime Failure 单列，不按 0 计入均值；
-只发布逐 Episode 和逐轨结果，不发布 overall。Runtime/Rules/Judge/Aggregate 的 formal 状态
-单调继承上游；任何事后 `--episode-id/--track` 过滤均为 ad-hoc non-formal，不能恢复资格。
+只发布逐 Episode 和逐轨结果，不发布 overall。单制品的 protocol/provider eligibility、
+可信完整 Benchmark 运行和最终能力结论是三个不同状态。Aggregate Manifest 绑定 Runtime
+Manifest digest 与每个 Case 的终态；Validator 还会对照生产注册表中的 Release。
+本套件未注册，所以所有层都保持 non-formal；任何事后 `--episode-id/--track` 过滤、删除
+Failure、改写预期数量或翻转布尔位都不能恢复资格。
 
 ## 运行
 
@@ -101,6 +109,7 @@ E311_ROOT="$(mktemp -d)"
 
 ## 明确不代表
 
-本套件不代表真实用户、真实 Provider 身份的密码学证明、真实 Hy3 表现、评测有效性实验、
+本套件不代表正式 Benchmark Release、真实用户、真实 Provider 身份的密码学证明、真实 Hy3 表现、评测有效性实验、
 人工一致性、正式 Dataset Split、Baseline/Candidate 回归、最终报告、Case、Demo 或 Release。
-这些仍属于 E4–E8，必须另行授权和实施。
+这些仍属于 E4–E8，必须另行授权和实施。发布与版本治理见
+[`../../../docs/E3.1.2正式评测准入与版本治理.md`](../../../docs/E3.1.2正式评测准入与版本治理.md)。
