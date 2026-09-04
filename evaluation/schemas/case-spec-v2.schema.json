@@ -1,0 +1,805 @@
+{
+  "$defs": {
+    "CaseJudgeCriteriaV2": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptable_variations": {
+          "items": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Acceptable Variations",
+          "type": "array"
+        },
+        "allowed_action_classes": {
+          "items": {
+            "enum": [
+              "PROPOSE_PLAN",
+              "REQUEST_USER_INPUT",
+              "WAIT",
+              "INTERVENE_MESSAGE",
+              "INTERVENE_QUIZ_OR_REVIEW",
+              "PROPOSE_PLAN_ADJUSTMENT",
+              "ACCEPT",
+              "REVISION_REQUIRED",
+              "INSUFFICIENT_EVIDENCE",
+              "REQUEST_CLARIFICATION",
+              "NO_OP",
+              "PROPOSE_CHANGE",
+              "APPLY_REVERSIBLE_PATCH",
+              "REQUEST_APPROVAL"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Action Classes",
+          "type": "array"
+        },
+        "constraints": {
+          "items": {
+            "$ref": "#/$defs/JudgeConstraintV1"
+          },
+          "minItems": 1,
+          "title": "Constraints",
+          "type": "array"
+        },
+        "predicate_semantics": {
+          "const": "constraint-proposition-v1",
+          "title": "Predicate Semantics",
+          "type": "string"
+        }
+      },
+      "required": [
+        "allowed_action_classes",
+        "constraints",
+        "acceptable_variations",
+        "predicate_semantics"
+      ],
+      "title": "CaseJudgeCriteriaV2",
+      "type": "object"
+    },
+    "CasePrivateAnnotationsV1": {
+      "additionalProperties": false,
+      "properties": {
+        "adjudication_note": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Adjudication Note"
+        },
+        "author_role": {
+          "maxLength": 80,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Author Role",
+          "type": "string"
+        },
+        "mutation_source": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mutation Source"
+        },
+        "quality_label": {
+          "anyOf": [
+            {
+              "enum": [
+                "good",
+                "mild",
+                "severe"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quality Label"
+        },
+        "reviewer_role": {
+          "maxLength": 80,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Reviewer Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "quality_label",
+        "mutation_source",
+        "author_role",
+        "reviewer_role",
+        "adjudication_note"
+      ],
+      "title": "CasePrivateAnnotationsV1",
+      "type": "object"
+    },
+    "CaseRuntimeSetupV2": {
+      "additionalProperties": false,
+      "properties": {
+        "frozen_time": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Frozen Time",
+          "type": "string"
+        },
+        "invocation_mode": {
+          "enum": [
+            "stub",
+            "real"
+          ],
+          "title": "Invocation Mode",
+          "type": "string"
+        },
+        "owner_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Owner Id",
+          "type": "string"
+        },
+        "resource_snapshot_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Resource Snapshot Version",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "scripted_turns": {
+          "items": {
+            "$ref": "#/$defs/ScriptedModelTurnV2"
+          },
+          "title": "Scripted Turns",
+          "type": "array"
+        },
+        "seed": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Seed",
+          "type": "object"
+        },
+        "seed_kind": {
+          "enum": [
+            "planning",
+            "intervention",
+            "assessment",
+            "revision"
+          ],
+          "title": "Seed Kind",
+          "type": "string"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Session Id"
+        },
+        "state_before": {
+          "$ref": "#/$defs/StateBefore"
+        },
+        "timezone": {
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^(?:UTC|[A-Za-z_]+(?:/[A-Za-z0-9_+.-]+)+)$",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Trigger"
+        }
+      },
+      "required": [
+        "invocation_mode",
+        "frozen_time",
+        "timezone",
+        "owner_id",
+        "run_id",
+        "session_id",
+        "trigger",
+        "state_before",
+        "seed_kind",
+        "seed",
+        "scripted_turns",
+        "resource_snapshot_version"
+      ],
+      "title": "CaseRuntimeSetupV2",
+      "type": "object"
+    },
+    "IdentityBindingV1": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_type": {
+          "enum": [
+            "learner",
+            "goal",
+            "constraint",
+            "resource",
+            "session",
+            "agent_run",
+            "context_snapshot",
+            "planning_intake",
+            "plan",
+            "stage",
+            "task",
+            "plan_proposal",
+            "submission",
+            "review",
+            "quiz",
+            "achievement",
+            "activity_day",
+            "artifact",
+            "evidence_observation",
+            "learning_event",
+            "intervention",
+            "proactive_decision",
+            "notification",
+            "outbox_action",
+            "outbox_receipt",
+            "operation",
+            "tool_invocation",
+            "run_approval",
+            "run_event"
+          ],
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "identity_fields": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "minProperties": 1,
+          "title": "Identity Fields",
+          "type": "object"
+        },
+        "logical_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Logical Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_type",
+        "logical_id",
+        "identity_fields"
+      ],
+      "title": "IdentityBindingV1",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "JudgeConstraintV1": {
+      "additionalProperties": false,
+      "properties": {
+        "constraint_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Constraint Id",
+          "type": "string"
+        },
+        "criticality": {
+          "enum": [
+            "minor",
+            "major",
+            "critical"
+          ],
+          "title": "Criticality",
+          "type": "string"
+        },
+        "evaluation": {
+          "enum": [
+            "deterministic_rule",
+            "semantic_judge"
+          ],
+          "title": "Evaluation",
+          "type": "string"
+        },
+        "evidence_paths": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?(?:\\.[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?)*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Paths",
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "must_satisfy",
+            "must_not"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "predicates": {
+          "items": {
+            "$ref": "#/$defs/JudgePredicateV1"
+          },
+          "title": "Predicates",
+          "type": "array"
+        },
+        "public_statement": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Public Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "constraint_id",
+        "kind",
+        "evaluation",
+        "public_statement",
+        "criticality",
+        "evidence_paths",
+        "predicates"
+      ],
+      "title": "JudgeConstraintV1",
+      "type": "object"
+    },
+    "JudgePredicateV1": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_value": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "operator": {
+          "enum": [
+            "equals",
+            "not_equals",
+            "contains",
+            "not_contains",
+            "exists",
+            "not_exists",
+            "greater_than_or_equal",
+            "less_than_or_equal"
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "path": {
+          "maxLength": 300,
+          "minLength": 1,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?(?:\\.[A-Za-z_][A-Za-z0-9_-]*(?:\\[(?:0|[1-9]\\d*)\\])?)*$",
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "operator",
+        "expected_value"
+      ],
+      "title": "JudgePredicateV1",
+      "type": "object"
+    },
+    "LogicalEntity": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Data",
+          "type": "object"
+        },
+        "entity_type": {
+          "enum": [
+            "learner",
+            "goal",
+            "plan",
+            "stage",
+            "task",
+            "submission",
+            "evidence",
+            "review",
+            "intervention",
+            "resource",
+            "rubric",
+            "constraint",
+            "calendar"
+          ],
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "logical_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Logical Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "logical_id",
+        "entity_type",
+        "data"
+      ],
+      "title": "LogicalEntity",
+      "type": "object"
+    },
+    "ScriptedFunctionCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Arguments",
+          "type": "object"
+        },
+        "call_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Call Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "call_id",
+        "name",
+        "arguments"
+      ],
+      "title": "ScriptedFunctionCall",
+      "type": "object"
+    },
+    "ScriptedModelTurnV2": {
+      "additionalProperties": false,
+      "properties": {
+        "assistant_text": {
+          "title": "Assistant Text",
+          "type": "string"
+        },
+        "declared_actions": {
+          "items": {
+            "enum": [
+              "PROPOSE_PLAN",
+              "REQUEST_USER_INPUT",
+              "WAIT",
+              "INTERVENE_MESSAGE",
+              "INTERVENE_QUIZ_OR_REVIEW",
+              "PROPOSE_PLAN_ADJUSTMENT",
+              "ACCEPT",
+              "REVISION_REQUIRED",
+              "INSUFFICIENT_EVIDENCE",
+              "REQUEST_CLARIFICATION",
+              "NO_OP",
+              "PROPOSE_CHANGE",
+              "APPLY_REVERSIBLE_PATCH",
+              "REQUEST_APPROVAL"
+            ],
+            "type": "string"
+          },
+          "title": "Declared Actions",
+          "type": "array"
+        },
+        "delivery": {
+          "enum": [
+            "stream",
+            "nonstream"
+          ],
+          "title": "Delivery",
+          "type": "string"
+        },
+        "ordinal": {
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "tool_calls": {
+          "items": {
+            "$ref": "#/$defs/ScriptedFunctionCall"
+          },
+          "title": "Tool Calls",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ordinal",
+        "delivery",
+        "assistant_text",
+        "tool_calls",
+        "declared_actions"
+      ],
+      "title": "ScriptedModelTurnV2",
+      "type": "object"
+    },
+    "StateBefore": {
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/StateContext"
+        },
+        "facts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Facts",
+          "type": "object"
+        },
+        "logical_entities": {
+          "items": {
+            "$ref": "#/$defs/LogicalEntity"
+          },
+          "minItems": 1,
+          "title": "Logical Entities",
+          "type": "array"
+        },
+        "snapshot_type": {
+          "enum": [
+            "synthetic_fixture",
+            "runtime_snapshot"
+          ],
+          "title": "Snapshot Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_type",
+        "logical_entities",
+        "facts",
+        "context"
+      ],
+      "title": "StateBefore",
+      "type": "object"
+    },
+    "StateContext": {
+      "additionalProperties": false,
+      "properties": {
+        "context_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Context Sha256",
+          "type": "string"
+        },
+        "public_summary": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Public Summary",
+          "type": "string"
+        },
+        "source_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "public_summary",
+        "source_refs",
+        "context_sha256"
+      ],
+      "title": "StateContext",
+      "type": "object"
+    },
+    "Trigger": {
+      "additionalProperties": false,
+      "properties": {
+        "objective": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Payload",
+          "type": "object"
+        },
+        "source_event_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Source Event Refs",
+          "type": "array"
+        },
+        "target_refs": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Target Refs",
+          "type": "array"
+        },
+        "trigger_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+          "title": "Trigger Id",
+          "type": "string"
+        },
+        "trigger_type": {
+          "enum": [
+            "user_goal",
+            "heartbeat",
+            "submission",
+            "constraint_change"
+          ],
+          "title": "Trigger Type",
+          "type": "string"
+        },
+        "triggered_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Triggered At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trigger_id",
+        "trigger_type",
+        "objective",
+        "triggered_at",
+        "target_refs",
+        "source_event_refs",
+        "payload"
+      ],
+      "title": "Trigger",
+      "type": "object"
+    }
+  },
+  "$id": "https://zmuxuny.github.io/hy3-learning-agent/evaluation/schemas/case-spec-v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "case_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "case_spec_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Case Spec Sha256",
+      "type": "string"
+    },
+    "dataset_role": {
+      "enum": [
+        "engineering_mini",
+        "primary_episode",
+        "calibration_output"
+      ],
+      "title": "Dataset Role",
+      "type": "string"
+    },
+    "difficulty": {
+      "enum": [
+        "standard",
+        "hard",
+        "adversarial"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "identity_bindings": {
+      "items": {
+        "$ref": "#/$defs/IdentityBindingV1"
+      },
+      "minItems": 1,
+      "title": "Identity Bindings",
+      "type": "array"
+    },
+    "judge_criteria": {
+      "$ref": "#/$defs/CaseJudgeCriteriaV2"
+    },
+    "private_annotations": {
+      "$ref": "#/$defs/CasePrivateAnnotationsV1"
+    },
+    "runtime_setup": {
+      "$ref": "#/$defs/CaseRuntimeSetupV2"
+    },
+    "scenario_family_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+      "title": "Scenario Family Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "case-spec-v2",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "dev",
+        "test"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "maxLength": 64,
+        "minLength": 1,
+        "pattern": "^[a-z][a-z0-9_-]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Tags",
+      "type": "array"
+    },
+    "track": {
+      "enum": [
+        "planning",
+        "intervention",
+        "assessment",
+        "revision"
+      ],
+      "title": "Track",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "case_id",
+    "scenario_family_id",
+    "track",
+    "split",
+    "difficulty",
+    "tags",
+    "dataset_role",
+    "runtime_setup",
+    "identity_bindings",
+    "judge_criteria",
+    "private_annotations",
+    "case_spec_sha256"
+  ],
+  "title": "CaseSpecV2",
+  "type": "object"
+}

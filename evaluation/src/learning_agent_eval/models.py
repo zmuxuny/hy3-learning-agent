@@ -2657,6 +2657,839 @@ class AggregateRunManifestV2(StrictContractModel):
         return self
 
 
+# E3.1.1 clean-switch contracts. Earlier E3.1 contracts remain registered as
+# immutable engineering history; the active chain uses the versions below.
+PredicateSemanticsV2 = Literal["constraint-proposition-v1"]
+ActionDeclarationStatusV1 = Literal[
+    "valid", "missing", "invalid", "not_applicable"
+]
+
+
+class ScriptedModelTurnV2(ScriptedModelTurn):
+    declared_actions: list[ActionClass]
+
+    @model_validator(mode="after")
+    def validate_declared_actions(self) -> Self:
+        if self.declared_actions != list(dict.fromkeys(self.declared_actions)):
+            raise ValueError("scripted declared actions must be unique and ordered")
+        return self
+
+
+class CaseRuntimeSetupV2(CaseRuntimeSetupV1):
+    scripted_turns: list[ScriptedModelTurnV2]
+
+
+class CaseJudgeCriteriaV2(CaseJudgeCriteriaV1):
+    predicate_semantics: PredicateSemanticsV2
+
+    @model_validator(mode="after")
+    def validate_constraint_kinds(self) -> Self:
+        kinds = {item.kind for item in self.constraints}
+        if kinds != {"must_satisfy", "must_not"}:
+            raise ValueError(
+                "CaseSpec v2 requires both must_satisfy and must_not constraints"
+            )
+        return self
+
+
+class CaseSpecV2(CaseSpecV1):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/case-spec-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["case-spec-v2"]  # type: ignore[assignment]
+    runtime_setup: CaseRuntimeSetupV2
+    judge_criteria: CaseJudgeCriteriaV2
+
+
+class JudgeReferenceV2(JudgeReferenceV1):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/judge-reference-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["judge-reference-v2"]  # type: ignore[assignment]
+    predicate_semantics: PredicateSemanticsV2
+
+
+class ModelCallV4(ModelCallV3):
+    action_protocol_version: Literal["model-action-declaration-v1"]
+    action_protocol_sha256: Sha256
+    action_declaration_status: ActionDeclarationStatusV1
+    declared_action_classes: list[ActionClass]
+
+    @model_validator(mode="after")
+    def validate_action_declaration(self) -> Self:
+        if self.declared_action_classes != list(
+            dict.fromkeys(self.declared_action_classes)
+        ):
+            raise ValueError("declared action classes must be unique and ordered")
+        applicable = self.call_purpose == "decision" and self.status == "completed"
+        if self.depth > 0 and self.decision_relevant and self.parent_call_id is None:
+            raise ValueError("nested decision calls require a parent model call")
+        if not applicable:
+            if (
+                self.action_declaration_status != "not_applicable"
+                or self.declared_action_classes
+            ):
+                raise ValueError(
+                    "only completed main decision calls carry action declarations"
+                )
+        elif self.action_declaration_status == "valid":
+            if not self.declared_action_classes:
+                raise ValueError("valid action declarations cannot be empty")
+        elif (
+            self.action_declaration_status not in {"missing", "invalid"}
+            or self.declared_action_classes
+        ):
+            raise ValueError("invalid or missing declarations cannot invent actions")
+        return self
+
+
+class ObservableTraceV4(ObservableTraceV3):
+    model_calls: Annotated[list[ModelCallV4], Field(min_length=1)]
+
+
+class ModelAttemptV4(ModelAttemptV3):
+    declared_action_classes: list[ActionClass]
+    action_declaration_status: ActionDeclarationStatusV1
+
+
+class FinalEffectV4(StrictContractModel):
+    effect_id: StableId
+    ordinal: Annotated[int, Field(ge=1)]
+    effect_type: Literal[
+        "plan_proposal",
+        "user_input_request",
+        "wait",
+        "intervention_message",
+        "intervention_quiz_or_review",
+        "plan_adjustment_proposal",
+        "assessment_accept",
+        "assessment_revision",
+        "insufficient_evidence",
+        "clarification_request",
+        "no_op",
+        "change_proposal",
+        "reversible_patch",
+        "approval_request",
+        "blocked",
+        "deferred",
+        "failed",
+        "unclassified",
+    ]
+    status: Literal[
+        "applied", "blocked", "deferred", "pending", "no_change", "failed"
+    ]
+    action_classes: list[ActionClass]
+    entity_refs: list[StableId]
+    source_refs: Annotated[list[TypedSourceRefV3], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def validate_action_classes(self) -> Self:
+        if self.action_classes != list(dict.fromkeys(self.action_classes)):
+            raise ValueError("effect action classes must be unique and ordered")
+        if self.effect_type == "unclassified" and self.action_classes:
+            raise ValueError("unclassified effects cannot invent an action class")
+        if self.effect_type != "unclassified" and not self.action_classes:
+            raise ValueError("classified effects require an action class")
+        return self
+
+
+class DecisionLayersV4(StrictContractModel):
+    model_attempts: list[ModelAttemptV4]
+    guard_decision_refs: list[StableId]
+    final_effects: Annotated[list[FinalEffectV4], Field(min_length=1)]
+    run_status: Literal[
+        "queued",
+        "running",
+        "waiting_approval",
+        "retry_wait",
+        "completed",
+        "failed",
+        "cancelled",
+        "needs_reconciliation",
+    ]
+    durable_status: Literal[
+        "committed",
+        "pending",
+        "partial",
+        "blocked",
+        "deferred",
+        "failed",
+        "needs_reconciliation",
+    ]
+    formal_evaluation_eligibility: Literal[
+        "eligible", "ineligible_stub", "ineligible_engineering", "invalid"
+    ]
+
+
+class DecisionResultV4(StrictContractModel):
+    action_class: ActionClass
+    action_classes: Annotated[list[ActionClass], Field(min_length=1)]
+    classification_issues: list[StableId]
+    action_mapping_version: StableId
+    action_mapping_sha256: Sha256
+    user_visible_output: str | None
+    guard: GuardDecisionSummaryV2
+    layers: DecisionLayersV4
+
+    @model_validator(mode="after")
+    def validate_action_summary(self) -> Self:
+        if self.action_classes != list(dict.fromkeys(self.action_classes)):
+            raise ValueError("result action classes must be unique and ordered")
+        if self.action_class != self.action_classes[0]:
+            raise ValueError("primary action class must be the first observed action")
+        if self.classification_issues != sorted(set(self.classification_issues)):
+            raise ValueError("classification issues must be sorted and unique")
+        return self
+
+
+class DecisionEpisodeV4(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/decision-episode-v4.schema.json",
+        },
+    )
+
+    schema_version: Literal["decision-episode-v4"]
+    episode_id: StableId
+    case_spec_sha256: Sha256
+    judge_reference_sha256: Sha256
+    scenario_family_id: StableId
+    track: Track
+    split: Split
+    difficulty: Difficulty
+    trigger: Trigger
+    state_before: StateSnapshotV2
+    state_after: StateSnapshotV2
+    state_delta: StateDeltaV2
+    environment: EnvironmentManifestV2
+    observable_trace: ObservableTraceV4
+    result: DecisionResultV4
+    completeness: EpisodeCompletenessV3
+    isolation_evidence: RuntimeIsolationEvidenceV2
+    provenance: ProvenanceV3
+
+    @model_validator(mode="after")
+    def validate_episode_formal_state(self) -> Self:
+        eligible = (
+            self.environment.provider_attestation.attribution_status == "eligible"
+        )
+        if self.provenance.formal_evaluation_result and not eligible:
+            raise ValueError("formal v4 Episodes require eligible provider attribution")
+        return self
+
+
+class RuntimeFailureV2(RuntimeFailureV1):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/runtime-failure-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["runtime-failure-v2"]  # type: ignore[assignment]
+    model_calls: list[ModelCallV4]
+
+
+class CaseSuiteManifestV2(CaseSuiteManifestV1):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/case-suite-manifest-v2.schema.json",
+        },
+    )
+
+    schema_version: Literal["case-suite-manifest-v2"]  # type: ignore[assignment]
+    case_schema_version: Literal["case-spec-v2"]
+
+
+class RuntimeRunManifestV3(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/runtime-run-manifest-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["runtime-run-manifest-v3"]
+    dataset_version: StableId
+    case_schema_version: Literal["case-spec-v2"]
+    episode_schema_version: Literal["decision-episode-v4"]
+    failure_schema_version: Literal["runtime-failure-v2"]
+    invocation_mode: Literal["stub", "real"]
+    selection_mode: Literal["full_suite", "adhoc_filter"]
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
+    selected_case_ids: Annotated[list[StableId], Field(min_length=1)]
+    terminals: Annotated[list[RuntimeTerminalRecordV2], Field(min_length=1)]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    git_commit: GitCommit
+    worktree_clean: bool
+    dependency_lock_version: StableId
+    dependency_lock_sha256: Sha256
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_runtime_manifest(self) -> Self:
+        terminal_cases = [item.case_id for item in self.terminals]
+        if self.selected_case_ids != sorted(set(self.selected_case_ids)):
+            raise ValueError("selected runtime Case IDs must be sorted and unique")
+        if terminal_cases != self.selected_case_ids:
+            raise ValueError(
+                "every selected CaseSpec requires exactly one terminal artifact"
+            )
+        artifact_ids = [item.artifact_id for item in self.terminals]
+        if len(artifact_ids) != len(set(artifact_ids)):
+            raise ValueError("runtime terminal artifact IDs must be unique")
+        if self.requested_episode_ids != sorted(set(self.requested_episode_ids)):
+            raise ValueError("requested Episode IDs must be sorted and unique")
+        expected = bool(
+            self.invocation_mode == "real"
+            and self.selection_mode == "full_suite"
+            and self.worktree_clean
+            and all(
+                item.terminal_kind == "episode" and item.formal_evaluation_result
+                for item in self.terminals
+            )
+        )
+        if self.formal_evaluation_result != expected:
+            raise ValueError("runtime formal state must match its complete suite")
+        if self.evaluation_status != (
+            "formal_model_evaluation"
+            if expected
+            else "not_a_formal_model_evaluation"
+        ):
+            raise ValueError("runtime evaluation status is inconsistent")
+        if self.selection_mode == "full_suite" and (
+            self.requested_episode_ids or self.selected_track is not None
+        ):
+            raise ValueError("full-suite execution cannot claim an ad-hoc filter")
+        if self.selection_mode == "adhoc_filter" and not (
+            self.requested_episode_ids or self.selected_track is not None
+        ):
+            raise ValueError("ad-hoc selection requires an explicit filter")
+        return self
+
+
+EvaluationSelectionV1 = Literal["inherited", "adhoc_filter"]
+
+
+def _selection_mode_matches_filters(
+    selection_mode: EvaluationSelectionV1,
+    requested_episode_ids: list[str],
+    selected_track: str | None,
+) -> bool:
+    filtered = bool(requested_episode_ids or selected_track is not None)
+    return selection_mode == ("adhoc_filter" if filtered else "inherited")
+
+
+class RuleResultV3(RuleResultV2):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/rule-result-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["rule-result-v3"]  # type: ignore[assignment]
+    evaluator_implementation_version: StableId
+    evaluator_implementation_sha256: Sha256
+    input_runtime_manifest_sha256: Sha256
+    input_runtime_formal_evaluation_result: bool
+    input_episode_formal_evaluation_result: bool
+    selection_mode: EvaluationSelectionV1
+    worktree_clean: bool
+
+    @model_validator(mode="after")
+    def validate_formal_inheritance(self) -> Self:
+        expected = bool(
+            self.input_runtime_formal_evaluation_result
+            and self.input_episode_formal_evaluation_result
+            and self.selection_mode == "inherited"
+            and self.worktree_clean
+        )
+        if self.formal_evaluation_result != expected:
+            raise ValueError("Rule Result formal state must monotonically inherit Runtime")
+        return self
+
+
+class RuleRunManifestV3(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/rule-run-manifest-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["rule-run-manifest-v3"]
+    input_episode_schema_version: Literal["decision-episode-v4"]
+    input_reference_schema_version: Literal["judge-reference-v2"]
+    input_failure_schema_version: Literal["runtime-failure-v2"]
+    evaluator_version: StableId
+    evaluator_implementation_version: StableId
+    evaluator_implementation_sha256: Sha256
+    rule_pack_version: StableId
+    rule_pack_sha256: Sha256
+    input_runtime_manifest_sha256: Sha256
+    input_runtime_formal_evaluation_result: bool
+    invocation_mode: Literal["stub", "real"]
+    selection_mode: EvaluationSelectionV1
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
+    episode_ids: list[StableId]
+    runtime_failure_ids: list[StableId]
+    input_episode_digests: dict[str, Sha256]
+    input_reference_digests: dict[str, Sha256]
+    input_runtime_failure_digests: dict[str, Sha256]
+    runtime_failure_tracks: dict[str, Track]
+    rule_result_digests: dict[str, Sha256]
+    result_formal_evaluation_states: dict[str, bool]
+    formal_evaluation_result: bool
+    worktree_clean: bool
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_rule_manifest(self) -> Self:
+        ordered_lists = (
+            self.episode_ids,
+            self.requested_episode_ids,
+            self.runtime_failure_ids,
+        )
+        if any(values != sorted(set(values)) for values in ordered_lists):
+            raise ValueError("Rule manifest identifiers must be sorted and unique")
+        if not self.episode_ids and not self.runtime_failure_ids:
+            raise ValueError("Rule manifest requires an Episode or Runtime Failure")
+        if self.requested_episode_ids and set(self.requested_episode_ids) != set(
+            self.episode_ids
+        ):
+            raise ValueError("requested Rule Episode IDs must match selected output")
+        if not _selection_mode_matches_filters(
+            self.selection_mode, self.requested_episode_ids, self.selected_track
+        ):
+            raise ValueError("Rule selection mode must match its explicit filters")
+        episode_ids = set(self.episode_ids)
+        episode_mappings = (
+            self.input_episode_digests,
+            self.input_reference_digests,
+            self.rule_result_digests,
+            self.result_formal_evaluation_states,
+        )
+        if any(set(mapping) != episode_ids for mapping in episode_mappings):
+            raise ValueError("Rule manifest mappings must match Episode IDs")
+        failure_ids = set(self.runtime_failure_ids)
+        if (
+            set(self.input_runtime_failure_digests) != failure_ids
+            or set(self.runtime_failure_tracks) != failure_ids
+        ):
+            raise ValueError("Rule failure mappings must match Runtime Failure IDs")
+        expected = bool(
+            self.input_runtime_formal_evaluation_result
+            and self.selection_mode == "inherited"
+            and self.worktree_clean
+            and self.episode_ids
+            and not self.runtime_failure_ids
+            and all(self.result_formal_evaluation_states.values())
+        )
+        if self.formal_evaluation_result != expected:
+            raise ValueError("Rule manifest formal state must monotonically inherit Runtime")
+        return self
+
+
+class JudgeResultV3(JudgeResultV2):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/judge-result-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["judge-result-v3"]  # type: ignore[assignment]
+    input_rule_manifest_sha256: Sha256
+    input_rule_manifest_formal_evaluation_result: bool
+    input_episode_formal_evaluation_result: bool
+    input_rule_result_formal_evaluation_result: bool
+    selection_mode: EvaluationSelectionV1
+    worktree_clean: bool
+
+    @model_validator(mode="after")
+    def validate_formal_inheritance(self) -> Self:
+        expected = bool(
+            self.status == "complete"
+            and self.judge_mode == "real"
+            and self.provider_attestation.attribution_status == "eligible"
+            and self.input_rule_manifest_formal_evaluation_result
+            and self.input_episode_formal_evaluation_result
+            and self.input_rule_result_formal_evaluation_result
+            and self.selection_mode == "inherited"
+            and self.worktree_clean
+        )
+        if self.formal_evaluation_result != expected:
+            raise ValueError("Judge Result formal state must monotonically inherit Rules")
+        return self
+
+
+class JudgeRunManifestV3(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/judge-run-manifest-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["judge-run-manifest-v3"]
+    input_episode_schema_version: Literal["decision-episode-v4"]
+    input_rule_schema_version: Literal["rule-result-v3"]
+    input_reference_schema_version: Literal["judge-reference-v2"]
+    input_failure_schema_version: Literal["runtime-failure-v2"]
+    judge_version: StableId
+    judge_config_version: StableId
+    judge_config_sha256: Sha256
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
+    repair_limit: Literal[1]
+    judge_mode: Literal["stub", "real"]
+    input_runtime_manifest_sha256: Sha256
+    input_rule_manifest_sha256: Sha256
+    input_rule_manifest_formal_evaluation_result: bool
+    selection_mode: EvaluationSelectionV1
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
+    episode_ids: list[StableId]
+    runtime_failure_ids: list[StableId]
+    input_episode_digests: dict[str, Sha256]
+    input_rule_result_digests: dict[str, Sha256]
+    input_reference_digests: dict[str, Sha256]
+    input_runtime_failure_digests: dict[str, Sha256]
+    runtime_failure_tracks: dict[str, Track]
+    blind_input_digests: dict[str, Sha256]
+    judge_result_digests: dict[str, Sha256]
+    result_statuses: dict[str, JudgeStatus]
+    result_formal_evaluation_states: dict[str, bool]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    worktree_clean: bool
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_judge_manifest(self) -> Self:
+        ordered_lists = (
+            self.episode_ids,
+            self.requested_episode_ids,
+            self.runtime_failure_ids,
+        )
+        if any(values != sorted(set(values)) for values in ordered_lists):
+            raise ValueError("Judge manifest identifiers must be sorted and unique")
+        if not self.episode_ids and not self.runtime_failure_ids:
+            raise ValueError("Judge manifest requires an Episode or Runtime Failure")
+        if self.requested_episode_ids and set(self.requested_episode_ids) != set(
+            self.episode_ids
+        ):
+            raise ValueError("requested Judge Episode IDs must match selected output")
+        if not _selection_mode_matches_filters(
+            self.selection_mode, self.requested_episode_ids, self.selected_track
+        ):
+            raise ValueError("Judge selection mode must match its explicit filters")
+        episode_ids = set(self.episode_ids)
+        mappings = (
+            self.input_episode_digests,
+            self.input_rule_result_digests,
+            self.input_reference_digests,
+            self.blind_input_digests,
+            self.judge_result_digests,
+            self.result_statuses,
+            self.result_formal_evaluation_states,
+        )
+        if any(set(mapping) != episode_ids for mapping in mappings):
+            raise ValueError("Judge manifest mappings must match Episode IDs")
+        failure_ids = set(self.runtime_failure_ids)
+        if (
+            set(self.input_runtime_failure_digests) != failure_ids
+            or set(self.runtime_failure_tracks) != failure_ids
+        ):
+            raise ValueError("Judge failure mappings must match Runtime Failure IDs")
+        expected = bool(
+            self.input_rule_manifest_formal_evaluation_result
+            and self.selection_mode == "inherited"
+            and self.worktree_clean
+            and self.episode_ids
+            and not self.runtime_failure_ids
+            and all(self.result_formal_evaluation_states.values())
+        )
+        if self.formal_evaluation_result != expected:
+            raise ValueError("Judge manifest formal state must monotonically inherit Rules")
+        if self.evaluation_status != (
+            "formal_model_evaluation"
+            if expected
+            else "not_a_formal_model_evaluation"
+        ):
+            raise ValueError("Judge manifest evaluation status is inconsistent")
+        return self
+
+
+class AggregateResultV3(AggregateResultV2):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-result-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-result-v3"]  # type: ignore[assignment]
+    aggregator_implementation_version: StableId
+    aggregator_implementation_sha256: Sha256
+    input_judge_manifest_sha256: Sha256
+    input_judge_manifest_formal_evaluation_result: bool
+    input_episode_formal_evaluation_result: bool
+    input_rule_result_formal_evaluation_result: bool
+    input_judge_result_formal_evaluation_result: bool
+    selection_mode: EvaluationSelectionV1
+    worktree_clean: bool
+
+    @model_validator(mode="after")
+    def validate_formal_inheritance(self) -> Self:
+        expected = bool(
+            self.status == "complete"
+            and self.input_judge_manifest_formal_evaluation_result
+            and self.input_episode_formal_evaluation_result
+            and self.input_rule_result_formal_evaluation_result
+            and self.input_judge_result_formal_evaluation_result
+            and self.selection_mode == "inherited"
+            and self.worktree_clean
+        )
+        if self.formal_evaluation_result != expected:
+            raise ValueError(
+                "Aggregate Result formal state must monotonically inherit Judge"
+            )
+        return self
+
+
+class AggregateTrackResultV3(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-track-result-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-track-result-v3"]
+    aggregator_version: StableId
+    aggregator_implementation_version: StableId
+    aggregator_implementation_sha256: Sha256
+    track: Track
+    episode_ids: list[StableId]
+    complete_episode_ids: list[StableId]
+    failed_episode_ids: list[StableId]
+    invalid_input_episode_ids: list[StableId]
+    judge_error_episode_ids: list[StableId]
+    runtime_failure_ids: list[StableId]
+    score_count: Annotated[int, Field(ge=0)]
+    mean_score: Annotated[float, Field(ge=0, le=100)] | None
+    input_judge_manifest_formal_evaluation_result: bool
+    result_formal_evaluation_states: dict[str, bool]
+    selection_mode: EvaluationSelectionV1
+    worktree_clean: bool
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    result_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_track_summary(self) -> Self:
+        ordered = (
+            self.episode_ids,
+            self.complete_episode_ids,
+            self.failed_episode_ids,
+            self.invalid_input_episode_ids,
+            self.judge_error_episode_ids,
+            self.runtime_failure_ids,
+        )
+        if any(values != sorted(set(values)) for values in ordered):
+            raise ValueError("track aggregate identifiers must be sorted and unique")
+        if not self.episode_ids and not self.runtime_failure_ids:
+            raise ValueError("track aggregate requires an Episode or Runtime Failure")
+        groups = (
+            set(self.complete_episode_ids),
+            set(self.invalid_input_episode_ids),
+            set(self.judge_error_episode_ids),
+        )
+        if set().union(*groups) != set(self.episode_ids):
+            raise ValueError("track aggregate groups must partition Episode IDs")
+        if any(
+            groups[left] & groups[right]
+            for left in range(3)
+            for right in range(left + 1, 3)
+        ):
+            raise ValueError("track aggregate groups must not overlap")
+        if not set(self.failed_episode_ids).issubset(groups[0]):
+            raise ValueError("failed Episodes must be complete scored Episodes")
+        if set(self.result_formal_evaluation_states) != set(self.episode_ids):
+            raise ValueError("track formal mappings must match Episode IDs")
+        if self.score_count != len(self.complete_episode_ids):
+            raise ValueError("track score count must match complete Episodes")
+        if (self.mean_score is None) != (self.score_count == 0):
+            raise ValueError("track mean exists exactly when scored Episodes exist")
+        expected = bool(
+            self.input_judge_manifest_formal_evaluation_result
+            and self.selection_mode == "inherited"
+            and self.worktree_clean
+            and self.episode_ids
+            and not self.runtime_failure_ids
+            and all(self.result_formal_evaluation_states.values())
+        )
+        if self.formal_evaluation_result != expected:
+            raise ValueError("track formal state must monotonically inherit Judge")
+        if self.evaluation_status != (
+            "formal_model_evaluation"
+            if expected
+            else "not_a_formal_model_evaluation"
+        ):
+            raise ValueError("track evaluation status is inconsistent")
+        return self
+
+
+class AggregateRunManifestV3(StrictContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": SCHEMA_DIALECT,
+            "$id": f"{SCHEMA_BASE_URI}/aggregate-run-manifest-v3.schema.json",
+        },
+    )
+
+    schema_version: Literal["aggregate-run-manifest-v3"]
+    aggregator_version: StableId
+    aggregator_implementation_version: StableId
+    aggregator_implementation_sha256: Sha256
+    judge_version: StableId
+    judge_config_version: StableId
+    judge_config_sha256: Sha256
+    judge_prompt_version: StableId
+    judge_prompt_sha256: Sha256
+    rubric_version: StableId
+    rubric_sha256: Sha256
+    track_anchor_version: StableId
+    track_anchor_sha256: Sha256
+    judge_mode: Literal["stub", "real"]
+    input_judge_manifest_sha256: Sha256
+    input_judge_manifest_formal_evaluation_result: bool
+    selection_mode: EvaluationSelectionV1
+    requested_episode_ids: list[StableId]
+    selected_track: Track | None
+    episode_ids: list[StableId]
+    runtime_failure_ids: list[StableId]
+    input_episode_digests: dict[str, Sha256]
+    input_rule_result_digests: dict[str, Sha256]
+    input_judge_result_digests: dict[str, Sha256]
+    input_reference_digests: dict[str, Sha256]
+    input_runtime_failure_digests: dict[str, Sha256]
+    runtime_failure_tracks: dict[str, Track]
+    aggregate_result_digests: dict[str, Sha256]
+    result_statuses: dict[str, JudgeStatus]
+    result_formal_evaluation_states: dict[str, bool]
+    track_result_digests: dict[str, Sha256]
+    formal_evaluation_result: bool
+    evaluation_status: EvaluationStatus
+    worktree_clean: bool
+    git_commit: GitCommit
+    manifest_sha256: Sha256
+
+    @model_validator(mode="after")
+    def validate_aggregate_manifest(self) -> Self:
+        ordered_lists = (
+            self.episode_ids,
+            self.requested_episode_ids,
+            self.runtime_failure_ids,
+        )
+        if any(values != sorted(set(values)) for values in ordered_lists):
+            raise ValueError("Aggregate manifest identifiers must be sorted and unique")
+        if not self.episode_ids and not self.runtime_failure_ids:
+            raise ValueError("Aggregate manifest requires an Episode or Runtime Failure")
+        if self.requested_episode_ids and set(self.requested_episode_ids) != set(
+            self.episode_ids
+        ):
+            raise ValueError("requested Aggregate Episode IDs must match output")
+        if not _selection_mode_matches_filters(
+            self.selection_mode, self.requested_episode_ids, self.selected_track
+        ):
+            raise ValueError("Aggregate selection mode must match its explicit filters")
+        episode_ids = set(self.episode_ids)
+        mappings = (
+            self.input_episode_digests,
+            self.input_rule_result_digests,
+            self.input_judge_result_digests,
+            self.input_reference_digests,
+            self.aggregate_result_digests,
+            self.result_statuses,
+            self.result_formal_evaluation_states,
+        )
+        if any(set(mapping) != episode_ids for mapping in mappings):
+            raise ValueError("Aggregate manifest mappings must match Episode IDs")
+        failure_ids = set(self.runtime_failure_ids)
+        if (
+            set(self.input_runtime_failure_digests) != failure_ids
+            or set(self.runtime_failure_tracks) != failure_ids
+        ):
+            raise ValueError("Aggregate failure mappings must match Runtime Failure IDs")
+        if not self.track_result_digests:
+            raise ValueError("Aggregate manifest requires per-track results")
+        expected = bool(
+            self.input_judge_manifest_formal_evaluation_result
+            and self.selection_mode == "inherited"
+            and self.worktree_clean
+            and self.episode_ids
+            and not self.runtime_failure_ids
+            and all(self.result_formal_evaluation_states.values())
+        )
+        if self.formal_evaluation_result != expected:
+            raise ValueError("Aggregate formal state must monotonically inherit Judge")
+        if self.evaluation_status != (
+            "formal_model_evaluation"
+            if expected
+            else "not_a_formal_model_evaluation"
+        ):
+            raise ValueError("Aggregate evaluation status is inconsistent")
+        return self
+
+
 SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "decision-episode-v1": DecisionEpisode,
     "decision-episode-v2": DecisionEpisodeV2,
@@ -2683,6 +3516,19 @@ SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "aggregate-result-v2": AggregateResultV2,
     "aggregate-track-result-v2": AggregateTrackResultV2,
     "aggregate-run-manifest-v2": AggregateRunManifestV2,
+    "case-spec-v2": CaseSpecV2,
+    "judge-reference-v2": JudgeReferenceV2,
+    "decision-episode-v4": DecisionEpisodeV4,
+    "runtime-failure-v2": RuntimeFailureV2,
+    "case-suite-manifest-v2": CaseSuiteManifestV2,
+    "runtime-run-manifest-v3": RuntimeRunManifestV3,
+    "rule-result-v3": RuleResultV3,
+    "rule-run-manifest-v3": RuleRunManifestV3,
+    "judge-result-v3": JudgeResultV3,
+    "judge-run-manifest-v3": JudgeRunManifestV3,
+    "aggregate-result-v3": AggregateResultV3,
+    "aggregate-track-result-v3": AggregateTrackResultV3,
+    "aggregate-run-manifest-v3": AggregateRunManifestV3,
 }
 
 DATASET_DOCUMENT_MODELS: dict[str, type[BaseModel]] = {
