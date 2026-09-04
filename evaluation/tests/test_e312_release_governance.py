@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import shutil
 from copy import deepcopy
@@ -137,6 +138,23 @@ def test_production_registry_is_empty_and_engineering_release_is_never_trusted()
     assert assessment.release_registered is False
     assert assessment.trusted_benchmark_run is False
     assert assessment.reason_codes == ("benchmark.release_untrusted",)
+
+
+def test_release_candidate_refresh_is_disabled_after_trusted_registration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    builder_path = PROJECT_ROOT / "evaluation" / "scripts" / "build_e312_releases.py"
+    spec = importlib.util.spec_from_file_location("e312_release_builder", builder_path)
+    assert spec is not None and spec.loader is not None
+    release_builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(release_builder)
+    monkeypatch.setattr(
+        release_builder,
+        "load_production_registry",
+        lambda: {"entries": [{"benchmark_release_id": "registered"}]},
+    )
+    with pytest.raises(RuntimeError, match="trusted_release_refresh_forbidden"):
+        release_builder._refresh_untrusted_candidate()
 
 
 def test_arbitrary_one_case_real_primary_claim_cannot_create_formal_trust(

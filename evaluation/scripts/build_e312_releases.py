@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import subprocess
@@ -438,9 +439,42 @@ def _verify_committed_release() -> int:
     return 0
 
 
-def main() -> int:
-    if _release_is_committed():
+def _refresh_untrusted_candidate() -> int:
+    """Refresh Release 1.0 only before any trusted Benchmark registration."""
+
+    registry = load_production_registry()
+    if registry["entries"]:
+        raise RuntimeError("trusted_release_refresh_forbidden")
+    current_benchmark = _load(BENCHMARK_PATH)
+    if current_benchmark.get("release_status") != "engineering":
+        raise RuntimeError("non_engineering_release_refresh_forbidden")
+    schemas, lock = _schema_assets()
+    bundles = _source_assets()
+    _write(
+        RELEASE_ROOT / "model-action-declaration-v2.json",
+        canonical_json_bytes(ACTION_DECLARATION_PROTOCOL_DOCUMENT),
+    )
+    protocol = _protocol(schemas, lock, bundles)
+    _benchmark(protocol)
+    print("e312_release_candidate_refreshed production_registry_entries=0")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--refresh-untrusted-candidate",
+        action="store_true",
+        help=(
+            "refresh Release 1.0 bindings only while the production registry is "
+            "empty and the bundled Benchmark is engineering-only"
+        ),
+    )
+    args = parser.parse_args(argv)
+    if _release_is_committed() and not args.refresh_untrusted_candidate:
         return _verify_committed_release()
+    if _release_is_committed():
+        return _refresh_untrusted_candidate()
     schemas, lock = _schema_assets()
     bundles = _source_assets()
     _write(

@@ -542,6 +542,72 @@ def test_formal_state_cannot_be_recovered_by_posthoc_cli_filter(
         RuleRunManifestV3.model_validate(retroactive_selection)
 
 
+@pytest.mark.parametrize(
+    ("family_id", "track"),
+    (("family-e31-a-positive", None), (None, "assessment")),
+)
+def test_runtime_filtered_partition_remains_protocol_valid_but_nonformal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    family_id: str | None,
+    track: str | None,
+) -> None:
+    for module_name in (
+        "active_runtime",
+        "active_rules",
+        "active_judge",
+        "active_aggregate",
+    ):
+        monkeypatch.setattr(
+            f"learning_agent_eval.{module_name}.git_worktree_clean", lambda: True
+        )
+    episode_ids = None
+    if family_id is not None:
+        case = _load(DATASET / "cases" / "case-e31-a-positive.json")
+        episode_ids = {episode_id_for_case(case)}
+    suffix = family_id or track
+    runtime = tmp_path / f"runtime-{suffix}"
+    rules = tmp_path / f"rules-{suffix}"
+    judges = tmp_path / f"judges-{suffix}"
+    aggregate = tmp_path / f"aggregate-{suffix}"
+    run_active_runtime(
+        dataset=DATASET,
+        manifest=CASE_MANIFEST,
+        output=runtime,
+        episode_ids=episode_ids,
+        track=track,
+        model_mode="stub",
+    )
+    evaluate_active_rules(input_path=runtime, output=rules)
+    evaluate_active_judges(
+        episodes=runtime,
+        rules=rules,
+        output=judges,
+        judge_mode="stub",
+        stub_response=FIXED_RESPONSES,
+    )
+    aggregate_active_results(
+        episodes=runtime,
+        rules=rules,
+        judges=judges,
+        output=aggregate,
+    )
+    for root in (runtime, rules, judges, aggregate):
+        report = validate_dataset(root)
+        assert report.ok, [item.render() for item in report.issues]
+    manifests = (
+        _load(runtime / "run-manifest.json"),
+        _load(rules / "rule-manifest.json"),
+        _load(judges / "run-manifest.json"),
+        _load(aggregate / "run-manifest.json"),
+    )
+    assert all(item["protocol_eligible"] is True for item in manifests)
+    assert all(item["trusted_benchmark_run"] is False for item in manifests)
+    assert all(item["formal_evaluation_result"] is False for item in manifests)
+    assert manifests[-1]["formal_capability_result"] is False
+    assert "capability.posthoc_filter" in manifests[-1]["capability_blockers"]
+
+
 def test_failure_only_partition_reaches_aggregate_without_judge_call(
     tmp_path: Path,
 ) -> None:

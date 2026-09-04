@@ -1044,7 +1044,6 @@ def _track_result_v3(
     scores = [float(item["final_score"]) for item in complete]
     protocol_eligible = bool(
         judge_manifest["protocol_eligible"]
-        and selection_mode == "inherited"
         and worktree_clean
         and all(item["protocol_eligible"] for item in results)
     )
@@ -1240,7 +1239,6 @@ def aggregate_active_results(
         failure_ids = sorted(selected_failures)
         protocol_eligible = bool(
             judge_manifest["protocol_eligible"]
-            and selection_mode == "inherited"
             and clean
             and all(item["protocol_eligible"] for item in documents)
         )

@@ -214,6 +214,10 @@ Episode/Rule/Judge/Aggregate Result 与所有中间 Run Manifest 都固定
 Release、完整 Case/终态库存、上游摘要、四轨结果和错误分类重算；调用者自带 Release、修改
 预期数量、删除 Failure 或事后过滤都不能建立信任。
 
+`protocol_eligible` 只描述当前制品/执行是否遵循活动协议，因此一个前置选择的单 Episode
+或单 track 分区仍可为 true；`selection_mode=adhoc_filter` 会独立、永久地阻断
+`trusted_benchmark_run` 和 `formal_capability_result`，下游不能把两层状态混为一谈。
+
 当前 production registry 为 `entries=[]`；活动 engineering Benchmark Release 的状态为
 `engineering` 且未注册，所以即使制品结构通过，也始终 non-formal。RuntimeFailure、
 invalid_input、judge_error 保留审计但阻止能力结论，不按 0 分混入均值。

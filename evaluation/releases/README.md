@@ -22,9 +22,13 @@ CLI 参数、环境变量或自声明 formal 字段进入本注册表。
 
 Release 1.0 尚未提交时，脚本生成活动 Schema、Schema Lock、source bundles、Protocol
 Release 和 engineering Benchmark 绑定，同时拒绝历史 Schema/锁漂移。Release 1.0 一旦存在
-于当前 HEAD，脚本切换为只读验证，任何漂移都会失败，不会原地重写已发布 Release。
+于当前 HEAD，脚本默认切换为只读验证，任何漂移都会失败。只有在 production registry 仍为空、
+随附 Benchmark 仍为 `engineering` 时，开发者才可显式使用
+`--refresh-untrusted-candidate` 刷新尚未取得信任的来源绑定；该路径不允许更新历史 Schema 锁，
+且一旦出现任何可信注册项便先验失败。
 
 未来正式 Benchmark 必须经过案例/资源/隐私/数量/Split 审核，使用状态 `released` 的
-`benchmark-release-manifest-v1`，在单独审查提交中加入生产注册表。新协议语义必须创建新的
-Protocol Release 与活动锁，不能更新 Release 1.0 或历史锁。测试注册表只能通过明确的
+`benchmark-release-manifest-v1`，在单独审查提交中加入生产注册表。完成可信注册后，任何
+协议或来源变更都必须创建新的 Protocol Release 与活动锁，不能更新 Release 1.0 或历史锁。
+测试注册表只能通过明确的
 test-only Python seam 注入，生产 CLI 不提供对应参数或环境变量。

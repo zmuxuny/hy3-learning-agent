@@ -1354,7 +1354,6 @@ def evaluate_active_judges(
         failure_ids = sorted(inputs.runtime_failures)
         protocol_eligible = bool(
             inputs.rule_manifest["protocol_eligible"]
-            and selection_mode == "inherited"
             and clean
             and all(result["protocol_eligible"] for result in results)
         )

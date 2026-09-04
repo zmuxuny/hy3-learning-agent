@@ -21,7 +21,7 @@ judge-result-v3 → aggregate-result-v3`。
 | 失败披露 | 已闭合 | RuntimeFailure、invalid_input、judge_error 保留并排除均值，同时阻止能力结论；删除 Failure、替换 Case 或事后 Episode/track 过滤均不能恢复 formal |
 | 活动入口 | 已收敛 | 包级 API 与 CLI 只指向 `active_{runtime,rules,judge,aggregate}`；旧公共模块是 fail-before-side-effect 薄层，完整旧实现只在私有 `_historical_*` 回归 seam 中保留 |
 | 来源归因 | 已闭合 | Runtime/Rules/Judge/Aggregate 记录含仓库相对路径和逐文件摘要的保守 source bundle；Git commit、干净树和 bundle 同时参与 provenance |
-| Schema 冻结 | 已闭合 | 独立 `schema-lock-v1` 覆盖全部 44 个 Schema，历史与活动锁分开；模型和生成文件同时漂移仍失败，Release 1.0 提交后构建脚本只读验证 |
+| Schema 冻结 | 已闭合 | 独立 `schema-lock-v1` 覆盖全部 44 个 Schema，历史与活动锁分开；模型和生成文件同时漂移仍失败；未注册 engineering candidate 可显式刷新来源绑定，可信注册后失败关闭 |
 | 行动协议 | 已闭合 | `model-action-declaration-v2` 为 14 类行动提供 track、语义、字段、边界、正反例和组合政策；JSON 空白/字段顺序无关，未知/重复/歧义严格拒绝，缺失声明仍可评分 |
 | 独立 Aggregate 信任 | 已闭合 | 最终 Manifest 绑定 Runtime Manifest digest 与终态记录；Validator 直接查询 production registry 并逐 Case 对照，局部篡改数量/布尔位不能自我提升 |
 
@@ -34,12 +34,12 @@ judge-result-v3 → aggregate-result-v3`。
 能力结论。详细设计、版本资产表、精确技术债和未来小规模真实协议试跑门槛见
 [`E3.1.2正式评测准入与版本治理.md`](E3.1.2正式评测准入与版本治理.md)。E4 仍需另行授权。
 
-E3.1.2 提交前实际验收：
+E3.1.2 最终修复后实际验收：
 
-- E3.1.2 信任根/历史入口定向：`18 passed in 2.19s`；
-- `.venv/bin/pytest -q evaluation/tests`：`213 passed in 535.01s (0:08:55)`；
-- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 1.65s`；
-- `.venv/bin/pytest -q`：`1288 passed, 2 warnings in 2780.49s (0:46:20)`，0 failed；warning
+- E3.1.2/E3.1.1/Schema 定向：`60 passed in 273.45s (0:04:33)`；
+- `.venv/bin/pytest -q evaluation/tests`：`216 passed in 553.51s (0:09:13)`；
+- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 1.12s`；
+- `.venv/bin/pytest -q`：`1291 passed, 2 warnings in 2655.85s (0:44:15)`，0 failed；warning
   仍为既有 Starlette/httpx 弃用提示和 Python 3.14 tar 提取行为预告；
 - 文档相对链接、仓库自定义 `lint_typecheck`（compileall、致命 Ruff 规则和 JS
   语法，不声称 mypy/pyright）、Secret Scan、`pip check` 与 `git diff --check`
