@@ -2,7 +2,7 @@
 
 ## 当前状态与版本边界
 
-`DecisionBench v1` 是未来 Benchmark 的发布名称，不等于 `DecisionEpisode v1`。本目录现已冻结为 E0–E3 的 engineering-only 历史回归输入；E3.1 的干净切换使 `DecisionEpisode v3` 成为唯一可能 formal 的活动路径，见 [`../decisionbench-v3-engineering/dataset-card.md`](../decisionbench-v3-engineering/dataset-card.md)。以下 v1/v2 说明记录历史契约，不是正式执行指南。
+`DecisionBench v1` 是未来 Benchmark 的发布名称，不等于 `DecisionEpisode v1`。本目录现已冻结为 E0–E3 的 engineering-only 历史回归输入；E3.1.1 的干净切换使 `DecisionEpisode v4` 成为唯一可能 formal 的活动路径，见 [`../decisionbench-v4-engineering/dataset-card.md`](../decisionbench-v4-engineering/dataset-card.md)。以下 v1/v2 说明记录历史契约，不是正式执行指南。
 
 本目录包含两个明确分层的 Mini 集合：
 
@@ -44,7 +44,7 @@ State Delta 由真实前后 Snapshot 比较得到，一等表达新增、删除�
 
 Rules 只读取脱敏 `DecisionEpisode v2`，不读取 Capture。`rule-result-v1` 使用 `e2-rule-pack-v1` 的 `common/planning/intervention/assessment/revision/trace/isolation` 七包；每条 check 区分 `pass/fail/not_applicable/invalid_input` 和 `minor/major/critical`，Critical Fail 进入不可抵消的 Hard Gate。规则不输出 Judge 档位、总分或 Hy3 能力结论。
 
-Legacy E3 只接受完整 v2 与 digest 匹配的 Rule Result。它的 `blind-judge-input-v1` 和结果 v1 仅用于冻结回归；E3.1 已用路径级 `blind-judge-input-v2` 取代其活动地位，避免把普通业务中的 Baseline/Candidate/Good 词面误当质量标签。两条历史/活动路径都禁止 Capture 成为事实源，但只有 v3 可能 formal。
+Legacy E3 只接受完整 v2 与 digest 匹配的 Rule Result。它的 `blind-judge-input-v1` 和结果 v1 仅用于冻结回归；E3.1.1 的活动链使用路径级 `blind-judge-input-v3`，避免把普通业务中的 Baseline/Candidate/Good 词面误当质量标签。所有版本都禁止 Capture 成为事实源，但只有 v4 可能 formal。
 
 提交版 E3 契约为 `judge-result-v1`、`judge-run-manifest-v1`、`aggregate-result-v1`、`aggregate-track-result-v1` 和 `aggregate-run-manifest-v1`。固定响应文件明确标记 stub/non-formal，只验证 D1–D7 顺序、0/1/2 Schema、Evidence Path、一次修复、`judge_error`、Hard Gate/cap、invalid 单列、分轨与原子发布；它不是校准标签、scripted expected answer 或 Hy3 评分器。
 
@@ -68,7 +68,7 @@ Recording Sink 仅保留稳定 action identity、destination、安全摘要和�
 
 当前适合：E0 v1 历史契约回归、E1 隔离工程回归、E2 v2 Snapshot/Delta/Exporter/Rules 回归、Legacy E3 Judge/聚合回归，以及生产 Runtime/工具/Outbox seam 的非正式确定性检查。
 
-当前不覆盖：真实 Hy3 Judge 运行、人工盲标、Primary/Calibration 数据、Calibration Mutation、有效性实验、正式评测、版本回归、报告/Case/Demo/Release 和完整 DecisionBench。本目录的 Assessment Mini 固定回归 revision-required；共享生产 `submission.check` 的 Operation 现已能完整枚举 ACCEPT 对 Submission/Task/Stage/Plan 的派生更新，活动 v3 engineering suite 另有 ACCEPT 验证。现有 Mini 与 fixed-response 聚合不能冒充任意真实用户 Run 或正式 Hy3 结论。
+当前不覆盖：真实 Hy3 Judge 运行、人工盲标、Primary/Calibration 数据、Calibration Mutation、有效性实验、正式评测、版本回归、报告/Case/Demo/Release 和完整 DecisionBench。本目录的 Assessment Mini 固定回归 revision-required；共享生产 `submission.check` 的 Operation 现已能完整枚举 ACCEPT 对 Submission/Task/Stage/Plan 的派生更新，活动 v4 engineering suite 另有 ACCEPT 验证。现有 Mini 与 fixed-response 聚合不能冒充任意真实用户 Run 或正式 Hy3 结论。
 
 ## 校验与运行
 

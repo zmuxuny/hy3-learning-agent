@@ -2,10 +2,15 @@
 
 ## 状态与用途
 
+> 历史状态：E3.1.1 已将活动链干净切换到
+> [`decisionbench-v4-engineering`](../decisionbench-v4-engineering/dataset-card.md)。本目录
+> 只保留 E3.1 的 engineering-only 字节与语义回归，不能取得 formal 资格，也不继续增加
+> 正式评测能力。
+
 `decisionbench-v3-engineering-v1` 是 E3.1 的公开合成工程验收集，不是 DecisionBench v1
 正式数据集。它只验证 v3 Runtime、Rules v2、blind Judge v2 和 Aggregate v2 是否能接住
 正确行为、错误行为、安全兜底、子 Agent 和基础设施失败。全部 Case 都是 `dev`、
-`engineering_mini`、固定 `stub`，所以所有 Episode/Judge/聚合结果必须是 non-formal。
+`engineering_mini`、固定 `stub`，所以所有 Episode/Judge/聚合结果永久是 non-formal。
 
 本目录没有 Primary 或 Calibration 数据，也没有 Good/Mild/Severe 质量标签、真实用户资料、
 真实 Hy3 输出或人工裁决结果。固定 Judge 响应不是语义能力证据。

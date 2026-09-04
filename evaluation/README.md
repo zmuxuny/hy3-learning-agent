@@ -1,64 +1,72 @@
 # Learning Agent Evaluation
 
-`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。E3.1 完成了正式评测前的
-干净切换：`DecisionEpisode v3` 是唯一可能获得 formal 资格的活动契约；v1/v2 及其
-Rules/Judge/聚合只保留为 engineering-only 历史回归，不再扩展成正式双栈。
+`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。E3.1.1 在 E3.1 基础上执行了
+新的版本化干净切换：`DecisionEpisode v4` 是唯一可能获得 formal 资格的活动契约；
+v1/v2/v3 及其旧 Rules/Judge/聚合只保留为 engineering-only 历史回归，不再扩展正式能力。
 `DecisionBench v1` 仍只是未来 Benchmark 发布名，不能与 Episode Schema 版本混淆。
 
 当前活动链路是：
 
 ```text
-CaseSpec（控制面，含私有标注）
+CaseSpec v2（控制面，含私有标注）
 → 被测 Agent 不可见的运行投影
 → 独立 Worker / 临时 SQLite / 冻结时钟 / 生产 Runtime
 → 精确脱敏的模型可见消息与工具 Schema、父子调用轨迹
 → 前后 Snapshot / 语义身份绑定 / State Delta / Operation 对齐
-→ DecisionEpisode v3 或 RuntimeFailure v1
-→ CaseSpec 派生的无标签 JudgeReference
-→ rule-result-v2
+→ DecisionEpisode v4 或 RuntimeFailure v2
+→ CaseSpec 派生的无标签 JudgeReference v2
+→ rule-result-v3
 → 路径级盲化 / 七维 Rubric / 四轨锚点
-→ judge-result-v2（最多一次修复）
-→ Rule-first aggregate-result-v2
+→ judge-result-v3（最多一次修复）
+→ Rule-first aggregate-result-v3
 → 全链 canonical / digest / privacy / Evidence Path 校验
 → staging 后原子发布
 ```
 
 默认 Runtime 和 Judge 都使用调用者提供的固定 `stub`。它只证明工程协议、隔离、
-确定性、失败分类和 Hard Gate/cap，不是 Hy3 能力结果。E3.1 没有调用真实 Hy3、
+确定性、失败分类和 Hard Gate/cap，不是 Hy3 能力结果。E3.1.1 没有调用真实 Hy3、
 公网、真实数据库、`.env`、邮箱或 Push endpoint，也没有创建 E4 数据。
 
 ## 核心语义
 
 - Validator 只判断证据结构是否完整，不判断动作是否正确。错误动作仍是有效 Episode，
   由 Rules/Judge 低分；摘要错误、引用断裂、轨迹/Delta 不完整才是 invalid。
-- `case-spec-v1` 是案例控制面的唯一事实源。Agent 看不到 CaseSpec 或 JudgeReference；
-  `judge-reference-v1` 只能由 CaseSpec 确定性派生，含无质量标签的公共约束文本、
+- `case-spec-v2` 是案例控制面的唯一事实源。Agent 看不到 CaseSpec 或 JudgeReference；
+  `judge-reference-v2` 只能由 CaseSpec 确定性派生，含无质量标签的公共约束文本、
   `path/operator/expected_value` 谓词和可接受变体。
+- `constraint-proposition-v1` 固定谓词语义：同一约束内 predicates 全部合取；
+  `must_satisfy` 要求命题为真，`must_not` 要求命题为假。两类约束都必须存在。
 - Calibration 的 Good/Mild/Severe 标签、变异来源、作者/复核者和裁决说明只留在
   CaseSpec 私有区，永不进入 Agent 或 Judge 输入。
-- v3 保存每次调用实际收到的、严格脱敏后的有序消息和工具 Schema，并记录
+- v4 保存每次调用实际收到的、严格脱敏后的有序消息和工具 Schema，并记录
   `run_id/parent_run_id/parent_call_id/depth/call_purpose`。主 Agent、子 Agent和汇总调用
-  都可重建；标题和记忆压缩等辅助调用明确标成非决策调用。
+  都可重建；并发调用在开始时原子保留 ordinal，标题和记忆压缩等辅助调用明确标成
+  非决策调用。
+- `model-action-declaration-v1` 以严格首行 JSON 记录模型声明的 14 类动作。工具和状态只
+  校验实际效果，不用关键词、track 或 Case ID 猜测意图；跨轨、组合、缺失声明和无法归类
+  状态仍形成可评分 Episode，由 Rules 失败关闭。
 - Judge 不获得 `state_before` 的额外全知投影；决策前事实只能来自
   `observable_trace.model_calls[*].visible_context`。`state_after/state_delta` 只证明结果。
-- 行为失败正常进入评分；Provider/框架/隔离失败写 `runtime-failure-v1`，不冒充分数。
+- 行为失败正常进入评分；Provider/框架/隔离失败写 `runtime-failure-v2`，不冒充分数。
   每个所选 Case 恰有一个 Episode 或 Failure，单例失败不撤销同批成功制品。
-- E1 `capture.json` 仍只是历史脱敏工程附件，不是 v3、Rules、Judge 或聚合的事实源。
+- Failure-only 分区也能贯穿 Rules/Judge/Aggregate，Judge Provider 调用为 0；formal 状态
+  单调继承上游，任何事后过滤都不能恢复资格。
+- E1 `capture.json` 仍只是历史脱敏工程附件，不是 v4、Rules、Judge 或聚合的事实源。
 
 ## 活动契约
 
 | Schema | 作用 |
 |---|---|
-| `case-spec-v1` | 运行输入、身份绑定、Judge 标准与私有标注的控制面 |
-| `judge-reference-v1` | CaseSpec 的确定性无标签 Judge 投影 |
+| `case-spec-v2` | 运行输入、身份绑定、Judge 标准、predicate 语义与私有标注控制面 |
+| `judge-reference-v2` | CaseSpec 的确定性无标签 Judge 投影 |
 | `provider-attestation-v1` | Agent/Judge Provider 的可审计归因 |
 | `environment-manifest-v2` | 冻结配置、提交、依赖锁、隔离与 Provider 关联 |
-| `decision-episode-v3` | 可重建层级轨迹、结果与完整证据 |
-| `runtime-failure-v1` | 不评分的基础设施失败终态 |
-| `runtime-run-manifest-v2` | 所选 Case 的 Episode/Failure 闭合分区 |
-| `rule-result-v2` / `rule-run-manifest-v2` | v3 确定性规则与 Hard Gate |
-| `judge-result-v2` / `judge-run-manifest-v2` | 盲化结构化 Judge、一次修复与归因 |
-| `aggregate-result-v2` / Track/Manifest v2 | 纯确定性 Rule-first 聚合 |
+| `decision-episode-v4` | 14 类动作声明、可重建并发层级轨迹、实际效果与完整证据 |
+| `runtime-failure-v2` | 不评分的基础设施失败终态，可保存 v4 调用轨迹 |
+| `runtime-run-manifest-v3` | 所选 Case 的 Episode/Failure 闭合分区与执行前过滤状态 |
+| `rule-result-v3` / `rule-run-manifest-v3` | v4 确定性规则、源码 bundle 摘要与 Hard Gate |
+| `judge-result-v3` / `judge-run-manifest-v3` | 盲化结构化 Judge、一次修复与 formal 继承 |
+| `aggregate-result-v3` / Track/Manifest v3 | 纯确定性 Rule-first 聚合与源码摘要 |
 
 所有契约使用 strict Pydantic、`extra=forbid`、JSON Schema 2020-12、唯一 canonical
 JSON/SHA-256 和自摘要。已提交 Schema 由漂移测试与源码模型逐项比较；v1/v2 冻结
@@ -79,16 +87,17 @@ Schema 的字节摘要继续锁定。
   --dataset evaluation/datasets/decisionbench-v1
 ```
 
-活动 v3 engineering suite 包含四轨正例、错误动作、Guard 阻断、真实生产子 Agent
-委派和一个故意的 Provider Failure。完整批次预期 `run-agent`/`evaluate-rules`/
+活动 v4 engineering suite 包含四轨正例、错误/跨轨/组合/协议失败动作、Guard 阻断、
+Quiz/Review 写入、并发双子 Agent 和一个故意的 Provider Failure。完整批次预期
+`run-agent`/`evaluate-rules`/
 `aggregate-results` 分别因 Failure、Critical Fail、Fail outcome 返回 `2/2/3`；这不是
 控制平面异常：
 
 ```bash
 E31_ROOT="$(mktemp -d)"
 .venv/bin/python -m learning_agent_eval run-agent \
-  --dataset evaluation/datasets/decisionbench-v3-engineering \
-  --manifest evaluation/datasets/decisionbench-v3-engineering/manifest.json \
+  --dataset evaluation/datasets/decisionbench-v4-engineering \
+  --manifest evaluation/datasets/decisionbench-v4-engineering/manifest.json \
   --output "$E31_ROOT/runtime"
 .venv/bin/python -m learning_agent_eval validate-dataset \
   --dataset "$E31_ROOT/runtime"
@@ -99,7 +108,7 @@ E31_ROOT="$(mktemp -d)"
 .venv/bin/python -m learning_agent_eval evaluate-judge \
   --episodes "$E31_ROOT/runtime" --rules "$E31_ROOT/rules" \
   --output "$E31_ROOT/judges" --judge-mode stub \
-  --stub-response evaluation/fixtures/e31-fixed-judge-responses-v2.json
+  --stub-response evaluation/fixtures/e311-fixed-judge-responses-v3.json
 .venv/bin/python -m learning_agent_eval validate-dataset \
   --dataset "$E31_ROOT/judges"
 .venv/bin/python -m learning_agent_eval aggregate-results \
@@ -156,10 +165,12 @@ ACCEPT 和 REVISION_REQUIRED 都能对齐；无法归因的变化仍失败关闭
 
 ## Rules、Judge 与聚合
 
-`e31-rule-pack-v2` 把结构无效与决策错误分开。结构化谓词和动作边界由 Rules 权威
+`e311-rule-pack-v3` 把结构无效与决策错误分开。结构化谓词和动作边界由 Rules 权威
 执行；时间、阈值、存在性、隐私、完整性和实际 Hard Gate 不交给 Judge 重算。
+规则包和 Manifest 记录实际执行源码 bundle 的内容摘要；Rules/Aggregate 都校验当前工作树，
+formal 不能由未提交实现生成后再恢复。
 
-`blind-judge-input-v2` 使用路径级删除和 opaque ID，不按字段名子串或自由文本全局替换。
+`blind-judge-input-v3` 使用路径级删除和 opaque ID，不按字段名子串或自由文本全局替换。
 所以业务中的 `baseline`、`candidate`、`Good` 和 `candidate_key` 保留，而 Case ID、tag、
 质量标签、变异源、作者裁决、生成模型、Provider/endpoint、凭据和路由材料不可见。
 JudgeReference 的公共 `must_satisfy/must_not` 语义及结构化谓词可见。
@@ -168,12 +179,12 @@ JudgeReference 的公共 `must_satisfy/must_not` 语义及结构化谓词可见�
 `0/1/2 → 0%/50%/100%`；`decision-track-anchors-v1` 独立定义 Planning、Intervention、
 Assessment、Revision 四轨锚点。配置、Prompt 和响应 Schema 都有稳定版本与摘要。
 
-`judge-result-v2` 要求固定 D1–D7、每维至少一个同时对 Judge 可见且能回到同一原始
-v3 Episode 的 Evidence Path、稳定 reason code，以及非满分的具体公共问题。第一次
+`judge-result-v3` 要求固定 D1–D7、每维至少一个同时对 Judge 可见且能回到同一原始
+v4 Episode 的 Evidence Path、稳定 reason code，以及非满分的具体公共问题。第一次
 Schema/Evidence/隐私失败只把稳定错误码送回修复一次；第二次失败得到无维度、无分数的
 `judge_error`。固定响应不按 ID、track、Oracle 或关键词生成答案。
 
-`deterministic-aggregator-v2` 的基础分为 `sum(weight × level / 2)`。Critical Rule Fail
+`deterministic-aggregator-v3` 的基础分为 `sum(weight × level / 2)`。Critical Rule Fail
 强制 Fail 且 cap=39，任一 Major Fail cap=69，多个 cap 取最严，Minor 无额外 cap。
 Judge 高分不能抵消 Rule Gate，suggested gate 不自动升级。invalid/judge_error/Runtime
 Failure 单列且不按 0 混入均值；四轨分别发布，不生成掩盖弱轨的 overall。
@@ -197,7 +208,8 @@ SMTP_SSL、Web Push、IMAP、IMAP_SSL 和 Worker subprocess。生产通知/Outbo
 
 ## 边界
 
-v3 Collector 对未登记生产事实继续失败关闭。Provider 响应归因能审计声明与响应字段，
+v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并由 Rules 失败关闭；真正
+缺失、损坏或无法重建的证据仍由 Validator 拒绝。Provider 响应归因能审计声明与响应字段，
 不能证明远端服务的密码学身份；正式运行仍需要组织侧凭据、网络和运行审批。
 
 E4–E8 仍未实现：没有 48 个 Primary、24 个 Calibration、有效性实验、人工盲标、正式
