@@ -36,10 +36,10 @@ judge-result-v3 → aggregate-result-v3`。
 
 E3.1.2 最终修复后实际验收：
 
-- E3.1.2/E3.1.1/Schema 定向：`60 passed in 273.45s (0:04:33)`；
-- `.venv/bin/pytest -q evaluation/tests`：`216 passed in 553.51s (0:09:13)`；
-- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 1.12s`；
-- `.venv/bin/pytest -q`：`1291 passed, 2 warnings in 2655.85s (0:44:15)`，0 failed；warning
+- E3.1.2/E3.1.1/Schema 定向：`60 passed in 250.72s (0:04:10)`；
+- `.venv/bin/pytest -q evaluation/tests`：`216 passed in 507.99s (0:08:27)`；
+- `.venv/bin/pytest -q tests/test_e1_evaluation_seams.py`：`13 passed in 3.01s`；
+- `.venv/bin/pytest -q`：`1291 passed, 2 warnings in 2530.40s (0:42:10)`，0 failed；warning
   仍为既有 Starlette/httpx 弃用提示和 Python 3.14 tar 提取行为预告；
 - 文档相对链接、仓库自定义 `lint_typecheck`（compileall、致命 Ruff 规则和 JS
   语法，不声称 mypy/pyright）、Secret Scan、`pip check` 与 `git diff --check`
