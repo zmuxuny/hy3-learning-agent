@@ -6,6 +6,7 @@ import asyncio
 import json
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from datetime import datetime, timezone
+from threading import Lock
 from typing import Any
 
 from .canonical import canonical_json, sha256_digest
@@ -59,6 +60,12 @@ class _RecordedStream:
     def __aiter__(self) -> _RecordedStream:
         return self
 
+    @property
+    def runtime_model_call_id(self) -> str:
+        """Expose the reserved call identity to the generic Runtime seam."""
+
+        return str(self._pending["call_id"])
+
     async def __anext__(self) -> Any:
         try:
             chunk = await self._source.__anext__()
@@ -93,6 +100,15 @@ class _CompletionsDecorator:
         if hasattr(response, "__aiter__"):
             return _RecordedStream(response.__aiter__(), self._recorder, pending)
         self._recorder._finish_message(pending, response)
+        # Preserve the provider SDK's response identity. Runtime consumers may
+        # rely on it, and OpenAI-compatible response models have a writable
+        # instance dictionary even when their public schema forbids extras.
+        call_id = str(pending["call_id"])
+        try:
+            object.__setattr__(response, "runtime_model_call_id", call_id)
+        except (AttributeError, TypeError, ValueError):
+            message = response.choices[0].message
+            object.__setattr__(message, "runtime_model_call_id", call_id)
         return response
 
 
@@ -117,6 +133,8 @@ class EvaluationModelRecorder:
         self.invocation_mode = invocation_mode
         self._metadata_provider = metadata_provider
         self.records: list[dict[str, Any]] = []
+        self._record_lock = Lock()
+        self._next_ordinal = 1
 
     def _begin(self, request: Mapping[str, Any]) -> dict[str, Any]:
         projected_messages = public_projection(request.get("messages") or [])
@@ -132,7 +150,11 @@ class EvaluationModelRecorder:
             for tool in tools
             if isinstance(tool, dict)
         ] if isinstance(tools, list) else []
-        ordinal = len(self.records) + 1
+        # Reserve identity at call start. Provider calls can complete out of
+        # order, so completion-order list length is not a valid allocator.
+        with self._record_lock:
+            ordinal = self._next_ordinal
+            self._next_ordinal += 1
         metadata = self._metadata_provider() if self._metadata_provider else None
         pending = {
             "call_id": f"model-call:{ordinal:03d}",
@@ -275,7 +297,10 @@ class EvaluationModelRecorder:
     def _publish(self, record: dict[str, Any]) -> None:
         self._assert_public(record)
         # Canonical round-trip prevents later mutation through caller-owned containers.
-        self.records.append(json.loads(canonical_json(record)))
+        published = json.loads(canonical_json(record))
+        with self._record_lock:
+            self.records.append(published)
+            self.records.sort(key=lambda item: int(item["ordinal"]))
 
     @staticmethod
     def _assert_public(value: object) -> None:

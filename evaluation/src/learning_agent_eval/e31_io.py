@@ -16,11 +16,17 @@ from .integrity import (
 )
 from .models import (
     DecisionEpisodeV3,
+    DecisionEpisodeV4,
     JudgeReferenceV1,
+    JudgeReferenceV2,
     RuleResultV2,
+    RuleResultV3,
     RuleRunManifestV2,
+    RuleRunManifestV3,
     RuntimeFailureV1,
+    RuntimeFailureV2,
     RuntimeRunManifestV2,
+    RuntimeRunManifestV3,
 )
 from .validator import resolve_evidence_path, validate_dataset, validate_episode
 
@@ -127,19 +133,23 @@ def load_e31_inputs(
     rules: str | Path,
     episode_ids: set[str] | None = None,
     track: str | None = None,
+    _contract_version: str = "v3",
 ) -> E31Inputs:
-    """Return selected v3/reference/Rule bundles with exhaustive failure metadata."""
+    """Return digest-joined Episode/reference/Rule bundles and failures."""
 
+    if _contract_version not in {"v3", "v4"}:
+        raise ValueError("unsupported internal E3.1 input contract")
+    active = _contract_version == "v4"
     runtime_root = input_root(episodes, artifact="Runtime output")
     rule_root = input_root(rules, artifact="Rule output")
     runtime_manifest = _manifest(
         runtime_root / "run-manifest.json",
-        model=RuntimeRunManifestV2,
+        model=RuntimeRunManifestV3 if active else RuntimeRunManifestV2,
         artifact="Runtime manifest",
     )
     rule_manifest = _manifest(
         rule_root / "rule-manifest.json",
-        model=RuleRunManifestV2,
+        model=RuleRunManifestV3 if active else RuleRunManifestV2,
         artifact="Rule manifest",
     )
     if (
@@ -171,6 +181,32 @@ def load_e31_inputs(
             "batch",
             "Rule Episodes are not a Runtime Episode subset",
         )
+    if active:
+        requested = set(rule_manifest["requested_episode_ids"])
+        selected_track = rule_manifest["selected_track"]
+        expected_rule_ids = (
+            requested
+            if requested
+            else {
+                episode_id
+                for episode_id, terminal in episode_terminals.items()
+                if selected_track is None or terminal["track"] == selected_track
+            }
+        )
+        expected_failure_ids = {
+            failure_id
+            for failure_id, terminal in failure_terminals.items()
+            if selected_track is None or terminal["track"] == selected_track
+        }
+        if rule_ids != expected_rule_ids or set(
+            rule_manifest["runtime_failure_ids"]
+        ) != expected_failure_ids:
+            raise E31InputError(
+                "rule_selection_not_exhaustive",
+                "validate",
+                "batch",
+                "Active Rules must exhaustively preserve the selected Runtime partition",
+            )
     _inventory(runtime_root, "episodes", set(episode_terminals))
     _inventory(runtime_root, "judge-references", set(episode_terminals))
     _inventory(runtime_root, "failures", set(failure_terminals))
@@ -193,7 +229,8 @@ def load_e31_inputs(
             artifact="Runtime Failure",
         )
         try:
-            failure = RuntimeFailureV1.model_validate(document).model_dump(
+            failure_model = RuntimeFailureV2 if active else RuntimeFailureV1
+            failure = failure_model.model_validate(document).model_dump(
                 mode="json", by_alias=True
             )
         except ValueError as exc:
@@ -234,13 +271,16 @@ def load_e31_inputs(
             artifact="JudgeReference",
         )
         try:
-            episode = DecisionEpisodeV3.model_validate(episode_document).model_dump(
+            episode_model = DecisionEpisodeV4 if active else DecisionEpisodeV3
+            rule_model = RuleResultV3 if active else RuleResultV2
+            reference_model = JudgeReferenceV2 if active else JudgeReferenceV1
+            episode = episode_model.model_validate(episode_document).model_dump(
                 mode="json", by_alias=True
             )
-            rule_result = RuleResultV2.model_validate(rule_document).model_dump(
+            rule_result = rule_model.model_validate(rule_document).model_dump(
                 mode="json", by_alias=True
             )
-            reference = JudgeReferenceV1.model_validate(reference_document).model_dump(
+            reference = reference_model.model_validate(reference_document).model_dump(
                 mode="json", by_alias=True
             )
         except ValueError as exc:
@@ -267,6 +307,21 @@ def load_e31_inputs(
             or rule_manifest["input_reference_digests"].get(episode_id)
             != reference_digest
             or rule_manifest["rule_result_digests"].get(episode_id) != result_digest
+            or (
+                active
+                and (
+                    rule_result["input_runtime_manifest_sha256"]
+                    != runtime_manifest["manifest_sha256"]
+                    or rule_result["input_runtime_formal_evaluation_result"]
+                    != runtime_manifest["formal_evaluation_result"]
+                    or rule_result["selection_mode"]
+                    != rule_manifest["selection_mode"]
+                    or rule_result["worktree_clean"]
+                    != rule_manifest["worktree_clean"]
+                    or rule_result["evaluator_implementation_sha256"]
+                    != rule_manifest["evaluator_implementation_sha256"]
+                )
+            )
         ):
             raise E31InputError(
                 "input_linkage_invalid",
@@ -304,16 +359,19 @@ def load_e31_inputs(
             "batch",
             "one or more Episode IDs were not found in both inputs",
         )
-    if not bundles:
-        raise E31InputError(
-            "selection_empty", "filter", "batch", "Episode selection is empty"
-        )
     selected_failures = {
         failure_id: failure
         for failure_id, failure in runtime_failures.items()
-        if episode_ids is None
+        if (active or episode_ids is None)
         and (track is None or failure_tracks[failure_id] == track)
     }
+    if not bundles and not selected_failures:
+        raise E31InputError(
+            "selection_empty",
+            "filter",
+            "batch",
+            "Episode and Runtime Failure selection is empty",
+        )
     return E31Inputs(
         bundles=tuple(bundles),
         runtime_failures=selected_failures,
@@ -322,4 +380,22 @@ def load_e31_inputs(
         },
         runtime_manifest=runtime_manifest,
         rule_manifest=rule_manifest,
+    )
+
+
+def load_e311_inputs(
+    *,
+    episodes: str | Path,
+    rules: str | Path,
+    episode_ids: set[str] | None = None,
+    track: str | None = None,
+) -> E31Inputs:
+    """Load the active DecisionEpisode v4 / Rule Result v3 chain."""
+
+    return load_e31_inputs(
+        episodes=episodes,
+        rules=rules,
+        episode_ids=episode_ids,
+        track=track,
+        _contract_version="v4",
     )

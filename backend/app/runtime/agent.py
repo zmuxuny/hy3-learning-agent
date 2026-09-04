@@ -88,10 +88,18 @@ class _StreamingToolCall:
 
 
 class _StreamingMessage:
-    def __init__(self, content: str, reasoning_content: str, tool_calls: list[_StreamingToolCall]) -> None:
+    def __init__(
+        self,
+        content: str,
+        reasoning_content: str,
+        tool_calls: list[_StreamingToolCall],
+        *,
+        runtime_model_call_id: str | None = None,
+    ) -> None:
         self.content = content
         self.reasoning_content = reasoning_content or None
         self.tool_calls = tool_calls or None
+        self.runtime_model_call_id = runtime_model_call_id
 
 
 class ToolFailureGuard:
@@ -591,6 +599,11 @@ class AgentRuntime:
                 if message.tool_calls:
                     assistant_payload["tool_calls"] = [call.model_dump() for call in message.tool_calls]
                     calls = [_call_to_dict(call) for call in message.tool_calls]
+                    source_model_call_id = getattr(
+                        message, "runtime_model_call_id", None
+                    )
+                    for call in calls:
+                        call["source_model_call_id"] = source_model_call_id
                 messages = list(checkpoint.get("messages") or [])
                 messages.append(assistant_payload)
                 record_model_usage(budget, usage)
@@ -680,6 +693,9 @@ class AgentRuntime:
                                     checkpoint.get("granted_tool_call_ids") or []
                                 ),
                                 tool_call_id=call["id"],
+                                source_model_call_id=call.get(
+                                    "source_model_call_id"
+                                ),
                             ),
                         ),
                         timeout=tool_timeout_seconds(call),
@@ -904,8 +920,18 @@ class AgentRuntime:
                     return await asyncio.wait_for(
                         self._drain_stream(response, run, step),
                         timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
-                    )
-                return response.choices[0].message, getattr(response, "usage", None)
+                )
+                message = response.choices[0].message
+                object.__setattr__(
+                    message,
+                    "runtime_model_call_id",
+                    getattr(
+                        response,
+                        "runtime_model_call_id",
+                        getattr(message, "runtime_model_call_id", None),
+                    ),
+                )
+                return message, getattr(response, "usage", None)
         except TimeoutError as exc:
             raise AgentModelTimeout("模型响应超时") from exc
         except Exception as exc:
@@ -969,6 +995,7 @@ class AgentRuntime:
             "".join(content_parts),
             "".join(reasoning_parts),
             list(tool_calls.values()),
+            runtime_model_call_id=getattr(stream, "runtime_model_call_id", None),
         ), usage
 
     async def _fail(

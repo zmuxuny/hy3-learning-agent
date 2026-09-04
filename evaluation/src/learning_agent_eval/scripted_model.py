@@ -6,6 +6,8 @@ import json
 from types import SimpleNamespace
 from typing import Any
 
+from .action_protocol import render_action_declaration
+
 _PRIVATE_SENTINEL = "E1_PRIVATE_REASONING_SENTINEL_DO_NOT_EXPORT"
 
 
@@ -73,7 +75,10 @@ class _Completions:
             _ToolCall(item["call_id"], item["name"], item["arguments"])
             for item in turn.get("tool_calls", [])
         ]
-        text = str(turn.get("assistant_text") or "")
+        text = render_action_declaration(
+            str(turn.get("assistant_text") or ""),
+            turn.get("declared_actions") or [],
+        )
         if turn.get("delivery") == "nonstream":
             message = SimpleNamespace(
                 content=text,

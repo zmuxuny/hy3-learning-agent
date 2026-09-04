@@ -207,7 +207,8 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
                     file=file,
                 )
             )
-        if not verified_digest_shape and any(
+        digest_shaped_value = _SHA256_VALUE.fullmatch(item) is not None
+        if not (verified_digest_shape or digest_shaped_value) and any(
             pattern.search(item) for pattern in _IDENTITY_PATTERNS
         ):
             issues.append(

@@ -106,6 +106,7 @@ async def _run_child_async(
     allowlist: set[str],
     max_steps: int,
     checkpoint: dict | None = None,
+    parent_call_id: str | None = None,
 ) -> None:
     del checkpoint
     await execute_durable_child(
@@ -116,6 +117,7 @@ async def _run_child_async(
         allowlist=allowlist,
         max_steps=max_steps,
         client_factory=create_model_client,
+        parent_call_id=parent_call_id,
     )
 
 
@@ -136,6 +138,7 @@ async def resume_subagent_run(child_id: str) -> None:
         set(checkpoint.get("allowlist") or READ_ONLY_TOOL_NAMES),
         int(checkpoint.get("max_steps") or 6),
         checkpoint,
+        checkpoint.get("parent_call_id"),
     )
 
 
@@ -211,6 +214,7 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
                     "context": stored_context,
                     "allowlist": sorted(allowlist),
                     "max_steps": args.max_steps,
+                    "parent_call_id": ctx.source_model_call_id,
                 },
             ),
         )
@@ -232,6 +236,7 @@ async def subagent_spawn(ctx: ToolContext, args: SubagentSpawnArgs) -> dict:
                 stored_context,
                 allowlist,
                 args.max_steps,
+                parent_call_id=ctx.source_model_call_id,
             ),
         )
         _active_child_tasks[child_id] = task

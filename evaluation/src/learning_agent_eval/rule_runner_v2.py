@@ -1,4 +1,4 @@
-"""Atomic deterministic Rules v2 control plane for DecisionEpisode v3."""
+"""Atomic Rules control plane for active v4 and historical contracts."""
 
 from __future__ import annotations
 
@@ -21,19 +21,31 @@ from .integrity import (
 )
 from .models import (
     DecisionEpisodeV3,
+    DecisionEpisodeV4,
     JudgeReferenceV1,
+    JudgeReferenceV2,
     RuleResultV2,
+    RuleResultV3,
     RuleRunManifestV2,
+    RuleRunManifestV3,
     RuntimeFailureV1,
+    RuntimeFailureV2,
     RuntimeRunManifestV2,
+    RuntimeRunManifestV3,
 )
 from .privacy import privacy_issues
 from .rules import (
     EVALUATOR_VERSION_V2,
+    EVALUATOR_VERSION_V3,
+    RULE_IMPLEMENTATION_SHA256_V3,
     RULE_PACK_SHA256_V2,
+    RULE_PACK_SHA256_V3,
     RULE_PACK_VERSION_V2,
+    RULE_PACK_VERSION_V3,
     evaluate_rules_v2,
+    evaluate_rules_v3,
 )
+from .runtime_metadata import SOURCE_BUNDLE_VERSION, git_worktree_clean
 from .validator import resolve_evidence_path, validate_dataset, validate_episode
 
 
@@ -102,10 +114,11 @@ def _input_root(value: str | Path) -> Path:
     return root
 
 
-def _runtime_manifest(root: Path) -> dict[str, Any]:
+def _runtime_manifest(root: Path, *, active: bool = False) -> dict[str, Any]:
     document = _load(root / "run-manifest.json", artifact="Runtime manifest")
     try:
-        manifest = RuntimeRunManifestV2.model_validate(document).model_dump(
+        model = RuntimeRunManifestV3 if active else RuntimeRunManifestV2
+        manifest = model.model_validate(document).model_dump(
             mode="json", by_alias=True
         )
     except ValueError as exc:
@@ -152,16 +165,20 @@ def evaluate_run_rules_v2(
     output: str | Path,
     episode_ids: set[str] | None = None,
     track: str | None = None,
+    _contract_version: str = "v3",
 ) -> RuleEvaluationV2Summary:
-    """Validate, evaluate, and atomically publish v3 Rule Results."""
+    """Validate, evaluate, and atomically publish versioned Rule Results."""
 
+    if _contract_version not in {"v3", "v4"}:
+        raise ValueError("unsupported internal Rules contract")
+    active = _contract_version == "v4"
     root = _input_root(input_path)
     output_path = Path(output).resolve()
     if output_path.exists():
         raise RuleEvaluationV2Error(
             "output_exists", "prepare", "batch", "output directory already exists"
         )
-    runtime_manifest = _runtime_manifest(root)
+    runtime_manifest = _runtime_manifest(root, active=active)
     episode_terminals = {
         item["artifact_id"]: item
         for item in runtime_manifest["terminals"]
@@ -191,17 +208,20 @@ def evaluate_run_rules_v2(
         if track and terminal["track"] != track:
             continue
         episode_document = _load(
-            root / "episodes" / f"{episode_id}.json", artifact="DecisionEpisode v3"
+            root / "episodes" / f"{episode_id}.json",
+            artifact="DecisionEpisode v4" if active else "DecisionEpisode v3",
         )
         reference_document = _load(
             root / "judge-references" / f"{episode_id}.json",
             artifact="JudgeReference",
         )
         try:
-            episode = DecisionEpisodeV3.model_validate(episode_document).model_dump(
+            episode_model = DecisionEpisodeV4 if active else DecisionEpisodeV3
+            reference_model = JudgeReferenceV2 if active else JudgeReferenceV1
+            episode = episode_model.model_validate(episode_document).model_dump(
                 mode="json", by_alias=True
             )
-            reference = JudgeReferenceV1.model_validate(reference_document).model_dump(
+            reference = reference_model.model_validate(reference_document).model_dump(
                 mode="json", by_alias=True
             )
         except ValueError as exc:
@@ -216,7 +236,7 @@ def evaluate_run_rules_v2(
                 "episode_invalid",
                 "validate",
                 episode_id,
-                "DecisionEpisode v3 evidence is invalid",
+                "DecisionEpisode evidence is invalid",
             )
         if (
             terminal["artifact_sha256"] != decision_episode_digest(episode)
@@ -233,13 +253,8 @@ def evaluate_run_rules_v2(
             )
         episodes.append(episode)
         references[episode_id] = reference
-    if not episodes:
-        raise RuleEvaluationV2Error(
-            "selection_empty", "filter", "batch", "Episode selection is empty"
-        )
-
     failures: dict[str, dict[str, Any]] = {}
-    if episode_ids is None:
+    if active or episode_ids is None:
         for failure_id, terminal in sorted(failure_terminals.items()):
             if track and terminal["track"] != track:
                 continue
@@ -247,7 +262,8 @@ def evaluate_run_rules_v2(
                 root / "failures" / f"{failure_id}.json", artifact="Runtime Failure"
             )
             try:
-                failure = RuntimeFailureV1.model_validate(document).model_dump(
+                failure_model = RuntimeFailureV2 if active else RuntimeFailureV1
+                failure = failure_model.model_validate(document).model_dump(
                     mode="json", by_alias=True
                 )
             except ValueError as exc:
@@ -269,7 +285,28 @@ def evaluate_run_rules_v2(
                 )
             failures[failure_id] = failure
 
+    if not episodes and not failures:
+        raise RuleEvaluationV2Error(
+            "selection_empty",
+            "filter",
+            "batch",
+            "Episode and Runtime Failure selection is empty",
+        )
+
     episodes.sort(key=lambda item: item["episode_id"])
+    selection_mode = "inherited" if episode_ids is None and track is None else "adhoc_filter"
+    if active:
+        try:
+            worktree_clean = git_worktree_clean()
+        except RuntimeError as exc:
+            raise RuleEvaluationV2Error(
+                "git_status_unavailable",
+                "prepare",
+                "batch",
+                "current Git worktree status is unavailable",
+            ) from exc
+    else:
+        worktree_clean = False
     output_path.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(
         tempfile.mkdtemp(
@@ -281,10 +318,23 @@ def evaluate_run_rules_v2(
         (stage / "rules").mkdir()
         for episode in episodes:
             episode_id = episode["episode_id"]
-            result = evaluate_rules_v2(episode, references[episode_id])
+            if active:
+                result = evaluate_rules_v3(
+                    episode,
+                    references[episode_id],
+                    input_runtime_manifest_sha256=runtime_manifest["manifest_sha256"],
+                    input_runtime_formal_evaluation_result=runtime_manifest[
+                        "formal_evaluation_result"
+                    ],
+                    selection_mode=selection_mode,
+                    worktree_clean=worktree_clean,
+                )
+            else:
+                result = evaluate_rules_v2(episode, references[episode_id])
             _rule_evidence(episode, result)
             try:
-                result = RuleResultV2.model_validate(result).model_dump(
+                result_model = RuleResultV3 if active else RuleResultV2
+                result = result_model.model_validate(result).model_dump(
                     mode="json", by_alias=True
                 )
             except ValueError as exc:
@@ -292,31 +342,27 @@ def evaluate_run_rules_v2(
                     "rule_contract_invalid",
                     "rules",
                     episode_id,
-                    "Rule Result v2 contract is invalid",
+                    "Rule Result contract is invalid",
                 ) from exc
             if result["result_sha256"] != rule_result_digest(result):
                 raise RuleEvaluationV2Error(
                     "rule_digest_invalid",
                     "rules",
                     episode_id,
-                    "Rule Result v2 digest differs",
+                    "Rule Result digest differs",
                 )
             (stage / "rules" / f"{episode_id}.json").write_bytes(
                 canonical_json_bytes(result)
             )
             results.append(result)
 
-        formal = not failures and all(
-            result["formal_evaluation_result"] for result in results
-        )
         failure_ids = sorted(failures)
-        manifest = {
-            "schema_version": "rule-run-manifest-v2",
-            "input_episode_schema_version": "decision-episode-v3",
-            "input_reference_schema_version": "judge-reference-v1",
-            "evaluator_version": EVALUATOR_VERSION_V2,
-            "rule_pack_version": RULE_PACK_VERSION_V2,
-            "rule_pack_sha256": RULE_PACK_SHA256_V2,
+        formal = bool(
+            not failures
+            and results
+            and all(result["formal_evaluation_result"] for result in results)
+        )
+        common_manifest = {
             "input_runtime_manifest_sha256": runtime_manifest["manifest_sha256"],
             "invocation_mode": runtime_manifest["invocation_mode"],
             "requested_episode_ids": sorted(episode_ids or set()),
@@ -344,15 +390,48 @@ def evaluate_run_rules_v2(
             "git_commit": current_git_commit(),
             "manifest_sha256": "0" * 64,
         }
+        if active:
+            manifest = {
+                "schema_version": "rule-run-manifest-v3",
+                "input_episode_schema_version": "decision-episode-v4",
+                "input_reference_schema_version": "judge-reference-v2",
+                "input_failure_schema_version": "runtime-failure-v2",
+                "evaluator_version": EVALUATOR_VERSION_V3,
+                "evaluator_implementation_version": SOURCE_BUNDLE_VERSION,
+                "evaluator_implementation_sha256": RULE_IMPLEMENTATION_SHA256_V3,
+                "rule_pack_version": RULE_PACK_VERSION_V3,
+                "rule_pack_sha256": RULE_PACK_SHA256_V3,
+                "input_runtime_formal_evaluation_result": runtime_manifest[
+                    "formal_evaluation_result"
+                ],
+                "selection_mode": selection_mode,
+                "result_formal_evaluation_states": {
+                    item["episode_id"]: item["formal_evaluation_result"]
+                    for item in results
+                },
+                "worktree_clean": worktree_clean,
+                **common_manifest,
+            }
+        else:
+            manifest = {
+                "schema_version": "rule-run-manifest-v2",
+                "input_episode_schema_version": "decision-episode-v3",
+                "input_reference_schema_version": "judge-reference-v1",
+                "evaluator_version": EVALUATOR_VERSION_V2,
+                "rule_pack_version": RULE_PACK_VERSION_V2,
+                "rule_pack_sha256": RULE_PACK_SHA256_V2,
+                **common_manifest,
+            }
         manifest["manifest_sha256"] = artifact_manifest_digest(manifest)
         try:
-            RuleRunManifestV2.model_validate(manifest)
+            manifest_model = RuleRunManifestV3 if active else RuleRunManifestV2
+            manifest_model.model_validate(manifest)
         except ValueError as exc:
             raise RuleEvaluationV2Error(
                 "manifest_invalid",
                 "publish",
                 "batch",
-                "Rule Run Manifest v2 is invalid",
+                "Rule Run Manifest is invalid",
             ) from exc
         if privacy_issues({"results": results, "manifest": manifest}, file="rules-v2"):
             raise RuleEvaluationV2Error(
@@ -377,7 +456,10 @@ def evaluate_run_rules_v2(
 
     return RuleEvaluationV2Summary(
         episode_ids=tuple(item["episode_id"] for item in results),
-        tracks=tuple(item["track"] for item in episodes),
+        tracks=tuple(
+            [item["track"] for item in episodes]
+            + [failure_terminals[item]["track"] for item in sorted(failures)]
+        ),
         runtime_failure_ids=tuple(sorted(failures)),
         output=output_path,
         failed_episode_ids=tuple(
@@ -390,4 +472,22 @@ def evaluate_run_rules_v2(
             item["episode_id"] for item in results if item["hard_gates"]
         ),
         formal_evaluation_result=formal,
+    )
+
+
+def evaluate_run_rules_v3(
+    *,
+    input_path: str | Path,
+    output: str | Path,
+    episode_ids: set[str] | None = None,
+    track: str | None = None,
+) -> RuleEvaluationV2Summary:
+    """Evaluate the active v4 Runtime output without extending historical v2."""
+
+    return evaluate_run_rules_v2(
+        input_path=input_path,
+        output=output,
+        episode_ids=episode_ids,
+        track=track,
+        _contract_version="v4",
     )

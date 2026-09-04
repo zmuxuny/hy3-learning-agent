@@ -8,7 +8,7 @@ from typing import Any
 
 from .canonical import sha256_digest
 from .integrity import case_spec_digest, judge_reference_digest, oracle_envelope_digest
-from .models import CaseSpecV1, JudgeReferenceV1
+from .models import CaseSpecV1, CaseSpecV2, JudgeReferenceV1, JudgeReferenceV2
 
 
 class CaseSpecError(ValueError):
@@ -22,6 +22,18 @@ class CaseSpecError(ValueError):
 def validate_case_spec(document: Mapping[str, Any]) -> dict[str, Any]:
     try:
         case = CaseSpecV1.model_validate(document).model_dump(mode="json")
+    except ValueError as exc:
+        raise CaseSpecError("case_spec.contract_invalid") from exc
+    if case["case_spec_sha256"] != case_spec_digest(case):
+        raise CaseSpecError("case_spec.digest_mismatch")
+    return case
+
+
+def validate_case_spec_v2(document: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate the active CaseSpec contract and its self digest."""
+
+    try:
+        case = CaseSpecV2.model_validate(document).model_dump(mode="json")
     except ValueError as exc:
         raise CaseSpecError("case_spec.contract_invalid") from exc
     if case["case_spec_sha256"] != case_spec_digest(case):
@@ -52,6 +64,26 @@ def build_judge_reference(case: Mapping[str, Any]) -> dict[str, Any]:
     }
     reference["reference_sha256"] = judge_reference_digest(reference)
     return JudgeReferenceV1.model_validate(reference).model_dump(mode="json")
+
+
+def build_judge_reference_v2(case: Mapping[str, Any]) -> dict[str, Any]:
+    """Project active label-free criteria with frozen predicate semantics."""
+
+    validated = validate_case_spec_v2(case)
+    criteria = validated["judge_criteria"]
+    reference = {
+        "schema_version": "judge-reference-v2",
+        "opaque_case_id": f"case-{validated['case_spec_sha256'][:24]}",
+        "case_spec_sha256": validated["case_spec_sha256"],
+        "track": validated["track"],
+        "allowed_action_classes": deepcopy(criteria["allowed_action_classes"]),
+        "constraints": deepcopy(criteria["constraints"]),
+        "acceptable_variations": deepcopy(criteria["acceptable_variations"]),
+        "predicate_semantics": criteria["predicate_semantics"],
+        "reference_sha256": "0" * 64,
+    }
+    reference["reference_sha256"] = judge_reference_digest(reference)
+    return JudgeReferenceV2.model_validate(reference).model_dump(mode="json")
 
 
 def legacy_runtime_projection(case: Mapping[str, Any]) -> dict[str, Any]:
@@ -86,6 +118,40 @@ def legacy_runtime_projection(case: Mapping[str, Any]) -> dict[str, Any]:
         "fixture_sha256": sha256_digest(
             {
                 "source": "case-spec-v1",
+                "case_spec_sha256": validated["case_spec_sha256"],
+            }
+        ),
+    }
+
+
+def legacy_runtime_projection_v2(case: Mapping[str, Any]) -> dict[str, Any]:
+    """Adapt the active CaseSpec to existing deterministic Runtime seeders."""
+
+    validated = validate_case_spec_v2(case)
+    runtime = validated["runtime_setup"]
+    return {
+        "schema_version": "e1-runtime-mini-fixture-v1",
+        "episode_id": episode_id_for_case(validated),
+        "scenario_family_id": validated["scenario_family_id"],
+        "track": validated["track"],
+        "split": validated["split"],
+        "difficulty": validated["difficulty"],
+        "frozen_time": runtime["frozen_time"],
+        "timezone": runtime["timezone"],
+        "owner_id": runtime["owner_id"],
+        "run_id": runtime["run_id"],
+        "session_id": runtime["session_id"],
+        "trigger": deepcopy(runtime["trigger"]),
+        "state_before": deepcopy(runtime["state_before"]),
+        "seed_kind": runtime["seed_kind"],
+        "seed": deepcopy(runtime["seed"]),
+        "scripted_turns": deepcopy(runtime["scripted_turns"]),
+        "oracle_file": "not-published",
+        "resource_snapshot_version": runtime["resource_snapshot_version"],
+        "engineering_only": validated["dataset_role"] == "engineering_mini",
+        "fixture_sha256": sha256_digest(
+            {
+                "source": "case-spec-v2",
                 "case_spec_sha256": validated["case_spec_sha256"],
             }
         ),

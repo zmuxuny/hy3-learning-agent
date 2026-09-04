@@ -1,4 +1,4 @@
-"""Isolated DecisionEpisode v3 worker for one CaseSpec."""
+"""Isolated worker for historical v3 and active v4 evaluation contracts."""
 
 from __future__ import annotations
 
@@ -12,22 +12,29 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
+from .action_protocol import evaluation_system_prompt
 from .canonical import canonical_json, canonical_json_bytes, sha256_digest
 from .case_specs import (
     build_judge_reference,
+    build_judge_reference_v2,
     legacy_runtime_projection,
+    legacy_runtime_projection_v2,
     validate_case_spec,
+    validate_case_spec_v2,
 )
 from .delivery import RecordingDeliverySink
 from .deltas import DeltaConstructionError, build_state_delta
 from .e31_runtime import (
     build_model_calls_v3,
+    build_model_calls_v4,
     build_real_provider_attestation,
     build_runtime_failure,
+    build_runtime_failure_v2,
     build_stub_provider_attestation,
 )
 from .exporter import ExportError
 from .exporter_v3 import ExportV3Error, build_decision_episode_v3
+from .exporter_v4 import ExportV4Error, build_decision_episode_v4
 from .isolation import EvaluationIsolationError, IsolationGuard
 from .normalizers import normalize_json, normalize_rfc3339
 from .privacy import privacy_issues
@@ -126,14 +133,17 @@ def _failure_document(
         configured_model=configured_model,
         frozen_time=frozen_time,
     )
-    return build_runtime_failure(
+    active = request.get("contract_version") == "v4"
+    builder = build_runtime_failure_v2 if active else build_runtime_failure
+    call_builder = build_model_calls_v4 if active else build_model_calls_v3
+    return builder(
         case_id=case["case_id"],
         case_spec_sha256=case["case_spec_sha256"],
         stage=stage,
         failure_class=_failure_class(stage),
         reason_code=reason_code,
         public_summary=public_summary,
-        model_calls=build_model_calls_v3(public_records),
+        model_calls=call_builder(public_records),
         provider_attestation=attestation,
         isolation_evidence=isolation_evidence,
         started_at=frozen_time,
@@ -142,13 +152,19 @@ def _failure_document(
 
 
 def _assert_episode_public(episode: dict[str, Any], reference: dict[str, Any]) -> None:
-    if privacy_issues({"episode": episode, "reference": reference}, file="v3-output"):
+    version = str(episode["schema_version"])
+    if privacy_issues({"episode": episode, "reference": reference}, file=version):
         raise WorkerFailure(
-            "privacy_rejected", "publish", "public v3 artifacts failed privacy checks"
+            "privacy_rejected", "publish", "public evaluation artifacts failed privacy checks"
         )
-    if validate_episode(episode, source=f"{episode['episode_id']}.json"):
+    validation_issues = validate_episode(
+        episode, source=f"{episode['episode_id']}.json"
+    )
+    if validation_issues:
         raise WorkerFailure(
-            "episode_invalid", "validate", "DecisionEpisode v3 failed validation"
+            "episode_invalid",
+            "validate",
+            f"{version} failed validation ({validation_issues[0].code})",
         )
 
 
@@ -181,7 +197,12 @@ def _public_model_records(
 
 
 async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, Any]:
-    case = validate_case_spec(_load_json(Path(request["case_path"])))
+    active = request.get("contract_version") == "v4"
+    case_validator = validate_case_spec_v2 if active else validate_case_spec
+    reference_builder = build_judge_reference_v2 if active else build_judge_reference
+    fixture_builder = legacy_runtime_projection_v2 if active else legacy_runtime_projection
+    episode_builder = build_decision_episode_v4 if active else build_decision_episode_v3
+    case = case_validator(_load_json(Path(request["case_path"])))
     runtime_setup = case["runtime_setup"]
     if runtime_setup["invocation_mode"] != request["model_mode"]:
         raise WorkerFailure(
@@ -189,8 +210,8 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             "load",
             "CaseSpec invocation mode differs from the selected model mode",
         )
-    reference = build_judge_reference(case)
-    fixture = legacy_runtime_projection(case)
+    reference = reference_builder(case)
+    fixture = fixture_builder(case)
     snapshot = EvaluationSnapshotProvider(request["resource_path"])
     if snapshot.version != runtime_setup["resource_snapshot_version"]:
         raise WorkerFailure(
@@ -237,6 +258,10 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             app_identity.deterministic_entity_ids(fixture["episode_id"])
         )
         stack.enter_context(app_search.use_snapshot_provider(snapshot))
+        if active:
+            agent_module.SYSTEM_PROMPT = evaluation_system_prompt(
+                agent_module.SYSTEM_PROMPT
+            )
         app_config.prepare_runtime_directories(app_config.settings.RUNTIME_STATE_ROOT)
         await database.create_schema(state_root=app_config.settings.RUNTIME_STATE_ROOT)
         await _seed_fixture(fixture, app_time.utc_now())
@@ -356,7 +381,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             configured_model=app_config.settings.MODEL_NAME,
             frozen_time=frozen_time,
         )
-        episode = build_decision_episode_v3(
+        episode = episode_builder(
             case_spec=case,
             judge_reference=reference,
             model_records=public_records,
@@ -442,8 +467,8 @@ def main(argv: list[str] | None = None) -> int:
         code, stage, message = exc.code, "snapshot", "Snapshot collection failed"
     except DeltaConstructionError as exc:
         code, stage, message = exc.code, "delta", "State Delta construction failed"
-    except (ExportError, ExportV3Error) as exc:
-        code, stage, message = exc.code, "export", "DecisionEpisode v3 export failed"
+    except (ExportError, ExportV3Error, ExportV4Error) as exc:
+        code, stage, message = exc.code, "export", "DecisionEpisode export failed"
     except EvaluationIsolationError:
         code, stage, message = (
             "isolation.violation",

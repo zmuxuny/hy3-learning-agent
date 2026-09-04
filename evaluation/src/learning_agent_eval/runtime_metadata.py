@@ -40,6 +40,7 @@ AGENT_RUNTIME_CONFIG_SHA256 = sha256_digest(
         "reasoning_effort": "high",
     }
 )
+SOURCE_BUNDLE_VERSION = "evaluation-source-bundle-v1"
 
 
 def dependency_lock_sha256(project_root: Path = PROJECT_ROOT) -> str:
@@ -86,6 +87,32 @@ def dependency_environment_reason_codes(
     return tuple(sorted(reasons))
 
 
+def implementation_source_digest(
+    relative_paths: tuple[str, ...], project_root: Path = PROJECT_ROOT
+) -> str:
+    """Digest exact evaluation implementation bytes under the repository root."""
+
+    if not relative_paths or relative_paths != tuple(sorted(set(relative_paths))):
+        raise ValueError("source bundle paths must be sorted and unique")
+    files: list[dict[str, Any]] = []
+    for relative in relative_paths:
+        path = Path(relative)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("source bundle paths must be contained and relative")
+        absolute = project_root / path
+        payload = absolute.read_bytes()
+        files.append(
+            {
+                "path": relative,
+                "size": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+        )
+    return sha256_digest(
+        {"source_bundle_version": SOURCE_BUNDLE_VERSION, "files": files}
+    )
+
+
 def provider_attribution_reason_codes(
     attestation: Mapping[str, Any],
 ) -> tuple[str, ...]:
@@ -115,10 +142,15 @@ def provider_attribution_reason_codes(
     if scope == "agent_runtime":
         expected_configuration = AGENT_RUNTIME_CONFIG_SHA256
     else:
-        from .rubric import JUDGE_CONFIG_SHA256_V2
+        from .rubric import JUDGE_CONFIG_SHA256_V2, JUDGE_CONFIG_SHA256_V3
 
-        expected_configuration = JUDGE_CONFIG_SHA256_V2
-    if attestation.get("configuration_sha256") != expected_configuration:
+        expected_configuration = {JUDGE_CONFIG_SHA256_V2, JUDGE_CONFIG_SHA256_V3}
+    actual_configuration = attestation.get("configuration_sha256")
+    if (
+        actual_configuration not in expected_configuration
+        if isinstance(expected_configuration, set)
+        else actual_configuration != expected_configuration
+    ):
         reasons.add("provider.configuration_digest_mismatch")
     if not attestation.get("worktree_clean"):
         reasons.add("provider.worktree_dirty")

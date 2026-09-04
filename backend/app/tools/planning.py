@@ -229,6 +229,7 @@ async def _run_planning_child(
     assignment_index: int,
     assignment: PlanningAssignment,
     context: str,
+    parent_call_id: str | None = None,
 ) -> None:
     """Resume one deterministic planning child through the shared state machine."""
 
@@ -243,6 +244,7 @@ async def _run_planning_child(
         allowlist=_planning_allowlist(),
         max_steps=4,
         client_factory=create_model_client,
+        parent_call_id=parent_call_id,
     )
 
 
@@ -332,6 +334,7 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
                         "context": snapshot_markdown,
                         "allowlist": sorted(_planning_allowlist()),
                         "max_steps": 4,
+                        "parent_call_id": ctx.source_model_call_id,
                     },
                 ),
             )
@@ -382,6 +385,7 @@ async def planning_delegate(ctx: ToolContext, args: PlanningDelegateArgs) -> dic
                     assignment_index=index,
                     assignment=assignment,
                     context=context,
+                    parent_call_id=ctx.source_model_call_id,
                 ),
             ))
         if active_tasks:

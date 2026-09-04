@@ -9,13 +9,21 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from .aggregate import AggregateEvaluationError, aggregate_results
-from .aggregate_v2 import AggregateEvaluationV2Error, aggregate_results_v2
+from .aggregate_v2 import (
+    AggregateEvaluationV2Error,
+    aggregate_results_v2,
+    aggregate_results_v3,
+)
 from .judge import JudgeEvaluationError, evaluate_judges
-from .judge_v2 import JudgeEvaluationV2Error, evaluate_judges_v2
+from .judge_v2 import JudgeEvaluationV2Error, evaluate_judges_v2, evaluate_judges_v3
 from .rule_runner import RuleEvaluationError, evaluate_run_rules
-from .rule_runner_v2 import RuleEvaluationV2Error, evaluate_run_rules_v2
+from .rule_runner_v2 import (
+    RuleEvaluationV2Error,
+    evaluate_run_rules_v2,
+    evaluate_run_rules_v3,
+)
 from .runner import RunAgentError, run_agent
-from .runner_v3 import RunAgentV3Error, run_agent_v3
+from .runner_v3 import RunAgentV3Error, run_agent_v3, run_agent_v4
 from .validator import validate_dataset
 
 
@@ -43,7 +51,7 @@ def _parser() -> argparse.ArgumentParser:
     validate.add_argument("--dataset", required=True)
     run = commands.add_parser(
         "run-agent",
-        help="run isolated CaseSpecs and export active DecisionEpisode v3 artifacts",
+        help="run isolated CaseSpecs and export active DecisionEpisode v4 artifacts",
     )
     run.add_argument("--dataset", required=True)
     run.add_argument("--manifest", required=True)
@@ -57,7 +65,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--allow-real-model", action="store_true")
     rules = commands.add_parser(
         "evaluate-rules",
-        help="run deterministic Rules over active v3 Runtime output",
+        help="run deterministic Rules over active v4 Runtime output",
     )
     rules.add_argument("--input", required=True)
     rules.add_argument("--output", required=True)
@@ -68,7 +76,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     judge = commands.add_parser(
         "evaluate-judge",
-        help="run the blind structured Judge over matched v3 and Rule v2 artifacts",
+        help="run the blind structured Judge over matched v4 and Rule v3 artifacts",
     )
     judge.add_argument("--episodes", required=True)
     judge.add_argument("--rules", required=True)
@@ -83,7 +91,7 @@ def _parser() -> argparse.ArgumentParser:
     judge.add_argument("--stub-response")
     aggregate = commands.add_parser(
         "aggregate-results",
-        help="deterministically aggregate active v3 Rule and Judge results",
+        help="deterministically aggregate active v4 Rule and Judge results",
     )
     aggregate.add_argument("--episodes", required=True)
     aggregate.add_argument("--rules", required=True)
@@ -112,9 +120,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"dataset_valid episodes={report.stats.episodes} tracks={counts}")
         return 0
     if arguments.command == "evaluate-rules":
-        active_v3 = _run_manifest_version(arguments.input) == "runtime-run-manifest-v2"
+        manifest_version = _run_manifest_version(arguments.input)
         try:
-            evaluator = evaluate_run_rules_v2 if active_v3 else evaluate_run_rules
+            evaluator = (
+                evaluate_run_rules_v3
+                if manifest_version == "runtime-run-manifest-v3"
+                else evaluate_run_rules_v2
+                if manifest_version == "runtime-run-manifest-v2"
+                else evaluate_run_rules
+            )
             summary = evaluator(
                 input_path=arguments.input,
                 output=arguments.output,
@@ -146,11 +160,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
         return 3 if summary.failed_episode_ids else 0
     if arguments.command == "evaluate-judge":
-        active_v3 = (
-            _run_manifest_version(arguments.episodes) == "runtime-run-manifest-v2"
-        )
+        manifest_version = _run_manifest_version(arguments.episodes)
         try:
-            evaluator = evaluate_judges_v2 if active_v3 else evaluate_judges
+            evaluator = (
+                evaluate_judges_v3
+                if manifest_version == "runtime-run-manifest-v3"
+                else evaluate_judges_v2
+                if manifest_version == "runtime-run-manifest-v2"
+                else evaluate_judges
+            )
             summary = evaluator(
                 episodes=arguments.episodes,
                 rules=arguments.rules,
@@ -190,9 +208,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         return 2 if summary.judge_error_episode_ids else 0
     if arguments.command == "aggregate-results":
-        active_v3 = _run_manifest_version(arguments.judges) == "judge-run-manifest-v2"
+        manifest_version = _run_manifest_version(arguments.judges)
         try:
-            aggregator = aggregate_results_v2 if active_v3 else aggregate_results
+            aggregator = (
+                aggregate_results_v3
+                if manifest_version == "judge-run-manifest-v3"
+                else aggregate_results_v2
+                if manifest_version == "judge-run-manifest-v2"
+                else aggregate_results
+            )
             summary = aggregator(
                 episodes=arguments.episodes,
                 rules=arguments.rules,
@@ -225,9 +249,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         if summary.judge_error_episode_ids:
             return 2
         return 3 if summary.failed_episode_ids else 0
-    active_v3 = _document_version(arguments.manifest) == "case-suite-manifest-v1"
+    manifest_version = _document_version(arguments.manifest)
     try:
-        runner = run_agent_v3 if active_v3 else run_agent
+        runner = (
+            run_agent_v4
+            if manifest_version == "case-suite-manifest-v2"
+            else run_agent_v3
+            if manifest_version == "case-suite-manifest-v1"
+            else run_agent
+        )
         summary = runner(
             dataset=arguments.dataset,
             manifest=arguments.manifest,

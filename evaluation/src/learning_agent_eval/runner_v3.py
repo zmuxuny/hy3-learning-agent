@@ -1,4 +1,4 @@
-"""Atomic CaseSpec runner for the active DecisionEpisode v3 path."""
+"""Atomic CaseSpec runner for active v4 and historical evaluation paths."""
 
 from __future__ import annotations
 
@@ -13,17 +13,24 @@ from pathlib import Path
 from typing import Any
 
 from .canonical import canonical_json_bytes
-from .case_specs import episode_id_for_case, validate_case_spec
+from .case_specs import episode_id_for_case, validate_case_spec, validate_case_spec_v2
 from .e3_io import current_git_commit
 from .e31_runtime import (
     build_real_provider_attestation,
     build_runtime_failure,
+    build_runtime_failure_v2,
     build_runtime_manifest_v2,
+    build_runtime_manifest_v3,
     build_stub_provider_attestation,
 )
 from .integrity import artifact_manifest_digest
 from .isolation import EvaluationIsolationError, worker_environment
-from .models import CaseSuiteManifestV1, RuntimeRunManifestV2
+from .models import (
+    CaseSuiteManifestV1,
+    CaseSuiteManifestV2,
+    RuntimeRunManifestV2,
+    RuntimeRunManifestV3,
+)
 from .privacy import privacy_issues
 from .runner import _contained_file
 from .runtime_metadata import (
@@ -115,6 +122,7 @@ def _fallback_failure(
     dependency_lock_verified: bool,
     model_mode: str,
     error: dict[str, str],
+    contract_version: str = "v3",
 ) -> dict[str, Any]:
     frozen_time = case["runtime_setup"]["frozen_time"]
     if model_mode == "stub":
@@ -139,7 +147,8 @@ def _fallback_failure(
             worktree_clean=worktree_clean,
             dependency_lock_verified=dependency_lock_verified,
         )
-    return build_runtime_failure(
+    builder = build_runtime_failure_v2 if contract_version == "v4" else build_runtime_failure
+    return builder(
         case_id=case["case_id"],
         case_spec_sha256=case["case_spec_sha256"],
         stage=error["stage"],
@@ -154,9 +163,12 @@ def _fallback_failure(
     )
 
 
-def _validate_manifest(document: dict[str, Any]) -> dict[str, Any]:
+def _validate_manifest(
+    document: dict[str, Any], *, contract_version: str = "v3"
+) -> dict[str, Any]:
     try:
-        manifest = CaseSuiteManifestV1.model_validate(document).model_dump(mode="json")
+        model = CaseSuiteManifestV2 if contract_version == "v4" else CaseSuiteManifestV1
+        manifest = model.model_validate(document).model_dump(mode="json")
     except ValueError as exc:
         raise RunAgentV3Error(
             "manifest_invalid",
@@ -184,6 +196,7 @@ def run_agent_v3(
     model_mode: str = "stub",
     allow_real_model: bool = False,
     worker_timeout_seconds: float = 180.0,
+    _contract_version: str = "v3",
 ) -> RunAgentV3Summary:
     """Run selected CaseSpecs independently and preserve every terminal artifact."""
 
@@ -216,7 +229,13 @@ def run_agent_v3(
         raise RunAgentV3Error(
             "dataset_invalid", "validate", "batch", "CaseSpec dataset failed validation"
         )
-    suite = _validate_manifest(_load(manifest_path, artifact="CaseSuite manifest"))
+    if _contract_version not in {"v3", "v4"}:
+        raise ValueError("unsupported internal evaluation contract")
+    active = _contract_version == "v4"
+    suite = _validate_manifest(
+        _load(manifest_path, artifact="CaseSuite manifest"),
+        contract_version=_contract_version,
+    )
     if model_mode not in {"stub", "real"}:
         raise RunAgentV3Error(
             "model_mode_invalid", "prepare", "batch", "model mode must be stub or real"
@@ -232,7 +251,8 @@ def run_agent_v3(
     selected: list[tuple[Path, dict[str, Any], str]] = []
     for relative in suite["case_files"]:
         case_path = _contained_file(dataset_root, relative)
-        case = validate_case_spec(_load(case_path, artifact="CaseSpec"))
+        case_validator = validate_case_spec_v2 if active else validate_case_spec
+        case = case_validator(_load(case_path, artifact="CaseSpec"))
         episode_id = episode_id_for_case(case)
         if episode_ids and episode_id not in episode_ids:
             continue
@@ -306,6 +326,7 @@ def run_agent_v3(
                 "dependency_lock_version": DEPENDENCY_LOCK_VERSION,
                 "dependency_lock_sha256": dependency_digest,
                 "dependency_lock_verified": dependency_lock_verified,
+                "contract_version": _contract_version,
             }
             (worker_root / "request.json").write_bytes(canonical_json_bytes(request))
             try:
@@ -347,6 +368,7 @@ def run_agent_v3(
                         dependency_lock_verified=dependency_lock_verified,
                         model_mode=model_mode,
                         error=error,
+                        contract_version=_contract_version,
                     )
                     (stage / "failures" / f"{failure['failure_id']}.json").write_bytes(
                         canonical_json_bytes(failure)
@@ -365,6 +387,7 @@ def run_agent_v3(
                         dependency_lock_verified=dependency_lock_verified,
                         model_mode=model_mode,
                         error=_worker_error(completed),
+                        contract_version=_contract_version,
                     )
                     (stage / "failures" / f"{failure['failure_id']}.json").write_bytes(
                         canonical_json_bytes(failure)
@@ -406,7 +429,7 @@ def run_agent_v3(
                                 "episode_invalid",
                                 "validate",
                                 episode_id,
-                                "DecisionEpisode v3 failed validation",
+                                "DecisionEpisode failed validation",
                             )
                         if (
                             result.get("artifact_id") != episode_id
@@ -462,15 +485,29 @@ def run_agent_v3(
             finally:
                 shutil.rmtree(worker_root, ignore_errors=True)
 
-        manifest_document = build_runtime_manifest_v2(
-            dataset_version=suite["dataset_version"],
-            invocation_mode=model_mode,
-            terminals=terminals,
-            git_commit=commit,
-            dependency_lock_version=DEPENDENCY_LOCK_VERSION,
-            dependency_lock_sha256=dependency_digest,
-        )
-        RuntimeRunManifestV2.model_validate(manifest_document)
+        if active:
+            manifest_document = build_runtime_manifest_v3(
+                dataset_version=suite["dataset_version"],
+                invocation_mode=model_mode,
+                terminals=terminals,
+                requested_episode_ids=sorted(episode_ids or set()),
+                selected_track=track,
+                git_commit=commit,
+                worktree_clean=clean,
+                dependency_lock_version=DEPENDENCY_LOCK_VERSION,
+                dependency_lock_sha256=dependency_digest,
+            )
+            RuntimeRunManifestV3.model_validate(manifest_document)
+        else:
+            manifest_document = build_runtime_manifest_v2(
+                dataset_version=suite["dataset_version"],
+                invocation_mode=model_mode,
+                terminals=terminals,
+                git_commit=commit,
+                dependency_lock_version=DEPENDENCY_LOCK_VERSION,
+                dependency_lock_sha256=dependency_digest,
+            )
+            RuntimeRunManifestV2.model_validate(manifest_document)
         if privacy_issues(manifest_document, file="run-manifest.json"):
             raise RunAgentV3Error(
                 "privacy_rejected",
@@ -487,7 +524,7 @@ def run_agent_v3(
                 "output_invalid",
                 "publish",
                 "batch",
-                "v3 Runtime output failed final validation",
+                "Runtime output failed final validation",
             )
         os.replace(stage, output_path)
     except BaseException:
@@ -502,4 +539,30 @@ def run_agent_v3(
         output=output_path,
         worker_roots=tuple(worker_roots),
         formal_evaluation_result=manifest_document["formal_evaluation_result"],
+    )
+
+
+def run_agent_v4(
+    *,
+    dataset: str | Path,
+    manifest: str | Path,
+    output: str | Path,
+    episode_ids: set[str] | None = None,
+    track: str | None = None,
+    model_mode: str = "stub",
+    allow_real_model: bool = False,
+    worker_timeout_seconds: float = 180.0,
+) -> RunAgentV3Summary:
+    """Run the active E3.1.1 contract without extending historical v3."""
+
+    return run_agent_v3(
+        dataset=dataset,
+        manifest=manifest,
+        output=output,
+        episode_ids=episode_ids,
+        track=track,
+        model_mode=model_mode,
+        allow_real_model=allow_real_model,
+        worker_timeout_seconds=worker_timeout_seconds,
+        _contract_version="v4",
     )

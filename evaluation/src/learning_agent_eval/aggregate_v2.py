@@ -1,4 +1,4 @@
-"""Pure deterministic aggregation for the active DecisionEpisode v3 path."""
+"""Pure deterministic aggregation for active v4 and historical contracts."""
 
 from __future__ import annotations
 
@@ -16,37 +16,72 @@ from pydantic import ValidationError
 
 from .canonical import canonical_json_bytes
 from .e3_io import current_git_commit
-from .e31_io import E31InputError, load_e31_inputs, load_object
+from .e31_io import E31InputError, load_e31_inputs, load_e311_inputs, load_object
 from .integrity import (
     aggregate_result_digest,
     artifact_manifest_digest,
     judge_result_digest,
 )
-from .judge_v2 import validate_judge_result_v2
+from .judge_v2 import validate_judge_result_v2, validate_judge_result_v3
 from .models import (
     AggregateResultV2,
+    AggregateResultV3,
     AggregateRunManifestV2,
+    AggregateRunManifestV3,
     AggregateTrackResultV2,
+    AggregateTrackResultV3,
     JudgeResultV2,
+    JudgeResultV3,
     JudgeRunManifestV2,
+    JudgeRunManifestV3,
 )
 from .privacy import privacy_issues
 from .rubric import (
     DIMENSION_WEIGHTS,
     JUDGE_CONFIG_SHA256_V2,
+    JUDGE_CONFIG_SHA256_V3,
     JUDGE_CONFIG_VERSION_V2,
+    JUDGE_CONFIG_VERSION_V3,
     JUDGE_PROMPT_SHA256_V2,
+    JUDGE_PROMPT_SHA256_V3,
     JUDGE_PROMPT_VERSION_V2,
+    JUDGE_PROMPT_VERSION_V3,
     JUDGE_VERSION_V2,
+    JUDGE_VERSION_V3,
     REPAIR_LIMIT,
     RUBRIC_SHA256,
     RUBRIC_VERSION,
     TRACK_ANCHOR_SHA256,
     TRACK_ANCHOR_VERSION,
 )
+from .runtime_metadata import (
+    SOURCE_BUNDLE_VERSION,
+    git_worktree_clean,
+    implementation_source_digest,
+)
 from .validator import resolve_evidence_path, validate_dataset
 
 AGGREGATOR_VERSION_V2 = "deterministic-aggregator-v2"
+AGGREGATOR_VERSION_V3 = "deterministic-aggregator-v3"
+AGGREGATOR_IMPLEMENTATION_SOURCE_FILES_V3 = tuple(
+    sorted(
+        (
+            "evaluation/src/learning_agent_eval/aggregate_v2.py",
+            "evaluation/src/learning_agent_eval/canonical.py",
+            "evaluation/src/learning_agent_eval/e31_io.py",
+            "evaluation/src/learning_agent_eval/integrity.py",
+            "evaluation/src/learning_agent_eval/judge_v2.py",
+            "evaluation/src/learning_agent_eval/models.py",
+            "evaluation/src/learning_agent_eval/privacy.py",
+            "evaluation/src/learning_agent_eval/rubric.py",
+            "evaluation/src/learning_agent_eval/runtime_metadata.py",
+            "evaluation/src/learning_agent_eval/validator.py",
+        )
+    )
+)
+AGGREGATOR_IMPLEMENTATION_SHA256_V3 = implementation_source_digest(
+    AGGREGATOR_IMPLEMENTATION_SOURCE_FILES_V3
+)
 TRACK_ORDER = ("planning", "intervention", "assessment", "revision")
 
 
@@ -142,7 +177,18 @@ def _load_judges(
         )
     bundles = {item.episode["episode_id"]: item for item in inputs.bundles}
     judge_ids = set(manifest["episode_ids"])
-    if not judge_ids.issubset(bundles):
+    requested = set(manifest["requested_episode_ids"])
+    selected_track = manifest["selected_track"]
+    expected_judge_ids = (
+        requested
+        if requested
+        else {
+            episode_id
+            for episode_id, bundle in bundles.items()
+            if selected_track is None or bundle.episode["track"] == selected_track
+        }
+    )
+    if judge_ids != expected_judge_ids:
         raise AggregateEvaluationV2Error(
             "judge_episode_missing",
             "validate",
@@ -663,6 +709,625 @@ def aggregate_results_v2(
         ),
         judge_error_episode_ids=tuple(
             item["episode_id"] for item in documents if item["status"] == "judge_error"
+        ),
+        formal_evaluation_result=formal,
+    )
+
+
+def _load_judges_v3(
+    *, root: Path, inputs: Any
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    document = load_object(root / "run-manifest.json", artifact="Judge manifest")
+    try:
+        manifest = JudgeRunManifestV3.model_validate(document).model_dump(
+            mode="json", by_alias=True
+        )
+    except ValidationError as exc:
+        raise AggregateEvaluationV2Error(
+            "judge_manifest_invalid",
+            "load",
+            "batch",
+            "Judge Run Manifest v3 is invalid",
+        ) from exc
+    if manifest["manifest_sha256"] != artifact_manifest_digest(manifest):
+        raise AggregateEvaluationV2Error(
+            "judge_manifest_digest",
+            "load",
+            "batch",
+            "Judge Run Manifest v3 digest differs",
+        )
+    expected_config = {
+        "input_episode_schema_version": "decision-episode-v4",
+        "input_rule_schema_version": "rule-result-v3",
+        "input_reference_schema_version": "judge-reference-v2",
+        "input_failure_schema_version": "runtime-failure-v2",
+        "judge_version": JUDGE_VERSION_V3,
+        "judge_config_version": JUDGE_CONFIG_VERSION_V3,
+        "judge_config_sha256": JUDGE_CONFIG_SHA256_V3,
+        "judge_prompt_version": JUDGE_PROMPT_VERSION_V3,
+        "judge_prompt_sha256": JUDGE_PROMPT_SHA256_V3,
+        "rubric_version": RUBRIC_VERSION,
+        "rubric_sha256": RUBRIC_SHA256,
+        "track_anchor_version": TRACK_ANCHOR_VERSION,
+        "track_anchor_sha256": TRACK_ANCHOR_SHA256,
+        "repair_limit": REPAIR_LIMIT,
+        "input_runtime_manifest_sha256": inputs.runtime_manifest["manifest_sha256"],
+        "input_rule_manifest_sha256": inputs.rule_manifest["manifest_sha256"],
+        "input_rule_manifest_formal_evaluation_result": inputs.rule_manifest[
+            "formal_evaluation_result"
+        ],
+    }
+    if any(manifest[key] != value for key, value in expected_config.items()):
+        raise AggregateEvaluationV2Error(
+            "judge_manifest_config_mismatch",
+            "validate",
+            "batch",
+            "Judge Run Manifest v3 configuration or inputs differ",
+        )
+    bundles = {item.episode["episode_id"]: item for item in inputs.bundles}
+    judge_ids = set(manifest["episode_ids"])
+    requested_ids = set(manifest["requested_episode_ids"])
+    selected_track = manifest["selected_track"]
+    expected_judge_ids = (
+        requested_ids
+        if requested_ids
+        else {
+            episode_id
+            for episode_id, bundle in bundles.items()
+            if selected_track is None
+            or bundle.episode["track"] == selected_track
+        }
+    )
+    if judge_ids != expected_judge_ids:
+        raise AggregateEvaluationV2Error(
+            "judge_episode_inventory_invalid",
+            "validate",
+            "batch",
+            "Judge output must exhaustively preserve its selected Rule partition",
+        )
+    _inventory(root, "judge-results", judge_ids)
+    expected_failure_ids = {
+        failure_id
+        for failure_id in inputs.runtime_failures
+        if selected_track is None
+        or inputs.runtime_failure_tracks[failure_id] == selected_track
+    }
+    if set(manifest["runtime_failure_ids"]) != expected_failure_ids:
+        raise AggregateEvaluationV2Error(
+            "judge_failure_inventory_invalid",
+            "validate",
+            "batch",
+            "Judge output must monotonically preserve Runtime Failures",
+        )
+    for failure_id in manifest["runtime_failure_ids"]:
+        if (
+            manifest["input_runtime_failure_digests"].get(failure_id)
+            != inputs.runtime_failures[failure_id]["failure_sha256"]
+            or manifest["runtime_failure_tracks"].get(failure_id)
+            != inputs.runtime_failure_tracks[failure_id]
+        ):
+            raise AggregateEvaluationV2Error(
+                "judge_failure_linkage_invalid",
+                "validate",
+                failure_id,
+                "Judge Runtime Failure linkage differs",
+            )
+    results: dict[str, dict[str, Any]] = {}
+    for episode_id in sorted(judge_ids):
+        result_document = load_object(
+            root / "judge-results" / f"{episode_id}.json",
+            artifact="Judge Result v3",
+        )
+        try:
+            result = JudgeResultV3.model_validate(result_document).model_dump(
+                mode="json", by_alias=True
+            )
+        except ValidationError as exc:
+            raise AggregateEvaluationV2Error(
+                "judge_result_invalid",
+                "validate",
+                episode_id,
+                "Judge Result v3 contract is invalid",
+            ) from exc
+        bundle = bundles[episode_id]
+        if (
+            result["result_sha256"] != judge_result_digest(result)
+            or result["result_sha256"]
+            != manifest["judge_result_digests"].get(episode_id)
+            or result["status"] != manifest["result_statuses"].get(episode_id)
+            or result["formal_evaluation_result"]
+            != manifest["result_formal_evaluation_states"].get(episode_id)
+            or result["episode_sha256"]
+            != manifest["input_episode_digests"].get(episode_id)
+            or result["rule_result_sha256"]
+            != manifest["input_rule_result_digests"].get(episode_id)
+            or result["judge_reference_sha256"]
+            != manifest["input_reference_digests"].get(episode_id)
+            or result["blind_input_sha256"]
+            != manifest["blind_input_digests"].get(episode_id)
+            or result["judge_mode"] != manifest["judge_mode"]
+            or result["selection_mode"] != manifest["selection_mode"]
+            or result["worktree_clean"] != manifest["worktree_clean"]
+            or validate_judge_result_v3(
+                result,
+                episode=bundle.episode,
+                rule_result=bundle.rule_result,
+                reference=bundle.judge_reference,
+                rule_manifest=inputs.rule_manifest,
+            )
+        ):
+            raise AggregateEvaluationV2Error(
+                "judge_result_invalid",
+                "validate",
+                episode_id,
+                "Judge Result v3 digest, evidence, or input linkage differs",
+            )
+        results[episode_id] = result
+    expected_formal = bool(
+        inputs.rule_manifest["formal_evaluation_result"]
+        and manifest["selection_mode"] == "inherited"
+        and manifest["worktree_clean"]
+        and results
+        and not manifest["runtime_failure_ids"]
+        and all(item["formal_evaluation_result"] for item in results.values())
+    )
+    if manifest["formal_evaluation_result"] != expected_formal:
+        raise AggregateEvaluationV2Error(
+            "judge_manifest_formal_mismatch",
+            "validate",
+            "batch",
+            "Judge Run Manifest v3 violates monotonic formal inheritance",
+        )
+    return manifest, results
+
+
+def _aggregate_document_v3(
+    *,
+    episode: Mapping[str, Any],
+    rule_result: Mapping[str, Any],
+    judge_result: Mapping[str, Any],
+    judge_manifest: Mapping[str, Any],
+    selection_mode: str,
+    worktree_clean: bool,
+) -> dict[str, Any]:
+    result = _aggregate_document(
+        episode=episode,
+        rule_result=rule_result,
+        judge_result=judge_result,
+    )
+    formal = bool(
+        result["status"] == "complete"
+        and judge_manifest["formal_evaluation_result"]
+        and episode["provenance"]["formal_evaluation_result"]
+        and rule_result["formal_evaluation_result"]
+        and judge_result["formal_evaluation_result"]
+        and selection_mode == "inherited"
+        and worktree_clean
+    )
+    result.update(
+        {
+            "schema_version": "aggregate-result-v3",
+            "aggregator_version": AGGREGATOR_VERSION_V3,
+            "aggregator_implementation_version": SOURCE_BUNDLE_VERSION,
+            "aggregator_implementation_sha256": (
+                AGGREGATOR_IMPLEMENTATION_SHA256_V3
+            ),
+            "input_judge_manifest_sha256": judge_manifest["manifest_sha256"],
+            "input_judge_manifest_formal_evaluation_result": judge_manifest[
+                "formal_evaluation_result"
+            ],
+            "input_episode_formal_evaluation_result": episode["provenance"][
+                "formal_evaluation_result"
+            ],
+            "input_rule_result_formal_evaluation_result": rule_result[
+                "formal_evaluation_result"
+            ],
+            "input_judge_result_formal_evaluation_result": judge_result[
+                "formal_evaluation_result"
+            ],
+            "selection_mode": selection_mode,
+            "worktree_clean": bool(worktree_clean),
+            "formal_evaluation_result": formal,
+            "evaluation_status": (
+                "formal_model_evaluation"
+                if formal
+                else "not_a_formal_model_evaluation"
+            ),
+            "result_sha256": "0" * 64,
+        }
+    )
+    result["result_sha256"] = aggregate_result_digest(result)
+    return result
+
+
+def validate_aggregate_result_v3(
+    result: Mapping[str, Any],
+    *,
+    episode: Mapping[str, Any],
+    rule_result: Mapping[str, Any],
+    judge_result: Mapping[str, Any],
+    judge_manifest: Mapping[str, Any],
+    selection_mode: str,
+    worktree_clean: bool,
+) -> tuple[str, ...]:
+    try:
+        validated = AggregateResultV3.model_validate(result).model_dump(
+            mode="json", by_alias=True
+        )
+    except ValidationError:
+        return ("aggregate_contract_invalid",)
+    expected = _aggregate_document_v3(
+        episode=episode,
+        rule_result=rule_result,
+        judge_result=judge_result,
+        judge_manifest=judge_manifest,
+        selection_mode=selection_mode,
+        worktree_clean=worktree_clean,
+    )
+    errors: set[str] = set()
+    if validated["result_sha256"] != aggregate_result_digest(validated):
+        errors.add("aggregate_digest_mismatch")
+    if validated != expected:
+        errors.add("aggregate_recomputation_mismatch")
+    for failure in validated["rule_failures"]:
+        if any(
+            path.startswith("capture.") or not resolve_evidence_path(episode, path)[0]
+            for path in failure["evidence_paths"]
+        ):
+            errors.add("aggregate_evidence_invalid")
+    if privacy_issues(validated, file="aggregate-result-v3"):
+        errors.add("aggregate_privacy_invalid")
+    return tuple(sorted(errors))
+
+
+def aggregate_episode_v3(
+    *,
+    episode: Mapping[str, Any],
+    rule_result: Mapping[str, Any],
+    judge_result: Mapping[str, Any],
+    judge_manifest: Mapping[str, Any],
+    selection_mode: str,
+    worktree_clean: bool,
+) -> dict[str, Any]:
+    result = _aggregate_document_v3(
+        episode=episode,
+        rule_result=rule_result,
+        judge_result=judge_result,
+        judge_manifest=judge_manifest,
+        selection_mode=selection_mode,
+        worktree_clean=worktree_clean,
+    )
+    if validate_aggregate_result_v3(
+        result,
+        episode=episode,
+        rule_result=rule_result,
+        judge_result=judge_result,
+        judge_manifest=judge_manifest,
+        selection_mode=selection_mode,
+        worktree_clean=worktree_clean,
+    ):
+        raise AggregateEvaluationV2Error(
+            "aggregate_result_invalid",
+            "aggregate",
+            str(episode["episode_id"]),
+            "Aggregate Result v3 failed deterministic validation",
+        )
+    return result
+
+
+def _track_result_v3(
+    track: str,
+    results: list[dict[str, Any]],
+    runtime_failure_ids: list[str],
+    *,
+    judge_manifest: Mapping[str, Any],
+    selection_mode: str,
+    worktree_clean: bool,
+) -> dict[str, Any]:
+    results = sorted(results, key=lambda item: item["episode_id"])
+    complete = [item for item in results if item["status"] == "complete"]
+    invalid = [item for item in results if item["status"] == "invalid_input"]
+    judge_errors = [item for item in results if item["status"] == "judge_error"]
+    scores = [float(item["final_score"]) for item in complete]
+    formal = bool(
+        judge_manifest["formal_evaluation_result"]
+        and selection_mode == "inherited"
+        and worktree_clean
+        and results
+        and not runtime_failure_ids
+        and all(item["formal_evaluation_result"] for item in results)
+    )
+    document = {
+        "schema_version": "aggregate-track-result-v3",
+        "aggregator_version": AGGREGATOR_VERSION_V3,
+        "aggregator_implementation_version": SOURCE_BUNDLE_VERSION,
+        "aggregator_implementation_sha256": AGGREGATOR_IMPLEMENTATION_SHA256_V3,
+        "track": track,
+        "episode_ids": [item["episode_id"] for item in results],
+        "complete_episode_ids": [item["episode_id"] for item in complete],
+        "failed_episode_ids": [
+            item["episode_id"]
+            for item in complete
+            if item["episode_outcome"] == "fail"
+        ],
+        "invalid_input_episode_ids": [item["episode_id"] for item in invalid],
+        "judge_error_episode_ids": [item["episode_id"] for item in judge_errors],
+        "runtime_failure_ids": sorted(runtime_failure_ids),
+        "score_count": len(scores),
+        "mean_score": round(sum(scores) / len(scores), 6) if scores else None,
+        "input_judge_manifest_formal_evaluation_result": judge_manifest[
+            "formal_evaluation_result"
+        ],
+        "result_formal_evaluation_states": {
+            item["episode_id"]: item["formal_evaluation_result"] for item in results
+        },
+        "selection_mode": selection_mode,
+        "worktree_clean": bool(worktree_clean),
+        "formal_evaluation_result": formal,
+        "evaluation_status": (
+            "formal_model_evaluation" if formal else "not_a_formal_model_evaluation"
+        ),
+        "result_sha256": "0" * 64,
+    }
+    document["result_sha256"] = aggregate_result_digest(document)
+    try:
+        AggregateTrackResultV3.model_validate(document)
+    except ValidationError as exc:
+        raise AggregateEvaluationV2Error(
+            "track_result_invalid",
+            "aggregate",
+            track,
+            "Track Aggregate Result v3 is invalid",
+        ) from exc
+    return document
+
+
+def aggregate_results_v3(
+    *,
+    episodes: str | Path,
+    rules: str | Path,
+    judges: str | Path,
+    output: str | Path,
+    episode_ids: set[str] | None = None,
+    track: str | None = None,
+) -> AggregateEvaluationV2Summary:
+    """Aggregate the active v4 chain, including failure-only track partitions."""
+
+    output_path = Path(output).resolve()
+    if output_path.exists():
+        raise AggregateEvaluationV2Error(
+            "output_exists", "prepare", "batch", "output directory already exists"
+        )
+    try:
+        inputs = load_e311_inputs(episodes=episodes, rules=rules)
+        judge_root = _judge_root(judges)
+    except E31InputError as exc:
+        raise AggregateEvaluationV2Error(
+            exc.code, exc.stage, exc.artifact_id, exc.public_message
+        ) from exc
+    judge_manifest, judge_results = _load_judges_v3(
+        root=judge_root, inputs=inputs
+    )
+    bundles = {item.episode["episode_id"]: item for item in inputs.bundles}
+    selected_ids = set(judge_results)
+    if episode_ids:
+        if not episode_ids.issubset(selected_ids):
+            raise AggregateEvaluationV2Error(
+                "episode_not_found",
+                "filter",
+                "batch",
+                "one or more Episode IDs were not found in Judge output",
+            )
+        selected_ids &= episode_ids
+    if track:
+        selected_ids = {
+            episode_id
+            for episode_id in selected_ids
+            if bundles[episode_id].episode["track"] == track
+        }
+    selected_failures = {
+        failure_id: inputs.runtime_failures[failure_id]
+        for failure_id in judge_manifest["runtime_failure_ids"]
+        if track is None or inputs.runtime_failure_tracks[failure_id] == track
+    }
+    if not selected_ids and not selected_failures:
+        raise AggregateEvaluationV2Error(
+            "selection_empty",
+            "filter",
+            "batch",
+            "Episode and Runtime Failure selection is empty",
+        )
+    selection_mode = "inherited" if episode_ids is None and track is None else "adhoc_filter"
+    try:
+        clean = git_worktree_clean()
+    except RuntimeError as exc:
+        raise AggregateEvaluationV2Error(
+            "git_status_unavailable",
+            "prepare",
+            "batch",
+            "current Git worktree status is unavailable",
+        ) from exc
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    stage = Path(
+        tempfile.mkdtemp(
+            prefix=f".{output_path.name}.e311-aggregate-stage-",
+            dir=output_path.parent,
+        )
+    )
+    documents: list[dict[str, Any]] = []
+    tracks: list[dict[str, Any]] = []
+    try:
+        (stage / "episodes").mkdir()
+        (stage / "tracks").mkdir()
+        for episode_id in sorted(selected_ids):
+            bundle = bundles[episode_id]
+            result = aggregate_episode_v3(
+                episode=bundle.episode,
+                rule_result=bundle.rule_result,
+                judge_result=judge_results[episode_id],
+                judge_manifest=judge_manifest,
+                selection_mode=selection_mode,
+                worktree_clean=clean,
+            )
+            (stage / "episodes" / f"{episode_id}.json").write_bytes(
+                canonical_json_bytes(result)
+            )
+            documents.append(result)
+        by_track: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for result in documents:
+            by_track[result["track"]].append(result)
+        failures_by_track: dict[str, list[str]] = defaultdict(list)
+        for failure_id in selected_failures:
+            failures_by_track[inputs.runtime_failure_tracks[failure_id]].append(
+                failure_id
+            )
+        for track_name in TRACK_ORDER:
+            if track_name not in by_track and track_name not in failures_by_track:
+                continue
+            result = _track_result_v3(
+                track_name,
+                by_track[track_name],
+                failures_by_track[track_name],
+                judge_manifest=judge_manifest,
+                selection_mode=selection_mode,
+                worktree_clean=clean,
+            )
+            (stage / "tracks" / f"{track_name}.json").write_bytes(
+                canonical_json_bytes(result)
+            )
+            tracks.append(result)
+        failure_ids = sorted(selected_failures)
+        formal = bool(
+            judge_manifest["formal_evaluation_result"]
+            and selection_mode == "inherited"
+            and clean
+            and documents
+            and not failure_ids
+            and all(item["formal_evaluation_result"] for item in documents)
+        )
+        manifest = {
+            "schema_version": "aggregate-run-manifest-v3",
+            "aggregator_version": AGGREGATOR_VERSION_V3,
+            "aggregator_implementation_version": SOURCE_BUNDLE_VERSION,
+            "aggregator_implementation_sha256": AGGREGATOR_IMPLEMENTATION_SHA256_V3,
+            "judge_version": judge_manifest["judge_version"],
+            "judge_config_version": judge_manifest["judge_config_version"],
+            "judge_config_sha256": judge_manifest["judge_config_sha256"],
+            "judge_prompt_version": judge_manifest["judge_prompt_version"],
+            "judge_prompt_sha256": judge_manifest["judge_prompt_sha256"],
+            "rubric_version": judge_manifest["rubric_version"],
+            "rubric_sha256": judge_manifest["rubric_sha256"],
+            "track_anchor_version": judge_manifest["track_anchor_version"],
+            "track_anchor_sha256": judge_manifest["track_anchor_sha256"],
+            "judge_mode": judge_manifest["judge_mode"],
+            "input_judge_manifest_sha256": judge_manifest["manifest_sha256"],
+            "input_judge_manifest_formal_evaluation_result": judge_manifest[
+                "formal_evaluation_result"
+            ],
+            "selection_mode": selection_mode,
+            "requested_episode_ids": sorted(episode_ids or set()),
+            "selected_track": track,
+            "episode_ids": [item["episode_id"] for item in documents],
+            "runtime_failure_ids": failure_ids,
+            "input_episode_digests": {
+                item["episode_id"]: item["episode_sha256"] for item in documents
+            },
+            "input_rule_result_digests": {
+                item["episode_id"]: item["rule_result_sha256"] for item in documents
+            },
+            "input_judge_result_digests": {
+                item["episode_id"]: item["judge_result_sha256"] for item in documents
+            },
+            "input_reference_digests": {
+                item["episode_id"]: item["judge_reference_sha256"]
+                for item in documents
+            },
+            "input_runtime_failure_digests": {
+                failure_id: selected_failures[failure_id]["failure_sha256"]
+                for failure_id in failure_ids
+            },
+            "runtime_failure_tracks": {
+                failure_id: inputs.runtime_failure_tracks[failure_id]
+                for failure_id in failure_ids
+            },
+            "aggregate_result_digests": {
+                item["episode_id"]: item["result_sha256"] for item in documents
+            },
+            "result_statuses": {
+                item["episode_id"]: item["status"] for item in documents
+            },
+            "result_formal_evaluation_states": {
+                item["episode_id"]: item["formal_evaluation_result"]
+                for item in documents
+            },
+            "track_result_digests": {
+                item["track"]: item["result_sha256"] for item in tracks
+            },
+            "formal_evaluation_result": formal,
+            "evaluation_status": (
+                "formal_model_evaluation"
+                if formal
+                else "not_a_formal_model_evaluation"
+            ),
+            "worktree_clean": clean,
+            "git_commit": current_git_commit(),
+            "manifest_sha256": "0" * 64,
+        }
+        manifest["manifest_sha256"] = artifact_manifest_digest(manifest)
+        try:
+            AggregateRunManifestV3.model_validate(manifest)
+        except ValidationError as exc:
+            raise AggregateEvaluationV2Error(
+                "manifest_invalid",
+                "publish",
+                "batch",
+                "Aggregate Run Manifest v3 is invalid",
+            ) from exc
+        if privacy_issues(
+            {"episodes": documents, "tracks": tracks, "manifest": manifest},
+            file="aggregate-output-v3",
+        ):
+            raise AggregateEvaluationV2Error(
+                "privacy_rejected",
+                "publish",
+                "batch",
+                "Aggregate v3 artifacts failed privacy validation",
+            )
+        (stage / "run-manifest.json").write_bytes(canonical_json_bytes(manifest))
+        if not validate_dataset(stage).ok:
+            raise AggregateEvaluationV2Error(
+                "output_invalid",
+                "publish",
+                "batch",
+                "Aggregate v3 output failed final validation",
+            )
+        os.replace(stage, output_path)
+    except BaseException:
+        shutil.rmtree(stage, ignore_errors=True)
+        raise
+
+    return AggregateEvaluationV2Summary(
+        episode_ids=tuple(item["episode_id"] for item in documents),
+        tracks=tuple(
+            [item["track"] for item in documents]
+            + [inputs.runtime_failure_tracks[item] for item in failure_ids]
+        ),
+        runtime_failure_ids=tuple(failure_ids),
+        output=output_path,
+        failed_episode_ids=tuple(
+            item["episode_id"]
+            for item in documents
+            if item["episode_outcome"] == "fail"
+        ),
+        invalid_episode_ids=tuple(
+            item["episode_id"]
+            for item in documents
+            if item["status"] == "invalid_input"
+        ),
+        judge_error_episode_ids=tuple(
+            item["episode_id"]
+            for item in documents
+            if item["status"] == "judge_error"
         ),
         formal_evaluation_result=formal,
     )

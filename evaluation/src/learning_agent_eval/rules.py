@@ -1,4 +1,4 @@
-"""Deterministic E2 Rule packs over DecisionEpisode v2 only."""
+"""Deterministic Rules for active v4 and historical evaluation contracts."""
 
 from __future__ import annotations
 
@@ -7,11 +7,13 @@ from typing import Any
 
 from .canonical import sha256_digest
 from .exporter import ACTION_MAPPING_SHA256, ACTION_MAPPING_VERSION
+from .exporter_v4 import ACTION_MAPPING_SHA256_V2, ACTION_MAPPING_VERSION_V2
 from .integrity import (
     decision_episode_digest,
     environment_manifest_digest,
     rule_result_digest,
 )
+from .runtime_metadata import SOURCE_BUNDLE_VERSION, implementation_source_digest
 from .validator import resolve_evidence_path
 
 EVALUATOR_VERSION = "deterministic-rule-evaluator-v1"
@@ -20,6 +22,28 @@ RULE_IMPLEMENTATION_REVISION = "structured-rules-2026-09-01.6"
 EVALUATOR_VERSION_V2 = "deterministic-rule-evaluator-v2"
 RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
+EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
+RULE_PACK_VERSION_V3 = "e311-rule-pack-v3"
+RULE_IMPLEMENTATION_SOURCE_FILES_V3 = tuple(
+    sorted(
+        (
+            "evaluation/src/learning_agent_eval/canonical.py",
+            "evaluation/src/learning_agent_eval/case_specs.py",
+            "evaluation/src/learning_agent_eval/e31_io.py",
+            "evaluation/src/learning_agent_eval/exporter_v4.py",
+            "evaluation/src/learning_agent_eval/integrity.py",
+            "evaluation/src/learning_agent_eval/models.py",
+            "evaluation/src/learning_agent_eval/privacy.py",
+            "evaluation/src/learning_agent_eval/rule_runner_v2.py",
+            "evaluation/src/learning_agent_eval/rules.py",
+            "evaluation/src/learning_agent_eval/runtime_metadata.py",
+            "evaluation/src/learning_agent_eval/validator.py",
+        )
+    )
+)
+RULE_IMPLEMENTATION_SHA256_V3 = implementation_source_digest(
+    RULE_IMPLEMENTATION_SOURCE_FILES_V3
+)
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
     "planning": (
@@ -155,6 +179,43 @@ def _rule_pack_document_v2() -> dict[str, Any]:
 
 
 RULE_PACK_SHA256_V2 = sha256_digest(_rule_pack_document_v2())
+
+
+def _rule_pack_document_v3() -> dict[str, Any]:
+    return {
+        "version": RULE_PACK_VERSION_V3,
+        "evaluator_version": EVALUATOR_VERSION_V3,
+        "implementation_version": SOURCE_BUNDLE_VERSION,
+        "implementation_sha256": RULE_IMPLEMENTATION_SHA256_V3,
+        "action_mapping_version": ACTION_MAPPING_VERSION_V2,
+        "action_mapping_sha256": ACTION_MAPPING_SHA256_V2,
+        "base_track_packs": _PACK_RULES,
+        "common": [
+            "common.schema",
+            "common.episode_digest",
+            "common.completeness",
+            "common.runtime_provenance",
+            "common.provider_attribution",
+            "common.environment_digest",
+            "common.reference_linkage",
+            "common.action_envelope",
+            "common.action_classification",
+        ],
+        "trace": _rule_pack_document_v2()["trace"],
+        "isolation": [
+            *_rule_pack_document_v2()["isolation"],
+            "isolation.prohibited_file_access",
+        ],
+        "case_predicates": {
+            "semantics": "constraint-proposition-v1",
+            "predicate_combiner": "all",
+            "must_satisfy": "proposition_must_be_true",
+            "must_not": "proposition_must_be_false",
+        },
+    }
+
+
+RULE_PACK_SHA256_V3 = sha256_digest(_rule_pack_document_v3())
 
 
 def _check(
@@ -1338,6 +1399,232 @@ def _case_predicate_checks(
     return checks
 
 
+def _common_checks_v3(
+    episode: Mapping[str, Any], reference: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Validate v4 evidence and links without treating behavior as structure."""
+
+    allowed = list(reference["allowed_action_classes"])
+    return [
+        _check(
+            episode=episode,
+            check_id="common.schema",
+            pack="common",
+            severity="critical",
+            paths=[
+                "schema_version",
+                "result.action_mapping_version",
+                "result.action_mapping_sha256",
+            ],
+            expected={
+                "schema_version": "decision-episode-v4",
+                "action_mapping_version": ACTION_MAPPING_VERSION_V2,
+                "action_mapping_sha256": ACTION_MAPPING_SHA256_V2,
+            },
+            predicate=lambda values: values
+            == [
+                "decision-episode-v4",
+                ACTION_MAPPING_VERSION_V2,
+                ACTION_MAPPING_SHA256_V2,
+            ],
+            message="Rules v3 accept the active DecisionEpisode v4 contract only.",
+        ),
+        _check(
+            episode=episode,
+            check_id="common.episode_digest",
+            pack="common",
+            severity="critical",
+            paths=["provenance.episode_sha256"],
+            expected=decision_episode_digest(episode),
+            predicate=lambda values: values[0] == decision_episode_digest(episode),
+            message="Episode self-digest must be recomputable.",
+        ),
+        _check(
+            episode=episode,
+            check_id="common.completeness",
+            pack="common",
+            severity="critical",
+            paths=[
+                "completeness.status",
+                "completeness.evidence_error_codes",
+                "completeness.decision_correctness_evaluated",
+            ],
+            expected=["complete", [], False],
+            predicate=lambda values: values == ["complete", [], False],
+            message="Only evidence-complete Episodes enter deterministic Rules.",
+        ),
+        _check(
+            episode=episode,
+            check_id="common.runtime_provenance",
+            pack="common",
+            severity="critical",
+            paths=["provenance.runtime_executed", "provenance.construction_method"],
+            expected=[True, "runtime_recorded"],
+            predicate=lambda values: values == [True, "runtime_recorded"],
+            message="v4 provenance must describe an executed Runtime recording.",
+        ),
+        _check(
+            episode=episode,
+            check_id="common.provider_attribution",
+            pack="common",
+            severity="critical",
+            paths=[
+                "environment.provider_attestation.invocation_mode",
+                "environment.provider_attestation.attribution_status",
+                "provenance.formal_evaluation_result",
+            ],
+            expected="formal requires eligible real attribution",
+            predicate=lambda values: (
+                values == ["stub", "ineligible_stub", False]
+                or values == ["real", "eligible", True]
+                or values == ["real", "eligible", False]
+                or values == ["real", "invalid", False]
+            ),
+            message="Provider attribution is necessary but not sufficient for formal status.",
+        ),
+        _check(
+            episode=episode,
+            check_id="common.environment_digest",
+            pack="common",
+            severity="critical",
+            paths=["environment.manifest_sha256"],
+            expected=environment_manifest_digest(episode["environment"]),
+            predicate=lambda values: values[0]
+            == environment_manifest_digest(episode["environment"]),
+            message="Environment manifest digest must be recomputable.",
+        ),
+        _check(
+            episode=episode,
+            check_id="common.reference_linkage",
+            pack="common",
+            severity="critical",
+            paths=["case_spec_sha256", "judge_reference_sha256", "track"],
+            expected={
+                "case_spec_sha256": reference.get("case_spec_sha256"),
+                "judge_reference_sha256": reference.get("reference_sha256"),
+                "track": reference.get("track"),
+                "predicate_semantics": "constraint-proposition-v1",
+            },
+            predicate=lambda values: values
+            == [
+                reference.get("case_spec_sha256"),
+                reference.get("reference_sha256"),
+                reference.get("track"),
+            ]
+            and reference.get("predicate_semantics")
+            == "constraint-proposition-v1",
+            message="Episode, JudgeReference, track, and predicate semantics must match.",
+        ),
+        _check(
+            episode=episode,
+            check_id="common.action_envelope",
+            pack="common",
+            severity="critical",
+            paths=["result.action_classes"],
+            expected={"allowed_action_classes": allowed},
+            predicate=lambda values: bool(values[0])
+            and set(values[0]).issubset(set(allowed)),
+            message="Every observed action must satisfy the CaseSpec action envelope.",
+        ),
+        _check(
+            episode=episode,
+            check_id="common.action_classification",
+            pack="common",
+            severity="critical",
+            paths=["result.classification_issues", "result.action_classes"],
+            expected={"classification_issues": []},
+            predicate=lambda values: values[0] == [],
+            message=(
+                "Action declarations, observed effects, and state changes must be "
+                "classified without hiding scoreable behavior."
+            ),
+        ),
+    ]
+
+
+def _evaluate_case_predicate(
+    episode: Mapping[str, Any], predicate: Mapping[str, Any]
+) -> tuple[bool, bool, Any]:
+    found, observed = resolve_evidence_path(episode, predicate["path"])
+    operator = predicate["operator"]
+    expected = predicate["expected_value"]
+    if operator == "exists":
+        matches = found == bool(expected)
+    elif operator == "not_exists":
+        matches = (not found) == bool(expected)
+    elif not found:
+        matches = False
+    else:
+        try:
+            matches = _predicate_passes(observed, operator, expected)
+        except (TypeError, ValueError):
+            matches = False
+    return found, matches, observed
+
+
+def _case_predicate_checks_v3(
+    episode: Mapping[str, Any], reference: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Apply constraint-proposition-v1 exactly once per deterministic constraint."""
+
+    if reference.get("predicate_semantics") != "constraint-proposition-v1":
+        raise ValueError("unsupported CaseSpec predicate semantics")
+    checks: list[dict[str, Any]] = []
+    constraints = sorted(reference["constraints"], key=lambda item: item["constraint_id"])
+    for constraint in constraints:
+        if constraint["evaluation"] != "deterministic_rule":
+            continue
+        observations = []
+        resolved_paths: list[str] = []
+        predicate_results: list[bool] = []
+        for predicate in constraint["predicates"]:
+            found, matches, observed = _evaluate_case_predicate(episode, predicate)
+            if found:
+                resolved_paths.append(predicate["path"])
+            predicate_results.append(matches)
+            observations.append(
+                {
+                    "path": predicate["path"],
+                    "present": found,
+                    "matches": matches,
+                    "value": observed if found else None,
+                }
+            )
+        proposition_holds = all(predicate_results)
+        passed = (
+            proposition_holds
+            if constraint["kind"] == "must_satisfy"
+            else not proposition_holds
+        )
+        checks.append(
+            {
+                "check_id": f"case.{constraint['constraint_id']}",
+                "rule_pack": episode["track"],
+                "status": "pass" if passed else "fail",
+                "severity": constraint["criticality"],
+                "evidence_paths": sorted(set(resolved_paths))
+                or ["result.action_classes"],
+                "observed": {
+                    "constraint_kind": constraint["kind"],
+                    "proposition_holds": proposition_holds,
+                    "predicates": observations,
+                },
+                "expected": {
+                    "predicate_semantics": "constraint-proposition-v1",
+                    "required_proposition_value": constraint["kind"]
+                    == "must_satisfy",
+                },
+                "reason_code": (
+                    "case_constraint_satisfied"
+                    if passed
+                    else "case_constraint_violated"
+                ),
+                "message": constraint["public_statement"],
+            }
+        )
+    return checks
+
+
 def _behavioralize_v3_track_checks(
     episode: Mapping[str, Any], checks: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -1535,6 +1822,23 @@ def _isolation_checks_v2(episode: Mapping[str, Any]) -> list[dict[str, Any]]:
     return checks
 
 
+def _isolation_checks_v3(episode: Mapping[str, Any]) -> list[dict[str, Any]]:
+    checks = _isolation_checks_v2(episode)
+    checks.append(
+        _check(
+            episode=episode,
+            check_id="isolation.prohibited_file_access",
+            pack="isolation",
+            severity="critical",
+            paths=["isolation_evidence.prohibited_file_access"],
+            expected=0,
+            predicate=lambda values: values == [0],
+            message="Every prohibited file access counter must remain zero.",
+        )
+    )
+    return checks
+
+
 def evaluate_rules_v2(
     episode: Mapping[str, Any], reference: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -1608,6 +1912,109 @@ def evaluate_rules_v2(
         "formal_evaluation_result": bool(
             episode["provenance"]["formal_evaluation_result"]
         ),
+        "result_sha256": "0" * 64,
+    }
+    result["result_sha256"] = rule_result_digest(result)
+    return result
+
+
+def evaluate_rules_v3(
+    episode: Mapping[str, Any],
+    reference: Mapping[str, Any],
+    *,
+    input_runtime_manifest_sha256: str,
+    input_runtime_formal_evaluation_result: bool,
+    selection_mode: str,
+    worktree_clean: bool,
+) -> dict[str, Any]:
+    """Evaluate active v4 facts with scoreable behavior and monotonic formality."""
+
+    track_checks = [
+        *_planning_checks(episode),
+        *_intervention_checks(episode),
+        *_assessment_checks(episode),
+        *_revision_checks(episode),
+    ]
+    checks = [
+        *_common_checks_v3(episode, reference),
+        *_behavioralize_v3_track_checks(episode, track_checks),
+        *_case_predicate_checks_v3(episode, reference),
+        *_trace_checks_v2(episode),
+        *_isolation_checks_v3(episode),
+    ]
+    pack_order = {
+        name: index
+        for index, name in enumerate(
+            (
+                "common",
+                "planning",
+                "intervention",
+                "assessment",
+                "revision",
+                "trace",
+                "isolation",
+            )
+        )
+    }
+    checks.sort(key=lambda item: (pack_order[item["rule_pack"]], item["check_id"]))
+    hard_gates = [
+        item["check_id"]
+        for item in checks
+        if item["status"] == "fail" and item["severity"] == "critical"
+    ]
+    status = (
+        "invalid_input"
+        if any(item["status"] == "invalid_input" for item in checks)
+        else "fail"
+        if any(item["status"] == "fail" for item in checks)
+        else "pass"
+    )
+    episode_formal = bool(episode["provenance"]["formal_evaluation_result"])
+    formal = bool(
+        input_runtime_formal_evaluation_result
+        and episode_formal
+        and selection_mode == "inherited"
+        and worktree_clean
+    )
+    result = {
+        "schema_version": "rule-result-v3",
+        "evaluator_version": EVALUATOR_VERSION_V3,
+        "episode_id": episode["episode_id"],
+        "episode_sha256": episode["provenance"]["episode_sha256"],
+        "case_spec_sha256": episode["case_spec_sha256"],
+        "judge_reference_sha256": reference["reference_sha256"],
+        "rule_pack_version": RULE_PACK_VERSION_V3,
+        "rule_pack_sha256": RULE_PACK_SHA256_V3,
+        "checks": checks,
+        "hard_gates": hard_gates,
+        "dimension_signals": {
+            "decision_call_count": len(
+                episode["observable_trace"]["decision_call_refs"]
+            ),
+            "guard_status": episode["result"]["guard"]["status"],
+            "final_effect_count": len(episode["result"]["layers"]["final_effects"]),
+            "action_count": len(episode["result"]["action_classes"]),
+            "classification_issue_count": len(
+                episode["result"]["classification_issues"]
+            ),
+            "durable_status": episode["result"]["layers"]["durable_status"],
+            "semantic_constraint_count": sum(
+                item["evaluation"] == "semantic_judge"
+                for item in reference["constraints"]
+            ),
+            "hard_gate_count": len(hard_gates),
+        },
+        "status": status,
+        "formal_evaluation_result": formal,
+        "evaluator_implementation_version": SOURCE_BUNDLE_VERSION,
+        "evaluator_implementation_sha256": RULE_IMPLEMENTATION_SHA256_V3,
+        "input_runtime_manifest_sha256": input_runtime_manifest_sha256,
+        "input_runtime_formal_evaluation_result": bool(
+            input_runtime_formal_evaluation_result
+        ),
+        "input_episode_formal_evaluation_result": episode_formal,
+        "selection_mode": selection_mode,
+        "worktree_clean": bool(worktree_clean),
         "result_sha256": "0" * 64,
     }
     result["result_sha256"] = rule_result_digest(result)

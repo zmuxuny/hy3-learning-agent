@@ -5,6 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+from .action_protocol import (
+    ACTION_DECLARATION_PROTOCOL_SHA256,
+    ACTION_DECLARATION_PROTOCOL_VERSION,
+    parse_action_declaration,
+)
 from .canonical import sha256_digest
 from .integrity import (
     artifact_manifest_digest,
@@ -14,9 +19,12 @@ from .integrity import (
 )
 from .models import (
     ModelCallV3,
+    ModelCallV4,
     ProviderAttestationV1,
     RuntimeFailureV1,
+    RuntimeFailureV2,
     RuntimeRunManifestV2,
+    RuntimeRunManifestV3,
 )
 from .runtime_metadata import (
     DEPENDENCY_LOCK_VERSION,
@@ -110,6 +118,34 @@ def build_model_calls_v3(
         }
         calls.append(ModelCallV3.model_validate(call).model_dump(mode="json"))
     return calls
+
+
+def build_model_calls_v4(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    normalize_run_id: Callable[[str], str] | None = None,
+) -> list[dict[str, Any]]:
+    """Build the active trace with exact, non-heuristic action declarations."""
+
+    calls = build_model_calls_v3(records, normalize_run_id=normalize_run_id)
+    result: list[dict[str, Any]] = []
+    for call in calls:
+        applicable = call["call_purpose"] == "decision" and call["status"] == "completed"
+        if applicable:
+            declaration_status, action_classes, _ = parse_action_declaration(
+                str(call["assistant_text"] or "")
+            )
+        else:
+            declaration_status, action_classes = "not_applicable", ()
+        enriched = {
+            **call,
+            "action_protocol_version": ACTION_DECLARATION_PROTOCOL_VERSION,
+            "action_protocol_sha256": ACTION_DECLARATION_PROTOCOL_SHA256,
+            "action_declaration_status": declaration_status,
+            "declared_action_classes": list(action_classes),
+        }
+        result.append(ModelCallV4.model_validate(enriched).model_dump(mode="json"))
+    return result
 
 
 def build_stub_provider_attestation(
@@ -290,6 +326,46 @@ def build_runtime_failure(
     return RuntimeFailureV1.model_validate(failure).model_dump(mode="json")
 
 
+def build_runtime_failure_v2(
+    *,
+    case_id: str,
+    case_spec_sha256: str,
+    stage: str,
+    failure_class: str,
+    reason_code: str,
+    public_summary: str,
+    model_calls: Sequence[Mapping[str, Any]],
+    provider_attestation: Mapping[str, Any],
+    isolation_evidence: Mapping[str, Any] | None,
+    started_at: str,
+    failed_at: str,
+) -> dict[str, Any]:
+    """Create an active Failure carrying the v4 model-call contract."""
+
+    failure = {
+        "schema_version": "runtime-failure-v2",
+        "failure_id": f"failure:{case_id}",
+        "case_id": case_id,
+        "case_spec_sha256": case_spec_sha256,
+        "stage": stage,
+        "failure_class": failure_class,
+        "reason_code": reason_code,
+        "public_summary": public_summary,
+        "model_calls": list(model_calls),
+        "provider_attestation": dict(provider_attestation),
+        "isolation_evidence": (
+            dict(isolation_evidence) if isolation_evidence is not None else None
+        ),
+        "started_at": started_at,
+        "failed_at": failed_at,
+        "formal_evaluation_result": False,
+        "evaluation_status": "not_a_formal_model_evaluation",
+        "failure_sha256": "0" * 64,
+    }
+    failure["failure_sha256"] = runtime_failure_digest(failure)
+    return RuntimeFailureV2.model_validate(failure).model_dump(mode="json")
+
+
 def build_runtime_manifest_v2(
     *,
     dataset_version: str,
@@ -333,3 +409,60 @@ def build_runtime_manifest_v2(
     }
     manifest["manifest_sha256"] = artifact_manifest_digest(manifest)
     return RuntimeRunManifestV2.model_validate(manifest).model_dump(mode="json")
+
+
+def build_runtime_manifest_v3(
+    *,
+    dataset_version: str,
+    invocation_mode: str,
+    terminals: Sequence[Mapping[str, Any]],
+    requested_episode_ids: Sequence[str],
+    selected_track: str | None,
+    git_commit: str,
+    worktree_clean: bool,
+    dependency_lock_version: str,
+    dependency_lock_sha256: str,
+) -> dict[str, Any]:
+    """Build the active exhaustive manifest with pre-run selection provenance."""
+
+    ordered = sorted((dict(item) for item in terminals), key=lambda item: item["case_id"])
+    selection_mode = (
+        "adhoc_filter" if requested_episode_ids or selected_track is not None else "full_suite"
+    )
+    formal = bool(
+        invocation_mode == "real"
+        and selection_mode == "full_suite"
+        and worktree_clean
+        and ordered
+        and all(
+            item["terminal_kind"] == "episode"
+            and item["formal_evaluation_result"]
+            for item in ordered
+        )
+    )
+    manifest = {
+        "schema_version": "runtime-run-manifest-v3",
+        "dataset_version": dataset_version,
+        "case_schema_version": "case-spec-v2",
+        "episode_schema_version": "decision-episode-v4",
+        "failure_schema_version": "runtime-failure-v2",
+        "invocation_mode": invocation_mode,
+        "selection_mode": selection_mode,
+        "requested_episode_ids": sorted(set(requested_episode_ids)),
+        "selected_track": selected_track,
+        "selected_case_ids": [item["case_id"] for item in ordered],
+        "terminals": ordered,
+        "formal_evaluation_result": formal,
+        "evaluation_status": (
+            "formal_model_evaluation"
+            if formal
+            else "not_a_formal_model_evaluation"
+        ),
+        "git_commit": git_commit,
+        "worktree_clean": worktree_clean,
+        "dependency_lock_version": dependency_lock_version,
+        "dependency_lock_sha256": dependency_lock_sha256,
+        "manifest_sha256": "0" * 64,
+    }
+    manifest["manifest_sha256"] = artifact_manifest_digest(manifest)
+    return RuntimeRunManifestV3.model_validate(manifest).model_dump(mode="json")

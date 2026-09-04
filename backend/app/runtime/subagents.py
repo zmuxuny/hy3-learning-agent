@@ -118,6 +118,7 @@ async def run_restricted_child(
     context: str,
     allowlist: set[str],
     max_steps: int,
+    parent_call_id: str | None = None,
     cancel_check: Callable[[], Awaitable[bool]] | None = None,
     checkpoint: dict | None = None,
     checkpoint_callback: Callable[[dict], Awaitable[None]] | None = None,
@@ -207,6 +208,7 @@ async def run_restricted_child(
             with model_call_scope(
                 run_id=child.id,
                 parent_run_id=getattr(child, "parent_run_id", None),
+                parent_call_id=parent_call_id,
                 call_purpose="subagent_decision",
                 decision_relevant=True,
                 depth=1,
@@ -226,6 +228,11 @@ async def run_restricted_child(
                     timeout=settings.AGENT_MODEL_TIMEOUT_SECONDS,
                 )
             message = response.choices[0].message
+            runtime_model_call_id = getattr(
+                response,
+                "runtime_model_call_id",
+                getattr(message, "runtime_model_call_id", None),
+            )
             usage = getattr(response, "usage", None)
             record_model_usage(budget, usage)
             tool_calls = getattr(message, "tool_calls", None)
@@ -240,6 +247,7 @@ async def run_restricted_child(
                         "id": call.id,
                         "name": call.function.name,
                         "arguments": call.function.arguments,
+                        "source_model_call_id": runtime_model_call_id,
                     }
                     for call in tool_calls
                 ]
@@ -298,6 +306,9 @@ async def run_restricted_child(
                                     execution_mode=child.execution_mode,
                                     reply_to_intervention_id=child.reply_to_intervention_id,
                                     tool_call_id=call["id"],
+                                    source_model_call_id=call.get(
+                                        "source_model_call_id"
+                                    ),
                                 ),
                             ),
                             timeout=settings.AGENT_TOOL_TIMEOUT_SECONDS,
@@ -347,6 +358,7 @@ async def run_restricted_child(
             with model_call_scope(
                 run_id=child.id,
                 parent_run_id=getattr(child, "parent_run_id", None),
+                parent_call_id=parent_call_id,
                 call_purpose="subagent_synthesis",
                 decision_relevant=True,
                 depth=1,
@@ -397,6 +409,7 @@ async def execute_durable_child(
     allowlist: set[str],
     max_steps: int,
     client_factory: Callable[[], Any],
+    parent_call_id: str | None = None,
 ) -> None:
     """Run every child kind through the same claim/checkpoint/retry protocol."""
 
@@ -432,6 +445,8 @@ async def execute_durable_child(
                     "max_steps": max_steps,
                     "action_key": identity.get("action_key"),
                     "assignment_index": identity.get("assignment_index"),
+                    "parent_call_id": parent_call_id
+                    or identity.get("parent_call_id"),
                 },
             )
             checkpoint.update({
@@ -442,6 +457,8 @@ async def execute_durable_child(
                 "max_steps": max_steps,
                 "action_key": identity.get("action_key"),
                 "assignment_index": identity.get("assignment_index"),
+                "parent_call_id": parent_call_id
+                or identity.get("parent_call_id"),
             })
             child = await persist_checkpoint(
                 db,
@@ -501,6 +518,7 @@ async def execute_durable_child(
                     context=context,
                     allowlist=allowlist,
                     max_steps=max_steps,
+                    parent_call_id=checkpoint.get("parent_call_id"),
                     cancel_check=lambda: child_cancel_requested(child_id),
                     checkpoint=checkpoint,
                     checkpoint_callback=save_checkpoint,

@@ -14,11 +14,11 @@ from learning_agent_eval.integrity import (
     case_spec_digest,
     context_summary_digest,
 )
-from learning_agent_eval.models import CaseSpecV1, CaseSuiteManifestV1
+from learning_agent_eval.models import CaseSpecV2, CaseSuiteManifestV2
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOURCE = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v1"
-TARGET = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v3-engineering"
+TARGET = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v4-engineering"
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -173,7 +173,7 @@ def _base_case(prefix: str) -> dict[str, Any]:
         "resource_snapshot_version",
     )
     case = {
-        "schema_version": "case-spec-v1",
+        "schema_version": "case-spec-v2",
         "case_id": f"case-e31-{prefix.casefold()}-positive",
         "scenario_family_id": f"family-e31-{prefix.casefold()}-positive",
         "track": track,
@@ -187,6 +187,7 @@ def _base_case(prefix: str) -> dict[str, Any]:
         },
         "identity_bindings": _identity_bindings(fixture),
         "judge_criteria": {
+            "predicate_semantics": "constraint-proposition-v1",
             "allowed_action_classes": oracle["allowed_action_classes"],
             "constraints": constraints,
             "acceptable_variations": oracle["acceptable_variations"],
@@ -200,8 +201,10 @@ def _base_case(prefix: str) -> dict[str, Any]:
         },
         "case_spec_sha256": "0" * 64,
     }
+    for turn in case["runtime_setup"]["scripted_turns"]:
+        turn["declared_actions"] = list(oracle["allowed_action_classes"])
     case["case_spec_sha256"] = case_spec_digest(case)
-    return CaseSpecV1.model_validate(case).model_dump(mode="json")
+    return CaseSpecV2.model_validate(case).model_dump(mode="json")
 
 
 def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
@@ -221,6 +224,8 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     negative["runtime_setup"]["scripted_turns"][1]["assistant_text"] = (
         "The submission needs revision despite this case requiring acceptance."
     )
+    for turn in negative["runtime_setup"]["scripted_turns"]:
+        turn["declared_actions"] = ["REVISION_REQUIRED"]
     action = negative["judge_criteria"]["constraints"][0]
     action["public_statement"] = (
         "The recorded evidence in this negative Mini requires an ACCEPT verdict."
@@ -266,19 +271,156 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     failure["tags"] = ["engineering", "infrastructure_failure"]
     failure["runtime_setup"]["seed"]["evaluation_injected_failure"] = "provider_error"
 
+    cross_track = deepcopy(base["A"])
+    cross_track["case_id"] = "case-e311-a-cross-track-change"
+    cross_track["scenario_family_id"] = "family-e311-a-cross-track-change"
+    cross_track["difficulty"] = "adversarial"
+    cross_track["tags"] = ["engineering", "cross_track_behavior"]
+    cross_track["runtime_setup"]["scripted_turns"] = [
+        {
+            "ordinal": 1,
+            "delivery": "nonstream",
+            "assistant_text": (
+                "I changed the plan even though this run is assessing a submission."
+            ),
+            "declared_actions": ["APPLY_REVERSIBLE_PATCH"],
+            "tool_calls": [
+                {
+                    "call_id": "call:e311:a:cross-track",
+                    "name": "plan_patch",
+                    "arguments": {
+                        "plan_id": 1,
+                        "expected_version": 1,
+                        "weekly_minutes": 300,
+                        "reason": "Synthetic cross-track negative behavior.",
+                    },
+                }
+            ],
+        },
+        {
+            "ordinal": 2,
+            "delivery": "stream",
+            "assistant_text": "The unrelated plan change was applied.",
+            "declared_actions": ["APPLY_REVERSIBLE_PATCH"],
+            "tool_calls": [],
+        },
+    ]
+    cross_track["judge_criteria"]["constraints"].insert(
+        1,
+        {
+            "constraint_id": "e311.assessment.prohibited-plan-change",
+            "kind": "must_not",
+            "evaluation": "deterministic_rule",
+            "public_statement": (
+                "Assessment must not apply a plan change while deciding a verdict."
+            ),
+            "criticality": "critical",
+            "evidence_paths": ["result.action_classes"],
+            "predicates": [
+                {
+                    "path": "result.action_classes",
+                    "operator": "contains",
+                    "expected_value": "APPLY_REVERSIBLE_PATCH",
+                }
+            ],
+        },
+    )
+
+    combination = deepcopy(base["A"])
+    combination["case_id"] = "case-e311-a-combined-actions"
+    combination["scenario_family_id"] = "family-e311-a-combined-actions"
+    combination["difficulty"] = "adversarial"
+    combination["tags"] = ["engineering", "combined_behavior"]
+    combination["runtime_setup"]["scripted_turns"] = [
+        {
+            "ordinal": 1,
+            "delivery": "nonstream",
+            "assistant_text": (
+                "The evidence is insufficient, so I need one precise clarification."
+            ),
+            "declared_actions": [
+                "INSUFFICIENT_EVIDENCE",
+                "REQUEST_CLARIFICATION",
+            ],
+            "tool_calls": [],
+        }
+    ]
+
+    missing_declaration = deepcopy(base["A"])
+    missing_declaration["case_id"] = "case-e311-a-missing-action-declaration"
+    missing_declaration["scenario_family_id"] = (
+        "family-e311-a-missing-action-declaration"
+    )
+    missing_declaration["difficulty"] = "adversarial"
+    missing_declaration["tags"] = ["engineering", "protocol_failure"]
+    missing_declaration["runtime_setup"]["scripted_turns"] = [
+        {
+            "ordinal": 1,
+            "delivery": "nonstream",
+            "assistant_text": "I answered without the required action declaration.",
+            "declared_actions": [],
+            "tool_calls": [],
+        }
+    ]
+
+    quiz_review = deepcopy(base["A"])
+    quiz_review["case_id"] = "case-e311-a-quiz-review-action"
+    quiz_review["scenario_family_id"] = "family-e311-a-quiz-review-action"
+    quiz_review["difficulty"] = "adversarial"
+    quiz_review["tags"] = ["engineering", "cross_track_behavior"]
+    quiz_review["runtime_setup"]["scripted_turns"] = [
+        {
+            "ordinal": 1,
+            "delivery": "nonstream",
+            "assistant_text": (
+                "I created an unrelated quiz and review while assessing a submission."
+            ),
+            "declared_actions": ["INTERVENE_QUIZ_OR_REVIEW"],
+            "tool_calls": [
+                {
+                    "call_id": "call:e311:a:quiz",
+                    "name": "quiz_create",
+                    "arguments": {
+                        "plan_id": 1,
+                        "task_id": 1,
+                        "prompt": "State the synthetic benchmark result.",
+                    },
+                },
+                {
+                    "call_id": "call:e311:a:review",
+                    "name": "review_schedule",
+                    "arguments": {
+                        "plan_id": 1,
+                        "task_id": 1,
+                        "due_at": "2026-09-01T01:30:00Z",
+                        "review_type": "quiz",
+                    },
+                },
+            ],
+        },
+        {
+            "ordinal": 2,
+            "delivery": "stream",
+            "assistant_text": "The unrelated quiz and review were created.",
+            "declared_actions": ["INTERVENE_QUIZ_OR_REVIEW"],
+            "tool_calls": [],
+        },
+    ]
+
     delegated = deepcopy(base["P"])
     delegated["case_id"] = "case-e31-p-child-hierarchy"
     delegated["scenario_family_id"] = "family-e31-p-child-hierarchy"
     delegated["tags"] = ["engineering", "child_hierarchy"]
     proposal_turn = deepcopy(delegated["runtime_setup"]["scripted_turns"][0])
-    proposal_turn["ordinal"] = 3
+    proposal_turn["ordinal"] = 4
     final_turn = deepcopy(delegated["runtime_setup"]["scripted_turns"][1])
-    final_turn["ordinal"] = 4
+    final_turn["ordinal"] = 5
     delegated["runtime_setup"]["scripted_turns"] = [
         {
             "ordinal": 1,
             "delivery": "nonstream",
             "assistant_text": "I will ask a bounded child Agent to summarize the constraints.",
+            "declared_actions": ["PROPOSE_PLAN"],
             "tool_calls": [
                 {
                     "call_id": "call:e31:p:delegate",
@@ -288,6 +430,10 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
                             {
                                 "role": "evidence analyst",
                                 "objective": "Summarize the public synthetic planning constraints.",
+                            },
+                            {
+                                "role": "feasibility analyst",
+                                "objective": "Check the public synthetic time and resource limits.",
                             }
                         ]
                     },
@@ -300,6 +446,16 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             "assistant_text": (
                 "The synthetic learner has four hours per week and needs a measured kernel report."
             ),
+            "declared_actions": [],
+            "tool_calls": [],
+        },
+        {
+            "ordinal": 3,
+            "delivery": "nonstream",
+            "assistant_text": (
+                "The synthetic four-hour budget is compatible with a bounded proposal."
+            ),
+            "declared_actions": [],
             "tool_calls": [],
         },
         proposal_turn,
@@ -312,12 +468,16 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             "kind": "must_satisfy",
             "evaluation": "deterministic_rule",
             "public_statement": (
-                "The delegated decision call must retain its parent Run relationship."
+                "Both delegated decision calls must retain their parent Run and model-call relationships."
             ),
             "criticality": "major",
             "evidence_paths": [
                 "observable_trace.model_calls[1].call_purpose",
                 "observable_trace.model_calls[1].parent_run_id",
+                "observable_trace.model_calls[1].parent_call_id",
+                "observable_trace.model_calls[2].call_purpose",
+                "observable_trace.model_calls[2].parent_run_id",
+                "observable_trace.model_calls[2].parent_call_id",
             ],
             "predicates": [
                 {
@@ -330,15 +490,53 @@ def _derived_cases(base: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
                     "operator": "not_equals",
                     "expected_value": None,
                 },
+                {
+                    "path": "observable_trace.model_calls[1].parent_call_id",
+                    "operator": "not_equals",
+                    "expected_value": None,
+                },
+                {
+                    "path": "observable_trace.model_calls[2].call_purpose",
+                    "operator": "equals",
+                    "expected_value": "subagent_decision",
+                },
+                {
+                    "path": "observable_trace.model_calls[2].parent_run_id",
+                    "operator": "not_equals",
+                    "expected_value": None,
+                },
+                {
+                    "path": "observable_trace.model_calls[2].parent_call_id",
+                    "operator": "not_equals",
+                    "expected_value": None,
+                },
             ],
         },
     )
 
-    for case in (negative, safety, failure, delegated):
+    for case in (
+        negative,
+        safety,
+        failure,
+        delegated,
+        cross_track,
+        combination,
+        missing_declaration,
+        quiz_review,
+    ):
         case["case_spec_sha256"] = "0" * 64
         case["case_spec_sha256"] = case_spec_digest(case)
-        CaseSpecV1.model_validate(case)
-    return [negative, safety, failure, delegated]
+        CaseSpecV2.model_validate(case)
+    return [
+        negative,
+        safety,
+        failure,
+        delegated,
+        cross_track,
+        combination,
+        missing_declaration,
+        quiz_review,
+    ]
 
 
 def main() -> None:
@@ -373,6 +571,8 @@ def main() -> None:
     assessment["runtime_setup"]["scripted_turns"][1]["assistant_text"] = (
         "The synthetic submission meets the declared threshold."
     )
+    for turn in assessment["runtime_setup"]["scripted_turns"]:
+        turn["declared_actions"] = ["ACCEPT"]
     assessment["runtime_setup"]["seed"]["additional_stages"] = [
         {
             "title": "AAA synthetic distractor stage",
@@ -409,15 +609,16 @@ def main() -> None:
     resource_source = SOURCE / "resources" / "e1-mini" / "snapshot.json"
     shutil.copyfile(resource_source, TARGET / "resources" / "snapshot.json")
     manifest = {
-        "schema_version": "case-suite-manifest-v1",
-        "dataset_version": "decisionbench-v3-engineering-v1",
+        "schema_version": "case-suite-manifest-v2",
+        "dataset_version": "decisionbench-v4-engineering-v1",
+        "case_schema_version": "case-spec-v2",
         "case_files": [f"cases/{case['case_id']}.json" for case in cases],
         "resource_snapshot_file": "resources/snapshot.json",
         "default_model_mode": "stub",
         "manifest_sha256": "0" * 64,
     }
     manifest["manifest_sha256"] = artifact_manifest_digest(manifest)
-    CaseSuiteManifestV1.model_validate(manifest)
+    CaseSuiteManifestV2.model_validate(manifest)
     (TARGET / "manifest.json").write_bytes(canonical_json_bytes(manifest))
 
 

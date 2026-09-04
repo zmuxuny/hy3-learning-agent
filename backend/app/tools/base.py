@@ -39,6 +39,10 @@ class ToolContext:
     # of this id is deduplicated.  Direct callers without an id get one
     # fail-closed action slot per run/tool and cannot create ambiguous writes.
     tool_call_id: str | None = None
+    # Stable identity of the model call that emitted this tool invocation.
+    # The generic Runtime only propagates the opaque value; evaluation owns
+    # allocation and interpretation through the process-scoped client seam.
+    source_model_call_id: str | None = None
     # Populated by the execution coordinator after the durable claim.  Handlers
     # use these values to associate Operations, evidence, and outbox intents
     # with the canonical invocation instead of inventing parallel identities.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -56,11 +57,12 @@ def _metadata(
     purpose: str = "decision",
     relevant: bool = True,
     depth: int = 0,
+    parent_call_id: str | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         run_id=run_id,
         parent_run_id=parent_run_id,
-        parent_call_id=None,
+        parent_call_id=parent_call_id,
         call_purpose=purpose,
         decision_relevant=relevant,
         depth=depth,
@@ -167,6 +169,60 @@ async def test_real_recorder_retains_provider_call_times() -> None:
 
 
 @pytest.mark.asyncio
+async def test_recorder_reserves_unique_start_order_before_concurrent_completion() -> None:
+    started = [asyncio.Event(), asyncio.Event()]
+    release = [asyncio.Event(), asyncio.Event()]
+
+    class ConcurrentCompletions:
+        def __init__(self) -> None:
+            self.ordinal = 0
+
+        async def create(self, **_: Any) -> Any:
+            index = self.ordinal
+            self.ordinal += 1
+            started[index].set()
+            await release[index].wait()
+            message = SimpleNamespace(
+                content=f"reply-{index + 1}",
+                reasoning_content=None,
+                tool_calls=None,
+            )
+            return SimpleNamespace(
+                id=f"response-{index + 1}",
+                model="e1-scripted-model",
+                choices=[SimpleNamespace(message=message)],
+                usage=None,
+            )
+
+    client = SimpleNamespace(
+        chat=SimpleNamespace(completions=ConcurrentCompletions())
+    )
+    recorder = EvaluationModelRecorder(
+        client,
+        invocation_mode="stub",
+        metadata_provider=lambda: _metadata(),
+    )
+    first = asyncio.create_task(_record(recorder))
+    await started[0].wait()
+    second = asyncio.create_task(_record(recorder))
+    await started[1].wait()
+    release[1].set()
+    assert await second == "reply-2"
+    release[0].set()
+    assert await first == "reply-1"
+
+    assert [item["call_id"] for item in recorder.records] == [
+        "model-call:001",
+        "model-call:002",
+    ]
+    assert [item["ordinal"] for item in recorder.records] == [1, 2]
+    assert [item["assistant_text"] for item in recorder.records] == [
+        "reply-1",
+        "reply-2",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_runtime_model_factory_covers_scoped_child_and_auxiliary_calls() -> None:
     from app.runtime.model_clients import (
         create_model_client,
@@ -206,6 +262,7 @@ async def test_runtime_model_factory_covers_scoped_child_and_auxiliary_calls() -
         with model_call_scope(
             run_id="run-child",
             parent_run_id="run-main",
+            parent_call_id="model-call:parent",
             call_purpose="subagent_decision",
             decision_relevant=True,
             depth=1,
@@ -232,6 +289,7 @@ async def test_runtime_model_factory_covers_scoped_child_and_auxiliary_calls() -
     ]
     assert [item["decision_relevant"] for item in calls] == [True, False]
     assert calls[0]["parent_run_id"] == "run-main"
+    assert calls[0]["parent_call_id"] == "model-call:parent"
 
 
 @pytest.mark.asyncio

@@ -326,6 +326,54 @@ JUDGE_CONFIG_DOCUMENT_V2 = {
 }
 JUDGE_CONFIG_SHA256_V2 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V2)
 
+# E3.1.1 clean switch: v3 binds the unchanged public Rubric to the v4
+# scoreable-behavior Episode and the frozen constraint-proposition semantics.
+JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3"
+JUDGE_VERSION_V3 = "hy3-structured-judge-v3"
+JUDGE_CONFIG_VERSION_V3 = "hy3-judge-config-v3"
+JUDGE_INSTRUCTIONS_V3 = (
+    "Evaluate semantic decision quality only from the supplied DecisionEpisode v4 "
+    "projection, authoritative deterministic Rule facts, label-free JudgeReference, "
+    "public Rubric, and current-track anchors. Under constraint-proposition-v1, all "
+    "predicates in one constraint form a conjunction: must_satisfy requires that "
+    "proposition to hold, while must_not requires that proposition not to hold. Treat "
+    "deterministic Rule outcomes as authoritative and do not recompute their predicates, "
+    "time, thresholds, existence, integrity, privacy, isolation, or hard gates. Return "
+    "D1-D7 exactly once and in order with levels 0, 1, or 2. Every dimension must cite "
+    "an Evidence Path visible in the supplied Episode projection; a level below 2 "
+    "requires one concrete public issue. Suggested hard gates are advisory only. Do not "
+    "invent facts, identity, labels, hidden analysis, or private reasoning."
+)
+JUDGE_PROMPT_DOCUMENT_V3 = {
+    "schema_version": "judge-prompt-config-v3",
+    "judge_prompt_version": JUDGE_PROMPT_VERSION_V3,
+    "instructions": JUDGE_INSTRUCTIONS_V3,
+    "provider_output_contract": "judge-response-payload-v1",
+    "provider_output_schema_sha256": sha256_digest(
+        JudgeResponsePayloadV1.model_json_schema(mode="validation")
+    ),
+    "input_contracts": [
+        "decision-episode-v4",
+        "rule-result-v3",
+        "judge-reference-v2",
+        "blind-judge-input-v3",
+        "public-rubric-config-v1",
+        "track-anchor-config-v1",
+    ],
+    "predicate_semantics": "constraint-proposition-v1",
+}
+JUDGE_PROMPT_SHA256_V3 = sha256_digest(JUDGE_PROMPT_DOCUMENT_V3)
+JUDGE_CONFIG_DOCUMENT_V3 = {
+    "schema_version": "judge-provider-config-v3",
+    "judge_config_version": JUDGE_CONFIG_VERSION_V3,
+    "model": "hy3",
+    "wire_protocol": "openai-compatible-structured-output-v1",
+    "temperature": 0.0,
+    "reasoning_effort": "high",
+    "repair_limit": REPAIR_LIMIT,
+}
+JUDGE_CONFIG_SHA256_V3 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V3)
+
 
 def rubric_projection(track: Track) -> dict[str, Any]:
     """Return only the common Rubric and anchors for one track."""
