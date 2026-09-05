@@ -485,7 +485,8 @@ def test_real_read_result_shapes_remain_exportable(tmp_path, track, calls):
     assert validate_dataset(tmp_path / "runtime").ok
 
 
-def test_resource_read_then_proposal_keeps_approval_source_refs(tmp_path):
+@pytest.mark.parametrize("delegate", [False, True])
+def test_resource_read_then_proposal_keeps_approval_source_refs(tmp_path, delegate):
     case = load(DATA / "cases/case-e31-p-positive.json")
     proposal = deepcopy(case["runtime_setup"]["scripted_turns"][0])
     inspect = deepcopy(proposal)
@@ -494,6 +495,9 @@ def test_resource_read_then_proposal_keeps_approval_source_refs(tmp_path):
             "url": "https://cuda.example.test/profiling-guide", "max_chars": 8000}}
     ])
     proposal["ordinal"] = 2
+    if delegate:
+        proposal["tool_calls"] = [{"call_id": "blocked-delegate", "name": "planning_delegate",
+                                  "arguments": {"assignments": [{"role": "planner", "objective": "Inspect feasibility"}]}}]
     case["runtime_setup"]["scripted_turns"] = [inspect, proposal]
     dataset = suite_for(tmp_path, [case])
     summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
@@ -502,7 +506,9 @@ def test_resource_read_then_proposal_keeps_approval_source_refs(tmp_path):
     assert any(entity["entity_type"] == "run_approval" for entity in episode["state_after"]["logical_entities"])
     assert validate_dataset(tmp_path / "runtime").ok
     rules = evaluate_active_rules(input_path=tmp_path / "runtime", output=tmp_path / "rules")
-    assert not rules.hard_gate_episode_ids
+    # A reviewable plan draft satisfies the proposal gate; a request to start
+    # research still lacks a plan and remains an honestly scoreable failure.
+    assert bool(rules.hard_gate_episode_ids) is delegate
     assert not rules.invalid_episode_ids
 
 

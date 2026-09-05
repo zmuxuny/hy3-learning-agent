@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import hashlib
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -707,7 +708,9 @@ def report_reference(key, content):
         "kind": "provided_synthetic_report",
         "title": "题目提供的验收记录",
         "url": f"https://learning.example.test/e4/evidence/{key}",
-        "content_sha256": sha256_digest(report_content(content)),
+        "content_sha256": hashlib.sha256(
+            report_content(content).encode("utf-8")
+        ).hexdigest(),
     }
 
 

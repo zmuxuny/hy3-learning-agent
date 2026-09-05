@@ -289,16 +289,18 @@ def _effects_and_result(
 
     for invocation in trace["tool_invocations"]:
         action = _invocation_action(invocation)
-        if action is None:
+        effect_status = _effect_status(invocation)
+        if action is None and effect_status not in {"blocked", "deferred", "pending"}:
             continue
-        _append_unique(actions, [action])
+        if action is not None:
+            _append_unique(actions, [action])
         effects.append(
             {
                 "effect_id": f"effect:{episode_id}:{len(effects) + 1:03d}",
                 "ordinal": len(effects) + 1,
-                "effect_type": ACTION_EFFECT_TYPES_V2[action],
-                "status": _effect_status(invocation),
-                "action_classes": [action],
+                "effect_type": ACTION_EFFECT_TYPES_V2[action] if action is not None else "unclassified",
+                "status": effect_status,
+                "action_classes": [action] if action is not None else [],
                 "entity_refs": _invocation_entity_refs(
                     invocation,
                     state_after=state_after,
