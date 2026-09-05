@@ -465,6 +465,26 @@ def test_repeated_events_at_one_frozen_time_keep_distinct_identities(tmp_path):
     assert validate_dataset(tmp_path / "runtime").ok
 
 
+@pytest.mark.parametrize("track,calls", [
+    ("a", [("submission_list", {"plan_id": 1}), ("study_state_get", {"plan_id": 1})]),
+    ("p", [("web_search", {"query": "synthetic cuda profiling guide", "save_results": False})]),
+])
+def test_real_read_result_shapes_remain_exportable(tmp_path, track, calls):
+    case = load(DATA / f"cases/case-e31-{track}-positive.json")
+    final = deepcopy(case["runtime_setup"]["scripted_turns"][-1])
+    inspect = deepcopy(final)
+    inspect.update(ordinal=1, assistant_text="", declared_actions=[], tool_calls=[
+        {"call_id": f"inspect-{i}", "name": name, "arguments": args}
+        for i, (name, args) in enumerate(calls)
+    ])
+    final["ordinal"] = 2
+    case["runtime_setup"]["scripted_turns"] = [inspect, final]
+    dataset = suite_for(tmp_path, [case])
+    summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+    assert not summary.failure_ids
+    assert validate_dataset(tmp_path / "runtime").ok
+
+
 def test_projection_failure_retains_original_public_tool_arguments():
     from learning_agent_eval.active_worker import _public_model_records
     from learning_agent_eval.normalizers import NormalizationError

@@ -423,6 +423,7 @@ _CONTAINER_ID_TYPES = {
     "submissions": "submission",
     "tasks": "task",
     "current_task": "task",
+    "recommended_next": "task",
     "overdue_tasks": "task",
     "blocked_tasks": "task",
     "scheduled_reviews": "review",
@@ -431,6 +432,10 @@ _CONTAINER_ID_TYPES = {
 _TOOL_RESULT_ID_TYPES = {
     "plan_get": "plan", "submission_get": "submission", "quiz_get": "quiz",
     "plan.get": "plan", "submission.get": "submission", "quiz.get": "quiz",
+}
+_REFERENCE_LIST_TYPES = {
+    "saved_resource_ids": "resource",
+    "unscoped_observation_ids": "evidence_observation",
 }
 _PUBLIC_ID_FIELDS = {
     "call_id",
@@ -828,6 +833,11 @@ def _normalize_references(value: object, registry: StableIdentityRegistry) -> An
                             if not argument_context:
                                 raise
                             public_key = key  # Preserve the invalid attempted target as input.
+                elif key in _REFERENCE_LIST_TYPES:
+                    if not isinstance(child, list):
+                        raise SnapshotCollectionError("snapshot.invalid_reference_list")
+                    child = [registry.resolve(_REFERENCE_LIST_TYPES[key], ref) for ref in child]
+                    public_key = f"{key.removesuffix('_ids')}_refs"
                 elif key == "memory_ids":
                     if child:
                         raise SnapshotCollectionError(
