@@ -257,6 +257,7 @@ def _run_runtime(
     allow_real_model: bool = False,
     worker_timeout_seconds: float = 180.0,
     _contract_version: str = "v3",
+    budget_ledger: str | Path | None = None,
 ) -> RunAgentV3Summary:
     """Run selected CaseSpecs independently and preserve every terminal artifact."""
 
@@ -292,6 +293,15 @@ def _run_runtime(
     if _contract_version not in {"v3", "v4"}:
         raise ValueError("unsupported internal evaluation contract")
     active = _contract_version == "v4"
+    if active and model_mode == "real":
+        from .model_budget import ModelBudget
+
+        if budget_ledger is None:
+            raise RunAgentV3Error("budget_required", "prepare", "batch", "real Runtime requires a prepaid budget ledger")
+        ledger_path = Path(budget_ledger).absolute()
+        if ledger_path == PROJECT_ROOT or PROJECT_ROOT in ledger_path.parents:
+            raise RunAgentV3Error("budget_path", "prepare", "batch", "budget ledger must be outside the repository")
+        ModelBudget(ledger_path).summary()
     suite = _validate_manifest(
         _load(manifest_path, artifact="CaseSuite manifest"),
         contract_version=_contract_version,
@@ -430,6 +440,7 @@ def _run_runtime(
                 "dependency_lock_sha256": dependency_digest,
                 "dependency_lock_verified": dependency_lock_verified,
                 "contract_version": _contract_version,
+                "budget_ledger": str(Path(budget_ledger).absolute()) if budget_ledger is not None else None,
             }
             if active:
                 assert protocol_release is not None
@@ -795,6 +806,7 @@ def run_active_runtime(
     model_mode: str = "stub",
     allow_real_model: bool = False,
     worker_timeout_seconds: float = 180.0,
+    budget_ledger: str | Path | None = None,
 ) -> RunAgentV3Summary:
     """Run the sole active CaseSpec v2 to DecisionEpisode v4 chain."""
 
@@ -808,4 +820,5 @@ def run_active_runtime(
         allow_real_model=allow_real_model,
         worker_timeout_seconds=worker_timeout_seconds,
         _contract_version="v4",
+        budget_ledger=budget_ledger,
     )

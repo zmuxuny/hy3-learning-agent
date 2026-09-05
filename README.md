@@ -62,7 +62,7 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 产品内的“学习成果验收”判断用户是否学会；第三阶段评测判断 Hy3 的规划、介入、验收和调整是否做得正确。两者共享可观察事实，但职责清晰分离。整体构思见[第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md)，工程协议见[第三阶段评测实施方案](docs/腾讯犀牛鸟开源实习第三阶段评测实施方案.md)。
 
-第三阶段 E0 已完成版本化 Episode / Oracle / Environment Manifest、离线校验 CLI 和四轨手工协议 Mini Episode；这些夹具不代表正式 Hy3 结果。下一步依次建设隔离回放、规则与 Judge、DecisionBench 和有效性实验。运行入口见[评测包说明](evaluation/README.md)，实时里程碑见[当前状态](docs/STATUS.md)。
+第三阶段已实现隔离 Runtime、轨迹导出、Rules、盲化 Judge、聚合和协议发布绑定；审计修复及 E4 离线案例设计正在推进。现有工程夹具与固定 Judge 响应不代表正式 Hy3 结果，生产 Benchmark 注册表仍为空。运行入口见[评测包说明](evaluation/README.md)，实时里程碑见[当前状态](docs/STATUS.md)。
 
 ## Demo
 

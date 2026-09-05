@@ -3,6 +3,10 @@
 本目录是 Evaluation Protocol Release 1.0 的仓库固定信任根，不是可由 CLI 指定的配置目录。
 设计与边界见 [`../../docs/E3.1.2正式评测准入与版本治理.md`](../../docs/E3.1.2正式评测准入与版本治理.md)。
 
+这里的信任边界来自经审查的代码与 Git 版本。普通 Git 文件中的 hash lock 是回归与一致性约束，不能证明文件不可被共同篡改，也不能密码学证明远端模型实际执行过某段代码。活动制品另核对 Git 对象中的来源包，Provider Attestation 仍只提供可审计归因。
+
+2026-09-05 审计修复纠正了四条历史锁的 `frozen_in` 阶段文字：CaseSpec v1、CaseSuite v1、JudgeReference v1、RuntimeFailure v1 实际首次出现在 E3.1 的 `2af42e3` / `16ad39b`，不是 E3。此次仅纠正元数据；全部 23 个历史 Schema 的原始字节、路径、版本和 SHA-256 保持不变。
+
 | 文件 | 作用 |
 | --- | --- |
 | `evaluation-protocol-release-1.0.json` | 固定活动制品链、Schema、规则、Judge、聚合、盲化、Evidence 和 formal 政策 |

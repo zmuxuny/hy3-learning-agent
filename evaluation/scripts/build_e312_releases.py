@@ -108,6 +108,8 @@ def _frozen_in(version: str) -> str:
         return "E0"
     if version.startswith("decision-episode-v2") or version == "rule-result-v1":
         return "E2"
+    if version in {"case-spec-v1", "case-suite-manifest-v1", "judge-reference-v1", "runtime-failure-v1"}:
+        return "E3.1"
     if version.endswith("-v1"):
         return "E3"
     return "E3.1"

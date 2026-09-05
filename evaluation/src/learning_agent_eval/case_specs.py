@@ -130,6 +130,7 @@ def legacy_runtime_projection_v2(case: Mapping[str, Any]) -> dict[str, Any]:
     validated = validate_case_spec_v2(case)
     runtime = validated["runtime_setup"]
     return {
+        "active_seed": True,
         "schema_version": "e1-runtime-mini-fixture-v1",
         "episode_id": episode_id_for_case(validated),
         "scenario_family_id": validated["scenario_family_id"],

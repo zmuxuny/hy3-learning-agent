@@ -974,6 +974,22 @@
           "title": "Status",
           "type": "string"
         },
+        "token_usage": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Token Usage"
+        },
         "tool_call_refs": {
           "items": {
             "maxLength": 128,

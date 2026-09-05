@@ -10,12 +10,17 @@ from threading import Lock
 from typing import Any
 
 from .canonical import canonical_json, sha256_digest
+from .model_budget import OUTPUT_LIMIT, ModelBudget
 from .normalizers import utc_timestamp
 from .privacy import is_model_private_reasoning_field, privacy_issues
 
 
 class RecorderPrivacyError(RuntimeError):
     """A projected public record failed the existing E0 privacy boundary."""
+
+
+class RecorderBudgetExceeded(RuntimeError):
+    """The shared request budget was exhausted before contacting the provider."""
 
 
 def public_projection(value: object) -> object:
@@ -90,7 +95,11 @@ class _RecordedStream:
         except Exception:
             self._recorder._finish_error(self._pending, status="provider_error")
             raise
-        self._recorder._observe_chunk(self._pending, chunk)
+        try:
+            self._recorder._observe_chunk(self._pending, chunk)
+        except (RecorderPrivacyError, AttributeError, IndexError, TypeError, ValueError):
+            self._recorder._finish_projection_error(self._pending)
+            raise
         return chunk
 
 
@@ -100,6 +109,17 @@ class _CompletionsDecorator:
         self._delegate = delegate
 
     async def create(self, **request: Any) -> Any:
+        if self._recorder.max_output_tokens is not None:
+            extra_body = request.get("extra_body") or {}
+            if any(key in extra_body for key in ("model", "n", "max_tokens", "max_completion_tokens")):
+                raise RecorderBudgetExceeded("request body cannot override the request budget")
+            if self._recorder.invocation_mode == "real" and request.get("model") != "hy3":
+                raise RecorderBudgetExceeded("request budget is priced for Hy3 only")
+            request["max_tokens"] = self._recorder.max_output_tokens
+            request.pop("max_completion_tokens", None)
+            request["n"] = 1
+            if self._recorder.budget is not None and request.get("stream"):
+                request["stream_options"] = {"include_usage": True}
         pending = self._recorder._begin(request)
         try:
             response = await self._delegate.create(**request)
@@ -142,6 +162,10 @@ class EvaluationModelRecorder:
         *,
         invocation_mode: str,
         metadata_provider: Callable[[], object | None] | None = None,
+        max_calls: int | None = None,
+        max_output_tokens: int | None = None,
+        budget: ModelBudget | None = None,
+        budget_scope: str = "unspecified",
     ):
         if invocation_mode not in {"stub", "real"}:
             raise ValueError("invocation_mode must be stub or real")
@@ -151,6 +175,16 @@ class EvaluationModelRecorder:
         self.records: list[dict[str, Any]] = []
         self._record_lock = Lock()
         self._next_ordinal = 1
+        self.max_calls = max_calls
+        self.max_output_tokens = max_output_tokens
+        self.budget = budget
+        self.budget_scope = budget_scope
+        if budget is not None and max_output_tokens != OUTPUT_LIMIT:
+            raise ValueError("prepaid budget requires its priced output limit")
+        if max_calls is not None and (type(max_calls) is not int or max_calls < 1):
+            raise ValueError("max_calls must be a positive integer")
+        if max_output_tokens is not None and (type(max_output_tokens) is not int or max_output_tokens < 1):
+            raise ValueError("max_output_tokens must be a positive integer")
 
     def _begin(self, request: Mapping[str, Any]) -> dict[str, Any]:
         projected_messages = public_projection(request.get("messages") or [])
@@ -169,6 +203,8 @@ class EvaluationModelRecorder:
         # Reserve identity at call start. Provider calls can complete out of
         # order, so completion-order list length is not a valid allocator.
         with self._record_lock:
+            if self.max_calls is not None and self._next_ordinal > self.max_calls:
+                raise RecorderBudgetExceeded("shared model request budget exhausted")
             ordinal = self._next_ordinal
             self._next_ordinal += 1
         metadata = self._metadata_provider() if self._metadata_provider else None
@@ -209,7 +245,9 @@ class EvaluationModelRecorder:
                     else None
                 ),
                 "stream": bool(request.get("stream", False)),
+                "n": request.get("n", 1),
             },
+            "token_usage": None,
             "response_model": None,
             "provider_request_id": None,
             "response_status": "pending",
@@ -221,9 +259,14 @@ class EvaluationModelRecorder:
             pending["requested_at"] = utc_timestamp(datetime.now(timezone.utc))
             pending["responded_at"] = None
         self._assert_public(pending)
+        if self.budget is not None:
+            pending["_budget_ticket"] = self.budget.reserve(
+                scope=self.budget_scope, call_id=pending["call_id"]
+            )
         return pending
 
     def _observe_chunk(self, pending: dict[str, Any], chunk: Any) -> None:
+        self._observe_usage(pending, chunk)
         if getattr(chunk, "model", None):
             pending["response_model"] = str(chunk.model)
         if getattr(chunk, "id", None):
@@ -277,6 +320,7 @@ class EvaluationModelRecorder:
         self._publish(pending)
 
     def _finish_message(self, pending: dict[str, Any], response: Any) -> None:
+        self._observe_usage(pending, response)
         pending.pop("_stream_calls")
         message = response.choices[0].message
         pending["assistant_text"] = str(getattr(message, "content", None) or "")
@@ -314,7 +358,19 @@ class EvaluationModelRecorder:
         pending["record_error"] = "response_projection_rejected"
         self._finish_error(pending, status="framework_error")
 
+    @staticmethod
+    def _observe_usage(pending: dict[str, Any], response: Any) -> None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        values = {name: getattr(usage, name, None) for name in ("prompt_tokens", "completion_tokens", "total_tokens")}
+        if all(type(value) is int and value >= 0 for value in values.values()):
+            pending["token_usage"] = values
+
     def _publish(self, record: dict[str, Any]) -> None:
+        ticket = record.pop("_budget_ticket", None)
+        if ticket is not None:
+            self.budget.settle(ticket, record.get("token_usage"))
         self._assert_public(record)
         # Canonical round-trip prevents later mutation through caller-owned containers.
         published = json.loads(canonical_json(record))

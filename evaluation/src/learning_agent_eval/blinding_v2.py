@@ -132,6 +132,8 @@ def _trace_projection(trace: Mapping[str, Any], *, salt: str) -> dict[str, Any]:
     projected = deepcopy(dict(trace))
     for call in projected.get("model_calls", []):
         call.pop("request_model", None)
+        call.pop("request_config", None)
+        call.pop("token_usage", None)
     return _sanitize(projected, salt=salt)
 
 

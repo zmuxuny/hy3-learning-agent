@@ -481,6 +481,7 @@
           "type": "string"
         },
         "notification_cooldown_minutes": {
+          "maximum": 1440,
           "minimum": 0,
           "title": "Notification Cooldown Minutes",
           "type": "integer"
@@ -498,6 +499,13 @@
           "title": "Plan Version",
           "type": "integer"
         },
+        "planning_open_questions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Planning Open Questions",
+          "type": "array"
+        },
         "planning_readiness": {
           "enum": [
             "ready",
@@ -506,6 +514,13 @@
           "title": "Planning Readiness",
           "type": "string"
         },
+        "prior_notifications": {
+          "items": {
+            "$ref": "#/$defs/SeedNotification"
+          },
+          "title": "Prior Notifications",
+          "type": "array"
+        },
         "quiet_end": {
           "title": "Quiet End",
           "type": "string"
@@ -513,6 +528,16 @@
         "quiet_start": {
           "title": "Quiet Start",
           "type": "string"
+        },
+        "submission_artifacts": {
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Submission Artifacts",
+          "type": "array"
         },
         "submission_content": {
           "title": "Submission Content",
@@ -525,6 +550,24 @@
             "revision_required"
           ],
           "title": "Submission Status",
+          "type": "string"
+        },
+        "task_description": {
+          "title": "Task Description",
+          "type": "string"
+        },
+        "task_estimated_minutes": {
+          "minimum": 1,
+          "title": "Task Estimated Minutes",
+          "type": "integer"
+        },
+        "task_status": {
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed"
+          ],
+          "title": "Task Status",
           "type": "string"
         },
         "task_title": {
@@ -646,6 +689,31 @@
         "declared_actions"
       ],
       "title": "ScriptedModelTurnV2",
+      "type": "object"
+    },
+    "SeedNotification": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "minutes_ago": {
+          "minimum": 0,
+          "title": "Minutes Ago",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "minutes_ago",
+        "title",
+        "body"
+      ],
+      "title": "SeedNotification",
       "type": "object"
     },
     "SeedStage": {

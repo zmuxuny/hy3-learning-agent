@@ -313,6 +313,9 @@ async def _execute_inner(
                 if declared["entity_type"] in {"goal", "constraint", "resource"}:
                     continue  # These are declared public facts, not seeded ORM rows.
                 captured = actual.get(declared["logical_id"])
+                allowed = set(FIELD_ALLOWLISTS.get(declared["entity_type"], ()))
+                if declared["entity_type"] not in {"learner"} and set(declared["data"]) - allowed - {"content_kind"}:
+                    raise WorkerFailure("seed.unknown_state_field", "seed", "persistent entity declares an unsupported state field")
                 if captured is None or any(
                     captured["data"].get(key) != value
                     for key, value in declared["data"].items() if key in FIELD_ALLOWLISTS.get(declared["entity_type"], ())
@@ -325,11 +328,24 @@ async def _execute_inner(
             client = openai.AsyncOpenAI(
                 api_key=app_config.settings.OPENAI_API_KEY,
                 base_url=app_config.settings.OPENAI_API_BASE,
+                max_retries=0,
             )
+        pilot = active and case["dataset_role"] == "protocol_pilot" and request["model_mode"] == "real"
+        from .model_budget import OUTPUT_LIMIT, ModelBudget
+
+        budget = None
+        if active and request["model_mode"] == "real":
+            if not request.get("budget_ledger"):
+                raise WorkerFailure("budget.required", "prepare", "real worker requires a prepaid budget ledger")
+            budget = ModelBudget(request["budget_ledger"])
         recorder = EvaluationModelRecorder(
             client,
             invocation_mode=request["model_mode"],
             metadata_provider=model_clients.current_model_call_metadata,
+            max_calls={"planning": 5, "intervention": 3, "assessment": 4, "revision": 4}[case["track"]] if pilot else None,
+            max_output_tokens=OUTPUT_LIMIT if budget is not None else None,
+            budget=budget,
+            budget_scope=case["case_id"],
         )
         progress.update(recorder=recorder, identities=identities, configured_model=app_config.settings.MODEL_NAME)
         stack.enter_context(model_clients.use_model_client_factory(lambda: recorder))

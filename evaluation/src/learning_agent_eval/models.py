@@ -3207,6 +3207,7 @@ class JudgeReferenceV2(JudgeReferenceV1):
 
 class ModelCallV4(ModelCallV3):
     request_config: dict[str, JsonValue] = Field(default_factory=dict)
+    token_usage: dict[str, Annotated[int, Field(ge=0)]] | None = None
     response_validation_errors: list[dict[str, str]] = Field(default_factory=list)
     action_protocol_version: Literal["model-action-declaration-v2"]
     action_protocol_sha256: Sha256

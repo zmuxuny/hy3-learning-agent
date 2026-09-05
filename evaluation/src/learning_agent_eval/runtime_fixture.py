@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from importlib import import_module
 from pathlib import Path
 from typing import Any
@@ -59,6 +59,19 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
             ),
         )
         db.add(profile)
+        if fixture.get("active_seed"):
+            # These are public learner/goal/constraint inputs, never the Oracle.
+            # Persist them so the product Context assembler exposes the same
+            # facts the Case declares, with a real profile provenance block.
+            public_facts = {
+                "entities": [
+                    item for item in fixture["state_before"]["logical_entities"]
+                    if item["entity_type"] in {"learner", "goal", "constraint", "resource"}
+                ],
+                "facts": fixture["state_before"]["facts"],
+                "trigger": fixture["trigger"]["payload"],
+            }
+            profile.preferences = {**profile.preferences, "public_case_context": public_facts}
         await db.flush()
         plan = None
         task = None
@@ -90,11 +103,11 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
             task = models.Task(
                 stage_id=stage.id,
                 title=fixture["seed"]["task_title"],
-                description="Require a measured baseline.",
-                status="pending",
+                description=fixture["seed"].get("task_description", "Require a measured baseline."),
+                status=fixture["seed"].get("task_status", "pending"),
                 is_core=True,
                 evidence_required=True,
-                estimated_minutes=45,
+                estimated_minutes=fixture["seed"].get("task_estimated_minutes", 45),
                 position=0,
             )
             db.add(task)
@@ -109,7 +122,7 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
                         "submission_content",
                         "Synthetic conclusion without a measured baseline.",
                     ),
-                    artifacts=[],
+                    artifacts=fixture["seed"].get("submission_artifacts", []),
                     status=fixture["seed"].get("submission_status", "submitted"),
                 )
             )
@@ -137,6 +150,13 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
                         position=int(task_data["position"]),
                     )
                 )
+        for previous in fixture["seed"].get("prior_notifications", []):
+            sent_at = frozen - timedelta(minutes=previous["minutes_ago"])
+            db.add(models.Notification(
+                owner_id=owner_id, plan_id=plan.id if plan else None,
+                channel="in_app", title=previous["title"], body=previous["body"],
+                status="sent", created_at=sent_at, sent_at=sent_at,
+            ))
         session = None
         if fixture["session_id"] is not None:
             session = models.Session(
@@ -187,7 +207,7 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
                     confirmed_facts=[
                         {"key": "weekly_minutes", "value": str(fixture["seed"].get("weekly_minutes", 240)), "source": "user"}
                     ],
-                    open_questions=[],
+                    open_questions=fixture["seed"].get("planning_open_questions", []),
                     readiness=fixture["seed"].get("planning_readiness", "ready"),
                     readiness_confidence=1.0,
                     rationale="All synthetic constraints are explicit.",

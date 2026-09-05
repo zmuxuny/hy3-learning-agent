@@ -241,10 +241,11 @@ def build_model_calls_v4(
         enriched = {
             **call,
             "request_config": dict(record.get("request_config") or {}),
+            "token_usage": record.get("token_usage"),
             "response_validation_errors": [
                 {"tool_call_id": item["call_id"], "code": item["argument_error"]}
                 for item in record.get("function_calls", []) if item.get("argument_error")
-            ],
+            ] + ([{"code": record["record_error"]}] if record.get("record_error") else []),
             "action_protocol_version": ACTION_DECLARATION_PROTOCOL_VERSION,
             "action_protocol_sha256": ACTION_DECLARATION_PROTOCOL_SHA256,
             "action_declaration_status": declaration_status,

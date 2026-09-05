@@ -2211,6 +2211,7 @@ def _v4_v3_validation_projection(episode: Mapping[str, Any]) -> dict[str, Any]:
                 "declared_action_classes",
                 "request_config",
                 "response_validation_errors",
+                "token_usage",
             }
         }
         for call in episode["observable_trace"]["model_calls"]

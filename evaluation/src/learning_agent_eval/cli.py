@@ -63,6 +63,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--model-mode", choices=("stub", "real"), default="stub")
     run.add_argument("--allow-real-model", action="store_true")
+    run.add_argument("--budget-ledger", help="existing prepaid Hy3 ledger outside the repository; required in real mode")
     rules = commands.add_parser(
         "evaluate-rules",
         help="run deterministic Rules over active v4 Runtime output",
@@ -280,6 +281,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             track=arguments.track,
             model_mode=arguments.model_mode,
             allow_real_model=arguments.allow_real_model,
+            budget_ledger=arguments.budget_ledger,
         )
     except (LegacyExecutionDisabledError, RunAgentV3Error) as exc:
         print(
