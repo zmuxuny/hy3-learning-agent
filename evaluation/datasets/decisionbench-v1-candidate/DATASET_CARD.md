@@ -1,62 +1,71 @@
-# DecisionBench v1 · E4 候选数据卡
+# DecisionBench v1 · E4 经复核候选数据卡
 
-状态：输入已构建并通过机械校验；独立人工内容复核待办。两份 Benchmark Release 均为
-`engineering`，production registry 为空。这里没有正式能力结论。
+2026-09-06：48 Primary、24 Calibration 和 8 来源 Case 已逐例完成 AI 内容裁决，另有 8 组三档区分说明。
+复核与最终 Case/资源摘要绑定，身份为 `delegated_ai_reviewer`；作者与复核者可能共享模型及上下文。
+这项内容验收没有实施独立人类盲标、Kappa、真实 Judge 或方法有效性实验。
+两份 Benchmark Release 仍为 `engineering`，production registry 为空。
 
-2026-09-05 已在干净 `63be8da` 执行本候选：Primary 保留 45 Episode + 3 RuntimeFailure，
-Calibration 为 24 个受控 Episode。见 [原始运行档案](../../artifacts/e4-candidate-20260905/README.md)。
-后续 `bd89530` 仅修复两类读引用并刷新 4 份发布绑定；72 个 Case、资源与变异内容字节不变。
-当前暂停，未完成独立人工复核或进入真实 Judge 实验。
+## 数据组成与来源
 
-随后 `df8e8e7` 修复公开画像嵌入控制 logical_id 的场景族泄漏，重新离线导出 Calibration；旧批次保留为探索记录，不能进入正式 Judge 校准。
+- Primary：S01–S12 × Planning / Intervention / Assessment / Revision，共 48 个真实模型模式输入，无 scripted answer。
+  `split=test` 保持家族分组；由于已参与探索复查，标签为 `exploratory-input`，不能当作未见正式测试集。
+- Calibration：独立 C01–C08 家族，每轨两个来源，各构造 Good/Mild/Severe，共 24 个 `split=dev` 的受控输出。
+  标签经过 AI 内容裁决，代表受控缺陷设计，不代表 Hy3 输出或方法有效性结果。
+- `calibration-sources/` 保存八个来源，作为 Good 的初始内容，取消变异来源引用；不计入 72 个执行输入。
+- `mutation-manifest.json` 保存来源/候选摘要、允许变化字段、实际前后值及不变输入摘要。
+- 所有学习者、时间、通知、目标和作业均由作者合成；未读取生产数据库，也没有真实用户资料。
 
-## 范围与来源
+12 个 Primary 家族涉及 CUDA、FastAPI、Git/Linux、算法、Transformer、Agent、C++ 性能、SQL、Vue、容器、深度学习和开源协作。
+每轨为标准4、困难4、边界2、对抗2；Schema 的边界使用 hard + boundary tag。
+同家族四轨是独立状态，Planning 条件不能迁移为其他轨的预算或事实；没有运行12段连续学习故事。
+不同主题不是只变一个条件的反事实对，额外 Development 反事实尚未构建。
 
-- Primary：12 个主题家族 × Planning / Intervention / Assessment / Revision，共 48 个输入。
-  全部位于 test split；作者只提供目标、初态、资源、授权边界和 Oracle，不提供模型回答。
-- Calibration：另外 8 个家族，每轨 2 个种子，各构造 Good / Mild / Severe 三档，共 24 个输入。
-  位于 dev split，使用受控输出；三档是待复核的作者标签，不是 Hy3 输出或人工裁决。
-- `calibration-sources/` 保存 8 个源 CaseSpec，不计入 72 个运行输入。
-  `mutation-manifest.json` 固定源摘要、允许变化字段、实际前后值及未变输入摘要。
-- 所有学习者、学习过程、通知历史和提交记录由作者构造。没有读取生产数据库或收集真实用户资料。
-  现有工程 Case 仅作契约结构模板；具体输入和 Oracle 单独编写。
+## 公开输入与裁决
 
-12 个 Primary 家族分别涉及 CUDA、FastAPI、Git/Linux、算法、Transformer、Agent、C++ 性能、
-SQL、Vue、容器、深度学习和开源协作。同一家族的四轨是独立初态，不能称为一段已经跑通的连续学习旅程。
-每轨包含标准 4、困难 4、边界 2、对抗 2；Schema 把边界记为 hard 并附 boundary tag。
-题目意图覆盖全部 14 类规范行动。难度等级和唯一允许行动仍须人工复核。
+复核逐例检查公开事实、实际 seed、时间/资源、允许和禁止行动、Oracle 证据、隐私及最终裁决。
+[content-review.json](content-review.json) 含80条记录和8组三档判断；[review-worksheet.csv](review-worksheet.csv) 是72例运行输入的摘要索引。
+检查器验证复核覆盖及绑定，不替代阅读内容或判断标签正确性。
 
-## 可见证据与资源
+本次修订包括：
 
-资源全部是自制合成材料，运行时通过冻结快照读取，不访问这些示例 URL 或公网搜索。
-Primary 和 Calibration 使用独立资源包；资源目录、可用完整查询及 URL 会进入模型上下文。
+- 信息充分的 Planning 接受提案或满足明确条件的具体澄清/工具待审批停顿；P03/P05/P08 保留关键条件不足。
+- R03/R07/R10 接受具体未执行提议或有内容的审批请求；R06/R11 可安全 NO_OP，不能强制批准外部恶意建议。
+- I05/I10 使用显式07:30决策时刻和真实08:00静默结束。I10末条在前晚22:30，冷却已过但当前静默。
+- I09/I11历史提醒为08:00、11:00、14:00，决策时刻17:15；历史间隔合法，当前由日限额阻止第四条。
+- R05将应保留的注意力实验物化为阶段/任务；自报完成与已验证掌握分别表述，设计工作单与实际seed对齐。
 
-Assessment 中有依据的正反例附题目提供的合成验收记录 URL 和原始 UTF-8 内容 SHA-256。
-它们用于测试 Agent 如何依据给定记录验收，不代表作者执行过真实 GPU 性能实验、用户测试或学习效果实验。
-缺证据的场景故意没有附件；歧义场景保留单位或口径冲突。不能把这些构造记录当作真实用户能力证据。
+资源全部为自制材料，通过冻结快照读取，示例URL不访问公网；资源目录及可用完整查询进入真实模型上下文。
+Assessment 合成报告使用原始UTF-8内容SHA，明确失败、证据缺失和口径歧义分别保留。
+这些题目记录不代表真实GPU测量、实际用户测试或学习成效。通知只经过临时库与Recording Sink。
 
-通知只在临时库中记录并由 Recording Sink 模拟投递。时钟、静默窗口、冷却和历史通知均进入真实产品状态。
-计划修改依赖用户在题目中明确给出的权限；Operation 与 Delta 记录实际结果。
+## 三档缺陷与使用限制
 
-## 构造和复核
+| 来源 | Mild的具体缺陷 | Severe的决定性错误 |
+| --- | --- | --- |
+| C01/C02 · Planning | 分别遗漏截止日期/周时间追问 | 未知条件下虚构规划并声称已采用 |
+| C03/C04 · Intervention | WAIT正确，但把剩余160分钟误报140 | 冷却内尝试再次通知 |
+| C05 · Assessment | 正确退回空输入失败，但漏掉空输入复测 | 明知必需项失败仍通过 |
+| C06 · Assessment | 正确退回NOT NULL失败，但只要求SELECT复测 | 将失败约束标通过并验收 |
+| C07/C08 · Revision | 实际180→120，分别误报原值160/结果150 | 拒绝已明确授权且必要的修改 |
 
-运行仓库根目录下的命令，可以在新目录重建候选输入并核对结构、摘要、资源与 Mutation：
+三档保持相同公开输入、seed、资源、Oracle及身份绑定，变化只在声明的输出/执行身份/私有来源字段内。
+八组只覆盖四种主要决策模板；Mild与Good的语义排序及严重度尚需E5验证，不能从Severe规则命中推导Judge判别力。
+
+## 重建与历史身份
+
+在仓库根目录执行；输出目录必须不存在：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/build_e4_candidates.py --output /tmp/new-e4-inputs
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/check_e4_candidates.py /tmp/new-e4-inputs
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/build_e4_candidates.py --output /tmp/new-e4-inputs --review-records evaluation/datasets/decisionbench-v1-candidate/content-review.json
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/check_e4_candidates.py /tmp/new-e4-inputs --require-review
 ```
 
-`check_e4_candidates.py` 不调用 Provider，不判断标签正确，也不授予 formal 资格。
-`review-worksheet.csv` 是待填写工作单；没有已完成的独立标注或裁决。
-复核必须检查：公开事实与实际 seed 一致、合理行动没有被误排除、正反约束方向正确、材料足以支持结论、
-质量退化只在声明字段发生、隐私与版权符合数据来源。争议应修改输入并重新生成摘要，不能覆盖已执行的历史结果。
+不传`--review-records`只生成pending输入；已有复核缺行、内容/资源摘要变化、越界变异或伪造人工身份均不能通过验收。
+内容修订必须重新裁决对应记录并更新全部来源/变异/版本引用，不能只替换状态字符串。
 
-## 使用边界
+历史`63be8da`真实Primary批次永久保留45 Episode + 3 RuntimeFailure；旧Calibration的泄漏反例及`df8e8e7`修复后24 Episode也保留原身份。
+本次经内容修订的48个输入尚未形成新的真实批次，不能把旧输出绑定为当前Case的结果。
+当前24个受控输入的Runtime/Rules验收与最终源码回归见 [E4验收记录](../../../docs/E4验收工作记录.md)。
 
-Primary 不参与 Prompt、Rules 或 Judge 调优。若查看 Primary 结果后修改相关协议，这一轮应保留为探索记录；
-新的正式比较需要重新确定未用于调优的测试输入。Calibration 可用于后续 E5，但当前未运行真实 Judge、
-判别力排序实验、重复一致性或人工一致性实验。
-
-本数据卡不证明真实用户采用效果、长期学习提升、开放网络调研能力或 Hy3 的正式能力。
-production registry 登记必须等待独立内容复核、协议冻结和完整终态检查。
+E4完成内容与工程验收后暂停。E5只使用Development/Calibration验证方法；正式协议和Benchmark在方法稳定后冻结/登记，
+E6使用另行准备的未参与调优测试家族执行正式Primary。当前数据不证明实际采用、长期学习提升或Hy3正式能力。

@@ -1,7 +1,7 @@
 # E4 输入设计与真实运行
 
-当前按用户要求暂停在 E4。`primary-blueprint-v1.csv` 是 12 个家族 × 4 轨的作者设计工作单，
-独立内容复核仍待办。它对应的 48 个可执行输入和另外 24 个受控 Calibration 已在
+`primary-blueprint-v1.csv` 是 12 个家族 × 4 轨的设计索引，已与实际输入和seed逐条对齐。
+用户授权的 AI 逐例内容裁决已完成，身份为 `delegated_ai_reviewer`。48 个可执行输入及24个受控 Calibration 在
 [候选数据包](../datasets/decisionbench-v1-candidate/README.md)中构建。
 
 ## 已执行与待复核
@@ -12,13 +12,13 @@
 `bd89530` 离线修复其中两类读引用导出错误；原批次仍维持原有身份与失败记录。
 `df8e8e7` 又修复模型可见画像中的控制 ID 泄漏并重建 24 个 Calibration；旧批次仅供探索复查。
 
-72 行复核表均为 pending；“已执行”不等于允许行动、难度、标签及 Oracle 已被独立复核。
-production registry 为空，原定含人工复核、正式冻结和登记的 E4 DoD 尚未全部完成。
+80条AI内容记录和8组三档裁决绑定最终Case/资源摘要；作者与复核者可能共享模型及上下文，未做独立人类标注。
+production registry为空。E4完成内容与工程验收后暂停；原DoD中的正式冻结/登记明确移至E5方法稳定后、E6前，承诺保留。
 
 ## 后续数据流程
 
 1. 核对每 Case 的目标、实际临时状态、时间、资源、授权、作业附件与判定边界。
-2. 由独立复核者检查合理行动是否被误排除、正反约束方向、证据充分性和质量标签；保留分歧与裁决。
+2. 逐例内容裁决已由AI承担并保留；独立人类一致性仍是另外的实验，不能以本次记录替代。
 3. 仅用 Development/Calibration 验证与调整评测方法，再冻结正式协议和 Benchmark。
 4. 以固定配置执行正式 Primary，保留每 Case 唯一 Episode/Failure 终态及四轨分母。
 
@@ -35,8 +35,8 @@ Primary 不参与 Agent、Prompt、Rules 或 Judge 调优。根据其输出修�
 
 ```bash
 E4_ROOT=$(mktemp -d /tmp/learning-agent-authoring-XXXXXXXX)
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/build_e4_candidates.py --output "$E4_ROOT/inputs"
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/check_e4_candidates.py "$E4_ROOT/inputs"
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/build_e4_candidates.py --output "$E4_ROOT/inputs" --review-records evaluation/datasets/decisionbench-v1-candidate/content-review.json
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/check_e4_candidates.py "$E4_ROOT/inputs" --require-review
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/prepare_protocol_pilot.py --output "$E4_ROOT/pilot"
 ```
 
