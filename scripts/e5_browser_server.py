@@ -22,11 +22,17 @@ def main():
     parser.add_argument("--state-root", type=Path, required=True)
     parser.add_argument("--budget-ledger", type=Path, required=True)
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--resume", action="store_true", help="Resume the same external learner state after a code fix")
+    parser.add_argument("--session-tag", default="e5-browser-experience")
     args = parser.parse_args()
     state = args.state_root.resolve()
     if state == ROOT or ROOT in state.parents:
         raise ValueError("browser state must be outside the checkout")
-    state.mkdir(parents=True, exist_ok=False)
+    if args.resume and not (state / "data/learning_companion.db").is_file():
+        raise ValueError("resume requires the existing experiment database")
+    state.mkdir(parents=True, exist_ok=args.resume)
+    if args.resume:
+        shutil.rmtree(state / "frontend/dist")
     shutil.copytree(ROOT / "frontend/dist", state / "frontend/dist")
     os.environ.update({
         "EVALUATION_MODE": "1", "RUNTIME_STATE_ROOT": str(state),
@@ -47,15 +53,26 @@ def main():
         current_model_call_metadata,
         use_model_client_factory,
     )
+    from learning_agent_eval.canonical import canonical_json_bytes
     from learning_agent_eval.model_budget import OUTPUT_LIMIT, ModelBudget
     from learning_agent_eval.recorder import EvaluationModelRecorder
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"], base_url=config.settings.OPENAI_API_BASE, max_retries=0)
-    recorder = EvaluationModelRecorder(
+    class BrowserRecorder(EvaluationModelRecorder):
+        def _publish(self, record):
+            ticket = record.get("_budget_ticket")
+            super()._publish(record)
+            public = {key: value for key, value in record.items()
+                      if key not in {"visible_messages", "visible_tool_schemas", "system_prompt"}}
+            public["budget_ticket"] = ticket
+            with (state / f"{args.session_tag}-calls.jsonl").open("ab") as handle:
+                handle.write(canonical_json_bytes(public) + b"\n")
+
+    recorder = BrowserRecorder(
         client, invocation_mode="real", metadata_provider=current_model_call_metadata,
         max_calls=80, max_output_tokens=OUTPUT_LIMIT,
-        budget=ModelBudget(args.budget_ledger), budget_scope="e5-browser-experience",
+        budget=ModelBudget(args.budget_ledger), budget_scope=args.session_tag,
     )
     # The connection-test API constructs its own SDK client outside Runtime.
     # Bind that explicit seam too, retaining its one-token request limit.

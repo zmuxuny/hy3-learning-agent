@@ -348,6 +348,11 @@ export const useShellStore = defineStore('shell', () => {
   async function submitPlanningAnswers(answers) {
     const { run, session } = domains();
     if (!session.activeSessionId || !answers.length) return false;
+    const questions = session.planningState.intake?.open_questions || [];
+    const receiptAnswers = answers.map((answer) => ({
+      ...answer,
+      prompt: questions.find((question) => question.id === answer.question_id)?.prompt,
+    }));
     try {
       const response = await api.post(`/agent/sessions/${session.activeSessionId}/planning/answers`, { answers });
       run.prependRun(response.data);
@@ -357,7 +362,7 @@ export const useShellStore = defineStore('shell', () => {
         run_id: response.data.id,
         role: 'user',
         content: '',
-        message_metadata: { ui_kind: 'planning_answers', answer_count: answers.length },
+        message_metadata: { ui_kind: 'planning_answers', answer_count: answers.length, answers: receiptAnswers },
         created_at: new Date().toISOString(),
         pending: true,
       });

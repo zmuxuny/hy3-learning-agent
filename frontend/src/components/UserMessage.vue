@@ -65,8 +65,8 @@ async function copyMessage() {
         <ChevronDownIcon class="activity-chevron" />
       </button>
       <div v-if="answersExpanded" class="planning-answers-body">
-        <div v-for="answer in planningAnswers" :key="answer.question_id" class="planning-answer-row">
-          <small>{{ answer.question_id }}</small>
+        <div v-for="(answer, index) in planningAnswers" :key="answer.question_id" class="planning-answer-row">
+          <small>{{ answer.prompt || `回答 ${index + 1}` }}</small>
           <p>{{ answer.answer }}</p>
         </div>
       </div>

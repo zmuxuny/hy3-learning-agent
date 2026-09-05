@@ -1,7 +1,7 @@
 import asyncio
 import json
-from contextlib import suppress
 
+from anyio import CancelScope
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, func, or_, select
@@ -617,7 +617,10 @@ async def submit_planning_answers(
         message_metadata={
             "ui_kind": "planning_answers",
             "answer_count": len(data.answers),
-            "answers": [item.model_dump(mode="json") for item in data.answers],
+            "answers": [
+                {**item.model_dump(mode="json"), "prompt": questions[item.question_id].get("prompt", item.question_id)}
+                for item in data.answers
+            ],
         },
     ))
     intake.open_questions = []
@@ -925,41 +928,46 @@ async def stream_run_events(run_id: str):
         try:
             while True:
                 try:
-                    db = AsyncSessionLocal()
-                    try:
-                        run = await db.get(AgentRun, run_id)
-                        if not run or run.owner_id != settings.DEFAULT_OWNER_ID:
-                            yield "event: error\ndata: {\"error\": \"Run not found\"}\n\n"
-                            return
-                        result = await db.execute(
-                            select(RunEvent)
-                            .where(RunEvent.run_id == run_id, RunEvent.sequence > last_sequence)
-                            .order_by(RunEvent.sequence)
-                        )
-                        events = list(result.scalars())
-                        fresh_events = [event for event in events if event.sequence not in seen_sequences]
-                        for event in events:
-                            seen_sequences.add(event.sequence)
-                            last_sequence = event.sequence
-                        for event in fresh_events:
-                            payload = {
-                                "sequence": event.sequence,
-                                "type": event.event_type,
-                                "summary": event.summary,
-                                "payload": event.payload,
-                                "created_at": canonical_utc(event.created_at),
-                            }
-                            yield f"event: {event.event_type}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
-                        if run.status in {"completed", "failed", "cancelled"}:
-                            if not fresh_events:
-                                terminal_grace += 1
-                                if terminal_grace >= 4:
-                                    return
-                        else:
-                            terminal_grace = 0
-                    finally:
-                        with suppress(Exception):
-                            await db.close()
+                    # Starlette's disconnect scope repeatedly cancels awaits.
+                    # Finish this short DB poll, including connection return,
+                    # before yielding to a client that can stop reading.
+                    with CancelScope(shield=True):
+                        async with AsyncSessionLocal() as db:
+                            run = await db.get(AgentRun, run_id)
+                            run_status = run.status if run and run.owner_id == settings.DEFAULT_OWNER_ID else None
+                            events = []
+                            if run_status is not None:
+                                result = await db.execute(
+                                    select(RunEvent)
+                                    .where(RunEvent.run_id == run_id, RunEvent.sequence > last_sequence)
+                                    .order_by(RunEvent.sequence)
+                                )
+                                events = [
+                                    {
+                                        "sequence": event.sequence,
+                                        "type": event.event_type,
+                                        "summary": event.summary,
+                                        "payload": event.payload,
+                                        "created_at": canonical_utc(event.created_at),
+                                    }
+                                    for event in result.scalars()
+                                ]
+                    if run_status is None:
+                        yield "event: error\ndata: {\"error\": \"Run not found\"}\n\n"
+                        return
+                    fresh_events = [event for event in events if event["sequence"] not in seen_sequences]
+                    for event in events:
+                        seen_sequences.add(event["sequence"])
+                        last_sequence = event["sequence"]
+                    for payload in fresh_events:
+                        yield f"event: {payload['type']}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                    if run_status in {"completed", "failed", "cancelled"}:
+                        if not fresh_events:
+                            terminal_grace += 1
+                            if terminal_grace >= 4:
+                                return
+                    else:
+                        terminal_grace = 0
                 except asyncio.CancelledError:
                     return
                 except Exception:

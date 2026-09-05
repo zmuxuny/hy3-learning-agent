@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -38,6 +39,7 @@ from .integrity import (
     judge_result_digest,
     provider_attestation_digest,
 )
+from .judge_request_projection import evidence_catalog, pack_shared_values
 from .model_budget import ModelBudgetExceeded
 from .models import (
     JudgeResponsePayloadV1,
@@ -339,6 +341,8 @@ class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
             # urllib has no automatic request retries. Each repair re-enters here.
             with urllib.request.urlopen(wire_request, timeout=120) as response:
                 envelope = json.loads(response.read().decode("utf-8"))
+            if not isinstance(envelope, dict):
+                raise TypeError("provider_envelope_invalid")
             candidate_usage = envelope.get("usage")
             if isinstance(candidate_usage, dict):
                 usage = {key: candidate_usage.get(key) for key in ("prompt_tokens", "completion_tokens", "total_tokens")}
@@ -413,13 +417,17 @@ def build_provider_request_v2(
 
 
 def build_provider_request_v3(
-    blind_input: BlindJudgeInputV3, *, repair_error_codes: Sequence[str] = ()
+    blind_input: BlindJudgeInputV3, *, repair_error_codes: Sequence[str] = (),
+    invalid_evidence_paths: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Build an ephemeral active request; expanded prompt text is never published."""
 
     messages: list[dict[str, str]] = [
         {"role": "system", "content": JUDGE_INSTRUCTIONS_V3},
-        {"role": "user", "content": canonical_json(blind_input.document)},
+        {"role": "user", "content": canonical_json({
+            **pack_shared_values(blind_input.document),
+            "evidence_path_catalog": evidence_catalog(blind_input.document["episode"]),
+        })},
     ]
     if repair_error_codes:
         messages.append(
@@ -430,6 +438,8 @@ def build_provider_request_v3(
                         "schema_version": "judge-repair-request-v1",
                         "instruction": "Return one corrected complete payload only.",
                         "validation_error_codes": sorted(set(repair_error_codes)),
+                        "invalid_evidence_paths": list(invalid_evidence_paths),
+                        "evidence_instruction": "Replace invalid paths with exact entries from evidence_path_catalog.",
                     }
                 ),
             }
@@ -1177,6 +1187,7 @@ def _evaluate_one_v3(
     worktree_clean: bool,
     dependency_digest: str,
     dependency_lock_verified: bool = True,
+    attempt_log_path: Path | None = None,
 ) -> tuple[dict[str, Any], bool]:
     try:
         blind_input = build_blind_judge_input_v3(episode, rule_result, reference)
@@ -1206,20 +1217,24 @@ def _evaluate_one_v3(
     else:
         payload = None
         error_codes: tuple[str, ...] = ()
+        invalid_paths: list[str] = []
         for attempt in range(REPAIR_LIMIT + 1):
             repaired = attempt == 1
             request = build_provider_request_v3(
                 blind_input,
                 repair_error_codes=error_codes if attempt else (),
+                invalid_evidence_paths=invalid_paths if attempt else (),
             )
             request["_budget_call_id"] = f"{episode['episode_id']}:attempt:{attempt + 1}"
             try:
                 reply = provider.complete(request)
             except ModelBudgetExceeded:
                 error_codes = ("judge_budget_exhausted",)
+                _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, None, error_codes)
                 break
             except ValueError:
                 error_codes = ("judge_request_rejected",)
+                _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, None, error_codes)
                 break
             except Exception:  # noqa: BLE001 - raw provider exceptions are discarded
                 error_codes = ("provider_error",)
@@ -1227,6 +1242,7 @@ def _evaluate_one_v3(
             replies.append(reply)
             if reply.status != "completed":
                 error_codes = ("provider_error",)
+                _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, reply, error_codes)
                 break
             if reply.finish_reason == "length":
                 payload, error_codes = None, ("response_output_truncated",)
@@ -1234,6 +1250,12 @@ def _evaluate_one_v3(
                 payload, error_codes = _validate_payload_v3(
                     reply.content, episode=episode, blind_input=blind_input
                 )
+            invalid_paths = []
+            if "response_evidence_invalid" in error_codes and "response_privacy_invalid" not in error_codes:
+                invalid_paths = sorted({p for p in _all_evidence_paths(_parse_response(reply.content))
+                                        if not resolve_evidence_path(episode, p)[0]
+                                        or not path_visible_to_judge_v3(blind_input, p)})
+            _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, reply, error_codes, invalid_paths)
             if reply.budget_ticket is not None and isinstance(provider, OpenAICompatibleHy3JudgeProviderV3):
                 provider.budget.record_outcome(
                     reply.budget_ticket,
@@ -1317,6 +1339,45 @@ def _evaluate_one_v3(
             "Judge Result v3 failed contract or evidence validation",
         )
     return result, repaired
+
+
+def _record_judge_attempt(path, episode, blind_input, attempt, reply, errors, invalid_paths=()):
+    """Keep rejected public payloads outside frozen result contracts, even on failure."""
+    if path is None:
+        return
+    from .canonical import sha256_digest
+    from .recorder import public_projection
+
+    content = None if reply is None else reply.content
+    raw_text = content if isinstance(content, str) else None
+    malformed = False
+    try:
+        if isinstance(content, str):
+            content = json.loads(content)
+        content = public_projection(content)
+        sha256_digest(content)  # Also rejects non-finite JSON numbers.
+    except (TypeError, ValueError):
+        malformed = True
+        content = None
+    withheld = malformed or bool(privacy_issues(content, file="judge-attempt"))
+    row = {
+        "record_version": "judge-attempt-evidence-v1", "episode_id": episode["episode_id"],
+        "episode_sha256": episode["provenance"]["episode_sha256"], "blind_input_sha256": blind_input.sha256,
+        "judge_prompt_sha256": JUDGE_PROMPT_SHA256_V3, "configuration_sha256": JUDGE_CONFIG_SHA256_V3,
+        "attempt": attempt + 1, "provider_attempted": reply is not None,
+        "budget_ticket": None if reply is None else reply.budget_ticket,
+        "finish_reason": None if reply is None else reply.finish_reason,
+        "provider_status": None if reply is None else reply.status,
+        "validation_error_codes": list(errors), "invalid_evidence_paths": [] if withheld else list(invalid_paths),
+        "public_response": None if withheld else content,
+        "response_withheld_for_privacy": withheld, "public_response_sha256": sha256_digest(content),
+        "response_projection_status": "unparseable_json" if malformed else "privacy_withheld" if withheld else "public",
+        "raw_response_text_sha256": None if raw_text is None else hashlib.sha256(raw_text.encode("utf-8")).hexdigest(),
+        "raw_response_text_bytes": None if raw_text is None else len(raw_text.encode("utf-8")),
+    }
+    row["record_sha256"] = sha256_digest(row)
+    with path.open("ab") as handle:
+        handle.write(canonical_json_bytes(row) + b"\n")
 
 
 def evaluate_active_judges(
@@ -1432,6 +1493,7 @@ def evaluate_active_judges(
                 worktree_clean=clean,
                 dependency_digest=dependency_digest,
                 dependency_lock_verified=dependency_lock_verified,
+                attempt_log_path=output_path.parent / f"{output_path.name}-attempts.jsonl",
             )
             episode_id = result["episode_id"]
             (stage / "judge-results" / f"{episode_id}.json").write_bytes(
@@ -1581,7 +1643,12 @@ def evaluate_active_judges(
             )
         os.replace(stage, output_path)
     except BaseException:
-        shutil.rmtree(stage, ignore_errors=True)
+        if judge_mode == "real":
+            # Paid responses remain inspectable even if later publication fails.
+            incomplete = output_path.parent / f"{output_path.name}-incomplete-{stage.name.rsplit('-', 1)[-1]}"
+            os.replace(stage, incomplete)
+        else:
+            shutil.rmtree(stage, ignore_errors=True)
         raise
 
     return JudgeEvaluationV2Summary(

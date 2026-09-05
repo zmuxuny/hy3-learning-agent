@@ -69,6 +69,20 @@ describe('H7 SSE reconciliation controller', () => {
     vi.useRealTimers();
   });
 
+  it('refreshes a blocking approval without requiring a stream failure or page reload', async () => {
+    const runStore = useRunStore();
+    runStore.currentRun = { id: 'run-1', session_id: 'session-1', status: 'running' };
+    const waiting = { ...runStore.currentRun, status: 'waiting_approval', pending_approval: { approval_id: 'approval-1', reason: 'Review this plan.' } };
+    vi.spyOn(api, 'get').mockImplementation(async (path) => ({ data: path === '/agent/runs/run-1' ? waiting : [] }));
+    runStore.subscribeToRun('run-1');
+    FakeEventSource.instances[0].emit('approval.required', {
+      sequence: 3, type: 'approval.required', payload: { approval_id: 'approval-1', blocking: true },
+    });
+    await vi.waitFor(() => expect(runStore.currentRun.status).toBe('waiting_approval'));
+    expect(runStore.currentRun.pending_approval.approval_id).toBe('approval-1');
+    expect(FakeEventSource.instances).toHaveLength(1);
+  });
+
   it('coalesces an error burst into one REST event reconciliation and merges by sequence', async () => {
     const runStore = useRunStore();
     const eventsResponse = deferred();

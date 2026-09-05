@@ -83,7 +83,14 @@ async function copyProposal() {
       <div class="proposal-stages">
         <article v-for="(stage, index) in stages" :key="`${index}-${stage.title}`">
           <span>{{ index + 1 }}</span>
-          <div><strong>{{ stage.title }}</strong><p>{{ stage.description || stage.objectives?.join(' · ') }}</p><small>{{ stage.tasks?.length || 0 }} 个任务</small></div>
+          <div>
+            <strong>{{ stage.title }}</strong><p>{{ stage.description || stage.objectives?.join(' · ') }}</p>
+            <details v-for="(task, taskIndex) in stage.tasks" :key="taskIndex" class="proposal-task">
+              <summary>{{ task.title }} · {{ task.estimated_minutes }} 分钟</summary>
+              <p>{{ task.description }}</p>
+              <ul v-if="task.metadata?.acceptance?.length"><li v-for="criterion in task.metadata.acceptance" :key="criterion">{{ criterion }}</li></ul>
+            </details>
+          </div>
         </article>
       </div>
       <div v-if="proposal.specialist_reports?.length" class="proposal-specialists"><UserGroupIcon /><span>{{ proposal.specialist_reports.length }} 个规划子 Agent 的结论已被主 Agent 汇总</span></div>
@@ -94,3 +101,9 @@ async function copyProposal() {
     <footer v-else class="artifact-footer artifact-history-note"><span>{{ proposal.status === 'accepted' ? '这份提案已采用' : '历史提案快照' }}</span></footer>
   </section>
 </template>
+
+<style scoped>
+.proposal-task { margin-top: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.proposal-task summary { cursor: pointer; padding: 6px 0; }
+.proposal-task li { margin: 4px 0; }
+</style>

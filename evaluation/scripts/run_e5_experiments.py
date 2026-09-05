@@ -59,7 +59,7 @@ def prepare(output: Path, runtime: Path, rules: Path):
     repeat_ids = [item["episode_id"] for item in labels if item["label"] in {"good", "mild"}]
     assert len(repeat_ids) == 16
     document = {
-        "experiment_version": "e5-calibration-v1", "source_commit": current_git_commit(),
+        "experiment_version": "e5-calibration-v2", "source_commit": current_git_commit(),
         "runtime_path": os.path.relpath(runtime, output),
         "config": JUDGE_CONFIG_DOCUMENT_V3, "prompt_sha256": JUDGE_PROMPT_SHA256_V3,
         "runtime_manifest_sha256": read(runtime / "run-manifest.json")["manifest_sha256"],

@@ -158,6 +158,9 @@ export const useRunStore = defineStore('run', () => {
           runEventCache.value = { ...runEventCache.value, [runId]: [...runEvents.value] };
         }
         if (eventName === 'tool.completed') await handlers.onToolCompleted?.(payload);
+        if (eventName === 'approval.required' && payload.payload?.blocking) {
+          await reconcileStream(runId, generation, source);
+        }
         if (eventName === 'steer.received') handlers.onSteer?.(payload, runId);
         if (eventName === 'assistant.delta' && payload.payload?.text != null) {
           streamingRunId.value = runId;

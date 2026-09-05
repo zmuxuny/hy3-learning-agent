@@ -54,7 +54,7 @@ async function answerQuestions() {
     <template v-if="expanded">
       <p class="planning-rationale">{{ intake.rationale }}</p>
       <div class="confirmed-facts" v-if="intake.confirmed_facts?.length">
-        <span v-for="fact in intake.confirmed_facts.slice(0, 5)" :key="fact.key"><strong>{{ fact.key }}</strong>{{ fact.value }}</span>
+        <span v-for="fact in intake.confirmed_facts.slice(0, 5)" :key="fact.key">{{ fact.value }}</span>
       </div>
       <div class="question-list">
         <article v-for="(question, index) in intake.open_questions" :key="question.id" class="planning-question">

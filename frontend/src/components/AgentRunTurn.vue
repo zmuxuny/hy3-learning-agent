@@ -51,6 +51,16 @@ const approvalPending = computed(() => (
 const approvalEvent = computed(() => [...resolvedEvents.value].reverse().find((event) => (
   (event.type || event.event_type) === 'approval.required' && event.payload?.blocking
 )));
+const approvalRequest = computed(() => {
+  const call = resolvedRun.value?.pending_approval?.tool_call;
+  if (!call) return null;
+  try {
+    return { name: call.name, args: JSON.parse(call.arguments || '{}') };
+  } catch {
+    return null;
+  }
+});
+const approvalPlan = computed(() => approvalRequest.value?.name === 'plan_proposal_create' ? approvalRequest.value.args.plan : null);
 const liveIntakeMatches = computed(() => (
   live.value
   && props.cards.length === 0
@@ -156,9 +166,22 @@ async function copyAnswer() {
       <section v-if="approvalPending" class="approval-card thread-approval-card">
         <div class="approval-copy">
           <small>需要你的确认</small>
-          <strong>{{ approvalEvent?.payload?.tool_name || 'Agent 操作' }}</strong>
+          <strong>{{ approvalPlan ? '生成可审阅的计划提案' : approvalEvent?.payload?.tool_name || 'Agent 操作' }}</strong>
           <p>{{ approvalEvent?.payload?.reason || resolvedRun.pending_approval?.reason || '该操作需要你批准后才会执行。' }}</p>
         </div>
+        <details v-if="approvalRequest" class="approval-request-preview" open>
+          <summary>{{ approvalPlan ? approvalPlan.title : '查看待执行内容' }}</summary>
+          <template v-if="approvalPlan">
+            <p>每周 {{ approvalPlan.weekly_minutes }} 分钟 · {{ approvalPlan.description }}</p>
+            <p>{{ approvalPlan.expected_outcome }}</p>
+            <div v-for="(stage, index) in approvalPlan.stages" :key="index">
+              <strong>{{ stage.title }}</strong>
+              <p v-for="(task, taskIndex) in stage.tasks" :key="taskIndex">{{ task.title }}（{{ task.estimated_minutes }} 分钟）<br>{{ task.description }}</p>
+            </div>
+            <p>批准后生成提案；采用提案时再创建学习计划。</p>
+          </template>
+          <pre v-else>{{ JSON.stringify(approvalRequest.args, null, 2) }}</pre>
+        </details>
         <textarea
           v-model="approvalAnswer"
           class="approval-answer"
@@ -193,3 +216,10 @@ async function copyAnswer() {
     </div>
   </article>
 </template>
+
+<style scoped>
+.approval-request-preview { max-height: 360px; overflow: auto; line-height: 1.7; overflow-wrap: anywhere; }
+.approval-request-preview summary { cursor: pointer; font-weight: 600; }
+.approval-request-preview p { margin: 10px 0; }
+.approval-request-preview pre { white-space: pre-wrap; }
+</style>

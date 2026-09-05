@@ -80,6 +80,14 @@ const normalizedEvents = computed(() => props.events.map((event) => ({
   type: event.type || event.event_type,
 })));
 const active = computed(() => isRunBlocking(props.run?.status));
+const now = ref(Date.now());
+watch(active, (running, _previous, onCleanup) => {
+  now.value = Date.now();
+  if (running) {
+    const timer = setInterval(() => { now.value = Date.now(); }, 1000);
+    onCleanup(() => clearInterval(timer));
+  }
+}, { immediate: true });
 const terminalEvent = computed(() => [...normalizedEvents.value].reverse().find((event) => (
   ['run.completed', 'run.failed', 'run.cancelled'].includes(event.type)
 )));
@@ -128,7 +136,7 @@ function childStatus(status, parentActive) {
 const durationLabel = computed(() => {
   const startValue = props.run?.started_at || props.run?.created_at;
   if (!startValue) return '';
-  const endValue = props.run?.completed_at || terminalEvent.value?.created_at || new Date().toISOString();
+  const endValue = props.run?.completed_at || terminalEvent.value?.created_at || now.value;
   const seconds = Math.max(0, Math.round((new Date(endValue) - new Date(startValue)) / 1000));
   if (seconds < 60) return `${seconds}s`;
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
