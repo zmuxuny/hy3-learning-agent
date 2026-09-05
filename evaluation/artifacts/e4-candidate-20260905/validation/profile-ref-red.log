@@ -1,0 +1,103 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+________ test_profile_read_preserves_declared_public_context_references ________
+
+tmp_path = PosixPath('/tmp/learning-travel-fix-validation-osj4FCZZ/profile-ref-red/test_profile_read_preserves_de0')
+
+    def test_profile_read_preserves_declared_public_context_references(tmp_path):
+        case = load(DATA / "cases/case-e31-r-positive.json")
+        turns = deepcopy(case["runtime_setup"]["scripted_turns"])
+        inspect = deepcopy(turns[-1])
+        inspect.update(ordinal=1, assistant_text="", declared_actions=[], tool_calls=[
+            {"call_id": "inspect-profile", "name": "profile_get", "arguments": {}}])
+        case["runtime_setup"]["scripted_turns"] = [inspect, *turns]
+        for ordinal, turn in enumerate(case["runtime_setup"]["scripted_turns"], 1):
+            turn["ordinal"] = ordinal
+        dataset = suite_for(tmp_path, [case])
+        summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+>       assert not summary.failure_ids
+E       AssertionError: assert not ('failure:case-e31-r-positive',)
+E        +  where ('failure:case-e31-r-positive',) = RunAgentV3Summary(episode_ids=(), failure_ids=('failure:case-e31-r-positive',), tracks=('revision',), invocation_mode=...be51',), formal_evaluation_result=False, protocol_eligible=False, provider_eligible=False, trusted_benchmark_run=False).failure_ids
+
+evaluation/tests/test_audit_readiness.py:566: AssertionError
+___________ test_nested_logical_reference_requires_a_declared_entity ___________
+
+    def test_nested_logical_reference_requires_a_declared_entity():
+        from learning_agent_eval.normalizers import StableIdentityRegistry
+        from learning_agent_eval.snapshots import SnapshotCollectionError, _normalize_references
+
+        registry = StableIdentityRegistry(episode_id="independent", declarations={"constraint": ["constraint:time"]})
+        public = {"entities": [{"entity_type": "constraint", "logical_id": "constraint:time"}]}
+>       assert _normalize_references(public, registry) == public
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+evaluation/tests/test_audit_readiness.py:581:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+evaluation/src/learning_agent_eval/snapshots.py:870: in _normalize_references
+    return visit(normalized)
+           ^^^^^^^^^^^^^^^^^
+evaluation/src/learning_agent_eval/snapshots.py:863: in visit
+    result[public_key] = visit(child, container_key=key, tool_name=tool_name,
+evaluation/src/learning_agent_eval/snapshots.py:867: in visit
+    return [visit(child, container_key=container_key, tool_name=tool_name, argument_context=argument_context) for child in item]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+item = {'entity_type': 'constraint', 'logical_id': 'constraint:time'}
+container_key = 'entities', tool_name = None, argument_context = False
+
+    def visit(item: Any, *, container_key: str | None = None, tool_name: str | None = None, argument_context: bool = False) -> Any:
+        if isinstance(item, dict):
+            declared_tool = item.get("tool_name", item.get("name"))
+            if isinstance(declared_tool, str) and declared_tool in _TOOL_RESULT_ID_TYPES:
+                tool_name = declared_tool
+            result: dict[str, Any] = {}
+            for key, child in item.items():
+                entity_type = _REFERENCE_TYPES.get(key)
+                public_key = key
+                if key == "id":
+                    if container_key == "open_questions":
+                        result["question_key"] = child  # A public form key, not an ORM ID.
+                        continue
+                    entity_type = _CONTAINER_ID_TYPES.get(container_key or "")
+                    if entity_type is None and container_key == "data":
+                        entity_type = _TOOL_RESULT_ID_TYPES.get(tool_name or "")
+                    if entity_type is None and not argument_context:
+                        raise SnapshotCollectionError("snapshot.unsupported_nested_id")
+                    if entity_type is not None:
+                        try:
+                            child = registry.resolve(entity_type, child) if child is not None else None
+                            public_key = f"{entity_type}_ref"
+                        except NormalizationError:
+                            if not argument_context:
+                                raise
+                elif entity_type is not None:
+                    public_key = f"{key.removesuffix('_id')}_ref"
+                    if child is not None:
+                        try:
+                            child = registry.resolve(entity_type, child)
+                        except NormalizationError:
+                            if not argument_context:
+                                raise
+                            public_key = key  # Preserve the invalid attempted target as input.
+                elif key in _REFERENCE_LIST_TYPES:
+                    if not isinstance(child, list):
+                        raise SnapshotCollectionError("snapshot.invalid_reference_list")
+                    child = [registry.resolve(_REFERENCE_LIST_TYPES[key], ref) for ref in child]
+                    public_key = f"{key.removesuffix('_ids')}_refs"
+                elif key == "memory_ids":
+                    if child:
+                        raise SnapshotCollectionError(
+                            "snapshot.unsupported_memory_reference"
+                        )
+                    public_key = "memory_refs"
+                elif key.endswith("_id") and key not in _PUBLIC_ID_FIELDS and not argument_context:
+>                   raise SnapshotCollectionError(
+                        "snapshot.unsupported_nested_reference"
+E                       learning_agent_eval.snapshots.SnapshotCollectionError: snapshot.unsupported_nested_reference
+
+evaluation/src/learning_agent_eval/snapshots.py:849: SnapshotCollectionError
+=========================== short test summary info ============================
+FAILED evaluation/tests/test_audit_readiness.py::test_profile_read_preserves_declared_public_context_references
+FAILED evaluation/tests/test_audit_readiness.py::test_nested_logical_reference_requires_a_declared_entity
+2 failed, 23 deselected in 12.82s

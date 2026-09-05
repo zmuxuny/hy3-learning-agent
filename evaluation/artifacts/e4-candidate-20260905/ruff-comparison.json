@@ -1,0 +1,3892 @@
+{
+  "baseline_default": {
+    "count": 425,
+    "exit_code": 1,
+    "seconds": 0.13,
+    "diagnostic_counts": [
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 23
+      },
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "F401",
+        "message": "`app.models.UserProfile` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "F401",
+        "message": "`app.runtime.events.emit_event` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/api.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/memories.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 6
+      },
+      {
+        "path": "backend/app/api/memories.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/notifications.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 7
+      },
+      {
+        "path": "backend/app/api/notifications.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/operations.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 3
+      },
+      {
+        "path": "backend/app/api/operations.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/plans.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 9
+      },
+      {
+        "path": "backend/app/api/plans.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/profile.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 2
+      },
+      {
+        "path": "backend/app/api/profile.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/settings.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 7
+      },
+      {
+        "path": "backend/app/api/settings.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/system.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/system.py",
+        "code": "DTZ011",
+        "message": "`datetime.date.today()` used",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/system.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/workspace.py",
+        "code": "B008",
+        "message": "Do not perform function call `File` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/workspace.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/assembler.py",
+        "code": "F402",
+        "message": "Import `field` from line 3 shadowed by loop variable",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/assembler.py",
+        "code": "F841",
+        "message": "Local variable `conversation_session` is assigned to but never used",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/assembler.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/assembler.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Sequence`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/memory.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/memory.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/memory.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Awaitable`, `Callable`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/provenance.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/provenance.py",
+        "code": "RUF022",
+        "message": "`__all__` is not sorted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/deployment.py",
+        "code": "F401",
+        "message": "`starlette.types.Message` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/deployment.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/deployment.py",
+        "code": "UP037",
+        "message": "Remove quotes from type annotation",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/envfile.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/envfile.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 2
+      },
+      {
+        "path": "backend/app/core/execution_policy.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/prompt_envelope.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/prompt_envelope.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Iterable`, `Mapping`, `Sequence`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/redaction.py",
+        "code": "B010",
+        "message": "Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/redaction.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/trust.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/trust.py",
+        "code": "SIM102",
+        "message": "Use a single `if` statement instead of nested `if` statements",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/database.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 2
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "PYI034",
+        "message": "`__enter__` methods in classes like `_DirectoryLease` usually return `self` at runtime",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "PYI036",
+        "message": "The first argument in `__exit__` should be annotated with `object` or `type[BaseException] | None`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "PYI036",
+        "message": "The second argument in `__exit__` should be annotated with `object` or `BaseException | None`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "PYI036",
+        "message": "The third argument in `__exit__` should be annotated with `object` or `types.TracebackType | None`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Callable`, `Iterator`, `Sequence`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "UP037",
+        "message": "Remove quotes from type annotation",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "B023",
+        "message": "Function definition does not bind loop variable `graph`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "B023",
+        "message": "Function definition does not bind loop variable `visited`",
+        "count": 2
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "B023",
+        "message": "Function definition does not bind loop variable `visiting`",
+        "count": 3
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "F841",
+        "message": "Local variable `result` is assigned to but never used",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "ISC004",
+        "message": "Unparenthesized implicit string concatenation in collection",
+        "count": 2
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "SIM103",
+        "message": "Return the negated condition directly",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "TRY203",
+        "message": "Remove exception handler; error is immediately re-raised",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "UP012",
+        "message": "Unnecessary UTF-8 `encoding` argument to `encode`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/types.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/uow.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/uow.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/uow.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 1
+      },
+      {
+        "path": "backend/app/main.py",
+        "code": "F401",
+        "message": "`pathlib.Path` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/main.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/main.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (unused: `F401`)",
+        "count": 1
+      },
+      {
+        "path": "backend/app/models/__init__.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/models/__init__.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (unused: `F401`; non-enabled: `F403`)",
+        "count": 1
+      },
+      {
+        "path": "backend/app/models/entities.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/models/schema_triggers.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/diagnostics.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/diagnostics.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/diagnostics.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/diagnostics.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Iterator`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/email.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 3
+      },
+      {
+        "path": "backend/app/notifications/email.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/email.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 2
+      },
+      {
+        "path": "backend/app/outbox.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 6
+      },
+      {
+        "path": "backend/app/outbox.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 2
+      },
+      {
+        "path": "backend/app/outbox.py",
+        "code": "UP012",
+        "message": "Unnecessary UTF-8 `encoding` argument to `encode`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/retrieval/__init__.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/retrieval/simhash.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/retrieval/text.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/agent.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 3
+      },
+      {
+        "path": "backend/app/runtime/agent.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/agent.py",
+        "code": "SIM117",
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/budget.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Mapping`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/checkpoints.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/events.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/interventions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/proactive.py",
+        "code": "DTZ007",
+        "message": "Naive datetime constructed using `datetime.datetime.strptime()` without %z",
+        "count": 2
+      },
+      {
+        "path": "backend/app/runtime/proactive.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/retry.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/scheduler.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/scheduler.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/session_titles.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/state.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/tasks.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/schemas/__init__.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (unused: `F401`; non-enabled: `F403`)",
+        "count": 3
+      },
+      {
+        "path": "backend/app/schemas/api.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/search/__init__.py",
+        "code": "RUF022",
+        "message": "`__all__` is not sorted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/search/providers.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/search/security.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/search/security.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 2
+      },
+      {
+        "path": "backend/app/services/competencies.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/competency_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence.py",
+        "code": "PYI041",
+        "message": "Use `float` instead of `int | float`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Iterable`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence_baseline.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence_baseline.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence_baseline.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Sequence`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/plans.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/sessions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/base.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/base.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/base.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Awaitable`, `Callable`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/calendar.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/competencies.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/competencies.py",
+        "code": "F401",
+        "message": "`app.tools.base.json_safe` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/competencies.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`app.schemas.competency.CompetencyEdgeOutput` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`app.schemas.competency.PlanCompetencyLinkOutput` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`app.schemas.competency.ResourceCompetencyLinkOutput` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`app.schemas.competency.TaskCompetencyLinkOutput` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`pydantic.Field` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/memory.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 3
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "F401",
+        "message": "`app.models.Achievement` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "SIM102",
+        "message": "Use a single `if` statement instead of nested `if` statements",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "UP012",
+        "message": "Unnecessary UTF-8 `encoding` argument to `encode`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/web.py",
+        "code": "RUF012",
+        "message": "Mutable default value for class attribute",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/web.py",
+        "code": "SIM114",
+        "message": "Combine `if` branches using logical `or` operator",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/workspace.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/run.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/run.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 2
+      },
+      {
+        "path": "scripts/build-release.py",
+        "code": "F401",
+        "message": "`stat` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "scripts/build-release.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/check_doc_links.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/data-maintenance.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/data-maintenance.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 2
+      },
+      {
+        "path": "scripts/data-maintenance.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `PLC0415`)",
+        "count": 1
+      },
+      {
+        "path": "scripts/data-maintenance.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Iterator`",
+        "count": 1
+      },
+      {
+        "path": "scripts/evidence-baseline.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/evidence-baseline.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 1
+      },
+      {
+        "path": "scripts/h3-runtime-recovery-demo.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "scripts/h3-runtime-recovery-demo.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 4
+      },
+      {
+        "path": "scripts/h3-runtime-recovery-demo.py",
+        "code": "PIE807",
+        "message": "Prefer `list` over useless lambda",
+        "count": 1
+      },
+      {
+        "path": "scripts/h7_browser_fixture.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 2
+      },
+      {
+        "path": "scripts/h7_browser_fixture.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 6
+      },
+      {
+        "path": "scripts/rebuild-evidence.py",
+        "code": "F401",
+        "message": "`app.models.EvidenceObservation` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "scripts/rebuild-evidence.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 2
+      },
+      {
+        "path": "scripts/rebuild-evidence.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 9
+      },
+      {
+        "path": "scripts/release-check.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/release-gate.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/conftest.py",
+        "code": "F401",
+        "message": "`app.db.database.Base` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/conftest.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 2
+      },
+      {
+        "path": "tests/conftest.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 8
+      },
+      {
+        "path": "tests/hardening/h3_schema_fixture.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/h4_schema_fixture.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/h5_schema_fixture.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_competency_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_competency_regressions.py",
+        "code": "RUF059",
+        "message": "Unpacked variable `plan_b` is never used",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_context_memory_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_evidence_regressions.py",
+        "code": "DTZ001",
+        "message": "`datetime.datetime()` called without a `tzinfo` argument",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_evidence_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_frontend_contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_intervention_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_migration_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_migration_regressions.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_release_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_runtime_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_scenario_contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_security_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_security_regressions.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_test_isolation.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_transaction_regressions.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `BaseException`",
+        "count": 2
+      },
+      {
+        "path": "tests/hardening/test_h0_transaction_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_maintenance.py",
+        "code": "ASYNC221",
+        "message": "Async functions should not run processes with blocking methods",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_maintenance.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `BaseException`",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_maintenance.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_maintenance.py",
+        "code": "SIM117",
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_migration_protocol.py",
+        "code": "F841",
+        "message": "Local variable `source_business` is assigned to but never used",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_migration_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_migration_protocol.py",
+        "code": "ISC004",
+        "message": "Unparenthesized implicit string concatenation in collection",
+        "count": 2
+      },
+      {
+        "path": "tests/hardening/test_h1_rebuild_coordinator.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_rebuild_coordinator.py",
+        "code": "PLR1711",
+        "message": "Useless `return` statement at end of function",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_rebuild_coordinator.py",
+        "code": "RET501",
+        "message": "Do not explicitly `return None` in function if it is the only possible return value",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_time_contracts.py",
+        "code": "DTZ001",
+        "message": "`datetime.datetime()` called without a `tzinfo` argument",
+        "count": 4
+      },
+      {
+        "path": "tests/hardening/test_h1_time_contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_local_file_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_local_file_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import envfile` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_memory_transaction_boundary.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_migration_contract.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_operation_undo.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_outbox_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_outbox_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app import outbox` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_outbox_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import execution_policy` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_process_faults.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_process_faults.py",
+        "code": "PLR0402",
+        "message": "Use `from app import outbox` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `BaseException`",
+        "count": 4
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "PLC0208",
+        "message": "Use a sequence type instead of a `set` when iterating over values",
+        "count": 9
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import execution_policy` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "SIM102",
+        "message": "Use a single `if` statement instead of nested `if` statements",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_migration_contract.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_migration_contract.py",
+        "code": "UP012",
+        "message": "Unnecessary UTF-8 `encoding` argument to `encode`",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_process_faults.py",
+        "code": "ASYNC220",
+        "message": "Async functions should not create subprocesses with blocking methods",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_process_faults.py",
+        "code": "ASYNC221",
+        "message": "Async functions should not run processes with blocking methods",
+        "count": 2
+      },
+      {
+        "path": "tests/hardening/test_h3_process_faults.py",
+        "code": "F401",
+        "message": "`asyncio` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_process_faults.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_reconciliation_invariants.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_reconciliation_invariants.py",
+        "code": "SIM101",
+        "message": "Multiple `isinstance` calls for `heartbeat_result`, merge into a single call",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_runtime_state_machine.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_subagent_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_subagent_protocol.py",
+        "code": "PYI041",
+        "message": "Use `float` instead of `int | float`",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_competency_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_evidence_runtime_failpoints.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_migration_contract.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_migration_contract.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_policy_artifact_supersession.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_projection_rebuild.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_projection_rebuild.py",
+        "code": "SIM117",
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_scenario_matrix.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_context_edit_boundaries.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_context_protocol.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 3
+      },
+      {
+        "path": "tests/hardening/test_h5_context_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_context_protocol.py",
+        "code": "RUF059",
+        "message": "Unpacked variable `baseline_message_ids` is never used",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_process_recovery.py",
+        "code": "ASYNC251",
+        "message": "Async functions should not call `time.sleep`",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_process_recovery.py",
+        "code": "F401",
+        "message": "`asyncio` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_process_recovery.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_reply_queue.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_mail_ingress.py",
+        "code": "B009",
+        "message": "Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.",
+        "count": 3
+      },
+      {
+        "path": "tests/hardening/test_h5_mail_ingress.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_mail_ingress.py",
+        "code": "RUF012",
+        "message": "Mutable default value for class attribute",
+        "count": 2
+      },
+      {
+        "path": "tests/hardening/test_h5_memory_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_migration_contract.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_migration_contract.py",
+        "code": "SIM117",
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_prompt_envelope.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_runtime_proactive_terminal.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_auth_config_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_auth_config_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import envfile` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_execution_policy.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_redaction_boundaries.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_redaction_boundaries.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import execution_policy` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_trust_redaction_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_web_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h7_backend_ui_contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h8_onboarding_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h8_onboarding_protocol.py",
+        "code": "RUF012",
+        "message": "Mutable default value for class attribute",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h8_release_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_codex_experience.py",
+        "code": "F401",
+        "message": "`app.api.agent._start_runtime` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_codex_experience.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_context_payload.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_doc_links.py",
+        "code": "FLY002",
+        "message": "Consider f-string instead of string join",
+        "count": 1
+      },
+      {
+        "path": "tests/test_doc_links.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_gamification.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_idempotency_budget.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "F401",
+        "message": "`app.models.PlanProposal` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 4
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "PLR0402",
+        "message": "Use `from app.notifications import diagnostics` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "PLR0402",
+        "message": "Use `from app.search import providers` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "PLR0402",
+        "message": "Use `from app.search import security` in lieu of alias",
+        "count": 2
+      },
+      {
+        "path": "tests/test_migrations.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_notification_conversations.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_notification_guard.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "F401",
+        "message": "`app.schemas.PlanCreate` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "F401",
+        "message": "`app.schemas.StageCreate` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "F401",
+        "message": "`app.schemas.TaskCreate` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "F401",
+        "message": "`app.services.plans` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_planning_card_snapshots.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_product_invariants.py",
+        "code": "F401",
+        "message": "`app.core.config.PROJECT_ROOT` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_product_invariants.py",
+        "code": "F401",
+        "message": "`app.models.Plan` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_product_invariants.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_push_notifications.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_retrieval_hybrid.py",
+        "code": "F401",
+        "message": "`sqlalchemy.select` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_retrieval_hybrid.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_run_recovery.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_settings_api.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_stale_context_guards.py",
+        "code": "F401",
+        "message": "`app.models.Plan` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_stale_context_guards.py",
+        "code": "F401",
+        "message": "`json` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_stale_context_guards.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_subagents.py",
+        "code": "F401",
+        "message": "`app.models.Plan` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_subagents.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_v2_competencies.py",
+        "code": "F401",
+        "message": "`app.models.Plan` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_v2_competencies.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_v2_evidence.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_web_search_fallback.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_web_search_fallback.py",
+        "code": "PLR0402",
+        "message": "Use `from app.search import providers` in lieu of alias",
+        "count": 1
+      }
+    ]
+  },
+  "baseline_all": {
+    "count": 19331,
+    "exit_code": 1,
+    "seconds": 0.65,
+    "counts_by_code": {
+      "ANN001": 557,
+      "ANN002": 41,
+      "ANN003": 95,
+      "ANN201": 449,
+      "ANN202": 214,
+      "ANN204": 96,
+      "ANN206": 2,
+      "ANN401": 155,
+      "ARG001": 36,
+      "ARG002": 21,
+      "ARG005": 5,
+      "ASYNC110": 1,
+      "ASYNC220": 1,
+      "ASYNC221": 3,
+      "ASYNC240": 5,
+      "ASYNC251": 1,
+      "B007": 2,
+      "B008": 59,
+      "B009": 3,
+      "B010": 1,
+      "B023": 6,
+      "B904": 10,
+      "B905": 1,
+      "BLE001": 33,
+      "C416": 5,
+      "C420": 11,
+      "C901": 154,
+      "COM812": 2818,
+      "CPY001": 252,
+      "D100": 124,
+      "D101": 405,
+      "D102": 191,
+      "D103": 1166,
+      "D104": 9,
+      "D107": 63,
+      "D202": 419,
+      "D401": 2,
+      "D404": 1,
+      "D413": 1,
+      "DTZ001": 5,
+      "DTZ007": 2,
+      "DTZ011": 1,
+      "E501": 2521,
+      "EM101": 1667,
+      "EM102": 127,
+      "F401": 29,
+      "F402": 1,
+      "F841": 3,
+      "FAST002": 59,
+      "FBT001": 22,
+      "FBT002": 6,
+      "FBT003": 44,
+      "FLY002": 1,
+      "FURB110": 4,
+      "FURB171": 1,
+      "I001": 154,
+      "INP001": 70,
+      "ISC004": 4,
+      "N806": 22,
+      "N815": 2,
+      "N818": 17,
+      "PERF203": 7,
+      "PERF401": 5,
+      "PIE807": 1,
+      "PLC0208": 9,
+      "PLC0415": 172,
+      "PLR0402": 12,
+      "PLR0911": 28,
+      "PLR0912": 90,
+      "PLR0913": 101,
+      "PLR0915": 93,
+      "PLR0917": 4,
+      "PLR1711": 1,
+      "PLR1714": 2,
+      "PLR2004": 371,
+      "PLR5501": 3,
+      "PLW0108": 12,
+      "PLW2901": 19,
+      "PLW3301": 1,
+      "PT007": 60,
+      "PT011": 2,
+      "PT012": 11,
+      "PT018": 137,
+      "PT022": 4,
+      "PT028": 1,
+      "PTH100": 3,
+      "PTH101": 27,
+      "PTH105": 32,
+      "PTH115": 4,
+      "PTH116": 1,
+      "PTH208": 4,
+      "PYI034": 1,
+      "PYI036": 3,
+      "PYI041": 2,
+      "Q003": 14,
+      "RET501": 1,
+      "RET502": 2,
+      "RET503": 1,
+      "RET504": 3,
+      "RSE102": 6,
+      "RUF001": 121,
+      "RUF005": 2,
+      "RUF012": 4,
+      "RUF021": 6,
+      "RUF022": 2,
+      "RUF036": 6,
+      "RUF043": 7,
+      "RUF059": 2,
+      "RUF100": 6,
+      "S101": 4335,
+      "S103": 2,
+      "S104": 4,
+      "S105": 15,
+      "S106": 13,
+      "S110": 8,
+      "S310": 4,
+      "S311": 1,
+      "S324": 1,
+      "S603": 76,
+      "S607": 13,
+      "S608": 21,
+      "SIM101": 1,
+      "SIM102": 3,
+      "SIM103": 1,
+      "SIM105": 12,
+      "SIM108": 1,
+      "SIM114": 1,
+      "SIM117": 4,
+      "SIM300": 9,
+      "SLF001": 79,
+      "T201": 34,
+      "TC002": 27,
+      "TC003": 46,
+      "TRY003": 902,
+      "TRY004": 10,
+      "TRY203": 1,
+      "TRY300": 22,
+      "TRY301": 83,
+      "UP012": 4,
+      "UP035": 10,
+      "UP037": 2
+    }
+  },
+  "final_default": {
+    "count": 425,
+    "exit_code": 1,
+    "seconds": 0.11,
+    "diagnostic_counts": [
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 23
+      },
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "F401",
+        "message": "`app.models.UserProfile` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "F401",
+        "message": "`app.runtime.events.emit_event` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/agent.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/api.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/memories.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 6
+      },
+      {
+        "path": "backend/app/api/memories.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/notifications.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 7
+      },
+      {
+        "path": "backend/app/api/notifications.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/operations.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 3
+      },
+      {
+        "path": "backend/app/api/operations.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/plans.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 9
+      },
+      {
+        "path": "backend/app/api/plans.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/profile.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 2
+      },
+      {
+        "path": "backend/app/api/profile.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/settings.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 7
+      },
+      {
+        "path": "backend/app/api/settings.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/system.py",
+        "code": "B008",
+        "message": "Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/system.py",
+        "code": "DTZ011",
+        "message": "`datetime.date.today()` used",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/system.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/workspace.py",
+        "code": "B008",
+        "message": "Do not perform function call `File` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable",
+        "count": 1
+      },
+      {
+        "path": "backend/app/api/workspace.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/assembler.py",
+        "code": "F402",
+        "message": "Import `field` from line 3 shadowed by loop variable",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/assembler.py",
+        "code": "F841",
+        "message": "Local variable `conversation_session` is assigned to but never used",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/assembler.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/assembler.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Sequence`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/memory.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/memory.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/memory.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Awaitable`, `Callable`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/provenance.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/context/provenance.py",
+        "code": "RUF022",
+        "message": "`__all__` is not sorted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/deployment.py",
+        "code": "F401",
+        "message": "`starlette.types.Message` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/deployment.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/deployment.py",
+        "code": "UP037",
+        "message": "Remove quotes from type annotation",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/envfile.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/envfile.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 2
+      },
+      {
+        "path": "backend/app/core/execution_policy.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/prompt_envelope.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/prompt_envelope.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Iterable`, `Mapping`, `Sequence`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/redaction.py",
+        "code": "B010",
+        "message": "Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/redaction.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/trust.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/core/trust.py",
+        "code": "SIM102",
+        "message": "Use a single `if` statement instead of nested `if` statements",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/database.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 2
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "PYI034",
+        "message": "`__enter__` methods in classes like `_DirectoryLease` usually return `self` at runtime",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "PYI036",
+        "message": "The first argument in `__exit__` should be annotated with `object` or `type[BaseException] | None`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "PYI036",
+        "message": "The second argument in `__exit__` should be annotated with `object` or `BaseException | None`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "PYI036",
+        "message": "The third argument in `__exit__` should be annotated with `object` or `types.TracebackType | None`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Callable`, `Iterator`, `Sequence`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/maintenance.py",
+        "code": "UP037",
+        "message": "Remove quotes from type annotation",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "B023",
+        "message": "Function definition does not bind loop variable `graph`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "B023",
+        "message": "Function definition does not bind loop variable `visited`",
+        "count": 2
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "B023",
+        "message": "Function definition does not bind loop variable `visiting`",
+        "count": 3
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "F841",
+        "message": "Local variable `result` is assigned to but never used",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "ISC004",
+        "message": "Unparenthesized implicit string concatenation in collection",
+        "count": 2
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "SIM103",
+        "message": "Return the negated condition directly",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "TRY203",
+        "message": "Remove exception handler; error is immediately re-raised",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/migrations.py",
+        "code": "UP012",
+        "message": "Unnecessary UTF-8 `encoding` argument to `encode`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/types.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/uow.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/uow.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/db/uow.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 1
+      },
+      {
+        "path": "backend/app/main.py",
+        "code": "F401",
+        "message": "`pathlib.Path` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/main.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/main.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (unused: `F401`)",
+        "count": 1
+      },
+      {
+        "path": "backend/app/models/__init__.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/models/__init__.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (unused: `F401`; non-enabled: `F403`)",
+        "count": 1
+      },
+      {
+        "path": "backend/app/models/entities.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/models/schema_triggers.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/diagnostics.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/diagnostics.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/diagnostics.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/diagnostics.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Iterator`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/email.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 3
+      },
+      {
+        "path": "backend/app/notifications/email.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/notifications/email.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 2
+      },
+      {
+        "path": "backend/app/outbox.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 6
+      },
+      {
+        "path": "backend/app/outbox.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 2
+      },
+      {
+        "path": "backend/app/outbox.py",
+        "code": "UP012",
+        "message": "Unnecessary UTF-8 `encoding` argument to `encode`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/retrieval/__init__.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/retrieval/simhash.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/retrieval/text.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/agent.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 3
+      },
+      {
+        "path": "backend/app/runtime/agent.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/agent.py",
+        "code": "SIM117",
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/budget.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Mapping`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/checkpoints.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/events.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/interventions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/proactive.py",
+        "code": "DTZ007",
+        "message": "Naive datetime constructed using `datetime.datetime.strptime()` without %z",
+        "count": 2
+      },
+      {
+        "path": "backend/app/runtime/proactive.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/retry.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/scheduler.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/scheduler.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/session_titles.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/state.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/runtime/tasks.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/schemas/__init__.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (unused: `F401`; non-enabled: `F403`)",
+        "count": 3
+      },
+      {
+        "path": "backend/app/schemas/api.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/search/__init__.py",
+        "code": "RUF022",
+        "message": "`__all__` is not sorted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/search/providers.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/search/security.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/search/security.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 2
+      },
+      {
+        "path": "backend/app/services/competencies.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/competency_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence.py",
+        "code": "PYI041",
+        "message": "Use `float` instead of `int | float`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Iterable`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence_baseline.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence_baseline.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/evidence_baseline.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Sequence`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/plans.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/services/sessions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/base.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/base.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/base.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Awaitable`, `Callable`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/calendar.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/competencies.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/competencies.py",
+        "code": "F401",
+        "message": "`app.tools.base.json_safe` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/competencies.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`app.schemas.competency.CompetencyEdgeOutput` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`app.schemas.competency.PlanCompetencyLinkOutput` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`app.schemas.competency.ResourceCompetencyLinkOutput` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`app.schemas.competency.TaskCompetencyLinkOutput` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "F401",
+        "message": "`pydantic.Field` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/memory.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 3
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "F401",
+        "message": "`app.models.Achievement` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "S110",
+        "message": "`try`-`except`-`pass` detected, consider logging the exception",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "SIM102",
+        "message": "Use a single `if` statement instead of nested `if` statements",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/registry.py",
+        "code": "UP012",
+        "message": "Unnecessary UTF-8 `encoding` argument to `encode`",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/web.py",
+        "code": "RUF012",
+        "message": "Mutable default value for class attribute",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/web.py",
+        "code": "SIM114",
+        "message": "Combine `if` branches using logical `or` operator",
+        "count": 1
+      },
+      {
+        "path": "backend/app/tools/workspace.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/run.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "backend/run.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 2
+      },
+      {
+        "path": "scripts/build-release.py",
+        "code": "F401",
+        "message": "`stat` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "scripts/build-release.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/check_doc_links.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/data-maintenance.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/data-maintenance.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 2
+      },
+      {
+        "path": "scripts/data-maintenance.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `PLC0415`)",
+        "count": 1
+      },
+      {
+        "path": "scripts/data-maintenance.py",
+        "code": "UP035",
+        "message": "Import from `collections.abc` instead: `Iterator`",
+        "count": 1
+      },
+      {
+        "path": "scripts/evidence-baseline.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/evidence-baseline.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 1
+      },
+      {
+        "path": "scripts/h3-runtime-recovery-demo.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 1
+      },
+      {
+        "path": "scripts/h3-runtime-recovery-demo.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 4
+      },
+      {
+        "path": "scripts/h3-runtime-recovery-demo.py",
+        "code": "PIE807",
+        "message": "Prefer `list` over useless lambda",
+        "count": 1
+      },
+      {
+        "path": "scripts/h7_browser_fixture.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 2
+      },
+      {
+        "path": "scripts/h7_browser_fixture.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 6
+      },
+      {
+        "path": "scripts/rebuild-evidence.py",
+        "code": "F401",
+        "message": "`app.models.EvidenceObservation` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "scripts/rebuild-evidence.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 2
+      },
+      {
+        "path": "scripts/rebuild-evidence.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 9
+      },
+      {
+        "path": "scripts/release-check.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "scripts/release-gate.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/conftest.py",
+        "code": "F401",
+        "message": "`app.db.database.Base` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/conftest.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 2
+      },
+      {
+        "path": "tests/conftest.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 8
+      },
+      {
+        "path": "tests/hardening/h3_schema_fixture.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/h4_schema_fixture.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/h5_schema_fixture.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_competency_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_competency_regressions.py",
+        "code": "RUF059",
+        "message": "Unpacked variable `plan_b` is never used",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_context_memory_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_evidence_regressions.py",
+        "code": "DTZ001",
+        "message": "`datetime.datetime()` called without a `tzinfo` argument",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_evidence_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_frontend_contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_intervention_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_migration_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_migration_regressions.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_release_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_runtime_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_scenario_contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_security_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_security_regressions.py",
+        "code": "TRY004",
+        "message": "Prefer `TypeError` exception for invalid type",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_test_isolation.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h0_transaction_regressions.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `BaseException`",
+        "count": 2
+      },
+      {
+        "path": "tests/hardening/test_h0_transaction_regressions.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_maintenance.py",
+        "code": "ASYNC221",
+        "message": "Async functions should not run processes with blocking methods",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_maintenance.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `BaseException`",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_maintenance.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_maintenance.py",
+        "code": "SIM117",
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_migration_protocol.py",
+        "code": "F841",
+        "message": "Local variable `source_business` is assigned to but never used",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_migration_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_migration_protocol.py",
+        "code": "ISC004",
+        "message": "Unparenthesized implicit string concatenation in collection",
+        "count": 2
+      },
+      {
+        "path": "tests/hardening/test_h1_rebuild_coordinator.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_rebuild_coordinator.py",
+        "code": "PLR1711",
+        "message": "Useless `return` statement at end of function",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_rebuild_coordinator.py",
+        "code": "RET501",
+        "message": "Do not explicitly `return None` in function if it is the only possible return value",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h1_time_contracts.py",
+        "code": "DTZ001",
+        "message": "`datetime.datetime()` called without a `tzinfo` argument",
+        "count": 4
+      },
+      {
+        "path": "tests/hardening/test_h1_time_contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_local_file_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_local_file_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import envfile` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_memory_transaction_boundary.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_migration_contract.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_operation_undo.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_outbox_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_outbox_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app import outbox` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_outbox_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import execution_policy` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_process_faults.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_process_faults.py",
+        "code": "PLR0402",
+        "message": "Use `from app import outbox` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `BaseException`",
+        "count": 4
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "PLC0208",
+        "message": "Use a sequence type instead of a `set` when iterating over values",
+        "count": 9
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import execution_policy` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h2_transaction_protocol.py",
+        "code": "SIM102",
+        "message": "Use a single `if` statement instead of nested `if` statements",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_migration_contract.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_migration_contract.py",
+        "code": "UP012",
+        "message": "Unnecessary UTF-8 `encoding` argument to `encode`",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_process_faults.py",
+        "code": "ASYNC220",
+        "message": "Async functions should not create subprocesses with blocking methods",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_process_faults.py",
+        "code": "ASYNC221",
+        "message": "Async functions should not run processes with blocking methods",
+        "count": 2
+      },
+      {
+        "path": "tests/hardening/test_h3_process_faults.py",
+        "code": "F401",
+        "message": "`asyncio` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_process_faults.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_reconciliation_invariants.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_reconciliation_invariants.py",
+        "code": "SIM101",
+        "message": "Multiple `isinstance` calls for `heartbeat_result`, merge into a single call",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_runtime_state_machine.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_subagent_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h3_subagent_protocol.py",
+        "code": "PYI041",
+        "message": "Use `float` instead of `int | float`",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_competency_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_evidence_runtime_failpoints.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_migration_contract.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_migration_contract.py",
+        "code": "RUF100",
+        "message": "Unused `noqa` directive (non-enabled: `E402`)",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_policy_artifact_supersession.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_projection_rebuild.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_projection_rebuild.py",
+        "code": "SIM117",
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h4_scenario_matrix.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_context_edit_boundaries.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_context_protocol.py",
+        "code": "BLE001",
+        "message": "Do not catch blind exception: `Exception`",
+        "count": 3
+      },
+      {
+        "path": "tests/hardening/test_h5_context_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_context_protocol.py",
+        "code": "RUF059",
+        "message": "Unpacked variable `baseline_message_ids` is never used",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_process_recovery.py",
+        "code": "ASYNC251",
+        "message": "Async functions should not call `time.sleep`",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_process_recovery.py",
+        "code": "F401",
+        "message": "`asyncio` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_process_recovery.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_intervention_reply_queue.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_mail_ingress.py",
+        "code": "B009",
+        "message": "Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.",
+        "count": 3
+      },
+      {
+        "path": "tests/hardening/test_h5_mail_ingress.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_mail_ingress.py",
+        "code": "RUF012",
+        "message": "Mutable default value for class attribute",
+        "count": 2
+      },
+      {
+        "path": "tests/hardening/test_h5_memory_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_migration_contract.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_migration_contract.py",
+        "code": "SIM117",
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_prompt_envelope.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h5_runtime_proactive_terminal.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_auth_config_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_auth_config_protocol.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import envfile` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_execution_policy.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_redaction_boundaries.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_redaction_boundaries.py",
+        "code": "PLR0402",
+        "message": "Use `from app.core import execution_policy` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_trust_redaction_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h6_web_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h7_backend_ui_contracts.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h8_onboarding_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h8_onboarding_protocol.py",
+        "code": "RUF012",
+        "message": "Mutable default value for class attribute",
+        "count": 1
+      },
+      {
+        "path": "tests/hardening/test_h8_release_protocol.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_codex_experience.py",
+        "code": "F401",
+        "message": "`app.api.agent._start_runtime` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_codex_experience.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_context_payload.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_doc_links.py",
+        "code": "FLY002",
+        "message": "Consider f-string instead of string join",
+        "count": 1
+      },
+      {
+        "path": "tests/test_doc_links.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_gamification.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_idempotency_budget.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "F401",
+        "message": "`app.models.PlanProposal` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 4
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "PLR0402",
+        "message": "Use `from app.notifications import diagnostics` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "PLR0402",
+        "message": "Use `from app.search import providers` in lieu of alias",
+        "count": 1
+      },
+      {
+        "path": "tests/test_learning_loop.py",
+        "code": "PLR0402",
+        "message": "Use `from app.search import security` in lieu of alias",
+        "count": 2
+      },
+      {
+        "path": "tests/test_migrations.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_notification_conversations.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_notification_guard.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "F401",
+        "message": "`app.schemas.PlanCreate` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "F401",
+        "message": "`app.schemas.StageCreate` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "F401",
+        "message": "`app.schemas.TaskCreate` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "F401",
+        "message": "`app.services.plans` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_plan_created_metadata.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_planning_card_snapshots.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_product_invariants.py",
+        "code": "F401",
+        "message": "`app.core.config.PROJECT_ROOT` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_product_invariants.py",
+        "code": "F401",
+        "message": "`app.models.Plan` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_product_invariants.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_push_notifications.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_retrieval_hybrid.py",
+        "code": "F401",
+        "message": "`sqlalchemy.select` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_retrieval_hybrid.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_run_recovery.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_settings_api.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_stale_context_guards.py",
+        "code": "F401",
+        "message": "`app.models.Plan` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_stale_context_guards.py",
+        "code": "F401",
+        "message": "`json` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_stale_context_guards.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_subagents.py",
+        "code": "F401",
+        "message": "`app.models.Plan` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_subagents.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_v2_competencies.py",
+        "code": "F401",
+        "message": "`app.models.Plan` imported but unused",
+        "count": 1
+      },
+      {
+        "path": "tests/test_v2_competencies.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_v2_evidence.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_web_search_fallback.py",
+        "code": "I001",
+        "message": "Import block is un-sorted or un-formatted",
+        "count": 1
+      },
+      {
+        "path": "tests/test_web_search_fallback.py",
+        "code": "PLR0402",
+        "message": "Use `from app.search import providers` in lieu of alias",
+        "count": 1
+      }
+    ]
+  },
+  "final_all": {
+    "count": 20326,
+    "exit_code": 1,
+    "seconds": 1.33,
+    "counts_by_code": {
+      "ANN001": 633,
+      "ANN002": 43,
+      "ANN003": 98,
+      "ANN201": 504,
+      "ANN202": 221,
+      "ANN204": 97,
+      "ANN206": 2,
+      "ANN401": 157,
+      "ARG001": 40,
+      "ARG002": 21,
+      "ARG005": 5,
+      "ASYNC110": 1,
+      "ASYNC220": 1,
+      "ASYNC221": 3,
+      "ASYNC240": 5,
+      "ASYNC251": 1,
+      "B007": 2,
+      "B008": 59,
+      "B009": 3,
+      "B010": 1,
+      "B023": 6,
+      "B904": 10,
+      "B905": 2,
+      "BLE001": 33,
+      "C416": 5,
+      "C420": 11,
+      "C901": 159,
+      "COM812": 2885,
+      "CPY001": 262,
+      "D100": 124,
+      "D101": 416,
+      "D102": 195,
+      "D103": 1223,
+      "D104": 9,
+      "D107": 65,
+      "D202": 420,
+      "D401": 2,
+      "D404": 1,
+      "D413": 1,
+      "DTZ001": 5,
+      "DTZ007": 2,
+      "DTZ011": 1,
+      "E501": 2752,
+      "EM101": 1699,
+      "EM102": 127,
+      "F401": 29,
+      "F402": 1,
+      "F841": 3,
+      "FAST002": 59,
+      "FBT001": 22,
+      "FBT002": 6,
+      "FBT003": 44,
+      "FLY002": 1,
+      "FURB110": 4,
+      "FURB171": 3,
+      "I001": 154,
+      "INP001": 76,
+      "ISC004": 4,
+      "N806": 22,
+      "N815": 2,
+      "N818": 19,
+      "PERF203": 6,
+      "PERF401": 5,
+      "PIE807": 1,
+      "PLC0208": 9,
+      "PLC0415": 200,
+      "PLR0402": 12,
+      "PLR0911": 28,
+      "PLR0912": 94,
+      "PLR0913": 104,
+      "PLR0915": 98,
+      "PLR0917": 4,
+      "PLR1711": 1,
+      "PLR1714": 2,
+      "PLR2004": 397,
+      "PLR5501": 3,
+      "PLW0108": 12,
+      "PLW2901": 21,
+      "PLW3301": 1,
+      "PT006": 2,
+      "PT007": 60,
+      "PT011": 3,
+      "PT012": 11,
+      "PT018": 137,
+      "PT022": 4,
+      "PT028": 1,
+      "PTH100": 3,
+      "PTH101": 28,
+      "PTH105": 33,
+      "PTH115": 4,
+      "PTH116": 1,
+      "PTH208": 4,
+      "PYI034": 1,
+      "PYI036": 3,
+      "PYI041": 2,
+      "Q003": 14,
+      "RET501": 1,
+      "RET502": 2,
+      "RET503": 1,
+      "RET504": 3,
+      "RSE102": 6,
+      "RUF001": 311,
+      "RUF005": 2,
+      "RUF012": 4,
+      "RUF021": 9,
+      "RUF022": 2,
+      "RUF036": 6,
+      "RUF043": 7,
+      "RUF059": 2,
+      "RUF100": 6,
+      "S101": 4452,
+      "S103": 2,
+      "S104": 4,
+      "S105": 15,
+      "S106": 13,
+      "S110": 8,
+      "S310": 4,
+      "S311": 1,
+      "S324": 1,
+      "S603": 77,
+      "S607": 14,
+      "S608": 21,
+      "SIM101": 1,
+      "SIM102": 3,
+      "SIM103": 1,
+      "SIM105": 12,
+      "SIM108": 1,
+      "SIM114": 1,
+      "SIM117": 4,
+      "SIM300": 9,
+      "SLF001": 85,
+      "T201": 37,
+      "TC001": 2,
+      "TC002": 27,
+      "TC003": 47,
+      "TRY003": 919,
+      "TRY004": 10,
+      "TRY203": 1,
+      "TRY300": 22,
+      "TRY301": 84,
+      "UP012": 4,
+      "UP035": 10,
+      "UP037": 2
+    }
+  },
+  "default_regressions": [],
+  "final_source_commit": "df8e8e7ba6d28bcdb28a78dbb97fabf366c42068"
+}

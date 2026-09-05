@@ -1,38 +1,65 @@
-# E4 输入设计与协议试跑
+# E4 输入设计与真实运行
 
-`primary-blueprint-v1.csv` 包含 12 个家族 × 4 轨的 48 个设计位置，全部是未复核草案。
-它不是 48 个已完成 CaseSpec，更不是 48 个真实 Hy3 Episode。场景和 Oracle 仍需逐项细化。
-Calibration 的 8 个种子应使用独立的 C01—C08 家族，不能从 Primary 复制后用于调优。
+当前按用户要求暂停在 E4。`primary-blueprint-v1.csv` 是 12 个家族 × 4 轨的作者设计工作单，
+独立内容复核仍待办。它对应的 48 个可执行输入和另外 24 个受控 Calibration 已在
+[候选数据包](../datasets/decisionbench-v1-candidate/README.md)中构建。
 
-## 当前工作顺序
+## 已执行与待复核
 
-1. 先完成四轨各一例协议试跑：检查声明解析、工具对应、Recorder 覆盖与终态，保留失败。
-2. 按工作单细化 CaseSpec：人工提供目标、初态、资源和判定边界；真实 Agent 产生决策与结果。
-3. 将关键事实映射为可执行 seed，并比较实际前置 Snapshot。只存在于摘要、无法进入模型上下文的事实不能作为 Oracle 依据。
-4. 作者自检后，由另一位复核者检查资源、隐私、允许行动、正反约束、难度及来源；争议保留裁决记录。草案不能伪造复核身份。
-5. 使用独立 Development/Calibration 调整规则与 Judge，完成一致性与区分度实验，然后冻结协议和 48 个 Primary 输入。
-6. 真实运行 Primary，逐 Case 验收 Episode/RuntimeFailure、调用上下文和补丁；人工复核内容后才准备正式 Benchmark 注册审查。
+48 Primary 在干净 `63be8da` 由真实 Hy3 执行，得到 45 Episode + 3 RuntimeFailure；
+24 Calibration 使用独立 C01–C08 家族的受控响应，得到 24 Episode + 0 Failure。
+原始终态和失败均在 [运行档案](../artifacts/e4-candidate-20260905/README.md)，没有挑选成功重跑替换。
+`bd89530` 离线修复其中两类读引用导出错误；原批次仍维持原有身份与失败记录。
+`df8e8e7` 又修复模型可见画像中的控制 ID 泄漏并重建 24 个 Calibration；旧批次仅供探索复查。
 
-真实用户轨迹可作为获得许可并脱敏后的案例来源；不要直接复制生产数据库。
-人工准备公开作业并在隔离环境触发 Assessment 是有效来源，不能人工编造 Hy3 的决策输出。
-任何需新增的 seed 字段，应先通过实际状态及模型可见上下文的反例测试，再批量写入 Case。
+72 行复核表均为 pending；“已执行”不等于允许行动、难度、标签及 Oracle 已被独立复核。
+production registry 为空，原定含人工复核、正式冻结和登记的 E4 DoD 尚未全部完成。
 
-## 四例试跑
+## 后续数据流程
+
+1. 核对每 Case 的目标、实际临时状态、时间、资源、授权、作业附件与判定边界。
+2. 由独立复核者检查合理行动是否被误排除、正反约束方向、证据充分性和质量标签；保留分歧与裁决。
+3. 仅用 Development/Calibration 验证与调整评测方法，再冻结正式协议和 Benchmark。
+4. 以固定配置执行正式 Primary，保留每 Case 唯一 Episode/Failure 终态及四轨分母。
+
+Primary 不参与 Agent、Prompt、Rules 或 Judge 调优。根据其输出修改决策语义时，要将该轮记为探索，
+另行确定未用于调优的测试家族。基础设施修复也必须留下原提交、失败和新协议摘要，不能给旧制品换身份。
+
+真实用户轨迹只能在获得许可和脱敏复核后作为案例来源；不能直接复制生产数据库。
+当前数据是作者构造的独立快照与合成验收材料，不证明真实用户学习效果。
+人工准备环境与公开作业、让 Hy3 真实验收是可行路径；人工编造 Hy3 的决策不能成为 Primary。
+
+## 可执行命令
+
+以下命令只准备并检查输入，不调用 Provider。输出目录必须不存在：
 
 ```bash
-PILOT_ROOT=$(mktemp -d /tmp/learning-agent-pilot-XXXXXXXX)
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/prepare_protocol_pilot.py --output "$PILOT_ROOT/suite"
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m learning_agent_eval validate-dataset --dataset "$PILOT_ROOT/suite"
-# 配置经授权的 OPENAI_API_KEY 进程环境后，才执行下面一条。
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m learning_agent_eval run-agent --dataset "$PILOT_ROOT/suite" --manifest "$PILOT_ROOT/suite/manifest.json" --output "$PILOT_ROOT/runtime" --model-mode real --allow-real-model --budget-ledger "$PILOT_ROOT/budget.json"
+E4_ROOT=$(mktemp -d /tmp/learning-agent-authoring-XXXXXXXX)
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/build_e4_candidates.py --output "$E4_ROOT/inputs"
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/check_e4_candidates.py "$E4_ROOT/inputs"
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/prepare_protocol_pilot.py --output "$E4_ROOT/pilot"
 ```
 
-真实运行前通过 `ModelBudget.create` 在仓库外创建限额为 `14_000_000` 微元的账本，并将同一路径传给所有后续运行。每次请求先预留最坏金额，仅在公开 usage 数字完整且一致时结算退款；超时或 usage 缺失保留全部预留款。并发请求共享文件锁，模型自动重试关闭。
+四个 `protocol_pilot` 输入来自工程 Case，明确标注来源与待复核状态；该角色永远不能登记为
+released Benchmark。它们只检验协议与运行工程。真实执行通过 `run-agent --model-mode real
+--allow-real-model --budget-ledger <既有共享账本>` 显式启用，当前暂停，不自动执行。
 
-准备脚本无 Provider 调用；固定四个 `protocol_pilot` Case，各轨一个。输入来自现有工程 Case，保留来源，独立内容复核仍为 pending。试跑输出不纳入 Primary、Calibration 或能力结果。该角色不能发布为 released Benchmark。
+## 费用与限制
 
-预算方案（2026-09-05 核对）：Planning 最多 5 次、Intervention 3 次、Assessment 4 次、Revision 4 次，共不超过 16 次请求，包括子 Agent 和辅助调用。Recorder 在调用前原子扣减请求额度；SDK 自动重试关闭，单次 `n=1`、`max_tokens=16000`。达到上限保留失败，不扩大 Case 数或自动重跑。
+用户授权本轮试跑及 Primary 生产共享 **14 元**。早期 16 请求/4.169728 元子预算方案已经被后续
+经本轮总限额约束的工程试跑与 E4 运行取代，不是实际总请求次数。
+本轮实际 190 次请求：公开 usage 估算 4.355213 元，4 次未知费用保留 1.042432 元，合计占用 5.397645 元。
+这不是提供商实际账单，也不能据此声称账户余额。
 
-按腾讯公布的 Hy3 最大输入 192k（保守按 196,608 Token）和输入/输出每百万 Token 1 元/4 元计算，最坏总额为 `16 × (196608 × 1 + 16000 × 4) / 1000000 = 4.169728 元`，这是试跑子预算；本轮试跑和 E4 数据生产共用 14 元总预算。推理和回答共用该输出限额。计价来源：[官方价格](https://cloud.tencent.com/document/product/1823/130055)、[Hy3 调用限制](https://cloud.tencent.com/document/product/1823/132252)。未来试跑须重新核对计价；本方案不适用于其他模型或路由。扩大到 E4 Suite 时继续使用同一个外部账本，不能重新创建账本以重置余额。
+持久账本位于 `/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json`，权限 0600。
+后续恢复必须复用它，不能重建账本重置额度。每次请求先按输入最多 196,608 Token、输出最多
+16,000 Token 预留 0.260608 元；完整一致的 usage 才结算退款，未知费用不按零处理。
+共享文件锁和 fsync 保证并发记账；`n=1`，SDK 自动重试关闭，推理与回答共用输出限额。
 
-Worker 仅允许既定 Hy3 端点，数据库、资源、通知投递仍使用隔离环境。保留 Runtime 制品和请求参数；有公开 usage 时记录 Token 数，缺失时披露未知，不能按零费用处理。不保存私有思维链内容。
+真实主 Runtime 上限为 8 轮/8 次模型请求/16 次工具调用；pilot 的统一 Recorder 另有每 Case
+24 次上限，包含子 Agent 和辅助调用。所有调用仍受同一个资金账本约束，不能靠子调用绕过。
+计价依据：[腾讯 Hy3 价格](https://cloud.tencent.com/document/product/1823/130055)、
+[调用限制](https://cloud.tencent.com/document/product/1823/132252)；恢复前应再次核对，不能套用于其他模型或路由。
+
+Worker 只允许既定 Hy3 端点；数据库、资源和通知投递仍隔离。公开轨迹保存消息、工具 Schema、
+请求参数与 usage，不保存密钥或私有思维链。当前不运行真实 Judge，也不把固定响应测试当作校准实验。

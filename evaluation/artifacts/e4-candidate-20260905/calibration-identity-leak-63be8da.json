@@ -1,0 +1,11 @@
+{
+  "input_commit": "63be8da",
+  "projection_commit": "bd89530",
+  "checked_marker": "calibration-c",
+  "affected_cases": 24,
+  "location": "observable_trace.model_calls[*].visible_context.messages[*].payload.content",
+  "cause": "Case logical entity IDs were embedded in public profile text",
+  "suitable_for_judge_calibration": false,
+  "fix_commit": "df8e8e7",
+  "original_artifacts_preserved": true
+}

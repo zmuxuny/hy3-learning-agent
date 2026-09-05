@@ -1,6 +1,10 @@
 # 主动 Agent 与上下文架构
 
-> 状态说明（2026-08-31）：本文描述产品运行架构及已验收边界。H1–H8 已完成迁移/UTC/备份、事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention、应用安全、前端闭环、首次设置与发布工程。第三阶段新增的是与产品运行时隔离的评测平面，设计见 [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md)；M15–M20 不在本阶段范围。当前事实见 [`STATUS.md`](STATUS.md)。
+> 状态说明（2026-09-05）：本文描述产品运行架构及已验收边界。H1–H8 已完成迁移/UTC/备份、事务/幂等/outbox、耐久 Runtime/Queue/child、Evidence/Competency、Context/Memory/Intervention、应用安全、前端闭环、首次设置与发布工程。第三阶段新增的是与产品运行时隔离的评测平面，设计见 [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md)；M15–M20 不在本阶段范围。当前事实见 [`STATUS.md`](STATUS.md)。
+
+第三阶段评测运行于独立 Worker：严格 Case seed → 临时 SQLite/冻结资源/冻结时钟 → 同一产品 Runtime → 统一 Recorder → Snapshot/Delta/Operation → Episode 或 RuntimeFailure。公开只读工具由 durable RunEvent 补齐观察；等待审批保留未执行队列，避免把模型意图当成执行效果。通知仅在最终 transport 替换为 Recording Sink。真实 Hy3 请求共享调用前预留的外部费用账本，凭据不进入轨迹。
+
+E4 已产出候选输入和真实批次，当前按要求暂停；它们没有证明连续学习成效或正式模型能力。数据、源版本和剩余边界见 [E4 收口复核](E4候选数据收口与方案复核.md)。
 
 阅读规则：本文件中的“必须 / 只 / 不会 / 权威 / 严格”等表述是后端和前端最终要共同强制的**目标契约**，不能据此推断全部门禁已经满足。H0 建立的失败基线会在对应门禁修复后删除 xfail；当前边界为：
 

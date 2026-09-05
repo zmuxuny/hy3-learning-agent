@@ -1,0 +1,65 @@
+{
+  "checks": [
+    {
+      "name": "markdown_relative_links",
+      "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python scripts/check_doc_links.py",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "seconds": 0.011515994,
+      "output": "Markdown relative links: OK\n"
+    },
+    {
+      "name": "secret_scan",
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/tmp/learning-travel-fix-validation-osj4FCZZ/guard .venv/bin/python scripts/release-check.py secret_scan",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "seconds": 0.468132466,
+      "output": "secret_scan_ok tracked=606 staged_diff_sha256=0e1455185b9e0ad82056164abb52384bc8d22222ce18d2f16f3a003395e343b1\n"
+    },
+    {
+      "name": "pip_check",
+      "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pip check",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "seconds": 0.399488185,
+      "output": "No broken requirements found.\n"
+    },
+    {
+      "name": "git_diff_check",
+      "command": "git diff --cached --check",
+      "status": "fulfilled",
+      "exit_code": 2,
+      "seconds": 0.000005937,
+      "output": "evaluation/artifacts/e4-candidate-20260905/validation/profile-ref-red.log:28: trailing whitespace.\n+    \nevaluation/artifacts/e4-candidate-20260905/validation/profile-ref-red.log:34: trailing whitespace.\n+evaluation/tests/test_audit_readiness.py:581: \nevaluation/artifacts/e4-candidate-20260905/validation/profile-ref-red.log:35: trailing whitespace.\n+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \nevaluation/artifacts/e4-candidate-20260905/validation/profile-ref-red.log:44: trailing whitespace.\n+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n"
+    },
+    {
+      "name": "candidate_integrity",
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/tmp/learning-travel-fix-validation-osj4FCZZ/guard:/root/workspace/tencent_rhinobird2026/learning_travel/evaluation/src .venv/bin/python evaluation/scripts/check_e4_candidates.py evaluation/datasets/decisionbench-v1-candidate",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "seconds": 1.14575039,
+      "output": "{\"calibration_inputs\": 24, \"formal\": false, \"human_review\": \"pending\", \"mutation_reconstruction\": \"passed\", \"primary_inputs\": 48, \"source_cases\": 8}\n"
+    },
+    {
+      "name": "cli_help",
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/tmp/learning-travel-fix-validation-osj4FCZZ/guard:/root/workspace/tencent_rhinobird2026/learning_travel/evaluation/src .venv/bin/python -m learning_agent_eval --help",
+      "status": "fulfilled",
+      "exit_code": 0,
+      "seconds": 0.911905468,
+      "output": "usage: python -m learning_agent_eval [-h]\n                                     {validate-dataset,run-agent,evaluate-rules,evaluate-judge,aggregate-results} ...\n\npositional arguments:\n  {validate-dataset,run-agent,evaluate-rules,evaluate-judge,aggregate-results}\n    validate-dataset    recursively validate versioned evaluation JSON\n    run-agent           run isolated CaseSpecs and export active\n                        DecisionEpisode v4 artifacts\n    evaluate-rules      run deterministic Rules over active v4 Runtime output\n    evaluate-judge      run the blind structured Judge over matched v4 and\n                        Rule v3 artifacts\n    aggregate-results   deterministically aggregate active v4 Rule and Judge\n                        results\n\noptions:\n  -h, --help            show this help message and exit\n"
+    }
+  ],
+  "followup": {
+    "git_diff_check": {
+      "exit_code": 0,
+      "command": "git diff --cached --check",
+      "reason": "Removed trailing whitespace from one new test log; before/after byte digests recorded in validation-summary.json."
+    }
+  },
+  "archive_check": "archive-integrity-check.json",
+  "notes": [
+    "These command outputs precede the final evidence-summary commit.",
+    "Secret scan covers tracked text; archive members were additionally scanned after decompression.",
+    "No new Runtime, Rules, Judge or Aggregate source was modified during final documentation closure."
+  ]
+}

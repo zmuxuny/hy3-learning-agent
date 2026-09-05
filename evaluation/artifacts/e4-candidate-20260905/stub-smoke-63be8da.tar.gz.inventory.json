@@ -1,0 +1,649 @@
+{
+  "file": "stub-smoke-63be8da.tar.gz",
+  "files": 128,
+  "uncompressed_bytes": 4606384,
+  "bytes": 791490,
+  "sha256": "5c6aa5e194588cff1e5266578105a7903433527501c7e072db55964f25c5e98b",
+  "members": [
+    {
+      "path": "round-1/aggregates/episodes/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 2744,
+      "sha256": "6865c27e19ab50c4f7782d18d17b0023eb29ed3f188cc88d0b0a42d5e54c040e"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 2744,
+      "sha256": "b0a5183ca0b798a30f88c65e8208d73730e271f1fed55da61ab6b6d70d540bc2"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 2748,
+      "sha256": "fce898cd218b9b891e0032605896bcbd025cead124164ab4089246f1f5a828e2"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 2746,
+      "sha256": "00f0b0d8b671f634c7936b01f95384c027310bd3c60f6550ab03929396b374eb"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 3205,
+      "sha256": "5e13e01a5ec1a3dae6ea9bbea8ff9a632c2d549bbe3cf0008b0c632ad3e3d8db"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 4971,
+      "sha256": "95b371db3e0849d350f75bac2531cfc55a93cdf6d54f058a3e7faaebc45442bc"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 2744,
+      "sha256": "658f2fa8cc6abcbed23611fbdce68e02555ffd6b6b0913b9a37a454d895b0a76"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-97064d6eb3996015c0218892.json",
+      "bytes": 4736,
+      "sha256": "253a7b8abc635ea2ba06bf4f4efffc25871b29b5fad95578a40e36a1f31e532e"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 4499,
+      "sha256": "04a71c0a519ae3378761c716ebc1b5bd94e095f08e9a8cc75e2ba305e3bfd4cd"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 2748,
+      "sha256": "a05df3048bcc7f170268c9cdac4639af61888cd90d444c8d7845e1d672cfee04"
+    },
+    {
+      "path": "round-1/aggregates/episodes/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 4499,
+      "sha256": "786469e77cb869947b02f60b596312c0e7415c10362e51d4ab34fd327ab117e1"
+    },
+    {
+      "path": "round-1/aggregates/run-manifest.json",
+      "bytes": 16635,
+      "sha256": "2af76b2c68dfb34e3bd2f046bdba287d672d6bfcdbe5c9e78326a3e0d5cd92a1"
+    },
+    {
+      "path": "round-1/aggregates/tracks/assessment.json",
+      "bytes": 2425,
+      "sha256": "29a7c495ea140d689f88cf61d2b3bf34f992f5f5667610b3f2c0e69cc38b9940"
+    },
+    {
+      "path": "round-1/aggregates/tracks/intervention.json",
+      "bytes": 1639,
+      "sha256": "f34fe16823c135992a05ef2ab0295c19719e9c9af0f9ea37fa808eb1dfe7bf15"
+    },
+    {
+      "path": "round-1/aggregates/tracks/planning.json",
+      "bytes": 1672,
+      "sha256": "cb7f44b8979679793c1480d38d03fa7d4812f2de24a614c5da5d606ff94aa7ce"
+    },
+    {
+      "path": "round-1/aggregates/tracks/revision.json",
+      "bytes": 1483,
+      "sha256": "0896ca52ca5a12369077ecb8cd3ff4639bca860e783db8fe9d6f745fa400b4b9"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 4776,
+      "sha256": "e1db681d522ba3c6491e82d4807c89377c26027f6565db77ab085af416ed096d"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 4776,
+      "sha256": "3e73752267dc7e7e84a7da7be29b51b6165e699a11a09148a5a995e784616bb3"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 4780,
+      "sha256": "c9a10dc737887427f113f1059b542a139453bdfb7347a1e560d572943cd28193"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 4778,
+      "sha256": "f75f2e656483015a9e96e233a285f2c10553a8a524d5e04a58b3d7fb1a6c7334"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 4778,
+      "sha256": "32d5395de51d9962d16795c7dc9c869fe199a032c66d78ce9d461be16cf4fcdb"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 4778,
+      "sha256": "478dd9782a1f4d437fe2c93b1256a4fc4ca7cb9437661206ad061c06f23bffa3"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 4776,
+      "sha256": "d4de71896b30d0ff5846238cc09023d7674e36c2e1b52f0c60ee8c1fffa19549"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-97064d6eb3996015c0218892.json",
+      "bytes": 4778,
+      "sha256": "d75862fa9d1e535a303404f21a7d2aa74302fa9469fe0b457beb7910e4607a30"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 4778,
+      "sha256": "a02254ba8b880460ba7d9762853eece09b03fe93a5c7f2abfa96d7353a8b4317"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 4780,
+      "sha256": "6e4fd95426b6719a80ee08d33ce5ac6ee7af3e611e434eb08f738d1ca0e5464b"
+    },
+    {
+      "path": "round-1/judges/judge-results/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 4778,
+      "sha256": "1ec0b028952947cdc00e1e45a92983b013a32381daf0301036b61d6f48ecd9c7"
+    },
+    {
+      "path": "round-1/judges/run-manifest.json",
+      "bytes": 10655,
+      "sha256": "a9758b402b84a8245ebd622ec61eac61624892d1d1374b3b380c7099dc30a885"
+    },
+    {
+      "path": "round-1/rules/rule-manifest.json",
+      "bytes": 6686,
+      "sha256": "f39e34f59832545df20285b467f68fe68f54df46769980a236456a19abb2f8a2"
+    },
+    {
+      "path": "round-1/rules/rules/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 22618,
+      "sha256": "a98ff1d89076288ff6eae917b8706e4d3eea04f1042f40decea2b896d2ea3f0e"
+    },
+    {
+      "path": "round-1/rules/rules/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 22826,
+      "sha256": "f44a748c93bdd4940765bd9027a61f524c3ad7552d16d3568c766f2692a18c6d"
+    },
+    {
+      "path": "round-1/rules/rules/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 23360,
+      "sha256": "368aefbb08a50e652ab79e69e21e90c4cd6bea6036f0cc698749fde68fa2109a"
+    },
+    {
+      "path": "round-1/rules/rules/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 23038,
+      "sha256": "d94ae502644352670817384119c583858cf40afc67a2174a49831d9342f804ba"
+    },
+    {
+      "path": "round-1/rules/rules/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 23151,
+      "sha256": "0b30e81f9191eb89321ee184e78d39a9ff1d8b19dc175cdddad2bb854aabce09"
+    },
+    {
+      "path": "round-1/rules/rules/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 23319,
+      "sha256": "2a24e56bba31e5edd6311da36bdddb7e6b879e46862309ebf6f189e3ade0a765"
+    },
+    {
+      "path": "round-1/rules/rules/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 24100,
+      "sha256": "7d190e21289d91e7a14ca660bca6bde1a6f5b1f29980b9ebd2e31366cad17e75"
+    },
+    {
+      "path": "round-1/rules/rules/episode-97064d6eb3996015c0218892.json",
+      "bytes": 22719,
+      "sha256": "33fbdea772bf18f4447eef6e12c713ef47821956d57c0eebc0761be7ff1f59ad"
+    },
+    {
+      "path": "round-1/rules/rules/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 22718,
+      "sha256": "6315a75f628980eb0c2fa9c80022b1d4835ed489cae7ba67e6c4572e1fe9b6c6"
+    },
+    {
+      "path": "round-1/rules/rules/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 23422,
+      "sha256": "e6e40b6d14490f1c3eda53d37b686bcc548cd19e4a1ad107a869078ce43287d9"
+    },
+    {
+      "path": "round-1/rules/rules/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 22757,
+      "sha256": "b6d1325f6c562be8612d0d5573a879dfd1f28d680c2d8bb54596bf64e9a219ed"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 172625,
+      "sha256": "7799dc8345e1febfa27ea86c9a00005188c6a655d43977a372705b34d66181ee"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 166221,
+      "sha256": "a69a31227da4f59ab65856e067a37e381732a542f6afdd874cc10d3ed71adc9c"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 160755,
+      "sha256": "c47ff774964a85f9bfa4839726c70017cbde7e67e931eebae3399494f7df6ecc"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 194200,
+      "sha256": "72720cc6baff250f195273201485137207ef3fc368294eb1cefecebaa06f7b73"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 181811,
+      "sha256": "78c71ade43d98367119de3e7d1ec9c65abd4d75293d9a7f30d487cac156e5e75"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 171158,
+      "sha256": "299f6cd426aeda2b9404fac1a33c71a60e2368533081730470aef0f10eb58b18"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 288611,
+      "sha256": "8c0f2312fe1e60fa4663bfdfaa7dfd77e865922cf4d2c1aad1e843231dae80d3"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-97064d6eb3996015c0218892.json",
+      "bytes": 95338,
+      "sha256": "38598c2ee73f72c140005a3f981341ec09f0b6ab1456e5ebf051ee455431708a"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 184411,
+      "sha256": "8a55efbad0d5aad232169c73b61f4de146fefa0e482b8b35c2bd79d7a17f1920"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 178429,
+      "sha256": "dda446b6e0ed020c5fa47785934261a814f8dee4bba308ecfd29daed9462b140"
+    },
+    {
+      "path": "round-1/runtime/episodes/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 96130,
+      "sha256": "1b9c26ea89a2b6c4a7aac2cfde649da05cf9319e962ae08b303e45254ef63622"
+    },
+    {
+      "path": "round-1/runtime/failures/failure:case-e31-p-provider-failure.json",
+      "bytes": 2162,
+      "sha256": "8a01df396e9fe43b3fef5255ee59c14f6b8bd4bbdaf72e1793bae8c0905cf01d"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 1451,
+      "sha256": "1d1c1132d3a147fb64626fa1869f0fe3f17baa6d7e03698bc3eb1c97166bd59e"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 1436,
+      "sha256": "152a0efb68063de4c2c9924fab43388238133bb72336b1b23fb35c35e41a3d0b"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 1778,
+      "sha256": "ab98c18e5d9434a953b7e25d5c25c35b4a56c5d10ceb5a035768dc1797992496"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 1426,
+      "sha256": "7b0da38b9f31b87a466481c3daec3186e5aa7b2b079f24df3c7614f39e1b03be"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 1422,
+      "sha256": "b3f9419cf103d386129660a06482d3a5a8e4d2e54c86a33d6fa4b05db3c820a7"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 1804,
+      "sha256": "6893cba9f301f90df49c4065852b034ebcaf1b73b00e9b01f029a34752403c9a"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 2650,
+      "sha256": "5454b976168ebcbba51bf5b3627d14e074ea256f8a7c7b1189b8640dd281fef5"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-97064d6eb3996015c0218892.json",
+      "bytes": 1426,
+      "sha256": "840c417eabf147795007864a1babfa25ae866b61d3307779f0dc202ae23f88e0"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 1426,
+      "sha256": "067d984ca2b26a942de1b2f5b58d9208d3e95fd3e1e46ae8f23dc909068a68a0"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 1445,
+      "sha256": "e9c7c2be30741811cee646c78fe71788611279a5407b753a37e1700024bb2249"
+    },
+    {
+      "path": "round-1/runtime/judge-references/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 1426,
+      "sha256": "7f032675bc0cfaeb3a8c5b17d9e140862a9eab3f094f0ffc3e179f40b6a7ccec"
+    },
+    {
+      "path": "round-1/runtime/run-manifest.json",
+      "bytes": 7488,
+      "sha256": "cbe44fdedfcb45f34d8625f7232cee32fe0d8562d4901a2457a55586fa78b7e5"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 2744,
+      "sha256": "6865c27e19ab50c4f7782d18d17b0023eb29ed3f188cc88d0b0a42d5e54c040e"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 2744,
+      "sha256": "b0a5183ca0b798a30f88c65e8208d73730e271f1fed55da61ab6b6d70d540bc2"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 2748,
+      "sha256": "fce898cd218b9b891e0032605896bcbd025cead124164ab4089246f1f5a828e2"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 2746,
+      "sha256": "00f0b0d8b671f634c7936b01f95384c027310bd3c60f6550ab03929396b374eb"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 3205,
+      "sha256": "5e13e01a5ec1a3dae6ea9bbea8ff9a632c2d549bbe3cf0008b0c632ad3e3d8db"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 4971,
+      "sha256": "95b371db3e0849d350f75bac2531cfc55a93cdf6d54f058a3e7faaebc45442bc"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 2744,
+      "sha256": "658f2fa8cc6abcbed23611fbdce68e02555ffd6b6b0913b9a37a454d895b0a76"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-97064d6eb3996015c0218892.json",
+      "bytes": 4736,
+      "sha256": "253a7b8abc635ea2ba06bf4f4efffc25871b29b5fad95578a40e36a1f31e532e"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 4499,
+      "sha256": "04a71c0a519ae3378761c716ebc1b5bd94e095f08e9a8cc75e2ba305e3bfd4cd"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 2748,
+      "sha256": "a05df3048bcc7f170268c9cdac4639af61888cd90d444c8d7845e1d672cfee04"
+    },
+    {
+      "path": "round-2/aggregates/episodes/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 4499,
+      "sha256": "786469e77cb869947b02f60b596312c0e7415c10362e51d4ab34fd327ab117e1"
+    },
+    {
+      "path": "round-2/aggregates/run-manifest.json",
+      "bytes": 16635,
+      "sha256": "2af76b2c68dfb34e3bd2f046bdba287d672d6bfcdbe5c9e78326a3e0d5cd92a1"
+    },
+    {
+      "path": "round-2/aggregates/tracks/assessment.json",
+      "bytes": 2425,
+      "sha256": "29a7c495ea140d689f88cf61d2b3bf34f992f5f5667610b3f2c0e69cc38b9940"
+    },
+    {
+      "path": "round-2/aggregates/tracks/intervention.json",
+      "bytes": 1639,
+      "sha256": "f34fe16823c135992a05ef2ab0295c19719e9c9af0f9ea37fa808eb1dfe7bf15"
+    },
+    {
+      "path": "round-2/aggregates/tracks/planning.json",
+      "bytes": 1672,
+      "sha256": "cb7f44b8979679793c1480d38d03fa7d4812f2de24a614c5da5d606ff94aa7ce"
+    },
+    {
+      "path": "round-2/aggregates/tracks/revision.json",
+      "bytes": 1483,
+      "sha256": "0896ca52ca5a12369077ecb8cd3ff4639bca860e783db8fe9d6f745fa400b4b9"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 4776,
+      "sha256": "e1db681d522ba3c6491e82d4807c89377c26027f6565db77ab085af416ed096d"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 4776,
+      "sha256": "3e73752267dc7e7e84a7da7be29b51b6165e699a11a09148a5a995e784616bb3"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 4780,
+      "sha256": "c9a10dc737887427f113f1059b542a139453bdfb7347a1e560d572943cd28193"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 4778,
+      "sha256": "f75f2e656483015a9e96e233a285f2c10553a8a524d5e04a58b3d7fb1a6c7334"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 4778,
+      "sha256": "32d5395de51d9962d16795c7dc9c869fe199a032c66d78ce9d461be16cf4fcdb"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 4778,
+      "sha256": "478dd9782a1f4d437fe2c93b1256a4fc4ca7cb9437661206ad061c06f23bffa3"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 4776,
+      "sha256": "d4de71896b30d0ff5846238cc09023d7674e36c2e1b52f0c60ee8c1fffa19549"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-97064d6eb3996015c0218892.json",
+      "bytes": 4778,
+      "sha256": "d75862fa9d1e535a303404f21a7d2aa74302fa9469fe0b457beb7910e4607a30"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 4778,
+      "sha256": "a02254ba8b880460ba7d9762853eece09b03fe93a5c7f2abfa96d7353a8b4317"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 4780,
+      "sha256": "6e4fd95426b6719a80ee08d33ce5ac6ee7af3e611e434eb08f738d1ca0e5464b"
+    },
+    {
+      "path": "round-2/judges/judge-results/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 4778,
+      "sha256": "1ec0b028952947cdc00e1e45a92983b013a32381daf0301036b61d6f48ecd9c7"
+    },
+    {
+      "path": "round-2/judges/run-manifest.json",
+      "bytes": 10655,
+      "sha256": "a9758b402b84a8245ebd622ec61eac61624892d1d1374b3b380c7099dc30a885"
+    },
+    {
+      "path": "round-2/rules/rule-manifest.json",
+      "bytes": 6686,
+      "sha256": "f39e34f59832545df20285b467f68fe68f54df46769980a236456a19abb2f8a2"
+    },
+    {
+      "path": "round-2/rules/rules/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 22618,
+      "sha256": "a98ff1d89076288ff6eae917b8706e4d3eea04f1042f40decea2b896d2ea3f0e"
+    },
+    {
+      "path": "round-2/rules/rules/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 22826,
+      "sha256": "f44a748c93bdd4940765bd9027a61f524c3ad7552d16d3568c766f2692a18c6d"
+    },
+    {
+      "path": "round-2/rules/rules/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 23360,
+      "sha256": "368aefbb08a50e652ab79e69e21e90c4cd6bea6036f0cc698749fde68fa2109a"
+    },
+    {
+      "path": "round-2/rules/rules/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 23038,
+      "sha256": "d94ae502644352670817384119c583858cf40afc67a2174a49831d9342f804ba"
+    },
+    {
+      "path": "round-2/rules/rules/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 23151,
+      "sha256": "0b30e81f9191eb89321ee184e78d39a9ff1d8b19dc175cdddad2bb854aabce09"
+    },
+    {
+      "path": "round-2/rules/rules/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 23319,
+      "sha256": "2a24e56bba31e5edd6311da36bdddb7e6b879e46862309ebf6f189e3ade0a765"
+    },
+    {
+      "path": "round-2/rules/rules/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 24100,
+      "sha256": "7d190e21289d91e7a14ca660bca6bde1a6f5b1f29980b9ebd2e31366cad17e75"
+    },
+    {
+      "path": "round-2/rules/rules/episode-97064d6eb3996015c0218892.json",
+      "bytes": 22719,
+      "sha256": "33fbdea772bf18f4447eef6e12c713ef47821956d57c0eebc0761be7ff1f59ad"
+    },
+    {
+      "path": "round-2/rules/rules/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 22718,
+      "sha256": "6315a75f628980eb0c2fa9c80022b1d4835ed489cae7ba67e6c4572e1fe9b6c6"
+    },
+    {
+      "path": "round-2/rules/rules/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 23422,
+      "sha256": "e6e40b6d14490f1c3eda53d37b686bcc548cd19e4a1ad107a869078ce43287d9"
+    },
+    {
+      "path": "round-2/rules/rules/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 22757,
+      "sha256": "b6d1325f6c562be8612d0d5573a879dfd1f28d680c2d8bb54596bf64e9a219ed"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 172625,
+      "sha256": "7799dc8345e1febfa27ea86c9a00005188c6a655d43977a372705b34d66181ee"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 166221,
+      "sha256": "a69a31227da4f59ab65856e067a37e381732a542f6afdd874cc10d3ed71adc9c"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 160755,
+      "sha256": "c47ff774964a85f9bfa4839726c70017cbde7e67e931eebae3399494f7df6ecc"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 194200,
+      "sha256": "72720cc6baff250f195273201485137207ef3fc368294eb1cefecebaa06f7b73"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 181811,
+      "sha256": "78c71ade43d98367119de3e7d1ec9c65abd4d75293d9a7f30d487cac156e5e75"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 171158,
+      "sha256": "299f6cd426aeda2b9404fac1a33c71a60e2368533081730470aef0f10eb58b18"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 288611,
+      "sha256": "8c0f2312fe1e60fa4663bfdfaa7dfd77e865922cf4d2c1aad1e843231dae80d3"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-97064d6eb3996015c0218892.json",
+      "bytes": 95338,
+      "sha256": "38598c2ee73f72c140005a3f981341ec09f0b6ab1456e5ebf051ee455431708a"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 184411,
+      "sha256": "8a55efbad0d5aad232169c73b61f4de146fefa0e482b8b35c2bd79d7a17f1920"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 178429,
+      "sha256": "dda446b6e0ed020c5fa47785934261a814f8dee4bba308ecfd29daed9462b140"
+    },
+    {
+      "path": "round-2/runtime/episodes/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 96130,
+      "sha256": "1b9c26ea89a2b6c4a7aac2cfde649da05cf9319e962ae08b303e45254ef63622"
+    },
+    {
+      "path": "round-2/runtime/failures/failure:case-e31-p-provider-failure.json",
+      "bytes": 2162,
+      "sha256": "8a01df396e9fe43b3fef5255ee59c14f6b8bd4bbdaf72e1793bae8c0905cf01d"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-027617c2a5f02cf5b3bbafc6.json",
+      "bytes": 1451,
+      "sha256": "1d1c1132d3a147fb64626fa1869f0fe3f17baa6d7e03698bc3eb1c97166bd59e"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-11aa76316f02cecac49ad58d.json",
+      "bytes": 1436,
+      "sha256": "152a0efb68063de4c2c9924fab43388238133bb72336b1b23fb35c35e41a3d0b"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-1c881c039b09e7e131d883b1.json",
+      "bytes": 1778,
+      "sha256": "ab98c18e5d9434a953b7e25d5c25c35b4a56c5d10ceb5a035768dc1797992496"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-40066a0c81327d7fafa1ecc1.json",
+      "bytes": 1426,
+      "sha256": "7b0da38b9f31b87a466481c3daec3186e5aa7b2b079f24df3c7614f39e1b03be"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-452edf36a31e2df9e1a893f0.json",
+      "bytes": 1422,
+      "sha256": "b3f9419cf103d386129660a06482d3a5a8e4d2e54c86a33d6fa4b05db3c820a7"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-4b9701db614f3f4b585cfdd7.json",
+      "bytes": 1804,
+      "sha256": "6893cba9f301f90df49c4065852b034ebcaf1b73b00e9b01f029a34752403c9a"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-7f949f1b7d9bc894537ad66d.json",
+      "bytes": 2650,
+      "sha256": "5454b976168ebcbba51bf5b3627d14e074ea256f8a7c7b1189b8640dd281fef5"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-97064d6eb3996015c0218892.json",
+      "bytes": 1426,
+      "sha256": "840c417eabf147795007864a1babfa25ae866b61d3307779f0dc202ae23f88e0"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-9be50e4c9ef44fed7aa4b713.json",
+      "bytes": 1426,
+      "sha256": "067d984ca2b26a942de1b2f5b58d9208d3e95fd3e1e46ae8f23dc909068a68a0"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-9de7cb771389e957be3a8610.json",
+      "bytes": 1445,
+      "sha256": "e9c7c2be30741811cee646c78fe71788611279a5407b753a37e1700024bb2249"
+    },
+    {
+      "path": "round-2/runtime/judge-references/episode-9f49914dab8165f3d001ea65.json",
+      "bytes": 1426,
+      "sha256": "7f032675bc0cfaeb3a8c5b17d9e140862a9eab3f094f0ffc3e179f40b6a7ccec"
+    },
+    {
+      "path": "round-2/runtime/run-manifest.json",
+      "bytes": 7488,
+      "sha256": "cbe44fdedfcb45f34d8625f7232cee32fe0d8562d4901a2457a55586fa78b7e5"
+    }
+  ]
+}

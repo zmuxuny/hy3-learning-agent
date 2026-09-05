@@ -1,0 +1,7 @@
+{
+  "formal_fields": 199,
+  "trusted_fields": 82,
+  "true_fields": [],
+  "git_commit": "df8e8e7ba6d28bcdb28a78dbb97fabf366c42068",
+  "scope": "one full stub smoke round: all JSON documents in runtime/rules/judges/aggregates"
+}

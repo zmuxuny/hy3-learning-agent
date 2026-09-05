@@ -1,0 +1,130 @@
+[
+  {
+    "round": 1,
+    "step": "runtime",
+    "exit_code": 2,
+    "seconds": 116.92,
+    "output": "run_agent_ok episodes=11 tracks=assessment:6,intervention:2,planning:3,revision:1 runtime_failures=1 invocation_mode=stub protocol_eligible=false provider_eligible=false trusted_benchmark_run=false formal_evaluation_result=false evaluation_status=not_a_formal_model_evaluation",
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "step": "rules",
+    "exit_code": 2,
+    "seconds": 4.15,
+    "output": "evaluate_rules_ok episodes=11 tracks=assessment:6,intervention:2,planning:3,revision:1 runtime_failures=1 failed_episodes=5 invalid_input_episodes=0 hard_gate_episodes=5 protocol_eligible=false provider_eligible=false trusted_benchmark_run=false formal_evaluation_result=false",
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "step": "judge",
+    "exit_code": 0,
+    "seconds": 5.04,
+    "output": "evaluate_judge_ok episodes=11 tracks=assessment:6,intervention:2,planning:3,revision:1 judge_mode=stub complete=11 runtime_failures=1 invalid_input=0 judge_errors=0 repairs=0 protocol_eligible=false provider_eligible=false trusted_benchmark_run=false formal_evaluation_result=false",
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "step": "aggregate",
+    "exit_code": 3,
+    "seconds": 4.94,
+    "output": "aggregate_results_ok episodes=11 tracks=assessment:6,intervention:2,planning:3,revision:1 runtime_failures=1 failed=5 invalid_input=0 judge_errors=0 protocol_eligible=false provider_eligible=false trusted_benchmark_run=false formal_capability_result=false formal_evaluation_result=false",
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "step": "validate-runtime",
+    "exit_code": 0,
+    "seconds": 2.21,
+    "output": "dataset_valid episodes=11 tracks=planning:2,intervention:2,assessment:6,revision:1",
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "step": "validate-rules",
+    "exit_code": 0,
+    "seconds": 0.99,
+    "output": "dataset_valid episodes=0 tracks=planning:0,intervention:0,assessment:0,revision:0",
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "step": "validate-judges",
+    "exit_code": 0,
+    "seconds": 1.02,
+    "output": "dataset_valid episodes=0 tracks=planning:0,intervention:0,assessment:0,revision:0",
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "step": "validate-aggregates",
+    "exit_code": 0,
+    "seconds": 0.92,
+    "output": "dataset_valid episodes=0 tracks=planning:0,intervention:0,assessment:0,revision:0",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "step": "runtime",
+    "exit_code": 2,
+    "seconds": 113.67,
+    "output": "run_agent_ok episodes=11 tracks=assessment:6,intervention:2,planning:3,revision:1 runtime_failures=1 invocation_mode=stub protocol_eligible=false provider_eligible=false trusted_benchmark_run=false formal_evaluation_result=false evaluation_status=not_a_formal_model_evaluation",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "step": "rules",
+    "exit_code": 2,
+    "seconds": 4.16,
+    "output": "evaluate_rules_ok episodes=11 tracks=assessment:6,intervention:2,planning:3,revision:1 runtime_failures=1 failed_episodes=5 invalid_input_episodes=0 hard_gate_episodes=5 protocol_eligible=false provider_eligible=false trusted_benchmark_run=false formal_evaluation_result=false",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "step": "judge",
+    "exit_code": 0,
+    "seconds": 4.86,
+    "output": "evaluate_judge_ok episodes=11 tracks=assessment:6,intervention:2,planning:3,revision:1 judge_mode=stub complete=11 runtime_failures=1 invalid_input=0 judge_errors=0 repairs=0 protocol_eligible=false provider_eligible=false trusted_benchmark_run=false formal_evaluation_result=false",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "step": "aggregate",
+    "exit_code": 3,
+    "seconds": 4.81,
+    "output": "aggregate_results_ok episodes=11 tracks=assessment:6,intervention:2,planning:3,revision:1 runtime_failures=1 failed=5 invalid_input=0 judge_errors=0 protocol_eligible=false provider_eligible=false trusted_benchmark_run=false formal_capability_result=false formal_evaluation_result=false",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "step": "validate-runtime",
+    "exit_code": 0,
+    "seconds": 2.12,
+    "output": "dataset_valid episodes=11 tracks=planning:2,intervention:2,assessment:6,revision:1",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "step": "validate-rules",
+    "exit_code": 0,
+    "seconds": 1.05,
+    "output": "dataset_valid episodes=0 tracks=planning:0,intervention:0,assessment:0,revision:0",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "step": "validate-judges",
+    "exit_code": 0,
+    "seconds": 0.92,
+    "output": "dataset_valid episodes=0 tracks=planning:0,intervention:0,assessment:0,revision:0",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "step": "validate-aggregates",
+    "exit_code": 0,
+    "seconds": 1.01,
+    "output": "dataset_valid episodes=0 tracks=planning:0,intervention:0,assessment:0,revision:0",
+    "stderr": ""
+  }
+]

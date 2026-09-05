@@ -1,0 +1,40 @@
+{
+  "git_commit": "df8e8e7ba6d28bcdb28a78dbb97fabf366c42068",
+  "runtime_manifest_sha256": "cd90ba7858f7c2b82a7a738dbc31f371ab9eec41eb6ee100e0274e735447678e",
+  "protocol_sha256": "65e128f61c837dd954b65c6badd0843e3e9bad1a5aaea329d8af33f617eb72e7",
+  "episodes": 24,
+  "failures": 0,
+  "blind_projections": 24,
+  "judge_metadata_leaks": [],
+  "model_visible_family_leaks": [],
+  "checked_markers": [
+    "calibration-c",
+    "e1-scripted-model",
+    "quality_label",
+    "mutation_manifest",
+    "reviewer_role",
+    "request_model",
+    "provider_attestation",
+    "tokenhub.tencentmaas.com"
+  ],
+  "rules": {
+    "good": {
+      "total": 8,
+      "hard_gate": 0,
+      "invalid": 0
+    },
+    "mild": {
+      "total": 8,
+      "hard_gate": 0,
+      "invalid": 0
+    },
+    "severe": {
+      "total": 8,
+      "hard_gate": 8,
+      "invalid": 0
+    }
+  },
+  "formal": false,
+  "judge_provider_calls": 0,
+  "human_review": "pending"
+}

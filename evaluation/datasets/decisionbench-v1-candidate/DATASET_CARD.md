@@ -3,6 +3,13 @@
 状态：输入已构建并通过机械校验；独立人工内容复核待办。两份 Benchmark Release 均为
 `engineering`，production registry 为空。这里没有正式能力结论。
 
+2026-09-05 已在干净 `63be8da` 执行本候选：Primary 保留 45 Episode + 3 RuntimeFailure，
+Calibration 为 24 个受控 Episode。见 [原始运行档案](../../artifacts/e4-candidate-20260905/README.md)。
+后续 `bd89530` 仅修复两类读引用并刷新 4 份发布绑定；72 个 Case、资源与变异内容字节不变。
+当前暂停，未完成独立人工复核或进入真实 Judge 实验。
+
+随后 `df8e8e7` 修复公开画像嵌入控制 logical_id 的场景族泄漏，重新离线导出 Calibration；旧批次保留为探索记录，不能进入正式 Judge 校准。
+
 ## 范围与来源
 
 - Primary：12 个主题家族 × Planning / Intervention / Assessment / Revision，共 48 个输入。

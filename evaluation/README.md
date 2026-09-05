@@ -27,8 +27,11 @@ CaseSpec v2（控制面，含私有标注）
 ```
 
 默认 Runtime 和 Judge 都使用调用者提供的固定 `stub`。它只证明工程协议、隔离、
-确定性、失败分类和 Hard Gate/cap，不是 Hy3 能力结果。E3.1.2 没有调用真实 Hy3、
-公网、真实数据库、`.env`、邮箱或 Push endpoint，也没有创建 E4 数据。
+确定性、失败分类和 Hard Gate/cap，不是 Hy3 能力结果。E3.1.2 原始收口只运行 stub。
+2026-09-05 经授权完成审计修复及 E4 候选运行：48 Primary 真实执行得到 45 Episode +
+3 RuntimeFailure，24 Calibration 为受控输出。当前暂停于 E4，独立内容复核、真实 Judge
+有效性实验和可信登记尚未完成。见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
+[原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
 
 ## 核心语义
 
@@ -79,7 +82,8 @@ CaseSpec v2（控制面，含私有标注）
 
 所有契约使用 strict Pydantic、`extra=forbid`、JSON Schema 2020-12、唯一 canonical
 JSON/SHA-256 和自摘要。独立 Schema Lock 覆盖全部生成 Schema；即使模型和生成文件同步
-修改，历史锁仍会失败。Release 1.0 的活动 Schema、source bundles 与政策也已固定。
+修改，历史锁仍会失败。Release 1.0 当前为未注册 candidate，活动绑定可按受限流程刷新，
+每批记录其具体摘要与 Git commit；旧输出不能被改写为新身份。历史 23 个 Schema 字节不变。
 
 ## 安装与命令
 
@@ -162,7 +166,7 @@ Artifact ID 和公共说明。
 └── run-manifest.json
 ```
 
-盲化投影、展开 Prompt、Provider 原始响应/异常、API Key、Capture、SQLite/WAL/SHM、
+Judge 盲化投影、Judge 展开 Prompt、Provider 原始响应/异常、API Key、Capture、SQLite/WAL/SHM、
 Worker/staging 目录、私有推理和通知路由材料不发布。
 
 ## Snapshot、轨迹与身份
@@ -171,6 +175,10 @@ Collector 只读取闭合的实体/字段 allowlist。CaseSpec 用公开业务�
 `identity_bindings`；注册器以语义字段匹配实际数据库对象，不能按排序位置把声明 ID
 静默分配给错误的 Plan/Stage/Task/Submission。未绑定的新对象仍使用稳定生成 ID；
 根 AgentRun 和全部后代 AgentRun、RunEvent、ToolInvocation 与 Operation 一并采集。
+
+只读工具通过实际 durable RunEvent 对齐观察；模型可见消息保留产品原始公开结果。
+审批后未执行的工具意图必须与 durable 队列匹配，不能虚构为执行成功。已声明的公开逻辑 ID
+与缺失 intake 的空标识有明确转换规则，未知数据库引用仍失败关闭。
 
 Delta 只由真实前后 Snapshot 比较得到，明确区分 missing/null、added/removed/changed、
 零变化和 typed source。Operation forward/inverse patch 证明归因而不代替后态。
@@ -224,7 +232,8 @@ invalid_input、judge_error 保留审计但阻止能力结论，不按 0 分混�
 
 Provider Attestation 是可审计归因，不是密码学证明。real 资格要求固定 TokenHub HTTPS
 allowlist、请求模型 `hy3`、响应模型 `hy3`、Provider request ID、请求/响应时间、安全
-配置摘要、当前 Git commit、干净工作树和匹配的 `evaluation-runtime-lock-v1`。Agent 和
+配置摘要、当前 Git commit、干净工作树和匹配的 `evaluation-runtime-lock-v1`。Agent real 模式还必须传入共享 `--budget-ledger`，每次调用先预留再按完整 usage 结算，
+未知费用不退还；真实调用本轮已暂停。Agent 和
 Judge 的 real 模式还分别要求 `--allow-real-model` / `--allow-real-judge`；Key 只从调用者
 环境读取，CLI 参数、Manifest、日志和错误均不保存 Key 或 endpoint。
 
@@ -243,10 +252,9 @@ v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并�
 缺失、损坏或无法重建的证据仍由 Validator 拒绝。Provider 响应归因能审计声明与响应字段，
 不能证明远端服务的密码学身份；正式运行仍需要组织侧凭据、网络和运行审批。
 
-E4–E8 仍未实现：没有 48 个 Primary、24 个 Calibration、正式 Benchmark Release、有效性实验、人工盲标、正式
-Hy3 运行、Baseline/Candidate 回归、Case、最终报告、Demo 或 Release。当前固定响应和
-engineering 聚合不得用作 Calibration 标签或 Hy3 能力结论。进入 E4 前如需验证 Hy3 对
-14 类声明的理解、JSON 修复率和声明/工具一致性，必须另行授权小规模非 Primary 协议试跑，
-不得自动扩大为正式数据。发布治理细节见
+E4 已产出 48 个 Primary 候选的真实终态与 24 个受控 Calibration；独立复核、正式冻结和可信登记仍待办。
+E5–E8 的真实 Judge 有效性实验、正式能力评测、版本回归、最终报告与 Demo 尚未完成。
+固定响应和 engineering 聚合不证明 Judge 标签正确或 Hy3 能力。已授权协议试跑只证明有限样例可执行，
+尚未统计完整 14 类真实遵循率；本轮调用现已暂停，未来不能自动把探索记录升级为正式数据。发布治理细节见
 [`../docs/E3.1.2正式评测准入与版本治理.md`](../docs/E3.1.2正式评测准入与版本治理.md)，最终验收命令和精确结果
 记录在 [`../docs/STATUS.md`](../docs/STATUS.md)。

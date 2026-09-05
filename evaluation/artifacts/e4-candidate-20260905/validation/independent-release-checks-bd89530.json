@@ -1,0 +1,21 @@
+{
+  "schemas": {
+    "historical_frozen": 23,
+    "active_release": 21
+  },
+  "historical_bytes_equal_pre_fix_head": 23,
+  "protocol_release_sha256": "4f1154879bf4acc759171ec34f701f61f12fcf1313685505495093182b28956f",
+  "production_registry_entries": 0,
+  "git_commit": "bd895305dd7ad7c85804ea0801258e46fe61eb32",
+  "source_files": {
+    "aggregate": 60,
+    "judge": 60,
+    "rules": 60,
+    "runtime": 150
+  },
+  "real_source_mutations": [
+    "action_protocol: all four changed",
+    "unrelated markdown: none changed",
+    "product tool registry: runtime only changed"
+  ]
+}

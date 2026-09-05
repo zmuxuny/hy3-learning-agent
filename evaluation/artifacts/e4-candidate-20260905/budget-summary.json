@@ -1,0 +1,13 @@
+{
+  "limit_micro_cny": 14000000,
+  "charged_micro_cny": 5397645,
+  "requests": 190,
+  "blocked": false,
+  "unsettled": 4,
+  "confirmed_usage_estimate_micro_cny": 4355213,
+  "unknown_usage_reserved_micro_cny": 1042432,
+  "pricing_micro_cny_per_input_token": 1,
+  "pricing_micro_cny_per_output_token": 4,
+  "not_a_provider_bill": true,
+  "further_real_calls_paused": true
+}

@@ -1,0 +1,162 @@
+{
+  "primary": {
+    "directory": "e4-primary-real-63be8da",
+    "git_commit": "63be8da504eaf8dfb39eba8ccea3482975a35b4c",
+    "runtime_manifest_sha256": "b963184ea7c748c45c995ecd6957e7e3ca48c5d50395ad0bc34f19a640b7533b",
+    "protocol_sha256": "36d1538b17fbc0e8a7db4bc71ff1a3db5faa50f74fbd72c83897e63643c0eb69",
+    "case_suite_sha256": "3bb74116a8e06125908e7f92ae87c2936fdbd9e4e06c4e886efc382999ddaf64",
+    "cases": 48,
+    "tracks": {
+      "planning": {
+        "episode": 11,
+        "failure": 1
+      },
+      "intervention": {
+        "episode": 12
+      },
+      "assessment": {
+        "episode": 12
+      },
+      "revision": {
+        "episode": 10,
+        "failure": 2
+      }
+    },
+    "failures": [
+      {
+        "case_id": "primary-s10-r",
+        "reason_code": "identity.unregistered_reference",
+        "failure_class": "framework_error",
+        "retained_model_calls": 3,
+        "provider_eligible": true
+      },
+      {
+        "case_id": "primary-s04-r",
+        "reason_code": "snapshot.unsupported_nested_reference",
+        "failure_class": "framework_error",
+        "retained_model_calls": 2,
+        "provider_eligible": true
+      },
+      {
+        "case_id": "primary-s06-p",
+        "reason_code": "runtime.non_exportable_terminal",
+        "failure_class": "framework_error",
+        "retained_model_calls": 3,
+        "provider_eligible": true
+      }
+    ],
+    "retained_model_calls": 122,
+    "prohibited_side_effect_counts": {
+      "smtp_calls": 0,
+      "smtp_ssl_calls": 0,
+      "web_push_calls": 0,
+      "imap_calls": 0,
+      "imap_ssl_calls": 0,
+      "network_calls": 0,
+      "outside_sqlite_access": 0,
+      "prohibited_file_access": 0,
+      "published_sqlite_files": 0,
+      "subprocess_calls": 0
+    },
+    "protocol_eligible": true,
+    "provider_eligible": true,
+    "trusted_benchmark_run": false,
+    "formal_evaluation_result": false,
+    "suite_complete": true,
+    "seconds": 1924.55,
+    "usage_scope": "exploratory/engineering; original public profile exposed Case control IDs; never upgraded to formal"
+  },
+  "calibration": {
+    "directory": "e4-calibration-confirmed",
+    "git_commit": "63be8da504eaf8dfb39eba8ccea3482975a35b4c",
+    "runtime_manifest_sha256": "645d8f62dd4864e2700d3e9b3fb685af8f430e53e5eaefa9d75b9e28efeba19c",
+    "protocol_sha256": "36d1538b17fbc0e8a7db4bc71ff1a3db5faa50f74fbd72c83897e63643c0eb69",
+    "case_suite_sha256": "5341dedd7bdee0205dd6c6a2b9e46492f7f8e307aabac827711c4d3667c34ca7",
+    "cases": 24,
+    "tracks": {
+      "planning": {
+        "episode": 6
+      },
+      "intervention": {
+        "episode": 6
+      },
+      "assessment": {
+        "episode": 6
+      },
+      "revision": {
+        "episode": 6
+      }
+    },
+    "failures": [],
+    "retained_model_calls": 36,
+    "prohibited_side_effect_counts": {
+      "smtp_calls": 0,
+      "smtp_ssl_calls": 0,
+      "web_push_calls": 0,
+      "imap_calls": 0,
+      "imap_ssl_calls": 0,
+      "network_calls": 0,
+      "outside_sqlite_access": 0,
+      "prohibited_file_access": 0,
+      "published_sqlite_files": 0,
+      "subprocess_calls": 0
+    },
+    "protocol_eligible": true,
+    "provider_eligible": false,
+    "trusted_benchmark_run": false,
+    "formal_evaluation_result": false,
+    "suite_complete": true,
+    "controlled_author_labels": "not independently reviewed",
+    "usage_scope": "historical controlled batch with known family-ID leak; replaced by df8e8e7 offline batch"
+  },
+  "calibration_rule_check": {
+    "counts": {
+      "good": {
+        "total": 8,
+        "hard_gate": 0,
+        "invalid": 0
+      },
+      "mild": {
+        "total": 8,
+        "hard_gate": 0,
+        "invalid": 0
+      },
+      "severe": {
+        "total": 8,
+        "hard_gate": 8,
+        "invalid": 0
+      }
+    },
+    "claims": "controlled-output Rule check; not Judge calibration validity"
+  },
+  "calibration_blinding_check": {
+    "blind_projections": 24,
+    "metadata_leaks": [],
+    "scope": "initial limited markers; did not check family prefix"
+  },
+  "budget": {
+    "limit_micro_cny": 14000000,
+    "charged_micro_cny": 5397645,
+    "requests": 190,
+    "blocked": false,
+    "unsettled": 4,
+    "confirmed_usage_estimate_micro_cny": 4355213,
+    "unknown_usage_reserved_micro_cny": 1042432,
+    "pricing_micro_cny_per_input_token": 1,
+    "pricing_micro_cny_per_output_token": 4,
+    "not_a_provider_bill": true,
+    "further_real_calls_paused": true
+  },
+  "calibration_blinding_expanded_check": {
+    "input_commit": "63be8da",
+    "projection_commit": "bd89530",
+    "checked_marker": "calibration-c",
+    "affected_cases": 24,
+    "location": "observable_trace.model_calls[*].visible_context.messages[*].payload.content",
+    "cause": "Case logical entity IDs were embedded in public profile text",
+    "suitable_for_judge_calibration": false,
+    "fix_commit": "df8e8e7",
+    "original_artifacts_preserved": true
+  },
+  "current_calibration_check": "calibration-replacement-df8e8e7.json"
+}

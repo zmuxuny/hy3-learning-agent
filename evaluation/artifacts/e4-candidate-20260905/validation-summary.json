@@ -1,0 +1,134 @@
+{
+  "latest_source_commit": "df8e8e7ba6d28bcdb28a78dbb97fabf366c42068",
+  "all_tests_run_offline_in_external_checkouts": true,
+  "tests": [
+    {
+      "name": "full repository pytest",
+      "git_commit": "63be8da504eaf8dfb39eba8ccea3482975a35b4c",
+      "command": "python -m pytest -q -p no:cacheprovider --basetemp=<external-temp>/release-full-tests",
+      "passed": 1323,
+      "failed": 0,
+      "skipped": 0,
+      "xfail": 0,
+      "warnings": 2,
+      "seconds": 3679.69,
+      "exit_code": 0,
+      "log": "validation/release-full.log"
+    },
+    {
+      "name": "evaluation after read-reference fixes",
+      "git_commit": "bd89530",
+      "command": "python -m pytest -q -p no:cacheprovider evaluation/tests --basetemp=<external-temp>/final-candidate-evaluation-tests",
+      "passed": 249,
+      "failed": 0,
+      "skipped": 0,
+      "xfail": 0,
+      "warnings": 0,
+      "seconds": 1122.72,
+      "exit_code": 0,
+      "log": "validation/final-candidate-evaluation.log"
+    },
+    {
+      "name": "evaluation latest source",
+      "git_commit": "df8e8e7ba6d28bcdb28a78dbb97fabf366c42068",
+      "command": "python -m pytest -q -p no:cacheprovider evaluation/tests --basetemp=<external-temp>/control-hidden-evaluation-tests",
+      "passed": 249,
+      "failed": 0,
+      "skipped": 0,
+      "xfail": 0,
+      "warnings": 0,
+      "seconds": 976.5,
+      "exit_code": 0,
+      "log": "validation/control-hidden-evaluation.log"
+    },
+    {
+      "name": "E1 and product audit seams",
+      "git_commit": "df8e8e7ba6d28bcdb28a78dbb97fabf366c42068",
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_e1_evaluation_seams.py tests/test_evaluation_audit_seams.py --basetemp=<external-temp>/df-seams",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "xfail": 0,
+      "warnings": 0,
+      "seconds": 2.74,
+      "exit_code": 0,
+      "log": "validation/df-seams.log"
+    },
+    {
+      "name": "audit/pilot/legacy readiness",
+      "git_commit": "63be8da504eaf8dfb39eba8ccea3482975a35b4c",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "xfail": 0,
+      "warnings": 0,
+      "seconds": 296.67,
+      "exit_code": 0,
+      "log": "validation/last-readiness.log"
+    }
+  ],
+  "full_repository_scope_note": "The 1323-test full run is at 63be8da. Later commits only change evaluation source/tests and generated release bindings; latest evaluation and product seam suites were rerun. Do not claim a full repository run at df8e8e7.",
+  "checks": {
+    "ci_lint_typecheck": {
+      "git_commit": "df8e8e7",
+      "command": "python scripts/release-check.py lint_typecheck",
+      "exit_code": 0,
+      "log": "validation/lint-df.log",
+      "scope": "compileall, Ruff E9/F63/F7/F82, JS node --check; not mypy or full Ruff"
+    },
+    "default_ruff": {
+      "baseline_commit": "e0c9d7c",
+      "baseline": 425,
+      "latest": 425,
+      "new_path_code_message_diagnostics": 0,
+      "exit_code": 1,
+      "detail": "ruff-comparison.json"
+    },
+    "all_ruff": {
+      "baseline": 19331,
+      "latest": 20326,
+      "exit_code": 1,
+      "gate": false,
+      "detail": "ruff-comparison.json"
+    },
+    "release_schema_source_independent_check": {
+      "exit_code": 0,
+      "detail": "validation/independent-release-checks.json"
+    },
+    "two_round_stub_smoke": {
+      "files_per_round": 64,
+      "byte_identical": true,
+      "episodes_per_round": 11,
+      "failures_per_round": 1,
+      "step_exit_codes": {
+        "runtime": 2,
+        "rules": 2,
+        "judge": 0,
+        "aggregate": 3,
+        "all_four_validators": 0
+      },
+      "detail": "validation/hidden-smoke-checks.json"
+    },
+    "formal_trusted_fields": {
+      "all_false": true,
+      "detail": "stub-formality-check.json"
+    },
+    "real_judge_calls": 0
+  },
+  "log_text_normalization": {
+    "file": "validation/profile-ref-red.log",
+    "change": "trailing whitespace removed from pytest traceback lines only; all assertions and results retained",
+    "original_sha256": "269e34b91db01eec6a724ec02d3812e1b2d31e1338fa2203b00b5db39b7409a8",
+    "published_sha256": "1adbb60a9479a17e15b552901a9b85a77ef99342446cf8ce5181a22ffd4d64fe"
+  },
+  "closing_checks": {
+    "detail": "validation/closing-checks.json",
+    "markdown_relative_links": 0,
+    "secret_scan": 0,
+    "pip_check": 0,
+    "candidate_integrity": 0,
+    "cli_help": 0,
+    "git_diff_check_after_text_log_whitespace_cleanup": 0,
+    "decompressed_archive_check": "validation/archive-integrity-check.json"
+  }
+}
