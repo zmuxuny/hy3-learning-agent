@@ -386,6 +386,46 @@ def test_late_failure_keeps_calls_and_alias_valid_isolation(effect_chain):
     assert validate_dataset(effect_chain / "runtime").ok
 
 
+def test_realistic_read_before_assessment_is_exportable(tmp_path):
+    case = load(DATA / "cases/case-e31-a-positive.json")
+    original = case["runtime_setup"]["scripted_turns"]
+    read = deepcopy(original[0])
+    read.update(assistant_text="Inspect the actual submission and plan before grading.", declared_actions=[],
+                tool_calls=[{"call_id":"read-submission", "name":"submission_get", "arguments":{"submission_id":1}},
+                            {"call_id":"read-plan", "name":"plan_get", "arguments":{"plan_id":1}}])
+    case["runtime_setup"]["scripted_turns"] = [read, *original]
+    for index, turn in enumerate(case["runtime_setup"]["scripted_turns"], 1):
+        turn["ordinal"] = index
+    dataset = suite_for(tmp_path, [case])
+    summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+    assert not summary.failure_ids
+    assert validate_dataset(tmp_path / "runtime").ok
+    episode = load(next((tmp_path / "runtime/episodes").glob("*.json")))
+    events = [e["data"]["payload"] for e in episode["state_after"]["logical_entities"] if e["entity_type"] == "run_event"]
+    read_results = {e["name"]: e["result"]["data"] for e in events if e.get("name") in {"plan_get", "submission_get"} and "result" in e}
+    assert read_results["plan_get"]["plan_ref"] == "plan:e1:a:001"
+    assert read_results["submission_get"]["submission_ref"] == "submission:e1:a:001"
+
+
+def test_unknown_planning_budget_is_not_seeded_as_confirmed(tmp_path):
+    case = no_write_case("planning", ["REQUEST_USER_INPUT"])
+    case["runtime_setup"]["seed"].update(planning_readiness="collecting", planning_confirmed_facts=[], planning_open_questions=["How much time is available?"])
+    final = deepcopy(case["runtime_setup"]["scripted_turns"][0])
+    read = deepcopy(final)
+    read.update(declared_actions=[], tool_calls=[{"call_id":"read-intake", "name":"planning_intake_get", "arguments":{}}])
+    final["ordinal"] = 2
+    case["runtime_setup"]["scripted_turns"] = [read, final]
+    dataset = suite_for(tmp_path, [case])
+    summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+    assert not summary.failure_ids
+    episode = load(next((tmp_path / "runtime/episodes").glob("*.json")))
+    intake = next(e["data"] for e in episode["state_before"]["logical_entities"] if e["entity_type"] == "planning_intake")
+    assert intake["confirmed_facts"] == []
+    messages = episode["observable_trace"]["model_calls"][1]["visible_context"]["messages"]
+    result = next(json.loads(m["payload"]["content"]) for m in messages if m["role"] == "tool")
+    assert result["data"]["confirmed_facts"] == []
+
+
 def test_proposal_cannot_hide_a_real_write(effect_chain):
     results = [load(path) for path in (effect_chain / "rules/rules").glob("*.json")]
     assert any("case.audit.no-write" in result["hard_gates"] for result in results)

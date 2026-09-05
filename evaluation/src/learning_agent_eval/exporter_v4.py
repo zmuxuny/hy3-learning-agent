@@ -464,6 +464,7 @@ def build_decision_episode_v4(
             episode_id=fixture["episode_id"],
             model_records=decision_records,
             after=state_after,
+            include_event_observations=True,
         )
         calls = _link_model_calls(build_model_calls_v4(model_records), base_trace)
         attempts, effects, actions, classification_issues = _effects_and_result(

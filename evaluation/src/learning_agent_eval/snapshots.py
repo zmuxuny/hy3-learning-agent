@@ -422,6 +422,15 @@ _CONTAINER_ID_TYPES = {
     "stages": "stage",
     "submissions": "submission",
     "tasks": "task",
+    "current_task": "task",
+    "overdue_tasks": "task",
+    "blocked_tasks": "task",
+    "scheduled_reviews": "review",
+    "recent_submissions": "submission",
+}
+_TOOL_RESULT_ID_TYPES = {
+    "plan_get": "plan", "submission_get": "submission", "quiz_get": "quiz",
+    "plan.get": "plan", "submission.get": "submission", "quiz.get": "quiz",
 }
 _PUBLIC_ID_FIELDS = {
     "call_id",
@@ -761,14 +770,19 @@ def _ref(
 def _normalize_references(value: object, registry: StableIdentityRegistry) -> Any:
     normalized = normalize_json(value)
 
-    def visit(item: Any, *, container_key: str | None = None) -> Any:
+    def visit(item: Any, *, container_key: str | None = None, tool_name: str | None = None) -> Any:
         if isinstance(item, dict):
+            declared_tool = item.get("tool_name", item.get("name"))
+            if isinstance(declared_tool, str) and declared_tool in _TOOL_RESULT_ID_TYPES:
+                tool_name = declared_tool
             result: dict[str, Any] = {}
             for key, child in item.items():
                 entity_type = _REFERENCE_TYPES.get(key)
                 public_key = key
                 if key == "id":
                     entity_type = _CONTAINER_ID_TYPES.get(container_key or "")
+                    if entity_type is None and container_key == "data":
+                        entity_type = _TOOL_RESULT_ID_TYPES.get(tool_name or "")
                     if entity_type is None:
                         raise SnapshotCollectionError("snapshot.unsupported_nested_id")
                     public_key = f"{entity_type}_ref"
@@ -799,10 +813,10 @@ def _normalize_references(value: object, registry: StableIdentityRegistry) -> An
                     child = normalize_rfc3339(child)
                 if public_key in result:
                     raise SnapshotCollectionError("snapshot.duplicate_public_field")
-                result[public_key] = visit(child, container_key=key)
+                result[public_key] = visit(child, container_key=key, tool_name=tool_name)
             return result
         if isinstance(item, list):
-            return [visit(child, container_key=container_key) for child in item]
+            return [visit(child, container_key=container_key, tool_name=tool_name) for child in item]
         return item
 
     return visit(normalized)

@@ -204,9 +204,9 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
                     owner_id=owner_id,
                     source_run_id=run.id,
                     goal=fixture["trigger"]["objective"],
-                    confirmed_facts=[
+                    confirmed_facts=fixture["seed"].get("planning_confirmed_facts", [
                         {"key": "weekly_minutes", "value": str(fixture["seed"].get("weekly_minutes", 240)), "source": "user"}
-                    ],
+                    ]),
                     open_questions=fixture["seed"].get("planning_open_questions", []),
                     readiness=fixture["seed"].get("planning_readiness", "ready"),
                     readiness_confidence=1.0,

@@ -3242,8 +3242,15 @@ class ModelCallV4(ModelCallV3):
         return self
 
 
+class ToolObservationV4(ToolInvocationV2):
+    # A pure read resolves to a durable tool.completed RunEvent. It does not
+    # claim a business write or an Operation.
+    record_source: Literal["tool_invocation", "run_event"]
+
+
 class ObservableTraceV4(ObservableTraceV3):
     model_calls: Annotated[list[ModelCallV4], Field(min_length=1)]
+    tool_invocations: list[ToolObservationV4]
 
 
 class ModelAttemptV4(ModelAttemptV3):

@@ -37,8 +37,10 @@ def write_candidate_suite(
         (root / "cases").mkdir(parents=True)
         (root / "resources").mkdir()
         (root / "resources/snapshot.json").write_bytes(resource_snapshot.read_bytes())
-        for case in validated:
-            (root / "cases" / f"case-{case['case_spec_sha256']}.json").write_bytes(
+        for ordinal, case in enumerate(sorted(validated, key=lambda item: item["case_id"]), 1):
+            # Stable safe filenames avoid interpreting random SHA digit runs
+            # as phone/identity numbers in the public privacy guard.
+            (root / "cases" / f"case-{ordinal:04d}.json").write_bytes(
                 canonical_json_bytes(case)
             )
         paths = sorted(

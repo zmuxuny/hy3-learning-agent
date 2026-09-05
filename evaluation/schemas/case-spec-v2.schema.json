@@ -499,6 +499,16 @@
           "title": "Plan Version",
           "type": "integer"
         },
+        "planning_confirmed_facts": {
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Planning Confirmed Facts",
+          "type": "array"
+        },
         "planning_open_questions": {
           "items": {
             "type": "string"

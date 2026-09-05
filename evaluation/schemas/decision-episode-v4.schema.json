@@ -1128,7 +1128,7 @@
         },
         "tool_invocations": {
           "items": {
-            "$ref": "#/$defs/ToolInvocationV2"
+            "$ref": "#/$defs/ToolObservationV4"
           },
           "title": "Tool Invocations",
           "type": "array"
@@ -2298,7 +2298,33 @@
       "title": "StateSnapshotV2",
       "type": "object"
     },
-    "ToolInvocationV2": {
+    "ToolManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "allowlist": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
+            "type": "string"
+          },
+          "title": "Allowlist",
+          "type": "array"
+        },
+        "schema_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Schema Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "allowlist",
+        "schema_digest"
+      ],
+      "title": "ToolManifest",
+      "type": "object"
+    },
+    "ToolObservationV4": {
       "additionalProperties": false,
       "properties": {
         "canonical_args": {
@@ -2370,6 +2396,14 @@
           "title": "Ordinal",
           "type": "integer"
         },
+        "record_source": {
+          "enum": [
+            "tool_invocation",
+            "run_event"
+          ],
+          "title": "Record Source",
+          "type": "string"
+        },
         "result": {
           "additionalProperties": {
             "$ref": "#/$defs/JsonValue"
@@ -2415,35 +2449,10 @@
         "durable_status",
         "result",
         "result_digest",
-        "operation_refs"
+        "operation_refs",
+        "record_source"
       ],
-      "title": "ToolInvocationV2",
-      "type": "object"
-    },
-    "ToolManifest": {
-      "additionalProperties": false,
-      "properties": {
-        "allowlist": {
-          "items": {
-            "maxLength": 128,
-            "minLength": 1,
-            "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$",
-            "type": "string"
-          },
-          "title": "Allowlist",
-          "type": "array"
-        },
-        "schema_digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Schema Digest",
-          "type": "string"
-        }
-      },
-      "required": [
-        "allowlist",
-        "schema_digest"
-      ],
-      "title": "ToolManifest",
+      "title": "ToolObservationV4",
       "type": "object"
     },
     "Trigger": {

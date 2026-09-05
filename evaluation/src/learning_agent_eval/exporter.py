@@ -141,6 +141,7 @@ def _observation_status(
 
 def _ordered_trace_entities(
     after: dict[str, Any],
+    *, include_event_observations: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Return invocations, Operations, and events in canonical Runtime order."""
 
@@ -153,8 +154,42 @@ def _ordered_trace_entities(
         if item["data"]["event_type"] == "tool.started"
         and isinstance(item["data"]["payload"].get("tool_call_id"), str)
     }
+    invocation_candidates = _entities(after, "tool_invocation")
+    if include_event_observations:
+        # Pure reads and validation failures have durable Runtime events,
+        # even though they do not create ToolInvocation database rows.
+        represented = {e["data"]["tool_call_id"] for e in invocation_candidates}
+        starts = {}
+        for event in event_entities:
+            data = event["data"]
+            payload = data["payload"]
+            call_id = payload.get("tool_call_id")
+            identity = (data["run_ref"], call_id)
+            if data["event_type"] == "tool.started" and call_id:
+                if identity in starts:
+                    raise ExportError("export.ambiguous_tool_start")
+                starts[identity] = event
+            if data["event_type"] != "tool.completed" or not call_id or call_id in represented:
+                continue
+            start = starts.get(identity)
+            if start is None or start["data"]["payload"].get("name") != payload.get("name"):
+                raise ExportError("export.tool_observation_start_missing")
+            result = payload.get("result")
+            if not isinstance(result, dict):
+                raise ExportError("export.tool_observation_result_missing")
+            invocation_candidates.append({
+                "logical_id": event["logical_id"], "entity_type": "run_event",
+                "data": {
+                    "tool_call_id": call_id, "tool_name": payload["name"],
+                    "canonical_args": start["data"]["payload"].get("arguments", {}),
+                    "status": "committed" if result.get("ok") is True else "failed",
+                    "result_payload": result.get("data", result),
+                    "created_at": start["data"]["created_at"],
+                },
+            })
+            represented.add(call_id)
     invocation_entities = sorted(
-        _entities(after, "tool_invocation"),
+        invocation_candidates,
         key=lambda item: (
             call_sequence.get(item["data"]["tool_call_id"], 2**31),
             item["data"]["created_at"],
@@ -181,9 +216,10 @@ def _trace(
     episode_id: str,
     model_records: list[dict[str, Any]],
     after: dict[str, Any],
+    include_event_observations: bool = False,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     invocation_entities, operation_entities, event_entities = (
-        _ordered_trace_entities(after)
+        _ordered_trace_entities(after, include_event_observations=include_event_observations)
     )
     invocation_by_call = {
         item["data"]["tool_call_id"]: item["logical_id"]
@@ -242,6 +278,7 @@ def _trace(
                 "result": result,
                 "result_digest": sha256_digest(result),
                 "operation_refs": invocation_to_operations.get(entity["logical_id"], []),
+                **({"record_source": entity["entity_type"]} if include_event_observations else {}),
             }
         )
     affected = operation_affected_refs(after)

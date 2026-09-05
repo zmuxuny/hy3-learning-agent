@@ -44,6 +44,7 @@ class RuntimeSeed(TypedDict, total=False):
     submission_status: Literal["submitted", "accepted", "revision_required"]
     planning_readiness: Literal["ready", "collecting"]
     planning_open_questions: list[str]
+    planning_confirmed_facts: list[dict[str, str]]
     quiet_start: str
     quiet_end: str
     notification_cooldown_minutes: Annotated[int, Field(ge=0, le=1440)]

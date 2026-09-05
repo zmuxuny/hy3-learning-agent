@@ -843,6 +843,7 @@ def _episode_v2_semantic_issues(
     episode: dict[str, Any],
     *,
     file: str,
+    include_event_observations: bool = False,
 ) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     canonical_times = [
@@ -1032,6 +1033,11 @@ def _episode_v2_semantic_issues(
         "run_event": event_ids,
         "operation": operation_ids,
     }
+    ordered_invocations, ordered_operations, ordered_events = _ordered_trace_entities(
+        episode["state_after"], include_event_observations=include_event_observations
+    )
+    if include_event_observations:
+        snapshot_ids_by_type["tool_invocation"] = {e["logical_id"] for e in ordered_invocations}
     if snapshot_ids_by_type != trace_ids_by_type:
         issues.append(
             _issue(
@@ -1041,9 +1047,6 @@ def _episode_v2_semantic_issues(
                 file=file,
             )
         )
-    ordered_invocations, ordered_operations, ordered_events = _ordered_trace_entities(
-        episode["state_after"]
-    )
     if (
         [item["invocation_id"] for item in trace["tool_invocations"]]
         != [item["logical_id"] for item in ordered_invocations]
@@ -1069,7 +1072,7 @@ def _episode_v2_semantic_issues(
                 operation["logical_id"]
             )
     for index, invocation in enumerate(trace["tool_invocations"]):
-        entity = after_by_id.get(invocation["invocation_id"])
+        entity = next((e for e in ordered_invocations if e["logical_id"] == invocation["invocation_id"]), None)
         if entity is None:
             continue
         data = entity["data"]
@@ -2003,7 +2006,7 @@ def _v3_v2_validation_projection(episode: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _episode_v3_semantic_issues(
-    episode: dict[str, Any], *, file: str
+    episode: dict[str, Any], *, file: str, include_event_observations: bool = False
 ) -> list[ValidationIssue]:
     """Validate v3 evidence without consulting decision correctness criteria."""
 
@@ -2179,7 +2182,7 @@ def _episode_v3_semantic_issues(
     try:
         structural_projection = _v3_v2_validation_projection(episode)
         structural_issues = _episode_v2_semantic_issues(
-            structural_projection, file=file
+            structural_projection, file=file, include_event_observations=include_event_observations
         )
     except (CanonicalizationError, ExportError, KeyError, TypeError, ValueError):
         structural_issues = [
@@ -2199,6 +2202,8 @@ def _v4_v3_validation_projection(episode: Mapping[str, Any]) -> dict[str, Any]:
 
     projected = deepcopy(dict(episode))
     projected["schema_version"] = "decision-episode-v3"
+    for invocation in projected["observable_trace"]["tool_invocations"]:
+        invocation.pop("record_source", None)
     projected["observable_trace"]["model_calls"] = [
         {
             key: value
@@ -2293,13 +2298,19 @@ def _episode_v4_semantic_issues(
     }
     issues = [
         issue
-        for issue in _episode_v3_semantic_issues(projected, file=file)
+        for issue in _episode_v3_semantic_issues(projected, file=file, include_event_observations=True)
         if issue.code not in ignored_v3_answer_codes
     ]
     from .source_bundles import git_source_bundle_sha256
 
     runtime = episode["environment"]["runtime"]
     attestation = episode["environment"]["provider_attestation"]
+    after_by_id = {e["logical_id"]: e for e in episode["state_after"]["logical_entities"]}
+    for index, observation in enumerate(episode["observable_trace"]["tool_invocations"]):
+        source = after_by_id.get(observation["invocation_id"], {})
+        if observation["record_source"] != source.get("entity_type"):
+            issues.append(_issue("trace.observation_source_mismatch", f"$.observable_trace.tool_invocations[{index}]",
+                                 "Tool observation source does not match its durable evidence.", file=file))
     git_digest = git_source_bundle_sha256(runtime["git_commit"], "runtime")
     if (git_digest is None or attestation["git_commit"] != runtime["git_commit"]
             or runtime["worktree_clean"] and git_digest != episode["provenance"]["runtime_source_bundle_sha256"]):
