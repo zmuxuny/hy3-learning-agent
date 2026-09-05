@@ -330,7 +330,7 @@ JUDGE_CONFIG_SHA256_V2 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V2)
 # scoreable-behavior Episode and the frozen constraint-proposition semantics.
 JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3"
 JUDGE_VERSION_V3 = "hy3-structured-judge-v3"
-JUDGE_CONFIG_VERSION_V3 = "hy3-judge-config-v3"
+JUDGE_CONFIG_VERSION_V3 = "hy3-judge-config-v3-budgeted-1"
 JUDGE_INSTRUCTIONS_V3 = (
     "Evaluate semantic decision quality only from the supplied DecisionEpisode v4 "
     "projection, authoritative deterministic Rule facts, label-free JudgeReference, "
@@ -370,6 +370,11 @@ JUDGE_CONFIG_DOCUMENT_V3 = {
     "wire_protocol": "openai-compatible-structured-output-v1",
     "temperature": 0.0,
     "reasoning_effort": "high",
+    "max_tokens": 8192,
+    "input_token_limit": 196608,
+    "input_estimator": "request-utf8-bytes-plus-2048-v1",
+    "n": 1,
+    "transport_retries": 0,
     "repair_limit": REPAIR_LIMIT,
 }
 JUDGE_CONFIG_SHA256_V3 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V3)

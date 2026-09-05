@@ -10,7 +10,7 @@ from threading import Lock
 from typing import Any
 
 from .canonical import canonical_json, sha256_digest
-from .model_budget import OUTPUT_LIMIT, ModelBudget
+from .model_budget import INPUT_LIMIT, OUTPUT_LIMIT, ModelBudget
 from .normalizers import utc_timestamp
 from .privacy import is_model_private_reasoning_field, privacy_issues
 
@@ -120,6 +120,13 @@ class _CompletionsDecorator:
             request["n"] = 1
             if self._recorder.budget is not None and request.get("stream"):
                 request["stream_options"] = {"include_usage": True}
+        if self._recorder.budget is not None:
+            # Includes tools, all replayed messages and protocol overhead. This
+            # bound is local admission control, not measured provider token use.
+            from .canonical import canonical_json_bytes
+
+            if len(canonical_json_bytes(request)) + 2048 > INPUT_LIMIT:
+                raise RecorderBudgetExceeded("shared priced input envelope exceeded")
         pending = self._recorder._begin(request)
         try:
             response = await self._delegate.create(**request)
@@ -179,8 +186,8 @@ class EvaluationModelRecorder:
         self.max_output_tokens = max_output_tokens
         self.budget = budget
         self.budget_scope = budget_scope
-        if budget is not None and max_output_tokens != OUTPUT_LIMIT:
-            raise ValueError("prepaid budget requires its priced output limit")
+        if budget is not None and (type(max_output_tokens) is not int or not 1 <= max_output_tokens <= OUTPUT_LIMIT):
+            raise ValueError("prepaid budget requires a priced output limit")
         if max_calls is not None and (type(max_calls) is not int or max_calls < 1):
             raise ValueError("max_calls must be a positive integer")
         if max_output_tokens is not None and (type(max_output_tokens) is not int or max_output_tokens < 1):
@@ -261,7 +268,8 @@ class EvaluationModelRecorder:
         self._assert_public(pending)
         if self.budget is not None:
             pending["_budget_ticket"] = self.budget.reserve(
-                scope=self.budget_scope, call_id=pending["call_id"]
+                scope=self.budget_scope, call_id=pending["call_id"],
+                output_limit=self.max_output_tokens,
             )
         return pending
 

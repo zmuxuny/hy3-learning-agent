@@ -127,6 +127,7 @@ def _terminal_failure_reason(root: dict[str, Any]) -> tuple[str, str]:
 
     reasons = {
         "context_window_exceeded": "The next request exceeded the configured context window.",
+        "model_output_truncated": "The Runtime received repeated truncated model responses; no tools from those responses were executed.",
         "model_timeout": "The Runtime model request timed out.",
         "tool_timeout": "A Runtime tool execution timed out.",
         "model_retry_exhausted": "The Runtime exhausted its bounded model retries.",

@@ -90,6 +90,7 @@ def _parser() -> argparse.ArgumentParser:
     judge.add_argument("--judge-mode", choices=("stub", "real"), default="stub")
     judge.add_argument("--allow-real-judge", action="store_true")
     judge.add_argument("--stub-response")
+    judge.add_argument("--budget-ledger", help="existing shared prepaid Hy3 ledger; required in real mode")
     aggregate = commands.add_parser(
         "aggregate-results",
         help="deterministically aggregate active v4 Rule and Judge results",
@@ -98,6 +99,7 @@ def _parser() -> argparse.ArgumentParser:
     aggregate.add_argument("--rules", required=True)
     aggregate.add_argument("--judges", required=True)
     aggregate.add_argument("--output", required=True)
+    aggregate.add_argument("--semantic-reviews", help="evidence-bound semantic Critical adjudications (JSON list)")
     aggregate.add_argument("--episode-id", action="append", default=[])
     aggregate.add_argument(
         "--track",
@@ -181,6 +183,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 stub_response=arguments.stub_response,
                 episode_ids=set(arguments.episode_id) or None,
                 track=arguments.track,
+                budget_ledger=arguments.budget_ledger,
             )
         except (LegacyExecutionDisabledError, JudgeEvaluationV2Error) as exc:
             print(
@@ -237,6 +240,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 output=arguments.output,
                 episode_ids=set(arguments.episode_id) or None,
                 track=arguments.track,
+                semantic_reviews=arguments.semantic_reviews,
             )
         except (LegacyExecutionDisabledError, AggregateEvaluationV2Error) as exc:
             print(

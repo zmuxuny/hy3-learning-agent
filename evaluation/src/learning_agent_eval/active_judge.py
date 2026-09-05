@@ -38,6 +38,7 @@ from .integrity import (
     judge_result_digest,
     provider_attestation_digest,
 )
+from .model_budget import ModelBudgetExceeded
 from .models import (
     JudgeResponsePayloadV1,
     JudgeResultV2,
@@ -98,6 +99,8 @@ class JudgeProviderReplyV2:
     requested_at: str
     responded_at: str | None
     status: Literal["completed", "provider_error", "framework_error"]
+    finish_reason: str | None = None
+    budget_ticket: int | None = None
 
 
 class JudgeProviderV2(Protocol):
@@ -294,6 +297,67 @@ class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
     """Active fixed Hy3 seam; attribution is audited by the v3 config digest."""
 
     config_document = JUDGE_CONFIG_DOCUMENT_V3
+
+    def __init__(self, *, budget_ledger: str | Path, scope: str = "semantic_judge") -> None:
+        super().__init__()
+        from .model_budget import ModelBudget
+
+        self.budget = ModelBudget(budget_ledger)
+        self.budget.summary()
+        self.scope = scope
+        self.calls = 0
+
+    def complete(self, request: Mapping[str, Any]) -> JudgeProviderReplyV2:
+        from .model_budget import INPUT_LIMIT
+
+        requested_at = utc_timestamp(datetime.now(timezone.utc))
+        body = {
+            "model": HY3_MODEL, "messages": request["messages"],
+            "temperature": self.config_document["temperature"],
+            "reasoning_effort": self.config_document["reasoning_effort"],
+            "response_format": request["response_format"],
+            "max_tokens": self.config_document["max_tokens"], "n": 1,
+        }
+        wire = canonical_json_bytes(body)
+        input_bound = len(wire) + 2048
+        if input_bound > INPUT_LIMIT:
+            raise ValueError("judge_input_limit_exceeded")
+        self.calls += 1
+        ticket = self.budget.reserve(
+            scope=self.scope, call_id=request.get("_budget_call_id", f"judge-call:{self.calls:04d}"),
+            input_limit=input_bound, output_limit=body["max_tokens"],
+        )
+        usage = None
+        content = response_model = request_id = finish_reason = None
+        status = "provider_error"
+        try:
+            wire_request = urllib.request.Request(
+                HY3_COMPLETIONS_URL, data=wire,
+                headers={"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"},
+                method="POST",
+            )
+            # urllib has no automatic request retries. Each repair re-enters here.
+            with urllib.request.urlopen(wire_request, timeout=120) as response:
+                envelope = json.loads(response.read().decode("utf-8"))
+            candidate_usage = envelope.get("usage")
+            if isinstance(candidate_usage, dict):
+                usage = {key: candidate_usage.get(key) for key in ("prompt_tokens", "completion_tokens", "total_tokens")}
+            choice = envelope["choices"][0]
+            content = choice["message"]["content"]
+            response_model, request_id = str(envelope["model"]), str(envelope["id"])
+            finish_reason = choice.get("finish_reason")
+            status = "completed"
+        except (OSError, UnicodeError, ValueError, KeyError, IndexError, TypeError):
+            pass
+        finally:
+            self.budget.settle(ticket, usage)
+            self.budget.record_outcome(ticket, outcome="complete" if status == "completed" else "provider_error")
+        return JudgeProviderReplyV2(
+            content=content, request_model=HY3_MODEL, response_model=response_model,
+            provider_request_id=request_id, requested_at=requested_at,
+            responded_at=utc_timestamp(datetime.now(timezone.utc)), status=status,
+            finish_reason=finish_reason, budget_ticket=ticket,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1143,12 +1207,20 @@ def _evaluate_one_v3(
         payload = None
         error_codes: tuple[str, ...] = ()
         for attempt in range(REPAIR_LIMIT + 1):
+            repaired = attempt == 1
             request = build_provider_request_v3(
                 blind_input,
                 repair_error_codes=error_codes if attempt else (),
             )
+            request["_budget_call_id"] = f"{episode['episode_id']}:attempt:{attempt + 1}"
             try:
                 reply = provider.complete(request)
+            except ModelBudgetExceeded:
+                error_codes = ("judge_budget_exhausted",)
+                break
+            except ValueError:
+                error_codes = ("judge_request_rejected",)
+                break
             except Exception:  # noqa: BLE001 - raw provider exceptions are discarded
                 error_codes = ("provider_error",)
                 break
@@ -1156,9 +1228,19 @@ def _evaluate_one_v3(
             if reply.status != "completed":
                 error_codes = ("provider_error",)
                 break
-            payload, error_codes = _validate_payload_v3(
-                reply.content, episode=episode, blind_input=blind_input
-            )
+            if reply.finish_reason == "length":
+                payload, error_codes = None, ("response_output_truncated",)
+            else:
+                payload, error_codes = _validate_payload_v3(
+                    reply.content, episode=episode, blind_input=blind_input
+                )
+            if reply.budget_ticket is not None and isinstance(provider, OpenAICompatibleHy3JudgeProviderV3):
+                provider.budget.record_outcome(
+                    reply.budget_ticket,
+                    outcome=("complete" if payload is not None else
+                             "output_truncated" if reply.finish_reason == "length" else "response_invalid"),
+                    error_codes=error_codes,
+                )
             if payload is not None:
                 repaired = attempt == 1
                 break
@@ -1167,6 +1249,7 @@ def _evaluate_one_v3(
             error_code = (
                 "judge_provider_error"
                 if error_codes == ("provider_error",)
+                else error_codes[0] if error_codes in {("judge_budget_exhausted",), ("judge_request_rejected",)}
                 else "judge_response_invalid"
             )
         else:
@@ -1247,6 +1330,7 @@ def evaluate_active_judges(
     provider: JudgeProviderV2 | None = None,
     episode_ids: set[str] | None = None,
     track: str | None = None,
+    budget_ledger: str | Path | None = None,
 ) -> JudgeEvaluationV2Summary:
     """Evaluate the active v4 chain and preserve failure-only partitions."""
 
@@ -1299,7 +1383,12 @@ def evaluate_active_judges(
                     stub_response, frozen_time=frozen_time
                 )
             else:
-                provider = OpenAICompatibleHy3JudgeProviderV3()
+                if budget_ledger is None:
+                    raise JudgeEvaluationV2Error(
+                        "judge_budget_required", "prepare", "batch",
+                        "real Judge requires the existing shared budget ledger",
+                    )
+                provider = OpenAICompatibleHy3JudgeProviderV3(budget_ledger=budget_ledger, scope=str(output_path.name))
         if provider.mode != judge_mode:
             raise JudgeEvaluationV2Error(
                 "judge_provider_mode_mismatch",

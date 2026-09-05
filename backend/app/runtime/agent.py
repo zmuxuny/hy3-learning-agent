@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 from datetime import datetime
 from types import SimpleNamespace
@@ -58,6 +59,10 @@ class AgentModelTimeout(RuntimeError):
     pass
 
 
+class AgentModelOutputTruncated(RuntimeError):
+    """A response was truncated and cannot be repaired within the run limits."""
+
+
 class AgentModelProviderError(RuntimeError):
     """A provider call failed after the request passed local preflight."""
 
@@ -95,11 +100,13 @@ class _StreamingMessage:
         tool_calls: list[_StreamingToolCall],
         *,
         runtime_model_call_id: str | None = None,
+        finish_reason: str | None = None,
     ) -> None:
         self.content = content
         self.reasoning_content = reasoning_content or None
         self.tool_calls = tool_calls or None
         self.runtime_model_call_id = runtime_model_call_id
+        self.finish_reason = finish_reason
 
 
 class ToolFailureGuard:
@@ -198,6 +205,90 @@ def _event_tool_arguments(raw_arguments: str) -> dict:
     if len(encoded) > 6000:
         return {"preview": encoded[:6000], "truncated": True}
     return value if isinstance(value, dict) else {"value": value}
+
+
+def _argument_fingerprint(raw: str) -> dict:
+    encoded = raw.encode("utf-8")
+    return {"utf8_bytes": len(encoded), "sha256": hashlib.sha256(encoded).hexdigest()}
+
+
+def _rejected_call_evidence(call: dict) -> dict:
+    # Events survive terminal checkpoint cleanup. Keep the failed parameters,
+    # but never copy the private reasoning field into the observable trace.
+    raw = redact_text(call["arguments"])
+    return {"id": call["id"], "name": call["name"], "raw_arguments": raw, **_argument_fingerprint(raw)}
+
+
+def _model_request_messages(messages: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Project failed turns for replay; preserve the durable response evidence.
+
+    Only syntactically invalid arguments with an observed tool rejection are
+    replaced. Valid arguments, including long ones and schema-invalid JSON,
+    remain intact so the model can repair the actual request. A truncated
+    response has never executed a tool, and is replaced as a whole rather than
+    replaying an incomplete assistant/tool protocol exchange.
+    """
+    invalid_call_ids: set[str] = set()
+    for message in messages:
+        if message.get("role") != "tool":
+            continue
+        try:
+            result = json.loads(message.get("content") or "{}")
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if isinstance(result, dict) and result.get("error_code") == "invalid_arguments":
+            invalid_call_ids.add(message.get("tool_call_id"))
+
+    projected = []
+    compacted = []
+    for message in messages:
+        if message.get("_runtime_response_rejection") == "length":
+            projected.append({
+                "role": "user",
+                "content": (
+                    "[Runtime recovery] The previous model response reached its output token limit. "
+                    "None of that response's tool calls were executed. Generate a shorter complete "
+                    "response with valid JSON; split large work across smaller tool calls. "
+                    "Do not claim the rejected response changed any state."
+                ),
+            })
+            compacted.append({"kind": "truncated_response"})
+            continue
+        replacement = dict(message)
+        calls = message.get("tool_calls") or []
+        rejected_count = 0
+        if calls:
+            projected_calls = []
+            for call in calls:
+                projected_call = dict(call)
+                function = dict(call.get("function") or {})
+                raw = function.get("arguments") or "{}"
+                if call.get("id") in invalid_call_ids:
+                    try:
+                        json.loads(raw)
+                    except json.JSONDecodeError:
+                        fingerprint = _argument_fingerprint(raw)
+                        function["arguments"] = json.dumps({
+                            "_runtime_rejected_arguments": {
+                                "error": "invalid_json",
+                                **fingerprint,
+                            },
+                        }, separators=(",", ":"))
+                        rejected_count += 1
+                        compacted.append({
+                            "kind": "invalid_json",
+                            "tool_call_id": call.get("id"),
+                            **fingerprint,
+                        })
+                projected_call["function"] = function
+                projected_calls.append(projected_call)
+            replacement["tool_calls"] = projected_calls
+        # Retain reasoning for valid tool rounds (including mixed rounds).
+        # An entirely rejected JSON turn contributes no executed action.
+        if calls and rejected_count == len(calls):
+            replacement.pop("reasoning_content", None)
+        projected.append(replacement)
+    return projected, compacted
 
 
 def _json_default(value) -> str:
@@ -529,6 +620,8 @@ class AgentRuntime:
         from app.tools import ToolContext, execute_tool
 
         failure_guard = ToolFailureGuard(settings.AGENT_TOOL_FAILURE_LIMIT)
+        if sum(m.get("_runtime_response_rejection") == "length" for m in checkpoint.get("messages") or []) >= 2:
+            raise AgentModelOutputTruncated("模型输出及一次修复均达到输出上限")
         while int(checkpoint.get("step") or 0) < settings.AGENT_MAX_STEPS:
             fresh = await db.get(AgentRun, run.id, populate_existing=True)
             if fresh is None or fresh.status != "running" or fresh.cancel_requested:
@@ -607,6 +700,49 @@ class AgentRuntime:
                 messages = list(checkpoint.get("messages") or [])
                 messages.append(assistant_payload)
                 record_model_usage(budget, usage)
+                if getattr(message, "finish_reason", None) == "length":
+                    # A complete-looking JSON prefix is still unsafe when the
+                    # provider says the response was truncated. Reject the
+                    # entire response before any tool is scheduled. Persist
+                    # usage and original (redacted) evidence before recovery.
+                    assistant_payload["_runtime_response_rejection"] = "length"
+                    if sum(m.get("_runtime_response_rejection") == "length" for m in messages) >= 2:
+                        repair_blocker = "repair_limit"
+                    elif step + 1 >= settings.AGENT_MAX_STEPS:
+                        repair_blocker = "step_limit"
+                    else:
+                        repair_blocker = self._budget_reason(run, budget)
+                    if repair_blocker:
+                        budget["stopped_reason"] = repair_blocker
+                    checkpoint.update({
+                        "messages": messages,
+                        "current_tool_call": None,
+                        "remaining_tool_calls": [],
+                        "budget_usage": budget,
+                        "phase": "awaiting_model",
+                        "step": step + 1,
+                    })
+                    stored = await persist_checkpoint(db, lease, checkpoint, phase="awaiting_model")
+                    run = stored
+                    checkpoint = normalize_checkpoint(stored.checkpoint) or checkpoint
+                    await emit_event(
+                        db,
+                        run.id,
+                        "model.response_rejected",
+                        "模型输出达到长度上限，本次输出中的工具均未执行。",
+                        {
+                            "finish_reason": "length",
+                            "source_model_call_id": getattr(message, "runtime_model_call_id", None),
+                            "content": message.content or "",
+                            "tool_calls": [_rejected_call_evidence(call) for call in calls],
+                            "repair_limit": 1,
+                            "repair_blocker": repair_blocker,
+                        },
+                        event_key=f"run:{run.id}:step:{step}:response-rejected",
+                    )
+                    if repair_blocker:
+                        raise AgentModelOutputTruncated("模型输出截断且本轮已无法继续修复")
+                    continue
                 checkpoint.update({
                     "messages": messages,
                     "current_tool_call": calls[0] if calls else None,
@@ -701,6 +837,18 @@ class AgentRuntime:
                         timeout=tool_timeout_seconds(call),
                     )
             result = failure_guard.observe(call["name"], result)
+            if result.get("error_code") == "invalid_arguments":
+                try:
+                    json.loads(call["arguments"] or "{}")
+                except json.JSONDecodeError:
+                    await emit_event(
+                        db,
+                        run.id,
+                        "model.arguments_rejected",
+                        f"{call['name']} 的参数不是有效 JSON，未执行工具。",
+                        _rejected_call_evidence(call),
+                        event_key=f"tool:{call['id']}:invalid-json",
+                    )
             data = result.get("data") or {}
             if data.get("approval_required") and data.get("blocking"):
                 await pause_for_approval(
@@ -878,6 +1026,17 @@ class AgentRuntime:
             for tool in openai_tools()
             if tool["function"]["name"] not in failure_guard.blocked
         ]
+        messages, compacted = _model_request_messages(messages)
+        if compacted:
+            await emit_event(
+                db,
+                run.id,
+                "model.context_compacted",
+                "后续请求已压缩失败的模型输出，原始失败已保留在运行记录。",
+                {"replay_policy": "failed-response-replay-v1", "items": compacted},
+                event_key=f"run:{run.id}:step:{step}:context-compacted",
+            )
+            await commit_uow(db)
         # The initial Context budget is only one component of a durable Run.
         # Re-check the exact checkpoint messages and currently exposed schemas
         # before every provider call because tool observations and steers grow
@@ -931,6 +1090,7 @@ class AgentRuntime:
                         getattr(message, "runtime_model_call_id", None),
                     ),
                 )
+                object.__setattr__(message, "finish_reason", getattr(response.choices[0], "finish_reason", None))
                 return message, getattr(response, "usage", None)
         except TimeoutError as exc:
             raise AgentModelTimeout("模型响应超时") from exc
@@ -943,28 +1103,21 @@ class AgentRuntime:
         reasoning_parts: list[str] = []
         tool_calls: dict[int, _StreamingToolCall] = {}
         usage = None
+        finish_reason = None
         async for chunk in stream:
+            if getattr(chunk, "usage", None) is not None:
+                usage = chunk.usage
             if not getattr(chunk, "choices", None):
-                if getattr(chunk, "usage", None):
-                    usage = chunk.usage
                 continue
             choice = chunk.choices[0]
+            if getattr(choice, "finish_reason", None) is not None:
+                finish_reason = choice.finish_reason
             delta = getattr(choice, "delta", None) or getattr(choice, "message", None)
             if delta is None:
                 continue
             reasoning = getattr(delta, "reasoning_content", None)
             if reasoning:
                 reasoning_parts.append(reasoning)
-                publish_stream_event(run.id, {
-                    "type": "assistant.reasoning",
-                    "summary": "",
-                    "payload": {
-                        "step": step + 1,
-                        "delta": reasoning,
-                        "text": "".join(reasoning_parts),
-                    },
-                    "created_at": canonical_utc(utc_now()),
-                })
             content = getattr(delta, "content", None)
             if content:
                 content_parts.append(content)
@@ -994,8 +1147,9 @@ class AgentRuntime:
         return _StreamingMessage(
             "".join(content_parts),
             "".join(reasoning_parts),
-            list(tool_calls.values()),
+            [tool_calls[index] for index in sorted(tool_calls)],
             runtime_model_call_id=getattr(stream, "runtime_model_call_id", None),
+            finish_reason=finish_reason,
         ), usage
 
     async def _fail(
@@ -1007,11 +1161,19 @@ class AgentRuntime:
     ) -> None:
         """Commit one fenced failure transition after releasing caller state."""
 
+        # rollback expires ORM attributes, including the primary key. Never
+        # lazily reload the caller's Run outside an awaited SQLAlchemy call.
+        run_id = lease.run_id
         try:
             try:
                 await rollback_uow(db)
             except Exception:
                 pass
+            async with AsyncSessionLocal() as failure_db:
+                fresh = await failure_db.get(AgentRun, run_id)
+                if fresh is None:
+                    return
+                retry_count = int(fresh.retry_count or 0)
             tool_timed_out = isinstance(exc, TimeoutError)
             model_timed_out = isinstance(exc, AgentModelTimeout)
             model_provider_failed = isinstance(exc, AgentModelProviderError)
@@ -1023,7 +1185,7 @@ class AgentRuntime:
             )
             if (
                 (model_timed_out or tool_timed_out or transient_model_failure)
-                and int(run.retry_count or 0) < settings.AGENT_RUN_MAX_RETRIES
+                and retry_count < settings.AGENT_RUN_MAX_RETRIES
             ):
                 retry_reason = "model_timeout"
                 if tool_timed_out:
@@ -1031,7 +1193,7 @@ class AgentRuntime:
                 elif transient_model_failure:
                     retry_reason = "model_transient"
                 delay = settings.AGENT_RUN_RETRY_BACKOFF_SECONDS * (
-                    2 ** int(run.retry_count or 0)
+                    2 ** retry_count
                 )
                 await schedule_retry(
                     AsyncSessionLocal,
@@ -1040,11 +1202,14 @@ class AgentRuntime:
                     retry_after_seconds=delay,
                 )
                 await asyncio.sleep(delay)
-                await self.run(run.id)
+                await self.run(run_id)
                 return
             if isinstance(exc, PromptEnvelopeExceeded):
                 summary = "后续请求超出模型上下文上限，本轮已执行的工具结果已保留。请缩小任务范围后继续。"
                 error_code = "context_window_exceeded"
+            elif isinstance(exc, AgentModelOutputTruncated):
+                summary = "模型输出达到长度上限，本轮未能完成修复。截断输出中的工具未执行，请分步继续。"
+                error_code = "model_output_truncated"
             elif isinstance(exc, AgentModelTimeout):
                 summary = "模型暂时没有响应。本轮已执行的工具结果和会话内容均已保留。"
                 error_code = "model_timeout"
@@ -1065,7 +1230,7 @@ class AgentRuntime:
                 error_code = "internal_error"
             terminal = await terminate_run(
                 AsyncSessionLocal,
-                run.id,
+                run_id,
                 status="failed",
                 reason_code=error_code,
                 summary=summary,
@@ -1075,7 +1240,7 @@ class AgentRuntime:
                 return
             from app.runtime.subagents import cancel_children_for_parent
 
-            await cancel_children_for_parent(run.id, "父 Run 失败")
+            await cancel_children_for_parent(run_id, "父 Run 失败")
             successor_id = getattr(terminal, "_queued_successor_id", None)
             if successor_id:
                 start_tracked_task(successor_id, AgentRuntime().run(successor_id))
@@ -1083,7 +1248,7 @@ class AgentRuntime:
             return
         except Exception as record_error:
             print(
-                f"[learning-agent] run {run.id} failed ({type(exc).__name__}) "
+                f"[learning-agent] run {run_id} failed ({type(exc).__name__}) "
                 f"and failure record also failed ({type(record_error).__name__})",
                 flush=True,
             )

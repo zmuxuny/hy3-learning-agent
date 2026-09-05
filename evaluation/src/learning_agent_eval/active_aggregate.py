@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
@@ -55,6 +56,7 @@ from .rubric import (
     TRACK_ANCHOR_VERSION,
 )
 from .runtime_metadata import git_worktree_clean
+from .semantic_adjudication import reviewed_results, write_reviewed_csv
 from .source_bundles import SOURCE_BUNDLE_VERSION, source_bundle_sha256
 from .validator import resolve_evidence_path, validate_dataset
 
@@ -1124,6 +1126,7 @@ def aggregate_active_results(
     output: str | Path,
     episode_ids: set[str] | None = None,
     track: str | None = None,
+    semantic_reviews: str | Path | None = None,
 ) -> AggregateEvaluationV2Summary:
     """Aggregate the active v4 chain, including failure-only track partitions."""
 
@@ -1273,7 +1276,23 @@ def aggregate_active_results(
             )
             for name in TRACK_ORDER
         }
+        try:
+            reviews = [] if semantic_reviews is None else json.loads(Path(semantic_reviews).read_text(encoding="utf-8"))
+            if not isinstance(reviews, list):
+                raise TypeError("semantic_review_list_required")
+            review_rows = reviewed_results(
+                documents, judge_results,
+                {bundle.episode["episode_id"]: bundle.episode for bundle in inputs.bundles},
+                reviews,
+            )
+        except (ValueError, TypeError, KeyError, OSError) as exc:
+            raise AggregateEvaluationV2Error(
+                "semantic_review_invalid", "aggregate", "batch", "Semantic review bindings or evidence are invalid"
+            ) from exc
+        write_reviewed_csv(stage / "reviewed-results.csv", review_rows)
         capability_blockers: set[str] = set()
+        if any(row["pending_candidates"] for row in review_rows):
+            capability_blockers.add("capability.semantic_review_pending")
         if not trusted:
             capability_blockers.add("capability.run_not_trusted")
         if selection_mode != "inherited":
@@ -1437,8 +1456,8 @@ def aggregate_active_results(
         output=output_path,
         failed_episode_ids=tuple(
             item["episode_id"]
-            for item in documents
-            if item["episode_outcome"] == "fail"
+            for item in review_rows
+            if item["reviewed_outcome"] in {"fail", "review_required"}
         ),
         invalid_episode_ids=tuple(
             item["episode_id"]

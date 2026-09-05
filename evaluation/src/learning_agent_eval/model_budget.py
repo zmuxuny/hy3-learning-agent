@@ -61,15 +61,23 @@ class ModelBudget:
             handle.flush()
             os.fsync(handle.fileno())
 
-    def reserve(self, *, scope: str, call_id: str) -> int:
+    def reserve(
+        self, *, scope: str, call_id: str,
+        input_limit: int = INPUT_LIMIT, output_limit: int = OUTPUT_LIMIT,
+    ) -> int:
+        if (type(input_limit) is not int or not 1 <= input_limit <= INPUT_LIMIT
+                or type(output_limit) is not int or not 1 <= output_limit <= OUTPUT_LIMIT):
+            raise ValueError("request limits must fit the shared pricing envelope")
+        reservation = input_limit * INPUT_RATE + output_limit * OUTPUT_RATE
         with self._locked() as document:
             charged = sum(item["charged_micro_cny"] for item in document["requests"])
-            if document["blocked"] or charged + RESERVATION > document["limit_micro_cny"]:
+            if document["blocked"] or charged + reservation > document["limit_micro_cny"]:
                 raise ModelBudgetExceeded("shared prepaid Hy3 budget exhausted")
             ticket = len(document["requests"]) + 1
             document["requests"].append({
                 "ticket": ticket, "scope": scope, "call_id": call_id,
-                "charged_micro_cny": RESERVATION, "status": "reserved",
+                "charged_micro_cny": reservation, "status": "reserved",
+                "input_limit": input_limit, "output_limit": output_limit,
                 "token_usage": None,
             })
         return ticket
@@ -86,7 +94,8 @@ class ModelBudget:
                 usage.get(key) for key in ("prompt_tokens", "completion_tokens", "total_tokens")
             )
             if (not all(type(value) is int and value >= 0 for value in (prompt, completion, total))
-                    or prompt > INPUT_LIMIT or completion > OUTPUT_LIMIT
+                    or prompt > item.get("input_limit", INPUT_LIMIT)
+                    or completion > item.get("output_limit", OUTPUT_LIMIT)
                     or total != prompt + completion):
                 document["blocked"] = True
                 item["status"] = "invalid_usage_reserved"
@@ -95,6 +104,15 @@ class ModelBudget:
                 status="settled", token_usage=usage,
                 charged_micro_cny=prompt * INPUT_RATE + completion * OUTPUT_RATE,
             )
+
+    def record_outcome(self, ticket: int, *, outcome: str, error_codes: tuple[str, ...] = ()) -> None:
+        """Keep failed/repair attempts even when their usage was settled normally."""
+        if outcome not in {"complete", "provider_error", "response_invalid", "output_truncated", "input_limit_exceeded"}:
+            raise ValueError("unknown public request outcome")
+        with self._locked() as document:
+            document["requests"][ticket - 1]["outcome"] = outcome
+            if error_codes:
+                document["requests"][ticket - 1]["error_codes"] = sorted(set(error_codes))
 
     def summary(self) -> dict:
         with self._locked() as document:

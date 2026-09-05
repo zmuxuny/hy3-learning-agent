@@ -2910,6 +2910,7 @@ def _document_issues(
 def _e31_artifact_inventory_issues(
     by_version: Mapping[str, list[tuple[str, dict[str, Any]]]],
     episodes: list[_EpisodeRecord],
+    base: Path | None = None,
 ) -> list[ValidationIssue]:
     """Validate every active v3 output directory as a closed inventory."""
 
@@ -4075,7 +4076,23 @@ def _e31_artifact_inventory_issues(
             )
             for track in ("planning", "intervention", "assessment", "revision")
         }
+        review_pending = False
+        if base is not None:
+            from .semantic_adjudication import verify_aggregate_review_csv
+
+            review_path = (base / file).parent / "reviewed-results.csv"
+            # Historical v3 artifacts keep their original contract. Current
+            # aggregates always publish and verify the additional review layer.
+            if review_path.exists() or manifest["aggregator_implementation_sha256"] == AGGREGATOR_IMPLEMENTATION_SHA256_V3:
+                try:
+                    review_pending = verify_aggregate_review_csv(
+                        review_path, [results[key] for key in sorted(results)],
+                    )
+                except (OSError, KeyError, TypeError, ValueError, AttributeError):
+                    add("manifest.semantic_review_invalid", "$", "Semantic review rows or bindings are invalid.", file)
         expected_blockers: set[str] = set()
+        if review_pending:
+            expected_blockers.add("capability.semantic_review_pending")
         if not expected_trust:
             expected_blockers.add("capability.run_not_trusted")
         if manifest["selection_mode"] != "inherited":
@@ -4119,6 +4136,7 @@ def _e31_artifact_inventory_issues(
 def _artifact_inventory_issues(
     documents: list[tuple[str, dict[str, Any]]],
     episodes: list[_EpisodeRecord],
+    base: Path | None = None,
 ) -> list[ValidationIssue]:
     """Validate E2 Runtime/Rule manifests as closed artifact inventories."""
 
@@ -4551,7 +4569,7 @@ def _artifact_inventory_issues(
                     file=file,
                 )
             )
-    issues.extend(_e31_artifact_inventory_issues(by_version, episodes))
+    issues.extend(_e31_artifact_inventory_issues(by_version, episodes, base))
     return issues
 
 
@@ -4668,7 +4686,7 @@ def validate_dataset(dataset: str | Path) -> ValidationReport:
         if record is not None:
             episodes.append(record)
 
-    issues.extend(_artifact_inventory_issues(documents, episodes))
+    issues.extend(_artifact_inventory_issues(documents, episodes, base))
 
     if not episodes and not issues and not saw_non_episode_artifact:
         issues.append(

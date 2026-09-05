@@ -13,11 +13,11 @@ and one bounded tool result are reserved before a provider call is allowed.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from app.core.config import settings
-
 
 TOKEN_ESTIMATOR_VERSION = "h5-utf8-byte-framed-upper-bound-v1"
 PROMPT_ENVELOPE_VERSION = "h5-prompt-envelope-v1"
@@ -183,6 +183,23 @@ def request_budget_breakdown(
     """Account the exact serialized request immediately before provider I/O."""
 
     prompt_tokens = estimate_messages_tokens(messages)
+    components = {
+        "content_tokens": 0,
+        "reasoning_tokens": 0,
+        "tool_arguments_tokens": 0,
+        "tool_results_tokens": 0,
+    }
+    for message in messages:
+        if "content" in message:
+            key = "tool_results_tokens" if message.get("role") == "tool" else "content_tokens"
+            components[key] += estimate_json_tokens(message["content"])
+        if "reasoning_content" in message:
+            components["reasoning_tokens"] += estimate_json_tokens(message["reasoning_content"])
+        for call in message.get("tool_calls") or []:
+            function = call.get("function") or {}
+            if "arguments" in function:
+                components["tool_arguments_tokens"] += estimate_json_tokens(function["arguments"])
+    components["structure_tokens"] = prompt_tokens - sum(components.values())
     tool_schema_tokens = estimate_tool_schema_tokens(tools)
     total_tokens = (
         prompt_tokens
@@ -193,6 +210,7 @@ def request_budget_breakdown(
     return {
         "model_context_window": settings.MODEL_CONTEXT_WINDOW,
         "prompt_tokens": prompt_tokens,
+        "prompt_components": components,
         "tool_schema_tokens": tool_schema_tokens,
         "output_reserve_tokens": settings.AGENT_OUTPUT_TOKEN_RESERVE,
         "tool_result_reserve_tokens": settings.AGENT_TOOL_RESULT_TOKEN_RESERVE,

@@ -1,9 +1,10 @@
-"""Real Runtime replay distinguishes bad tool JSON from a local context limit."""
+"""The original E4 envelope counterexample now recovers without replaying bad JSON."""
 
 from types import SimpleNamespace
 
 import pytest
 from app.core.config import settings
+from app.core.prompt_envelope import PromptEnvelopeExceeded, ensure_request_fits
 from app.db.database import AsyncSessionLocal
 from app.models import AgentRun, RunEvent, Session
 from app.runtime.agent import AgentRuntime
@@ -35,17 +36,6 @@ async def test_malformed_arguments_do_not_hide_context_limit(
 ):
     monkeypatch.setattr(settings, "AGENT_RUN_MAX_RETRIES", 0)
     monkeypatch.setattr(settings, "AGENT_MAX_MODEL_CALLS", 8)
-    observed = []
-    orig = AgentRuntime._fail
-
-    async def fail(self, db, run, lease, exc):
-        observed.append(
-            {"type": type(exc).__name__, "breakdown": getattr(exc, "breakdown", None)}
-        )
-        return await orig(self, db, run, lease, exc)
-
-    monkeypatch.setattr(AgentRuntime, "_fail", fail)
-
     async def no_enrichment(*args):
         pass
 
@@ -54,9 +44,16 @@ async def test_malformed_arguments_do_not_hide_context_limit(
     class Completions:
         def __init__(self):
             self.calls = 0
+            self.requests = []
+            self.checkpoint_messages = []
 
         async def create(self, **request):
             self.calls += 1
+            self.requests.append(request)
+            if self.calls == 2:
+                async with AsyncSessionLocal() as db:
+                    stored = await db.get(AgentRun, run_id)
+                    self.checkpoint_messages = stored.checkpoint["messages"]
             calls = (
                 [
                     Call(
@@ -120,17 +117,24 @@ async def test_malformed_arguments_do_not_hide_context_limit(
             .scalars()
             .all()
         )
-        if payload_bytes == 10:
-            assert observed == []
-        else:
-            assert len(observed) == 1
-            assert observed[0]["type"] == "PromptEnvelopeExceeded"
-            assert observed[0]["breakdown"]["total_tokens"] > settings.MODEL_CONTEXT_WINDOW
-        assert run.status == ("completed" if payload_bytes == 10 else "failed")
-        assert run.status_reason == (
-            None if payload_bytes == 10 else "context_window_exceeded"
-        )
-        assert client.calls == (2 if payload_bytes == 10 else 1)
+        assert run.status == "completed"
+        assert run.status_reason is None
+        assert client.calls == 2
+        original = client.checkpoint_messages
+        if payload_bytes == 150000:
+            # This is the historical mechanism's independent counterexample:
+            # the durable original still exceeds the conservative envelope.
+            with pytest.raises(PromptEnvelopeExceeded):
+                ensure_request_fits(messages=original, tools=client.requests[1]["tools"])
+        replayed = client.requests[1]["messages"]
+        ensure_request_fits(messages=replayed, tools=client.requests[1]["tools"])
+        replayed_calls = next(m["tool_calls"] for m in replayed if m.get("tool_calls"))
+        assert all("_runtime_rejected_arguments" in c["function"]["arguments"] for c in replayed_calls)
+        original_calls = next(m["tool_calls"] for m in original if m.get("tool_calls"))
+        assert original_calls[0]["function"]["arguments"] == '{"goal":"' + "x" * payload_bytes
+        failures = [e for e in events if e.event_type == "model.arguments_rejected"]
+        assert len(failures) == 2
+        assert failures[0].payload["raw_arguments"] == original_calls[0]["function"]["arguments"]
         errors = [
             e
             for e in events
