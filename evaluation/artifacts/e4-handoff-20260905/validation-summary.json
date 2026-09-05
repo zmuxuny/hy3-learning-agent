@@ -1,0 +1,198 @@
+{
+  "purpose": "E4 in-progress handoff; not E4 completion or a capability result",
+  "date": "2026-09-05",
+  "base_commit": "ea4942e8192baf8ed5e3804e6e7ff3a1007caf3f",
+  "source_files": {
+    "backend/app/runtime/agent.py": "9301f7740c5b85750b10acdc68a54e05d76fd59c6dae2ded2444259a9da0db88",
+    "evaluation/src/learning_agent_eval/active_worker.py": "4901f4842fd1886c6f87813c7a9aa83ddeb78f679aa7f39bcbbc1a33f452bb50",
+    "evaluation/tests/test_audit_readiness.py": "ab174a3888e6227fef9654912793c9e51837c481758d9dfbecff07e0a73d8596",
+    "tests/test_e4_terminal_diagnostics.py": "f7fbea377a782333d0affc8347787ff4bc0ca9dde3f919564e372fc0d0e6a320"
+  },
+  "checks": {
+    "release-verification": {
+      "command": [
+        "/root/workspace/tencent_rhinobird2026/learning_travel/.venv/bin/python",
+        "evaluation/scripts/build_e312_releases.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.57
+    },
+    "modified-python-ruff": {
+      "command": [
+        "/root/workspace/tencent_rhinobird2026/learning_travel/.venv/bin/ruff",
+        "check",
+        "--no-cache",
+        "backend/app/runtime/agent.py",
+        "evaluation/src/learning_agent_eval/active_worker.py",
+        "evaluation/tests/test_audit_readiness.py",
+        "tests/test_e4_terminal_diagnostics.py"
+      ],
+      "exit_code": 1,
+      "elapsed_seconds": 0.04
+    },
+    "ruff-agent-baseline": {
+      "base_commit": "ea4942e",
+      "base_count": 5,
+      "current_count": 5,
+      "same_code_message_multiset": true,
+      "known_diagnostics": [
+        [
+          "BLE001",
+          "Do not catch blind exception: `Exception`"
+        ],
+        [
+          "BLE001",
+          "Do not catch blind exception: `Exception`"
+        ],
+        [
+          "BLE001",
+          "Do not catch blind exception: `Exception`"
+        ],
+        [
+          "S110",
+          "`try`-`except`-`pass` detected, consider logging the exception"
+        ],
+        [
+          "SIM117",
+          "Use a single `with` statement with multiple contexts instead of nested `with` statements"
+        ]
+      ]
+    },
+    "red-product-probe": {
+      "command": "pytest -q -p no:cacheprovider tests/test_e4_terminal_probe.py --basetemp=<external>/terminal-probe",
+      "exit_code": 1,
+      "passed": 1,
+      "failed": 1,
+      "elapsed_seconds": 1.52,
+      "note": "Pre-fix independent probe. The temporary probe was replaced by the tracked discriminating test; this original log is retained."
+    },
+    "initial-green": {
+      "exit_code": 0,
+      "passed": 4,
+      "failed": 0,
+      "deselected": 27,
+      "elapsed_seconds": 9.42
+    },
+    "core-regression": {
+      "command": "pytest -q -p no:cacheprovider tests/test_e4_terminal_diagnostics.py tests/test_evaluation_audit_seams.py tests/test_e1_evaluation_seams.py evaluation/tests/test_audit_readiness.py evaluation/tests/test_protocol_pilot.py evaluation/tests/test_e312_legacy_entrypoints.py --basetemp=<external>/core-regression",
+      "exit_code": 0,
+      "passed": 57,
+      "failed": 0,
+      "skipped": 0,
+      "xfailed": 0,
+      "warnings": 0,
+      "elapsed_seconds": 311.23,
+      "note": "Both changed runtime source files and audit tests match handoff bytes. Final product test cleanup was verified again below."
+    },
+    "handoff-targeted": {
+      "command": "pytest -q -p no:cacheprovider tests/test_e4_terminal_diagnostics.py evaluation/tests/test_audit_readiness.py -k 'malformed_arguments_do_not_hide_context_limit or runtime_failure_retains_safe_terminal_reason or terminal_failure_reason_never_copies_unknown_durable_text' --basetemp=<external>/handoff-targeted",
+      "exit_code": 0,
+      "passed": 4,
+      "failed": 0,
+      "deselected": 27,
+      "warnings": 0,
+      "elapsed_seconds": 11.78
+    }
+  },
+  "logs": {
+    "terminal-probe.txt": {
+      "bytes": 4539,
+      "sha256": "49a7ba82c0e7cd27cc791f81032a30d41a12e73f2c0d7382fe334947f76f9791"
+    },
+    "terminal-green.txt": {
+      "bytes": 113,
+      "sha256": "d0a4eaba100188a1aa9e522ab4f7bf97e8747ed481adb07ed50b1284740ee743"
+    },
+    "core-regression.txt": {
+      "bytes": 111,
+      "sha256": "a6a87c430946aff968150eff3db499c046b4ed133fdfe00147e598f60b8c27cf"
+    },
+    "handoff-targeted.txt": {
+      "bytes": 114,
+      "sha256": "688d34511ca4daaed262f7bf913f7076e0bc74901ea82e99675343265210e285"
+    },
+    "release-verification.txt": {
+      "bytes": 51,
+      "sha256": "49017f6f6dd2e602ab3196aabf876f9f5f64607f9dbf88b083d7b83664b7b7ed"
+    },
+    "modified-python-ruff.txt": {
+      "bytes": 2148,
+      "sha256": "70d238d7948c3b2cf43288356fc74b67884fcbc4c435f5e5892a9f8bc01eab7f"
+    }
+  },
+  "new_real_requests": 0,
+  "shared_budget": {
+    "limit_micro_cny": 14000000,
+    "occupied_micro_cny": 5397645,
+    "request_count": 190
+  },
+  "limitations": [
+    "No full evaluation or repository pytest rerun at this handoff source.",
+    "72 case review rows still pending.",
+    "Both E4 candidate benchmark manifests retain the earlier protocol binding and need reviewed-package regeneration.",
+    "The historical primary-s06-p root cause is not uniquely established."
+  ],
+  "cleanup": "Owned temporary clone, cache and test databases are removed after handoff. The private original budget ledger is retained.",
+  "archive": {
+    "file": "logs.tar.gz",
+    "sha256": "8f082048c3e8d3533d3391c824473dd13293b3fc7a9b22bd6510d9448017238c",
+    "bytes": 2622,
+    "members": 6,
+    "raw_logs_secret_pattern_check": "pass"
+  },
+  "handoff_date": "2026-09-06",
+  "handoff_gates": {
+    "doc-links": {
+      "command": [
+        ".venv/bin/python",
+        "scripts/check_doc_links.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.6,
+      "output": "Markdown relative links: OK\n"
+    },
+    "lint_typecheck": {
+      "command": [
+        ".venv/bin/python",
+        "scripts/release-check.py",
+        "lint_typecheck"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.86,
+      "output": "All checks passed!\n"
+    },
+    "secret_scan": {
+      "command": [
+        ".venv/bin/python",
+        "scripts/release-check.py",
+        "secret_scan"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.73,
+      "output": "secret_scan_ok tracked=612 staged_diff_sha256=677e206e342b98c0f65200f6ea758e3b297ff6abbf0357afbc68cab67eb603ac\n"
+    },
+    "pip-check": {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.98,
+      "output": "No broken requirements found.\n"
+    },
+    "staged-diff-check": {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.01,
+      "output": ""
+    }
+  },
+  "handoff_gates_note": "Recorded before appending these gate results and updating the handoff date; the staged diff hash describes that earlier snapshot."
+}

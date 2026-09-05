@@ -675,3 +675,29 @@ def test_all_materialized_action_classes_are_scoreable(effect_chain):
             path.name,
             [c for c in result["checks"] if c["status"] == "fail"],
         )
+
+
+def test_runtime_failure_retains_safe_terminal_reason(tmp_path):
+    case = no_write_case("planning", ["REQUEST_USER_INPUT"])
+    case["runtime_setup"]["scripted_turns"][0].update(
+        assistant_text="Public response exceeds the next request envelope. " * 4000,
+        tool_calls=[{"call_id": "read-profile", "name": "profile_get", "arguments": {}}],
+    )
+    suite = suite_for(tmp_path, [case])
+    out = tmp_path / "runtime"
+    run_active_runtime(dataset=suite, manifest=suite / "manifest.json", output=out)
+    failure = load(next((out / "failures").glob("*.json")))
+    assert failure["reason_code"] == "runtime.context_window_exceeded"
+    assert len(failure["model_calls"]) == 1
+    assert failure["model_calls"][0]["returned_tool_calls"][0]["name"] == "profile_get"
+    assert not failure["formal_evaluation_result"]
+    assert validate_dataset(out).ok
+
+
+def test_terminal_failure_reason_never_copies_unknown_durable_text():
+    from learning_agent_eval.active_worker import _terminal_failure_reason
+
+    assert _terminal_failure_reason({"status_reason": "context_window_exceeded"})[0] == "runtime.context_window_exceeded"
+    assert "private-exception-detail" not in str(
+        _terminal_failure_reason({"status_reason": "private-exception-detail"})
+    )

@@ -21,7 +21,7 @@
 - [x] E3.1：以 v3 干净切换修复有效性边界；分离结构无效与行为失败，新增 CaseSpec/JudgeReference、可重建层级轨迹、失败制品、Provider 可审计归因，并关闭精确盲化、Assessment ACCEPT、多实体身份、相对路径隔离与隐私误报缺口。
 - [x] E3.1.1：以 v4 干净切换闭合 14 类动作、跨轨/组合/失败尝试、并发子 Agent ordinal 与因果 call、Failure-only 分区、formal 单调继承、Case predicate 语义、隔离 Hard Gate 和 Rules/Aggregate 实现源码摘要。
 - [x] E3.1.2：发布 Evaluation Protocol Release 1.0；建立空的生产可信 Benchmark 注册表、完整 Suite/终态闭合、formal 三层语义、唯一活动入口、source bundle、独立 Schema Lock 与 `model-action-declaration-v2`。
-- [ ] E4（候选数据已产出，当前暂停）：48 个 Primary 真实执行得到 45 Episode + 3 Failure；24 个受控 Calibration 全部导出，资源、Split/Mutation、数据卡与待复核表齐备。独立内容复核、剩余终止归因、正式冻结和可信登记仍待办，原定 E4 DoD 尚未全部完成。
+- [ ] E4（候选数据已产出，当前交接）：48 个 Primary 真实执行得到 45 Episode + 3 Failure；24 个受控 Calibration 全部导出。本次已修复安全终态诊断，用户授权 AI 内容复核；逐例裁决、候选绑定重建、最终回归及冻结/登记顺序仍待收口。E4 DoD 尚未全部完成，接续步骤见 [E4 交接记录](E4验收工作记录.md)。
 - [ ] E5：完成判别力、重复一致性、人工一致性、反事实、对抗与安全有效性实验。
 - [ ] E6：完成正式评测、逐 Episode/维度/轨道结果与错误类型归因。
 - [ ] E7：完成冻结 Baseline/Candidate 版本回归，保持 Test 一次冻结。

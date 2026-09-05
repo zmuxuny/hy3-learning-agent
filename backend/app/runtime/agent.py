@@ -7,7 +7,7 @@ from app.context import ContextAssembler
 from app.context.memory import MemoryManager
 from app.context.provenance import canonical_digest
 from app.core.config import settings
-from app.core.prompt_envelope import ensure_request_fits
+from app.core.prompt_envelope import PromptEnvelopeExceeded, ensure_request_fits
 from app.core.redaction import redact_data, redact_text
 from app.core.time import canonical_utc, utc_now
 from app.db.database import AsyncSessionLocal
@@ -1042,7 +1042,10 @@ class AgentRuntime:
                 await asyncio.sleep(delay)
                 await self.run(run.id)
                 return
-            if isinstance(exc, AgentModelTimeout):
+            if isinstance(exc, PromptEnvelopeExceeded):
+                summary = "后续请求超出模型上下文上限，本轮已执行的工具结果已保留。请缩小任务范围后继续。"
+                error_code = "context_window_exceeded"
+            elif isinstance(exc, AgentModelTimeout):
                 summary = "模型暂时没有响应。本轮已执行的工具结果和会话内容均已保留。"
                 error_code = "model_timeout"
             elif isinstance(exc, TimeoutError):

@@ -122,6 +122,27 @@ def _failure_class(stage: str) -> str:
     return "framework_error"
 
 
+def _terminal_failure_reason(root: dict[str, Any]) -> tuple[str, str]:
+    """Expose only fixed durable reason codes, never arbitrary exception text."""
+
+    reasons = {
+        "context_window_exceeded": "The next request exceeded the configured context window.",
+        "model_timeout": "The Runtime model request timed out.",
+        "tool_timeout": "A Runtime tool execution timed out.",
+        "model_retry_exhausted": "The Runtime exhausted its bounded model retries.",
+        "model_provider_error": "The Runtime model provider could not complete a request.",
+        "runtime_state_conflict": "The Runtime could not commit a consistent durable state.",
+        "internal_error": "The Runtime reported an internal error.",
+    }
+    reason = root.get("status_reason")
+    if reason in reasons:
+        return f"runtime.{reason}", reasons[reason]
+    return (
+        "runtime.non_exportable_terminal",
+        "The isolated Runtime ended without a scoreable Episode.",
+    )
+
+
 def _failure_document(
     *,
     request: dict[str, Any],
@@ -412,6 +433,7 @@ async def _execute_inner(
             )
         root_status = root_runs[0]["data"]["status"]
         if root_status not in {"completed", "waiting_approval"}:
+            terminal_code, terminal_summary = _terminal_failure_reason(root_runs[0]["data"])
             provider_failed = any(
                 record.get("response_status") == "provider_error"
                 for record in public_records
@@ -423,12 +445,12 @@ async def _execute_inner(
                 reason_code=(
                     "provider.runtime_call_failed"
                     if provider_failed
-                    else "runtime.non_exportable_terminal"
+                    else terminal_code
                 ),
                 public_summary=(
                     "The isolated model provider did not complete."
                     if provider_failed
-                    else "The isolated Runtime ended without a scoreable Episode."
+                    else terminal_summary
                 ),
                 records=public_records,
                 isolation_evidence=isolation,
