@@ -2844,9 +2844,11 @@ async def test_two_dispatchers_claim_one_outbox_action_and_deliver_once(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("initial_writer_busy", [False, True])
 async def test_bounded_duplicate_notification_storm_delivers_one_receipt_and_transport(
     sqlite_factory: async_sessionmaker[AsyncSession],
     monkeypatch,
+    initial_writer_busy: bool,
 ) -> None:
     """Eight callers and dispatchers preserve one notification side effect."""
 
@@ -2863,6 +2865,16 @@ async def test_bounded_duplicate_notification_storm_delivers_one_receipt_and_tra
     release_send = threading.Event()
     loop = asyncio.get_running_loop()
     monkeypatch.setattr(NotificationService, "_email_configured", lambda _self: True)
+    initial_burst_complete = False
+    if initial_writer_busy:
+        original_send = NotificationService.send
+
+        async def send_after_contention(service, **kwargs):
+            if not initial_burst_complete:
+                raise DatabaseBusyError("Initial notification writer budget exhausted.")
+            return await original_send(service, **kwargs)
+
+        monkeypatch.setattr(NotificationService, "send", send_after_contention)
 
     def gated_email(_self, _reply_token: str, _title: str, _body: str) -> None:
         nonlocal send_count
@@ -2885,6 +2897,11 @@ async def test_bounded_duplicate_notification_storm_delivers_one_receipt_and_tra
         asyncio.gather(*(caller() for _ in range(8))),
         timeout=5,
     )
+    # Every contender may legitimately return retryable backpressure. Once the
+    # burst settles, the same idempotency key must converge before dispatch.
+    initial_burst_complete = True
+    admitted = await caller()
+    assert admitted.get("ok") is True, admitted
     async with sqlite_factory() as db:
         action = (
             await db.execute(
@@ -2963,8 +2980,7 @@ async def test_bounded_duplicate_notification_storm_delivers_one_receipt_and_tra
 
     caller_errors = [item for item in caller_results if item.get("ok") is False]
     assert (
-        any(item.get("ok") is True for item in caller_results)
-        and all(
+        all(
             item.get("error_code") in {"invocation_in_progress", "database_busy"}
             and item.get("retryable") is True
             for item in caller_errors
@@ -2993,7 +3009,7 @@ async def test_bounded_duplicate_notification_storm_delivers_one_receipt_and_tra
         == (1, 2, 1, 1)
         and sorted(notification_channels) == ["email", "in_app"]
     ), (
-        f"callers={caller_results!r}; dispatchers={dispatch_results!r}; "
+        f"callers={caller_results!r}; admitted={admitted!r}; dispatchers={dispatch_results!r}; "
         f"converged={converged_dispatch_results!r}; "
         f"replay={replay!r}; send_count={send_count}; "
         f"counts={(invocation_count, notification_count, action_count, receipt_count)!r}; "
