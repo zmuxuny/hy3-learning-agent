@@ -17,6 +17,17 @@ class EvaluationIsolationError(RuntimeError):
     pass
 
 
+def _network_host(value: Any) -> str:
+    # AnyIO passes IDNA-encoded bytes to socket.getaddrinfo. str(bytes)
+    # includes the b'...' wrapper and incorrectly rejects the allowed host.
+    if isinstance(value, bytes):
+        try:
+            value = value.decode("ascii")
+        except UnicodeDecodeError:
+            return ""
+    return str(value).casefold()
+
+
 def worker_environment(
     *,
     project_root: Path,
@@ -155,8 +166,9 @@ class IsolationGuard:
             raise EvaluationIsolationError("worker subprocess execution denied")
         elif event == "socket.connect" and arguments:
             address = arguments[1] if len(arguments) > 1 else None
-            host = str(address[0]).casefold() if isinstance(address, tuple) and address else ""
-            if self.model_mode != "real" or host not in self.allowed_addresses | {self.model_host}:
+            host = _network_host(address[0]) if isinstance(address, tuple) and address else ""
+            port = address[1] if isinstance(address, tuple) and len(address) > 1 else None
+            if self.model_mode != "real" or port != 443 or host not in self.allowed_addresses | {self.model_host}:
                 self.counters["network_calls"] += 1
                 raise EvaluationIsolationError("network target denied")
 
@@ -164,7 +176,7 @@ class IsolationGuard:
         original = socket.getaddrinfo
 
         def guarded(host: Any, *args: Any, **kwargs: Any) -> Any:
-            normalized = str(host).casefold()
+            normalized = _network_host(host)
             if self.model_mode != "real" or normalized != self.model_host:
                 self.counters["network_calls"] += 1
                 raise EvaluationIsolationError("DNS target denied")

@@ -584,6 +584,11 @@ def _main(argv: list[str] | None = None, *, contract_version: str = "v4") -> int
             raise WorkerFailure("historical_execution_disabled", "preflight", "worker contract is not active")
         if contract_version == "v4":
             git_source_bundle_sha256(request["git_commit"], "runtime")
+        if request["model_mode"] == "real":
+            # The pinned SDK lazily probes platform metadata (including a
+            # possible local uname subprocess). Resolve it during bootstrap,
+            # before the product/Provider phase prohibits all subprocesses.
+            import_module("openai._base_client").get_platform()
         case_id = str(request.get("case_id") or case_id)
         guard = IsolationGuard(
             project_root=Path(request["project_root"]).resolve(),

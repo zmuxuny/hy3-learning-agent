@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 from learning_agent_eval.case_authoring import write_candidate_suite
+from learning_agent_eval.isolation import EvaluationIsolationError, IsolationGuard
 from learning_agent_eval.model_budget import (
     RESERVATION,
     ModelBudget,
@@ -150,3 +151,27 @@ def test_shared_money_ledger_reserves_before_calls_and_never_refunds_unknown_usa
     assert budget.summary()["charged_micro_cny"] == 2 * RESERVATION + 300
     with pytest.raises(FileExistsError):
         ModelBudget.create(path, limit_micro_cny=14_000_000)
+
+
+def test_real_dns_accepts_anyio_bytes_but_denies_other_hosts_and_ports(tmp_path, monkeypatch):
+    import socket
+
+    seen = []
+
+    def resolve(host, *args, **kwargs):
+        seen.append(host)
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.8", 443))]
+
+    monkeypatch.setattr(socket, "getaddrinfo", resolve)
+    guard = IsolationGuard(project_root=tmp_path / "repo", worker_root=tmp_path / "worker",
+                           model_mode="real", model_base_url="https://tokenhub.tencentmaas.com/v1")
+    guard._install_network_resolution_guard()
+    socket.getaddrinfo(b"tokenhub.tencentmaas.com", 443)
+    assert seen == [b"tokenhub.tencentmaas.com"]
+    guard._audit("socket.connect", (None, ("192.0.2.8", 443)))
+    assert guard.counters["network_calls"] == 0
+    with pytest.raises(EvaluationIsolationError):
+        socket.getaddrinfo(b"other.example.test", 443)
+    with pytest.raises(EvaluationIsolationError):
+        guard._audit("socket.connect", (None, ("192.0.2.8", 25)))
+    assert len(seen) == 1
