@@ -169,17 +169,33 @@ ALLOWED_ACTION_COMBINATIONS = (
     ("INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"),
 )
 
+# Closed product read surface. No model-provided relevance flag can exempt a
+# write or a final answer. Empty-content inspection still remains in trajectory.
+INSPECTION_TOOLS = frozenset({
+    "profile_get", "plan_list", "plan_get", "planning_intake_get", "quiz_get",
+    "submission_get", "submission_list", "resource_list", "learning_event_list",
+    "study_state_get", "competency_get", "competency_graph_get", "evidence_list",
+})
+
+
+def inspection_only_response(text: str, tool_calls: Iterable[Mapping[str, Any]]) -> bool:
+    calls = list(tool_calls)
+    return not text.strip() and bool(calls) and all(call.get("name") in INSPECTION_TOOLS for call in calls)
+
 _SEMANTIC_DICTIONARY = canonical_json(ACTION_SEMANTICS)
 ACTION_DECLARATION_INSTRUCTION = (
     "Evaluation action protocol (model-action-declaration-v2): for every main "
-    "Agent response, put exactly one declaration at the first non-empty content: "
+    "Agent decision response, put exactly one declaration at the first non-empty content: "
     '<model-action-v2>{"action_classes":["ACTION"]}</model-action-v2>. '
     "JSON whitespace and object-key order are insignificant. The only allowed "
     "field is action_classes; list intended actions in execution order. Single "
     "actions are valid; the only registered combination is INSUFFICIENT_EVIDENCE "
     "followed by REQUEST_CLARIFICATION. The declaration describes the decision, "
     "not whether an effect succeeded. Child and auxiliary calls do not declare "
-    "actions. The following canonical JSON dictionary is normative, including "
+    "actions. A main response with no text and only these read tools is inspection, "
+    f"not an action declaration: {', '.join(sorted(INSPECTION_TOOLS))}. "
+    "Every write attempt and final answer still requires a declaration. "
+    "The following canonical JSON dictionary is normative, including "
     "track, boundaries, fields, examples, combinations, and missing-declaration "
     f"handling: {_SEMANTIC_DICTIONARY}"
 )
@@ -202,6 +218,7 @@ ACTION_DECLARATION_PROTOCOL_DOCUMENT = {
     "actions": ACTION_SEMANTICS,
     "allowed_combinations": [list(item) for item in ALLOWED_ACTION_COMBINATIONS],
     "missing_or_invalid_policy": "retain_episode_and_score_behavior_failure",
+    "inspection_exception": {"assistant_content": "empty", "all_tools_in": sorted(INSPECTION_TOOLS), "trajectory_retained": True},
     "instruction": ACTION_DECLARATION_INSTRUCTION,
 }
 ACTION_DECLARATION_PROTOCOL_SHA256 = sha256_digest(

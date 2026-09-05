@@ -42,6 +42,9 @@ AGENT_RUNTIME_CONFIG_SHA256 = sha256_digest(
         "n": 1,
         "sdk_max_retries": 0,
         "cost_policy": "hy3-prepaid-budget-v1",
+        "max_steps": 8,
+        "max_model_calls": 8,
+        "max_tool_calls": 16,
     }
 )
 def dependency_lock_sha256(project_root: Path = PROJECT_ROOT) -> str:

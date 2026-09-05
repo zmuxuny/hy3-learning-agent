@@ -810,6 +810,7 @@ def _raw_identity_field_issues(
     *,
     path: str,
     file: str,
+    argument_context: bool = False,
 ) -> list[ValidationIssue]:
     """Reject unnormalized identity-shaped fields inside allowlisted JSON."""
 
@@ -817,7 +818,7 @@ def _raw_identity_field_issues(
     if isinstance(value, Mapping):
         for key, child in value.items():
             child_path = f"{path}.{key}"
-            if (
+            if not argument_context and (
                 key == "id"
                 or key.endswith("_ids")
                 or (key.endswith("_id") and key not in _PUBLIC_NESTED_ID_FIELDS)
@@ -830,11 +831,12 @@ def _raw_identity_field_issues(
                         file=file,
                     )
                 )
-            issues.extend(_raw_identity_field_issues(child, path=child_path, file=file))
+            issues.extend(_raw_identity_field_issues(child, path=child_path, file=file,
+                          argument_context=argument_context or key in {"arguments", "canonical_args"}))
     elif isinstance(value, list):
         for index, child in enumerate(value):
             issues.extend(
-                _raw_identity_field_issues(child, path=f"{path}[{index}]", file=file)
+                _raw_identity_field_issues(child, path=f"{path}[{index}]", file=file, argument_context=argument_context)
             )
     return issues
 
@@ -2217,6 +2219,7 @@ def _v4_v3_validation_projection(episode: Mapping[str, Any]) -> dict[str, Any]:
                 "request_config",
                 "response_validation_errors",
                 "token_usage",
+                "returned_tool_calls",
             }
         }
         for call in episode["observable_trace"]["model_calls"]
@@ -2311,6 +2314,14 @@ def _episode_v4_semantic_issues(
         if observation["record_source"] != source.get("entity_type"):
             issues.append(_issue("trace.observation_source_mismatch", f"$.observable_trace.tool_invocations[{index}]",
                                  "Tool observation source does not match its durable evidence.", file=file))
+    observations = {o["invocation_id"]: o for o in episode["observable_trace"]["tool_invocations"]}
+    for index, call in enumerate(episode["observable_trace"]["model_calls"]):
+        returned = call["returned_tool_calls"]
+        linked = [observations.get(ref) for ref in call["tool_call_refs"]]
+        if (len(returned) != len(linked) or any(o is None or r["call_id"] != o["tool_call_id"]
+                or r["name"].replace("_", ".") != o["tool_name"] for r, o in zip(returned, linked))):
+            issues.append(_issue("trace.returned_tool_mismatch", f"$.observable_trace.model_calls[{index}]",
+                                 "Returned tool identities differ from their observed execution.", file=file))
     git_digest = git_source_bundle_sha256(runtime["git_commit"], "runtime")
     if (git_digest is None or attestation["git_commit"] != runtime["git_commit"]
             or runtime["worktree_clean"] and git_digest != episode["provenance"]["runtime_source_bundle_sha256"]):

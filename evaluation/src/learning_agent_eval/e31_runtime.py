@@ -8,6 +8,7 @@ from typing import Any
 from .action_protocol import (
     ACTION_DECLARATION_PROTOCOL_SHA256,
     ACTION_DECLARATION_PROTOCOL_VERSION,
+    inspection_only_response,
     parse_action_declaration,
 )
 from .canonical import sha256_digest
@@ -231,7 +232,8 @@ def build_model_calls_v4(
     calls = build_model_calls_v3(records, normalize_run_id=normalize_run_id)
     result: list[dict[str, Any]] = []
     for call, record in zip(calls, records, strict=True):
-        applicable = call["call_purpose"] == "decision" and call["status"] == "completed"
+        applicable = (call["call_purpose"] == "decision" and call["status"] == "completed"
+                      and not inspection_only_response(str(call["assistant_text"] or ""), record.get("function_calls", [])))
         if applicable:
             declaration_status, action_classes, _ = parse_action_declaration(
                 str(call["assistant_text"] or "")
@@ -242,6 +244,7 @@ def build_model_calls_v4(
             **call,
             "request_config": dict(record.get("request_config") or {}),
             "token_usage": record.get("token_usage"),
+            "returned_tool_calls": list(record.get("function_calls", [])),
             "response_validation_errors": [
                 {"tool_call_id": item["call_id"], "code": item["argument_error"]}
                 for item in record.get("function_calls", []) if item.get("argument_error")

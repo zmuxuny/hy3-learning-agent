@@ -37,7 +37,7 @@ from .exporter import ExportError
 from .exporter_v3 import ExportV3Error, build_decision_episode_v3
 from .exporter_v4 import ExportV4Error, build_decision_episode_v4
 from .isolation import EvaluationIsolationError, IsolationGuard
-from .normalizers import normalize_json, normalize_rfc3339
+from .normalizers import NormalizationError, normalize_json, normalize_rfc3339
 from .privacy import privacy_issues
 from .recorder import EvaluationModelRecorder
 from .resources import EvaluationSnapshotProvider
@@ -195,24 +195,31 @@ def _assert_episode_public(episode: dict[str, Any], reference: dict[str, Any]) -
 
 
 def _public_model_records(
-    records: list[dict[str, Any]], identities: Any, *, active: bool
+    records: list[dict[str, Any]], identities: Any, *, active: bool, failure: bool = False
 ) -> list[dict[str, Any]]:
     """Normalize actual references without interpreting tool JSON Schema keys."""
 
     projected: list[dict[str, Any]] = []
+    def run_ref(raw: str) -> str:
+        try:
+            return identities.resolve("agent_run", raw)
+        except NormalizationError:
+            if failure:
+                return raw  # Failure records may precede a complete Snapshot registry.
+            raise
     for source in records:
         record = normalize_json(source)
-        record["run_id"] = identities.resolve("agent_run", source["run_id"])
+        record["run_id"] = run_ref(source["run_id"])
         parent_run_id = source.get("parent_run_id")
         record["parent_run_id"] = (
-            identities.resolve("agent_run", parent_run_id)
+            run_ref(parent_run_id)
             if parent_run_id is not None
             else None
         )
         record["function_calls"] = [
             {
                 **call,
-                "canonical_arguments": normalize_reference_fields(
+                "canonical_arguments": call["canonical_arguments"] if active else normalize_reference_fields(
                     call["canonical_arguments"], identities
                 ),
             }
@@ -342,7 +349,7 @@ async def _execute_inner(
             client,
             invocation_mode=request["model_mode"],
             metadata_provider=model_clients.current_model_call_metadata,
-            max_calls={"planning": 5, "intervention": 3, "assessment": 4, "revision": 4}[case["track"]] if pilot else None,
+            max_calls=12 if pilot else None,
             max_output_tokens=OUTPUT_LIMIT if budget is not None else None,
             budget=budget,
             budget_scope=case["case_id"],
@@ -544,6 +551,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
         records = _public_model_records(
             recorder.records, progress["identities"],
             active=request.get("contract_version") == "v4",
+            failure=True,
         )
         sink = progress.get("sink")
         isolation = progress.get("isolation") or {
@@ -558,7 +566,8 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
         failure = _failure_document(
             request=request, case=case, stage=stage,
             reason_code=getattr(exc, "code", "worker.framework_error"),
-            public_summary="Isolated execution failed; completed public calls are retained.",
+            public_summary=(exc.public_message if isinstance(exc, WorkerFailure)
+                            else "Isolated execution failed; completed public calls are retained."),
             records=records, isolation_evidence=isolation,
             configured_model=progress["configured_model"],
         )

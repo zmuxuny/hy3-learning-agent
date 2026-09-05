@@ -134,6 +134,7 @@ def _trace_projection(trace: Mapping[str, Any], *, salt: str) -> dict[str, Any]:
         call.pop("request_model", None)
         call.pop("request_config", None)
         call.pop("token_usage", None)
+        call.pop("returned_tool_calls", None)
     return _sanitize(projected, salt=salt)
 
 

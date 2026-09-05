@@ -26,6 +26,15 @@ class SeedNotification(TypedDict):
     body: str
 
 
+class SeedPlanningQuestion(TypedDict):
+    __pydantic_config__ = ConfigDict(extra="forbid", strict=True)
+    id: str
+    prompt: str
+    why: str
+    options: list[str]
+    allow_custom: bool
+
+
 class RuntimeSeed(TypedDict, total=False):
     __pydantic_config__ = ConfigDict(extra="forbid", strict=True)
     plan_title: str
@@ -38,12 +47,12 @@ class RuntimeSeed(TypedDict, total=False):
     task_title: str
     task_description: str
     task_estimated_minutes: Annotated[int, Field(ge=1)]
-    task_status: Literal["pending", "in_progress", "completed"]
+    task_status: Literal["pending", "active", "completed"]
     submission_content: str
     submission_artifacts: list[dict[str, str]]
     submission_status: Literal["submitted", "accepted", "revision_required"]
     planning_readiness: Literal["ready", "collecting"]
-    planning_open_questions: list[str]
+    planning_open_questions: list[SeedPlanningQuestion]
     planning_confirmed_facts: list[dict[str, str]]
     quiet_start: str
     quiet_end: str

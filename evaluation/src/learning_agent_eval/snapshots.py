@@ -770,7 +770,7 @@ def _ref(
 def _normalize_references(value: object, registry: StableIdentityRegistry) -> Any:
     normalized = normalize_json(value)
 
-    def visit(item: Any, *, container_key: str | None = None, tool_name: str | None = None) -> Any:
+    def visit(item: Any, *, container_key: str | None = None, tool_name: str | None = None, argument_context: bool = False) -> Any:
         if isinstance(item, dict):
             declared_tool = item.get("tool_name", item.get("name"))
             if isinstance(declared_tool, str) and declared_tool in _TOOL_RESULT_ID_TYPES:
@@ -780,29 +780,41 @@ def _normalize_references(value: object, registry: StableIdentityRegistry) -> An
                 entity_type = _REFERENCE_TYPES.get(key)
                 public_key = key
                 if key == "id":
+                    if container_key == "open_questions":
+                        result["question_key"] = child  # A public form key, not an ORM ID.
+                        continue
                     entity_type = _CONTAINER_ID_TYPES.get(container_key or "")
                     if entity_type is None and container_key == "data":
                         entity_type = _TOOL_RESULT_ID_TYPES.get(tool_name or "")
-                    if entity_type is None:
+                    if entity_type is None and not argument_context:
                         raise SnapshotCollectionError("snapshot.unsupported_nested_id")
-                    public_key = f"{entity_type}_ref"
-                    if child is not None:
-                        child = registry.resolve(entity_type, child)
+                    if entity_type is not None:
+                        try:
+                            child = registry.resolve(entity_type, child) if child is not None else None
+                            public_key = f"{entity_type}_ref"
+                        except NormalizationError:
+                            if not argument_context:
+                                raise
                 elif entity_type is not None:
                     public_key = f"{key.removesuffix('_id')}_ref"
                     if child is not None:
-                        child = registry.resolve(entity_type, child)
+                        try:
+                            child = registry.resolve(entity_type, child)
+                        except NormalizationError:
+                            if not argument_context:
+                                raise
+                            public_key = key  # Preserve the invalid attempted target as input.
                 elif key == "memory_ids":
                     if child:
                         raise SnapshotCollectionError(
                             "snapshot.unsupported_memory_reference"
                         )
                     public_key = "memory_refs"
-                elif key.endswith("_id") and key not in _PUBLIC_ID_FIELDS:
+                elif key.endswith("_id") and key not in _PUBLIC_ID_FIELDS and not argument_context:
                     raise SnapshotCollectionError(
                         "snapshot.unsupported_nested_reference"
                     )
-                elif key.endswith("_ids"):
+                elif key.endswith("_ids") and not argument_context:
                     raise SnapshotCollectionError(
                         "snapshot.unsupported_nested_reference_list"
                     )
@@ -813,10 +825,11 @@ def _normalize_references(value: object, registry: StableIdentityRegistry) -> An
                     child = normalize_rfc3339(child)
                 if public_key in result:
                     raise SnapshotCollectionError("snapshot.duplicate_public_field")
-                result[public_key] = visit(child, container_key=key, tool_name=tool_name)
+                result[public_key] = visit(child, container_key=key, tool_name=tool_name,
+                                          argument_context=argument_context or key in {"arguments", "canonical_args"})
             return result
         if isinstance(item, list):
-            return [visit(child, container_key=container_key, tool_name=tool_name) for child in item]
+            return [visit(child, container_key=container_key, tool_name=tool_name, argument_context=argument_context) for child in item]
         return item
 
     return visit(normalized)

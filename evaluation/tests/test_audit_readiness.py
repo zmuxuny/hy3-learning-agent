@@ -390,7 +390,7 @@ def test_realistic_read_before_assessment_is_exportable(tmp_path):
     case = load(DATA / "cases/case-e31-a-positive.json")
     original = case["runtime_setup"]["scripted_turns"]
     read = deepcopy(original[0])
-    read.update(assistant_text="Inspect the actual submission and plan before grading.", declared_actions=[],
+    read.update(assistant_text="", declared_actions=[],
                 tool_calls=[{"call_id":"read-submission", "name":"submission_get", "arguments":{"submission_id":1}},
                             {"call_id":"read-plan", "name":"plan_get", "arguments":{"plan_id":1}}])
     case["runtime_setup"]["scripted_turns"] = [read, *original]
@@ -405,11 +405,14 @@ def test_realistic_read_before_assessment_is_exportable(tmp_path):
     read_results = {e["name"]: e["result"]["data"] for e in events if e.get("name") in {"plan_get", "submission_get"} and "result" in e}
     assert read_results["plan_get"]["plan_ref"] == "plan:e1:a:001"
     assert read_results["submission_get"]["submission_ref"] == "submission:e1:a:001"
+    assert episode["observable_trace"]["model_calls"][0]["action_declaration_status"] == "not_applicable"
+    assert "action.declaration_missing" not in episode["result"]["classification_issues"]
+    assert len(episode["observable_trace"]["model_calls"][0]["returned_tool_calls"]) == 2
 
 
 def test_unknown_planning_budget_is_not_seeded_as_confirmed(tmp_path):
     case = no_write_case("planning", ["REQUEST_USER_INPUT"])
-    case["runtime_setup"]["seed"].update(planning_readiness="collecting", planning_confirmed_facts=[], planning_open_questions=["How much time is available?"])
+    case["runtime_setup"]["seed"].update(planning_readiness="collecting", planning_confirmed_facts=[], planning_open_questions=[{"id":"time", "prompt":"How much time is available?", "why":"Size the scope", "options":[], "allow_custom":True}])
     final = deepcopy(case["runtime_setup"]["scripted_turns"][0])
     read = deepcopy(final)
     read.update(declared_actions=[], tool_calls=[{"call_id":"read-intake", "name":"planning_intake_get", "arguments":{}}])
@@ -424,6 +427,36 @@ def test_unknown_planning_budget_is_not_seeded_as_confirmed(tmp_path):
     messages = episode["observable_trace"]["model_calls"][1]["visible_context"]["messages"]
     result = next(json.loads(m["payload"]["content"]) for m in messages if m["role"] == "tool")
     assert result["data"]["confirmed_facts"] == []
+
+
+def test_invalid_attempted_entity_is_scoreable_and_raw_arguments_survive(tmp_path):
+    case = load(DATA / "cases/case-e31-r-positive.json")
+    case["runtime_setup"]["scripted_turns"][0]["tool_calls"][0]["arguments"]["plan_id"] = 999
+    dataset = suite_for(tmp_path, [case])
+    summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+    assert not summary.failure_ids
+    episode = load(next((tmp_path / "runtime/episodes").glob("*.json")))
+    assert validate_dataset(tmp_path / "runtime").ok
+    call = episode["observable_trace"]["model_calls"][0]
+    assert call["returned_tool_calls"][0]["canonical_arguments"]["plan_id"] == 999
+    assert episode["observable_trace"]["tool_invocations"][0]["observation_status"] in {"failed", "blocked"}
+    result = evaluate_active_rules(input_path=tmp_path / "runtime", output=tmp_path / "rules")
+    assert not result.invalid_episode_ids
+    assert result.hard_gate_episode_ids
+
+
+def test_projection_failure_retains_original_public_tool_arguments():
+    from learning_agent_eval.active_worker import _public_model_records
+    from learning_agent_eval.normalizers import NormalizationError
+
+    def unresolved(*_):
+        raise NormalizationError("unresolved", "run_id")
+
+    source = {"ordinal": 1, "call_id": "model-call:001", "run_id":"unseen-child", "parent_run_id":None,
+              "parent_call_id":None,"function_calls":[{"call_id":"question", "name":"planning_intake_update", "canonical_arguments":{"open_questions":[{"id":"deadline"}]}}]}
+    records = _public_model_records([source], SimpleNamespace(resolve=unresolved), active=True, failure=True)
+    assert records[0]["run_id"] == "unseen-child"
+    assert records[0]["function_calls"] == source["function_calls"]
 
 
 def test_proposal_cannot_hide_a_real_write(effect_chain):

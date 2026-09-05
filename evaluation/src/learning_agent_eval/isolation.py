@@ -85,6 +85,9 @@ def worker_environment(
         environment["MODEL_NAME"] = os.environ.get("MODEL_NAME", HY3_MODEL)
         environment["MODEL_TEMPERATURE"] = "0.9"
         environment["MODEL_REASONING_EFFORT"] = "high"
+        environment["AGENT_MAX_STEPS"] = "8"
+        environment["AGENT_MAX_MODEL_CALLS"] = "8"
+        environment["AGENT_MAX_TOOL_CALLS"] = "16"
     model_url = urlsplit(environment["OPENAI_API_BASE"])
     if (
         model_url.scheme != "https"

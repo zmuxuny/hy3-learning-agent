@@ -3205,10 +3205,18 @@ class JudgeReferenceV2(JudgeReferenceV1):
     predicate_semantics: PredicateSemanticsV2
 
 
+class ReturnedToolCall(StrictContractModel):
+    call_id: str
+    name: str
+    canonical_arguments: dict[str, JsonValue]
+    argument_error: Literal["invalid_json", "non_object_json"] | None = None
+
+
 class ModelCallV4(ModelCallV3):
     request_config: dict[str, JsonValue] = Field(default_factory=dict)
     token_usage: dict[str, Annotated[int, Field(ge=0)]] | None = None
     response_validation_errors: list[dict[str, str]] = Field(default_factory=list)
+    returned_tool_calls: list[ReturnedToolCall] = Field(default_factory=list)
     action_protocol_version: Literal["model-action-declaration-v2"]
     action_protocol_sha256: Sha256
     action_declaration_status: ActionDeclarationStatusV1
@@ -3220,7 +3228,10 @@ class ModelCallV4(ModelCallV3):
             dict.fromkeys(self.declared_action_classes)
         ):
             raise ValueError("declared action classes must be unique and ordered")
-        applicable = self.call_purpose == "decision" and self.status == "completed"
+        from .action_protocol import inspection_only_response
+
+        applicable = (self.call_purpose == "decision" and self.status == "completed"
+                      and not inspection_only_response(self.assistant_text or "", [c.model_dump() for c in self.returned_tool_calls]))
         if self.depth > 0 and self.decision_relevant and self.parent_call_id is None:
             raise ValueError("nested decision calls require a parent model call")
         if not applicable:

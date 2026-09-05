@@ -511,7 +511,7 @@
         },
         "planning_open_questions": {
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/SeedPlanningQuestion"
           },
           "title": "Planning Open Questions",
           "type": "array"
@@ -574,7 +574,7 @@
         "task_status": {
           "enum": [
             "pending",
-            "in_progress",
+            "active",
             "completed"
           ],
           "title": "Task Status",
@@ -724,6 +724,43 @@
         "body"
       ],
       "title": "SeedNotification",
+      "type": "object"
+    },
+    "SeedPlanningQuestion": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_custom": {
+          "title": "Allow Custom",
+          "type": "boolean"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Options",
+          "type": "array"
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "why": {
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "prompt",
+        "why",
+        "options",
+        "allow_custom"
+      ],
+      "title": "SeedPlanningQuestion",
       "type": "object"
     },
     "SeedStage": {

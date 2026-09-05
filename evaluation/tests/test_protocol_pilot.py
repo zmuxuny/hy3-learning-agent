@@ -175,3 +175,13 @@ def test_real_dns_accepts_anyio_bytes_but_denies_other_hosts_and_ports(tmp_path,
     with pytest.raises(EvaluationIsolationError):
         guard._audit("socket.connect", (None, ("192.0.2.8", 25)))
     assert len(seen) == 1
+
+
+def test_inspection_does_not_exempt_writes_or_final_answers():
+    from learning_agent_eval.action_protocol import inspection_only_response
+
+    assert inspection_only_response("", [{"name":"plan_get"}, {"name":"submission_get"}])
+    assert not inspection_only_response("All accepted", [{"name":"plan_get"}])
+    assert not inspection_only_response("", [{"name":"plan_get"}, {"name":"plan_patch"}])
+    assert not inspection_only_response("", [{"name":"unknown_read_tool"}])
+    assert not inspection_only_response("", [])

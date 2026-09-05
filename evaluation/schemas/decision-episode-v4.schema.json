@@ -957,6 +957,13 @@
           "title": "Response Validation Errors",
           "type": "array"
         },
+        "returned_tool_calls": {
+          "items": {
+            "$ref": "#/$defs/ReturnedToolCall"
+          },
+          "title": "Returned Tool Calls",
+          "type": "array"
+        },
         "run_id": {
           "maxLength": 128,
           "minLength": 1,
@@ -1610,6 +1617,49 @@
         "snapshot_digest"
       ],
       "title": "ResourceManifest",
+      "type": "object"
+    },
+    "ReturnedToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "argument_error": {
+          "anyOf": [
+            {
+              "enum": [
+                "invalid_json",
+                "non_object_json"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Argument Error"
+        },
+        "call_id": {
+          "title": "Call Id",
+          "type": "string"
+        },
+        "canonical_arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Canonical Arguments",
+          "type": "object"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "call_id",
+        "name",
+        "canonical_arguments"
+      ],
+      "title": "ReturnedToolCall",
       "type": "object"
     },
     "RunEvent": {
