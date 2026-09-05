@@ -30,8 +30,10 @@ CaseSpec v2（控制面，含私有标注）
 确定性、失败分类和 Hard Gate/cap，不是 Hy3 能力结果。E3.1.2 原始收口只运行 stub。
 2026-09-05 经授权完成审计修复及 E4 候选运行：48 Primary 真实执行得到 45 Episode +
 3 RuntimeFailure，24 Calibration 为受控输出。2026-09-06 已完成 48 Primary、24 Calibration
-和 8 来源的 AI 内容裁决、候选重建和最终回归。现已获 S06 修复与 E5 接续授权，
-真实 Judge 有效性实验和可信登记尚未完成；下一轮见 [E5 开发交接](../docs/E5开发交接.md)。见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
+和 8 来源的 AI 内容裁决、候选重建和最终回归。S06 机制修复与 E5 必需实验已完成：
+V2 固定 `40fddb8`，24 例判别力和 16×5 重复共 88 个有效评估，最低预设方法目标达标。
+真实浏览器流程及 AI 审计完成，具体漏检/波动和费用见 [E5 验收记录](../docs/E5验收工作记录.md)。
+正式未见测试与可信登记仍未完成；接续见 [完成交接](../docs/E5开发交接.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
 [原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
 
 ## 核心语义
@@ -211,8 +213,56 @@ Schema/Evidence/隐私失败只把稳定错误码送回修复一次；第二次�
 
 `deterministic-aggregator-v3` 的基础分为 `sum(weight × level / 2)`。Critical Rule Fail
 强制 Fail 且 cap=39，任一 Major Fail cap=69，多个 cap 取最严，Minor 无额外 cap。
-Judge 高分不能抵消 Rule Gate，suggested gate 不自动升级。invalid/judge_error/Runtime
-Failure 单列且不按 0 混入均值；四轨分别发布，不生成掩盖弱轨的 overall。
+Judge 高分不能抵消 Rule Gate，suggested gate 不自动升级。活动 `aggregate-results` 另生成
+`reviewed-results.csv`，按 `semantic-critical-review-v1` 校验内容裁决：confirmed Critical
+强制 fail/cap 39；没有确定 Gate 时未决建议为 review_required；dismissed 不撤销 Rule Gate。
+CSV 保留原始分、Rule-only 结果、裁决后结果、每条裁决及绑定摘要，由 Validator 和读取端重算。
+invalid/judge_error/Runtime Failure 单列且不按 0 混入均值；四轨分别发布。
+
+## E5 实验与内容裁决
+
+[E5 档案](artifacts/e5-acceptance-20260906/README.md)保存完整 V1/V2，而非只保存通过版。
+V2 严格排序 6/8、Good>Severe 8/8、Critical 联合召回 8/8，结论一致 96.25%、平均总体
+标准差 2.243425。Assessment 两个 Mild 漏检，Planning 个别样本波动较大；宏平均达标
+不能代替分轨/逐例解释。所有复核明确标记 AI。
+
+实验编排入口是 `evaluation/scripts/run_e5_experiments.py`，复用活动 Runtime/Rules/Judge/
+Aggregate API；通用 `validate-method/report/compare` CLI 仍未实现，不能将该脚本当作
+全部 E5–E8 工具均已完成。结果需在源码目录外生成，真实执行要求干净的设计绑定提交。
+以下以已经生成、版本匹配的 Runtime/Rules 和已有共享账本为输入；`$E5_*` 均由调用者设置，
+API Key 只从授权环境内存读取。这些是重跑命令，不会把已有结果覆盖或续跑成新成功批次。
+
+```bash
+export PYTHONPATH=evaluation/src
+.venv/bin/python evaluation/scripts/run_e5_experiments.py prepare \
+  --runtime "$E5_RUNTIME" --rules "$E5_RULES" --output "$E5_OUTPUT"
+.venv/bin/python evaluation/scripts/run_e5_experiments.py discrimination \
+  --runtime "$E5_RUNTIME" --rules "$E5_RULES" --output "$E5_OUTPUT" \
+  --budget-ledger "$E5_LEDGER"
+.venv/bin/python evaluation/scripts/run_e5_experiments.py repeat \
+  --runtime "$E5_RUNTIME" --rules "$E5_RULES" --output "$E5_OUTPUT" \
+  --budget-ledger "$E5_LEDGER"
+.venv/bin/python evaluation/scripts/run_e5_experiments.py summarize --output "$E5_OUTPUT"
+```
+
+`prepare` 固定全部 24 例及 Good/Mild 16 例，首轮计入各例第一次，追加 64 次；失败保留
+固定分母。`summarize` 验证上游与 CSV 后生成 `metrics.json` 和 `per-evaluation.json`，
+缺陷定位/召回需要另外做内容裁决，不能从扣分自动推断。本轮的 `defect-content-review.json`
+和 `method-validation.json` 绑定实际文件摘要，分别报告实验完成与最低方法指标是否达到。
+
+语义裁决通过唯一活动入口，`--semantic-reviews` 的参数是 **JSON 列表文件路径**：
+
+```bash
+.venv/bin/python -m learning_agent_eval aggregate-results \
+  --episodes "$E5_RUNTIME" --rules "$E5_RULES" --judges "$E5_JUDGES" \
+  --semantic-reviews "$E5_REVIEWS_JSON" --output "$E5_REVIEWED_OUTPUT"
+```
+
+每条裁决严格包含 `episode_id/episode_sha256/judge_result_sha256/candidate_id/verdict/`
+`reviewer_role/rationale/evidence_paths`。`candidate_id` 引用 `issue:` 或 `gate:` 提名；
+复核补充的遗漏 Critical 使用 `reviewer:` 并绑定同例证据。角色为 primary/delegated AI
+或 human reviewer，不能混淆；本轮为主 AI 内容裁决及同一子 agent AI 复核。已生成目录
+不覆盖；先保留原 Aggregate，再新建裁决输出。44 个冻结 Schema 未因此改写。
 
 ## Provider、隔离与正式性
 
@@ -233,8 +283,11 @@ invalid_input、judge_error 保留审计但阻止能力结论，不按 0 分混�
 
 Provider Attestation 是可审计归因，不是密码学证明。real 资格要求固定 TokenHub HTTPS
 allowlist、请求模型 `hy3`、响应模型 `hy3`、Provider request ID、请求/响应时间、安全
-配置摘要、当前 Git commit、干净工作树和匹配的 `evaluation-runtime-lock-v1`。Agent real 模式还必须传入共享 `--budget-ledger`，每次调用先预留再按完整 usage 结算，
-未知费用不退还。下一轮真实 Agent/Judge 实验已获授权，Judge 尚需接入同一账本和请求限额，具体见 [E5 开发交接](../docs/E5开发交接.md)。Agent 和
+配置摘要、当前 Git commit、干净工作树和匹配的 `evaluation-runtime-lock-v1`。Agent/Judge
+real 模式都必须传入同一个已有 `--budget-ledger`，每次调用（含结构修复）先预留、按完整
+usage 结算，未知费用保留预留。Judge 固定输入上界 196608、输出上限 8192、n=1，
+HTTP 不自动重试，最多一次结构修复；Agent 输出上限沿用 16000。E5 的全部真实调用和
+浏览器产品调用均计入原 14 元账本，结束占用 11.606238 元、剩余 2.393762 元。Agent 和
 Judge 的 real 模式还分别要求 `--allow-real-model` / `--allow-real-judge`；Key 只从调用者
 环境读取，CLI 参数、Manifest、日志和错误均不保存 Key 或 endpoint。
 
@@ -253,10 +306,10 @@ v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并�
 缺失、损坏或无法重建的证据仍由 Validator 拒绝。Provider 响应归因能审计声明与响应字段，
 不能证明远端服务的密码学身份；正式运行仍需要组织侧凭据、网络和运行审批。
 
-E4 已完成 48 Primary、24 Calibration 及 8 来源的 AI 内容裁决、绑定重建和最终回归；E5 接续已获授权，实验待执行。
+E4 已完成 48 Primary、24 Calibration 及 8 来源的 AI 内容裁决、绑定重建和最终回归；E5 必需实验已完成且最低方法目标达标。
 历史真实批次仍为 45 Episode + 3 Failure。当前输入为探索候选，复核记录不计作独立人类一致性；
 正式冻结和可信登记保留为 E5 方法稳定后、E6 前的交付，详见 [E4 验收记录](../docs/E4验收工作记录.md)。
-E5–E8 的真实 Judge 有效性实验、正式能力评测、版本回归、最终报告与 Demo 尚未完成。
+E5 的独立人类一致性/精确反事实/完整对抗安全扩展及 E6–E8 正式能力评测、版本回归、报告和评测 Demo 尚未完成。
 固定响应和 engineering 聚合不证明 Judge 标签正确或 Hy3 能力。已授权协议试跑只证明有限样例可执行，
 尚未统计完整 14 类真实遵循率；下一轮调用继续复用原预算，不能自动把探索记录升级为正式数据。发布治理细节见
 [`../docs/E3.1.2正式评测准入与版本治理.md`](../docs/E3.1.2正式评测准入与版本治理.md)，最终验收命令和精确结果

@@ -1,0 +1,10 @@
+{
+  "source_commit": "40fddb8f777e16de9711863381a4e26f534e4529",
+  "provider_calls": 0,
+  "archive_relative_runtime_paths_resolve": true,
+  "summary_replay_byte_identical": true,
+  "sha256": {
+    "metrics.json": "70860cf36ea7d2e376cb9fa879e55d0616de251f35253e3d1daf5c317189535d",
+    "per-evaluation.json": "2f53f6109aba0ed1eda353337c08ea276b43f18fb50a1bd8a8c5e33da736e178"
+  }
+}

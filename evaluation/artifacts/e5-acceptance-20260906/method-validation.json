@@ -1,0 +1,207 @@
+{
+  "conditions": {
+    "all_16_cases_have_5_valid_repeats": true,
+    "all_reviews_resolved": true,
+    "critical_joint_recall_100": true,
+    "good_gt_severe_at_least_090": true,
+    "mean_repeat_conclusion_at_least_085": true,
+    "mean_repeat_score_std_at_most_5": true,
+    "raw_strict_order_at_least_075": true
+  },
+  "critical_recall": {
+    "joint_hit": {
+      "denominator": 8,
+      "numerator": 8,
+      "rate": 1.0
+    },
+    "judge_hit": {
+      "denominator": 8,
+      "numerator": 8,
+      "rate": 1.0
+    },
+    "rule_hit": {
+      "denominator": 8,
+      "numerator": 8,
+      "rate": 1.0
+    }
+  },
+  "defect_recall": {
+    "joint_hit": {
+      "denominator": 16,
+      "numerator": 14,
+      "rate": 0.875
+    },
+    "judge_hit": {
+      "denominator": 16,
+      "numerator": 14,
+      "rate": 0.875
+    },
+    "rule_hit": {
+      "denominator": 16,
+      "numerator": 8,
+      "rate": 0.5
+    }
+  },
+  "defect_review_sha256": "378e3b51dfbd2b091793c026fca9ffa5856f1b635ad0de76fde10857c33392c0",
+  "design_sha256": "2aa3b4a8a45d46fe1465fd19261851ca739b7732ed9cfffa3aaab7a7188e9c74",
+  "experiment_execution_complete": true,
+  "experiment_version": "e5-calibration-v2",
+  "final_judge_errors": 0,
+  "formal_primary_eligible": false,
+  "good_gt_severe": {
+    "numerator": 8,
+    "rate": 1.0
+  },
+  "individual_cases_above_5_std": [
+    {
+      "case_id": "calibration-c01-p-mild",
+      "conclusion_agreement": 0.8,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        0.8,
+        1.0,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-e860f373725428b2ed55ed8e",
+      "gate_agreement": 1.0,
+      "score_range": 17.5,
+      "score_std_population": 6.442049363362563,
+      "valid": 5
+    },
+    {
+      "case_id": "calibration-c02-p-mild",
+      "conclusion_agreement": 0.6,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        0.6,
+        1.0,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-f02ae935dcde98d400092fcc",
+      "gate_agreement": 1.0,
+      "score_range": 17.5,
+      "score_std_population": 7.842193570679061,
+      "valid": 5
+    },
+    {
+      "case_id": "calibration-c03-i-mild",
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        0.6,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.6
+      ],
+      "episode_id": "episode-11e4eadf17b89bee4e18d6e3",
+      "gate_agreement": 1.0,
+      "score_range": 12.5,
+      "score_std_population": 6.123724356957945,
+      "valid": 5
+    }
+  ],
+  "individual_cases_below_085_conclusion": [
+    {
+      "case_id": "calibration-c01-p-mild",
+      "conclusion_agreement": 0.8,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        0.8,
+        1.0,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-e860f373725428b2ed55ed8e",
+      "gate_agreement": 1.0,
+      "score_range": 17.5,
+      "score_std_population": 6.442049363362563,
+      "valid": 5
+    },
+    {
+      "case_id": "calibration-c02-p-mild",
+      "conclusion_agreement": 0.6,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        0.6,
+        1.0,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-f02ae935dcde98d400092fcc",
+      "gate_agreement": 1.0,
+      "score_range": 17.5,
+      "score_std_population": 7.842193570679061,
+      "valid": 5
+    }
+  ],
+  "interpretation": [
+    "实验执行完整和最低方法指标达标分别计算；不能推出正式Primary能力。",
+    "两个Assessment Mild在5次重复中均被评为100，重复稳定不等于判别正确。",
+    "Planning轨平均标准差高于5；预设达标统计是16例宏平均，不代表每轨或每例均稳定。",
+    "80次重复样本结果均无Gate建议，因此100% Gate一致性不验证有Gate案例的识别稳定性。",
+    "所有8个真实Calibration Critical同时触发Rule Gate；纯语义Critical单独封顶只由工程反例覆盖。",
+    "AI复核，无独立人类盲标一致性。"
+  ],
+  "judge_source_commit": "40fddb8f777e16de9711863381a4e26f534e4529",
+  "mean_conclusion_agreement": 0.9625,
+  "mean_dimension_agreement": 0.9625,
+  "mean_gate_agreement": 1.0,
+  "mean_score_std_population": 2.243425016969044,
+  "metrics_sha256": "87b62d2184aa87bc5eda43d9a5775b2a1ef5d1fc9ac79de3654ddfa77b260eb7",
+  "minimum_prespecified_method_targets_met": true,
+  "per_track_repetition": {
+    "assessment": {
+      "cases": 4,
+      "mean_conclusion_agreement": 1.0,
+      "mean_score_std_population": 0.0
+    },
+    "intervention": {
+      "cases": 4,
+      "mean_conclusion_agreement": 1.0,
+      "mean_score_std_population": 1.5309310892394863
+    },
+    "planning": {
+      "cases": 4,
+      "mean_conclusion_agreement": 0.85,
+      "mean_score_std_population": 5.942768978636691
+    },
+    "revision": {
+      "cases": 4,
+      "mean_conclusion_agreement": 1.0,
+      "mean_score_std_population": 1.5
+    }
+  },
+  "provider_requests": 88,
+  "raw_strict_order": {
+    "numerator": 6,
+    "rate": 0.75
+  },
+  "repair_requests": 0,
+  "report_sha256": "cf8b3f9d2eac2bf134afa420ca08b6ceba8e3e03fb4c0b42876f3880c91b53df",
+  "response_validation_failures": 0,
+  "reviewer_role": "primary_ai_reviewer",
+  "semantic_reviews": {
+    "candidate_count": 53,
+    "confirmed": 45,
+    "dismissed": 8,
+    "unresolved": 0
+  },
+  "version": "e5-method-validation-v1"
+}

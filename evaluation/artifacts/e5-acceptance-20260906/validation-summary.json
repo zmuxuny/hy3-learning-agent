@@ -1,0 +1,170 @@
+{
+  "audit": {
+    "archive_report": "archive-validation.json",
+    "delegated_ai_recomputed_assertions": 2765,
+    "differences": 0,
+    "privacy_issues": 0,
+    "public_structured_documents_privacy_checked": 627
+  },
+  "binding_rebuild": {
+    "ai_content_review": "complete",
+    "calibration_cases": 24,
+    "logs": [
+      "logs/final-bindings-verified.log",
+      "logs/final-release-verified.log"
+    ],
+    "mutation_reconstruction": "passed",
+    "primary_cases": 48,
+    "production_registry_entries": 0,
+    "provider_calls": 0,
+    "schema_bytes_unchanged": true,
+    "schemas_frozen": 44,
+    "source_cases": 8
+  },
+  "branch": "fix/evaluation-audit-readiness",
+  "browser": {
+    "accepted_score": 100,
+    "accepted_submission_id": 1,
+    "active_run_offline_online_reload_restored": true,
+    "all_completed_status": true,
+    "evidence_observations": 2,
+    "no_horizontal_overflow": true,
+    "one_old_completed_fallback_did_not_fulfill_goal": true,
+    "operations": 4,
+    "operator": "primary_ai_reviewer",
+    "plan_id": 1,
+    "plan_total_minutes": 75,
+    "plan_version": 4,
+    "private_state_local_path": "/root/.local/state/learning-travel/e5-browser-20260906",
+    "progress": 0.5,
+    "provider": "real Hy3",
+    "remaining_task_minutes": 30,
+    "requests": 33,
+    "review_schedules": 0,
+    "valid_durable_runs": 9,
+    "viewport_widths": [
+      375,
+      768,
+      1280,
+      1440
+    ]
+  },
+  "budget": {
+    "all_paid_calls_share_original_ledger": true,
+    "final_occupied_micro_cny": 11606238,
+    "final_requests": 330,
+    "historical_occupied_micro_cny": 5397645,
+    "historical_requests": 190,
+    "original_limit_micro_cny": 14000000,
+    "original_request_prefix_unchanged": true,
+    "remaining_micro_cny": 2393762,
+    "unknown_usage_requests": 6,
+    "unknown_usage_reserved_micro_cny": 1563648
+  },
+  "date": "2026-09-06",
+  "delegated_review": "same single delegated_ai_reviewer, no grandchildren",
+  "experiments": {
+    "V1": {
+      "complete_results": 9,
+      "experiment_complete": false,
+      "input_admission_rejected": 10,
+      "planned": 88,
+      "provider_evaluations": 14,
+      "provider_requests": 19,
+      "repair_requests": 5,
+      "repeat_not_run": 64,
+      "result_files": 24,
+      "terminal_response_invalid": 5
+    },
+    "V2": {
+      "complete_results": 88,
+      "experiment_complete": true,
+      "minimum_prespecified_method_targets_met": true,
+      "not_run": 0,
+      "planned": 88,
+      "provider_evaluations": 88,
+      "provider_requests": 88,
+      "repair_requests": 0,
+      "response_validation_failures": 0,
+      "terminal_failures": 0
+    }
+  },
+  "final_code_commit": "d8fa1999cbeea4e820c610d201e084acbd49d5f7",
+  "handoff_commit": "5e7a4fb",
+  "independent_human_review": false,
+  "judge_v2_commit": "40fddb8f777e16de9711863381a4e26f534e4529",
+  "milestones": {
+    "E5_minimum_prespecified_targets_met": true,
+    "E5_required_experiments_complete": true,
+    "E6_formal_primary_complete": false,
+    "E7_version_comparison_complete": false,
+    "E8_final_report_and_demo_complete": false,
+    "S06_mechanism_repair_complete": true
+  },
+  "pushed_or_published": false,
+  "regression": [
+    {
+      "log": "logs/full-regression.log",
+      "passed": 1378,
+      "scope": "full Python baseline",
+      "seconds": 4200.96,
+      "source_commit": "3ed0541346909500c65123a2dd87188136ab39b4",
+      "warnings": 2
+    },
+    {
+      "log": "logs/final-evaluation-regression.log",
+      "passed": 292,
+      "scope": "all evaluation tests, final code",
+      "seconds": 1281.85,
+      "source_commit": "d8fa1999cbeea4e820c610d201e084acbd49d5f7"
+    },
+    {
+      "log": "logs/final-product-regression.log",
+      "passed": 34,
+      "scope": "S06/terminal/approval elapsed/plan summary/SSE product integration, final code",
+      "seconds": 17.66,
+      "source_commit": "d8fa1999cbeea4e820c610d201e084acbd49d5f7"
+    },
+    {
+      "build_log": "logs/frontend-responsive-build.log",
+      "build_passed": true,
+      "node_contracts_passed": 9,
+      "scope": "final frontend",
+      "source_commit": "d8fa1999cbeea4e820c610d201e084acbd49d5f7",
+      "test_log": "logs/frontend-approval-preview-tests.log",
+      "vitest_passed": 45
+    },
+    {
+      "log": "logs/e5-v2-verified.log",
+      "passed": 23,
+      "scope": "E5 active chain, projection, budget, metrics and failure branches",
+      "seconds": 32.4,
+      "source_commit": "40fddb8f777e16de9711863381a4e26f534e4529"
+    }
+  ],
+  "regression_interpretation": "The 1378 full baseline was on 3ed0541. Final code has the full evaluation suite plus targeted product/frontend/browser checks; counts overlap and are not summed as distinct final tests.",
+  "retained_limits": [
+    "S06 historical raw malformed arguments and finish_reason unavailable; no full real rerun claim.",
+    "V1 rejected Judge responses not originally persisted; initial browser call JSONL missing for 15 requests.",
+    "Two Assessment Mild defects were stably missed in all five repeats.",
+    "Planning mild conclusion agreement 80%/60%; three individual score standard deviations exceed 5; prespecified target is the 16-case macro mean.",
+    "All 80 repeat results have no suggested Gate; positive Gate stability is not measured.",
+    "All eight real Severe cases also have Rule Gates; pure semantic Critical cap is validated by engineering counterexamples.",
+    "AI content review is not independent human alignment; one synthetic learning story is not long-term learning effectiveness."
+  ],
+  "reviewer_role": "primary_ai_reviewer",
+  "semantic_review": {
+    "candidates": 53,
+    "confirmed": 45,
+    "critical_denominator": 8,
+    "critical_joint_hit": 8,
+    "defects_reviewed": 16,
+    "dismissed": 8,
+    "joint_hit": 14,
+    "judge_hit": 14,
+    "policy": "semantic-critical-review-v1",
+    "rules_hit": 8,
+    "unresolved": 0
+  },
+  "version": "e5-acceptance-validation-v1"
+}

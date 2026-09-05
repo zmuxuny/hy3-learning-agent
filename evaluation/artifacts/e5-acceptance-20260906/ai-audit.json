@@ -1,0 +1,1023 @@
+{
+  "artifact_bindings": [
+    {
+      "bytes_sha256": "5297786fb1c0e13424ca1c7ad93c8d0950c3cb2553617b9b4d6c043cf28688c6",
+      "path": "design.json"
+    },
+    {
+      "bytes_sha256": "70860cf36ea7d2e376cb9fa879e55d0616de251f35253e3d1daf5c317189535d",
+      "path": "metrics.json"
+    },
+    {
+      "bytes_sha256": "2f53f6109aba0ed1eda353337c08ea276b43f18fb50a1bd8a8c5e33da736e178",
+      "path": "per-evaluation.json"
+    },
+    {
+      "bytes_sha256": "0c78c92af9402abca58b416c044a992666b0899400f0154137c9290c0eb10695",
+      "path": "defect-content-review.json"
+    },
+    {
+      "bytes_sha256": "fe3d892cc7a72805fdb69e819f9f20cc7a7f8fabeb304de42adc954e576c9ede",
+      "path": "semantic-reviews-r1-assessment.json"
+    },
+    {
+      "bytes_sha256": "eb0d0788dbb58ae8785300202a8209b2b5d4d3279fbfcfea996c282722ee258d",
+      "path": "semantic-reviews-r1-intervention.json"
+    },
+    {
+      "bytes_sha256": "370f2b6934011681ae9a11dbdda56c2ee72999fd266c04fea370eda51e3f9f25",
+      "path": "semantic-reviews-r1-planning.json"
+    },
+    {
+      "bytes_sha256": "eed92f32715a46daf9193ce17102d0d976b928cc7930e07cda59967274585a09",
+      "path": "semantic-reviews-r1-revision.json"
+    },
+    {
+      "bytes_sha256": "7ff8cc1a21ed097bc495416d0c0a081b20a49f80013da33dc84ae331327149a6",
+      "path": "adjudicated-r1-assessment/reviewed-results.csv"
+    },
+    {
+      "bytes_sha256": "84372b4c66db39197d7df0d33b6657553b4de04ba72813a947b108c9c12eff23",
+      "path": "adjudicated-r1-intervention/reviewed-results.csv"
+    },
+    {
+      "bytes_sha256": "b76783df50fc98d417ac11c7d1814b19d566d694cccdd744d51f49223478221a",
+      "path": "adjudicated-r1-planning/reviewed-results.csv"
+    },
+    {
+      "bytes_sha256": "d359fbb6ccaa46aa5bcf0dd106a50d9dbdcbf6d68925541595739ed8c4edd4f5",
+      "path": "adjudicated-r1-revision/reviewed-results.csv"
+    }
+  ],
+  "audit_sha256": "0f4137b325acf958f6a23470b5a177697a7ee4563e1380b3e247067d25d4568c",
+  "audit_version": "e5-delegated-ai-readonly-audit-v1",
+  "budget": {
+    "accounting_note": "Charged total includes retained unknown-usage reservations; it is occupied budget, not an assertion that each unknown request consumed its entire reservation.",
+    "charged_micro_cny": 11606238,
+    "e5_browser_scopes": {
+      "e5-browser-experience": {
+        "charged_micro_cny": 753648,
+        "requests": 15
+      },
+      "e5-browser-final": {
+        "charged_micro_cny": 35205,
+        "requests": 2
+      },
+      "e5-browser-recovery": {
+        "charged_micro_cny": 375037,
+        "requests": 16
+      }
+    },
+    "handoff_first_190_micro_cny": 5397645,
+    "ledger_bytes_sha256": "18bf439406ceee17967cba6f5dfd96e3f0deae99a256a7a671cf907b3245ad87",
+    "ledger_path": "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json",
+    "limit_micro_cny": 14000000,
+    "remaining_micro_cny": 2393762,
+    "requests": 330,
+    "statuses": {
+      "settled": 324,
+      "unknown_usage_reserved": 6
+    },
+    "unknown_usage_reserved_micro_cny": 1563648,
+    "v1_judge_micro_cny": 906724,
+    "v1_judge_tickets": [
+      195,
+      196,
+      197,
+      199,
+      201,
+      202,
+      209,
+      211,
+      212,
+      213,
+      214,
+      215,
+      216,
+      218,
+      219,
+      221,
+      222,
+      223,
+      224
+    ],
+    "v2_attempts_without_finished_evidence_at_snapshot": [],
+    "v2_judge_first_ticket": 231,
+    "v2_judge_micro_cny_at_snapshot": 4137979,
+    "v2_judge_tickets": [
+      231,
+      232,
+      233,
+      234,
+      235,
+      236,
+      237,
+      238,
+      239,
+      241,
+      242,
+      244,
+      245,
+      246,
+      247,
+      249,
+      250,
+      252,
+      253,
+      254,
+      255,
+      256,
+      258,
+      259,
+      260,
+      261,
+      267,
+      268,
+      269,
+      270,
+      271,
+      272,
+      273,
+      274,
+      275,
+      276,
+      277,
+      278,
+      279,
+      280,
+      281,
+      282,
+      283,
+      284,
+      285,
+      286,
+      287,
+      288,
+      289,
+      290,
+      291,
+      292,
+      293,
+      294,
+      295,
+      296,
+      297,
+      298,
+      299,
+      300,
+      301,
+      302,
+      303,
+      304,
+      305,
+      306,
+      307,
+      308,
+      309,
+      310,
+      311,
+      312,
+      313,
+      314,
+      315,
+      316,
+      319,
+      320,
+      321,
+      322,
+      323,
+      324,
+      325,
+      326,
+      327,
+      328,
+      329,
+      330
+    ]
+  },
+  "checks": {
+    "accepted_payload_preserved": 88,
+    "actual_wire_reservation": 88,
+    "aggregate_full_recomputation": 112,
+    "aggregate_inventory": 24,
+    "aggregate_manifest_digest": 24,
+    "attempt_configuration_binding": 88,
+    "attempt_episode_blind_binding": 88,
+    "attempt_ledger_outcome": 88,
+    "attempt_log_complete_line": 20,
+    "attempt_public_privacy": 88,
+    "attempt_public_response_digest": 88,
+    "attempt_self_digest": 88,
+    "attempt_ticket_exists": 88,
+    "attempt_ticket_identity": 88,
+    "attestation_attempt_denominator": 88,
+    "calibration_not_formal": 88,
+    "catalog_evidence_visibility": 24,
+    "defect_evidence_paths": 16,
+    "defect_hit_boolean_recomputation": 16,
+    "defect_inventory": 1,
+    "defect_issue_identity": 16,
+    "defect_recall_denominator": 6,
+    "defect_review_design_binding": 1,
+    "defect_review_digest": 1,
+    "defect_role_and_critical": 16,
+    "defect_row_binding": 16,
+    "defect_rule_failure_identity": 16,
+    "design_self_digest": 1,
+    "dimension_order": 88,
+    "episode_binding": 24,
+    "final_experiment_completion": 1,
+    "first_round_reused_exactly_once": 16,
+    "fixed_case_denominators": 1,
+    "gate_repeat_all_negative_scope": 1,
+    "handoff_190_requests_5397645_preserved": 1,
+    "independent_discrimination_recomputation": 2,
+    "independent_metric_recomputation": 4,
+    "independent_per_case_repetition": 16,
+    "independent_score_range": 16,
+    "independent_std_recomputation": 1,
+    "initial_request_bound": 24,
+    "judge_config_binding": 20,
+    "judge_contract_linkage_evidence": 88,
+    "judge_fixed_source": 20,
+    "judge_manifest_digest": 20,
+    "judge_manifest_result_binding": 88,
+    "ledger_settled_usage_cost": 324,
+    "ledger_unchanged_after_final_snapshot": 1,
+    "ledger_unknown_keeps_reservation": 6,
+    "ledger_usage_within_reservation": 324,
+    "lossless_request_projection": 24,
+    "original_budget_envelope": 1,
+    "per_evaluation_judge_identity": 88,
+    "preset_repeat_members": 1,
+    "published_case_inventory": 20,
+    "published_metrics_pure_recomputation": 1,
+    "published_per_evaluation_pure_recomputation": 1,
+    "reference_digest": 24,
+    "repair_limit_and_sequence": 88,
+    "rule_binding": 24,
+    "rules_manifest_binding": 1,
+    "runtime_manifest_binding": 1,
+    "semantic_csv_full_recomputation": 24,
+    "semantic_review_file_csv_identity": 4,
+    "source_matches_fixed_judge_version": 7,
+    "three_quality_levels": 1,
+    "unique_provider_tickets": 1,
+    "v1_actual_request_denominator": 1,
+    "v1_ticket_attribution": 1
+  },
+  "declared_macro_method_targets_met": true,
+  "design_sha256": "2aa3b4a8a45d46fe1465fd19261851ca739b7732ed9cfffa3aaab7a7188e9c74",
+  "experiment_complete": true,
+  "finished_at_utc": "2026-09-05T21:15:45.794296+00:00",
+  "independent_human_review": false,
+  "limitations": [
+    "Calibration-only method verification: all declared macro targets are met, but this is not a formal Primary capability result or independent human agreement.",
+    "Per-case instability remains: C01/C02 Mild conclusion agreement is 0.8/0.6 and population std is 6.442/7.842; C03 Mild std is 6.124. Macro averages do not establish per-case reliability.",
+    "All 80 repetition evaluations have no gate/Critical suggestion; 100% gate consistency is not evidence of stability on positive Critical cases.",
+    "Constructed Critical recall is 8/8, and all 8 also trigger Rule gates. Real pure-semantic Critical without Rule gates is not represented.",
+    "Assessment C05/C06 Mild injected next-step defects were missed despite valid final payloads; all repeats remained full-score and stable. Stability does not imply correctness.",
+    "V1 failed public response bodies were not stored by the older source; retained failure/status/attestation/ledger evidence cannot recover their exact invalid paths.",
+    "This bounded final audit does not re-audit every product file or personally repeat the parent AI browser user journey. Product fixes have earlier scoped regression evidence."
+  ],
+  "machine_findings": [],
+  "manual_content_findings": [],
+  "manual_content_review": {
+    "agreement": "No observed content-recall or semantic-adjudication evidence mismatch. The two Assessment Mild misses are preserved; planning claims are not counted as adoption writes; blocked notifications are not counted as delivery.",
+    "defect_rows_read": 16,
+    "evidence_reviewed": [
+      "All 16 injected-defect rows: goal, visible output/action and cited Judge issue summaries.",
+      "All 53 semantic verdict rationales and candidate identities, with each dismissed candidate compared to original Judge wording.",
+      "Action/effect layers for the four injection mechanisms, including blocked intervention and actual accepted/completed assessment."
+    ],
+    "reviewer_role": "delegated_ai_reviewer",
+    "role_limit": "AI review, without independent human labels; root source content and main adjudication were also AI-reviewed.",
+    "semantic_decisions_read": 53
+  },
+  "request_projection": {
+    "cases": 24,
+    "initial_input_bound_max": 157589,
+    "initial_input_bound_min": 114300,
+    "input_limit": 196608,
+    "output_limit": 8192,
+    "repair_limit": 1,
+    "roundtrip": "exact canonical JSON equality"
+  },
+  "reviewer_role": "delegated_ai_reviewer",
+  "same_agent_also_implemented_scoped_runtime_fixes": true,
+  "snapshot": {
+    "attempt_errors": {},
+    "attempt_evidence_rows": 88,
+    "final_metrics_and_per_evaluation_audited": true,
+    "pending_semantic_candidates": [],
+    "per_evaluation_sha256": "4b8fb1338038bbb9a99342e1038b518f78d43be7bdd7aba977416b671e382c05",
+    "planned_evaluations": 88,
+    "provider_attempts_with_evidence": 88,
+    "published_directories": [
+      "judge-r1-assessment",
+      "judge-r1-intervention",
+      "judge-r1-planning",
+      "judge-r1-revision",
+      "judge-r2-assessment",
+      "judge-r2-intervention",
+      "judge-r2-planning",
+      "judge-r2-revision",
+      "judge-r3-assessment",
+      "judge-r3-intervention",
+      "judge-r3-planning",
+      "judge-r3-revision",
+      "judge-r4-assessment",
+      "judge-r4-intervention",
+      "judge-r4-planning",
+      "judge-r4-revision",
+      "judge-r5-assessment",
+      "judge-r5-intervention",
+      "judge-r5-planning",
+      "judge-r5-revision"
+    ],
+    "published_judge_results": 88,
+    "published_metrics_sha256": "87b62d2184aa87bc5eda43d9a5775b2a1ef5d1fc9ac79de3654ddfa77b260eb7",
+    "repairs_in_attempt_evidence": 0,
+    "semantic_reviews": 53,
+    "semantic_verdicts": {
+      "confirmed_critical": 45,
+      "dismissed": 8
+    },
+    "statuses": {
+      "complete": 88
+    },
+    "unpublished_planned_results": 0
+  },
+  "source_commit": "40fddb8f777e16de9711863381a4e26f534e4529",
+  "source_files": [
+    {
+      "matches_fixed_40fddb8": true,
+      "path": "evaluation/scripts/run_e5_experiments.py",
+      "sha256": "cf26ff595fc9f06d531414bc2725a601841d7e680474aa7b4d6602f99f136919"
+    },
+    {
+      "matches_fixed_40fddb8": true,
+      "path": "evaluation/src/learning_agent_eval/semantic_adjudication.py",
+      "sha256": "5343a62212b17adf0abd764f8f61cbc5a4bf73d5415ac28e130bc09697a5ec57"
+    },
+    {
+      "matches_fixed_40fddb8": true,
+      "path": "evaluation/src/learning_agent_eval/active_judge.py",
+      "sha256": "21271d258e034e862887cda04b807f0abf77bd34de6856dfabe141c11cfd7729"
+    },
+    {
+      "matches_fixed_40fddb8": true,
+      "path": "evaluation/src/learning_agent_eval/judge_request_projection.py",
+      "sha256": "e44e7dbf60e09f030254d76d99bcbe16486422d33f2b594cf4e4fe52cd7aca64"
+    },
+    {
+      "matches_fixed_40fddb8": true,
+      "path": "evaluation/src/learning_agent_eval/model_budget.py",
+      "sha256": "88042c58bdf93918c66cfec3fbf26664e5811d3c1b04e16a527bba7a225cd5db"
+    },
+    {
+      "matches_fixed_40fddb8": true,
+      "path": "evaluation/src/learning_agent_eval/active_aggregate.py",
+      "sha256": "7e0c0add0200480aefb9d0f0b9730e39e9c7041b9cbd93d91cf982565f6b9bb6"
+    },
+    {
+      "matches_fixed_40fddb8": true,
+      "path": "evaluation/src/learning_agent_eval/rubric.py",
+      "sha256": "99ee16b6177bb5fd81e57a55c6535bddfc4fcc2ff46ebcd63a71c71f23042330"
+    }
+  ],
+  "started_at_utc": "2026-09-05T21:12:57.121000+00:00",
+  "statistics": {
+    "complete_repeat_cases": 16,
+    "critical_recall": {
+      "joint_hit": {
+        "denominator": 8,
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "judge_hit": {
+        "denominator": 8,
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "rule_hit": {
+        "denominator": 8,
+        "numerator": 8,
+        "rate": 1.0
+      }
+    },
+    "gate_interpretation": {
+      "conclusion": "The 100% gate consistency is stability of no suggestions on preset Good/Mild cases; it does not measure stability when Critical/gate suggestions are present.",
+      "critical_signal_true": 0,
+      "gate_suggestion_false": 80,
+      "gate_suggestion_true": 0,
+      "repeat_evaluations": 80
+    },
+    "good_gt_severe": {
+      "denominator": 8,
+      "numerator": 8
+    },
+    "mean_conclusion_agreement": 0.9625,
+    "mean_dimension_agreement": 0.9625,
+    "mean_gate_agreement": 1.0,
+    "mean_score_std_complete_cases": 2.243425016969044,
+    "method_targets": {
+      "all_16_cases_have_5_valid_repeats": true,
+      "constructed_critical_joint_recall_100_percent": true,
+      "macro_conclusion_agreement_at_least_85_percent": true,
+      "mean_population_std_at_most_5": true,
+      "raw_good_gt_severe_at_least_90_percent": true,
+      "raw_strict_order_at_least_75_percent": true
+    },
+    "per_case_outliers": [
+      {
+        "case_id": "calibration-c01-p-mild",
+        "conclusion_agreement": 0.8,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          0.8,
+          1.0,
+          0.6,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-e860f373725428b2ed55ed8e",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          80.0,
+          72.5,
+          62.5,
+          80.0,
+          72.5
+        ],
+        "score_std_population": 6.442049363362563,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c02-p-mild",
+        "conclusion_agreement": 0.6,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          0.6,
+          1.0,
+          0.6,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-f02ae935dcde98d400092fcc",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          80.0,
+          80.0,
+          62.5,
+          70.0,
+          62.5
+        ],
+        "score_std_population": 7.842193570679061,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c03-i-mild",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          0.6,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.6
+        ],
+        "episode_id": "episode-11e4eadf17b89bee4e18d6e3",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          87.5,
+          87.5,
+          100.0,
+          100.0,
+          87.5
+        ],
+        "score_std_population": 6.123724356957945,
+        "valid": 5
+      }
+    ],
+    "raw_discrimination": [
+      {
+        "good": 100.0,
+        "good_gt_severe": true,
+        "group": "calibration-c01-p",
+        "mild": 80.0,
+        "severe": 0.0,
+        "strict_order": true
+      },
+      {
+        "good": 100.0,
+        "good_gt_severe": true,
+        "group": "calibration-c02-p",
+        "mild": 80.0,
+        "severe": 10.0,
+        "strict_order": true
+      },
+      {
+        "good": 100.0,
+        "good_gt_severe": true,
+        "group": "calibration-c03-i",
+        "mild": 87.5,
+        "severe": 0.0,
+        "strict_order": true
+      },
+      {
+        "good": 100.0,
+        "good_gt_severe": true,
+        "group": "calibration-c04-i",
+        "mild": 87.5,
+        "severe": 0.0,
+        "strict_order": true
+      },
+      {
+        "good": 100.0,
+        "good_gt_severe": true,
+        "group": "calibration-c05-a",
+        "mild": 100.0,
+        "severe": 15.0,
+        "strict_order": false
+      },
+      {
+        "good": 100.0,
+        "good_gt_severe": true,
+        "group": "calibration-c06-a",
+        "mild": 100.0,
+        "severe": 7.5,
+        "strict_order": false
+      },
+      {
+        "good": 95.0,
+        "good_gt_severe": true,
+        "group": "calibration-c07-r",
+        "mild": 80.0,
+        "severe": 25.0,
+        "strict_order": true
+      },
+      {
+        "good": 95.0,
+        "good_gt_severe": true,
+        "group": "calibration-c08-r",
+        "mild": 87.5,
+        "severe": 2.5,
+        "strict_order": true
+      }
+    ],
+    "recall": {
+      "joint_hit": {
+        "denominator": 16,
+        "numerator": 14,
+        "rate": 0.875
+      },
+      "judge_hit": {
+        "denominator": 16,
+        "numerator": 14,
+        "rate": 0.875
+      },
+      "rule_hit": {
+        "denominator": 16,
+        "numerator": 8,
+        "rate": 0.5
+      }
+    },
+    "repeat_denominator": 16,
+    "repetition": [
+      {
+        "case_id": "calibration-c01-p-good",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          0.6,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.6
+        ],
+        "episode_id": "episode-231f78f2e1be1f6eb8430715",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          100.0,
+          87.5,
+          92.5,
+          95.0,
+          100.0
+        ],
+        "score_std_population": 4.743416490252569,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c01-p-mild",
+        "conclusion_agreement": 0.8,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          0.8,
+          1.0,
+          0.6,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-e860f373725428b2ed55ed8e",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          80.0,
+          72.5,
+          62.5,
+          80.0,
+          72.5
+        ],
+        "score_std_population": 6.442049363362563,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c02-p-good",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          0.6,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.6
+        ],
+        "episode_id": "episode-b97b23f3e3e7fdfc12275704",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          100.0,
+          92.5,
+          100.0,
+          87.5,
+          95.0
+        ],
+        "score_std_population": 4.743416490252569,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c02-p-mild",
+        "conclusion_agreement": 0.6,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          0.6,
+          1.0,
+          0.6,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-f02ae935dcde98d400092fcc",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          80.0,
+          80.0,
+          62.5,
+          70.0,
+          62.5
+        ],
+        "score_std_population": 7.842193570679061,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c03-i-good",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-4fa64e978c5d6566955c0372",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c03-i-mild",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          0.6,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.6
+        ],
+        "episode_id": "episode-11e4eadf17b89bee4e18d6e3",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          87.5,
+          87.5,
+          100.0,
+          100.0,
+          87.5
+        ],
+        "score_std_population": 6.123724356957945,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c04-i-good",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-3a3feba25ed942cda7769cfe",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c04-i-mild",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-84d0d9013aa13958a3b2a754",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          87.5,
+          87.5,
+          87.5,
+          87.5,
+          87.5
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c05-a-good",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-b789b890d299968d6871ec12",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c05-a-mild",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-48a6cf4f85e6e279daf4888c",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c06-a-good",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-17dd0f809f01c2058e5147d2",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c06-a-mild",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-811564e6c875e329def5ad6c",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          100.0,
+          100.0,
+          100.0,
+          100.0,
+          100.0
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c07-r-good",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-da2ec345a605db8c069c02ff",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          95.0,
+          95.0,
+          95.0,
+          95.0,
+          95.0
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c07-r-mild",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          0.8,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-525877c35c593effdd69777e",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          80.0,
+          87.5,
+          87.5,
+          87.5,
+          87.5
+        ],
+        "score_std_population": 3.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c08-r-good",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-1e424876fab420a92bf4ec3c",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          95.0,
+          95.0,
+          95.0,
+          95.0,
+          95.0
+        ],
+        "score_std_population": 0.0,
+        "valid": 5
+      },
+      {
+        "case_id": "calibration-c08-r-mild",
+        "conclusion_agreement": 1.0,
+        "denominator": 5,
+        "dimension_agreement": [
+          0.8,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "episode_id": "episode-84d905ed19016768e5785600",
+        "gate_agreement": 1.0,
+        "raw_scores": [
+          87.5,
+          87.5,
+          80.0,
+          87.5,
+          87.5
+        ],
+        "score_std_population": 3.0,
+        "valid": 5
+      }
+    ],
+    "strict_order": {
+      "denominator": 8,
+      "numerator": 6
+    }
+  },
+  "v1": {
+    "counts": [
+      {
+        "count": 10,
+        "error_code": "judge_request_rejected",
+        "status": "judge_error"
+      },
+      {
+        "count": 9,
+        "error_code": null,
+        "status": "complete"
+      },
+      {
+        "count": 5,
+        "error_code": "judge_response_invalid",
+        "status": "judge_error"
+      }
+    ],
+    "planned_denominator_in_retained_metrics": 88,
+    "provider_evaluations": 14,
+    "provider_requests": 19,
+    "published_results": 24
+  }
+}

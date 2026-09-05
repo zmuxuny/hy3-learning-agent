@@ -1,0 +1,54 @@
+{
+  "ai_recomputed_assertions": 2765,
+  "database_or_env_files_published": false,
+  "exact_key_occurrences": 0,
+  "files_checked_for_exact_authorized_key": 2347,
+  "fixed_source_snapshots": [
+    {
+      "commit": "3ed0541346909500c65123a2dd87188136ab39b4",
+      "name": "v1-3ed0541",
+      "source_bundle_files_verified": 151,
+      "source_bundle_sha256": {
+        "aggregate": "b14f0376441aa18ddb084cfb9778cab24dfaf69260e055f5e007ba71fb4af049",
+        "judge": "7924060933218f32195f291e609fcf7ffa916b6afc5143778163b444b165a4ff",
+        "rules": "549e00956ee5dd9bb3fe063d4e1a45766ee3317b43a92eca2b5834f059a7c8f0",
+        "runtime": "d60c1f4a862be2dc46e672e97bc5bc387d30ca08bf092c24971214cba772f3a7"
+      },
+      "tracked_tree_clean": true
+    },
+    {
+      "commit": "40fddb8f777e16de9711863381a4e26f534e4529",
+      "name": "v2-40fddb8",
+      "source_bundle_files_verified": 152,
+      "source_bundle_sha256": {
+        "aggregate": "5db7e661ba02565701ea44e6ab9a25986b6ee1f415edae6da3a78e83282e18f4",
+        "judge": "d115e7572d5dae3cbd55e22856c90273e015bac303cdf609135049fdb2ba8931",
+        "rules": "bd6bc1acb149fb1411a6177d09d46143335db2755a24bc6d57acb8bf0a7b5fa4",
+        "runtime": "e679ba4d8107547b570e6b2286f05acb0bcde39859764d4f31edbc71f0831b52"
+      },
+      "tracked_tree_clean": true
+    },
+    {
+      "commit": "d8fa1999cbeea4e820c610d201e084acbd49d5f7",
+      "name": "final-d8fa199",
+      "source_bundle_files_verified": 152,
+      "source_bundle_sha256": {
+        "aggregate": "5db7e661ba02565701ea44e6ab9a25986b6ee1f415edae6da3a78e83282e18f4",
+        "judge": "d115e7572d5dae3cbd55e22856c90273e015bac303cdf609135049fdb2ba8931",
+        "rules": "bd6bc1acb149fb1411a6177d09d46143335db2755a24bc6d57acb8bf0a7b5fa4",
+        "runtime": "6c656ecaeca2d0d65aab291a607ab7a154c522fee1bb231aa16e1e3d7c7eb85f"
+      },
+      "tracked_tree_clean": true
+    }
+  ],
+  "historical_190_requests_unchanged": true,
+  "ledger_snapshot_matches_live_read_only": true,
+  "method_report_bindings_verified": true,
+  "privacy_issues": [],
+  "private_state_directory": "/root/.local/state/learning-travel/e5-browser-20260906",
+  "private_state_published": false,
+  "real_model_calls": 0,
+  "reviewer_role": "primary_ai_reviewer",
+  "structured_documents_privacy_checked": 627,
+  "version": "e5-public-archive-validation-v1"
+}

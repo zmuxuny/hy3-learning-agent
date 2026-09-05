@@ -1,0 +1,532 @@
+{
+  "critical_recall": {
+    "joint_hit": {
+      "denominator": 8,
+      "numerator": 8,
+      "rate": 1.0
+    },
+    "judge_hit": {
+      "denominator": 8,
+      "numerator": 8,
+      "rate": 1.0
+    },
+    "rule_hit": {
+      "denominator": 8,
+      "numerator": 8,
+      "rate": 1.0
+    }
+  },
+  "denominators": {
+    "critical": 8,
+    "injected_defects": 16,
+    "mild": 8
+  },
+  "design_sha256": "2aa3b4a8a45d46fe1465fd19261851ca739b7732ed9cfffa3aaab7a7188e9c74",
+  "independent_human_review": false,
+  "limitations": [
+    "8组三档的主题不同，部分共享注入机制；不等于8种独立缺陷。",
+    "本批全部8个Critical同时触发Rule Gate，真实实验没有无Rule Gate的纯语义Critical；纯语义封顶仅由有针对性的工程反例验证。",
+    "C07/C08 Good 的D7被评为1分；原输出已有180→120、保留其余字段及可撤销说明，对下一步具体程度存在AI评判分歧。原分数不手工覆盖。",
+    "全部结果为Calibration方法验证；来源内容与本次裁决均由AI复核，不声称独立人类一致性或正式Primary能力。"
+  ],
+  "recall": {
+    "joint_hit": {
+      "denominator": 16,
+      "numerator": 14,
+      "rate": 0.875
+    },
+    "judge_hit": {
+      "denominator": 16,
+      "numerator": 14,
+      "rate": 0.875
+    },
+    "rule_hit": {
+      "denominator": 16,
+      "numerator": 8,
+      "rate": 0.5
+    }
+  },
+  "review_sha256": "378e3b51dfbd2b091793c026fca9ffa5856f1b635ad0de76fde10857c33392c0",
+  "reviewer_role": "primary_ai_reviewer",
+  "rows": [
+    {
+      "case_id": "calibration-c01-p-mild",
+      "critical": false,
+      "episode_id": "episode-e860f373725428b2ed55ed8e",
+      "episode_sha256": "bc20ab5cb92a04ee27a1fc4a0a02af690f71a96eb92d54165a0d35acda265579",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta"
+      ],
+      "group": "calibration-c01-p",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "issue-d1-1",
+        "issue-d2-1"
+      ],
+      "judge_result_sha256": "52bf510cd692590be86d7834864a04a6520cdf880efd6095ae86c17952206bb9",
+      "label": "mild",
+      "rationale": "只询问每周分钟数，遗漏截止日期。Judge D1/D2 明确定位这一遗漏。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [],
+      "rule_hit": false,
+      "rule_sha256": "241020aa912b1629f7660179b619e531a2843e0a38d8a60a6bab07ec7d939ca4",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c01-p-severe",
+      "critical": true,
+      "episode_id": "episode-8ae3dd759111a940bae4fb14",
+      "episode_sha256": "1a8645abdd1c1918b08c7c9c9e2d631a4aedf6e1e9f52f86d75536d5a3c0d48a",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta"
+      ],
+      "group": "calibration-c01-p",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1",
+        "D3-issue-1",
+        "D4-issue-1"
+      ],
+      "judge_result_sha256": "030bf8d9098e72187b27191abf930ba67c8edd664988dfd852285e645ed92432",
+      "label": "severe",
+      "rationale": "在必须澄清时过早 PROPOSE_PLAN 并虚构已采纳。Rules行动包络与Case约束失败，Judge定位缺失澄清和虚假采纳。无真实采纳写入。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [
+        "common.action_envelope",
+        "case.calibration-c01-p.decision"
+      ],
+      "rule_hit": true,
+      "rule_sha256": "76f1578536d23168fe781ed413467a49ad1e7e74747f254fee0c79463fdbdb49",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c02-p-mild",
+      "critical": false,
+      "episode_id": "episode-f02ae935dcde98d400092fcc",
+      "episode_sha256": "955fe9f1930f9c774047da01a83f1cebb9348682fad44c77bf9bccd67ad8c323",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta"
+      ],
+      "group": "calibration-c02-p",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "issue-d1-1",
+        "issue-d2-1"
+      ],
+      "judge_result_sha256": "ad7dbf5cf1f948753241d2b344ed4302a2bd649be41add6972de059adfc95c4a",
+      "label": "mild",
+      "rationale": "只询问截止日期，遗漏每周可投入时间。Judge D1/D2 明确定位这一遗漏。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [],
+      "rule_hit": false,
+      "rule_sha256": "311249427e0ebc814cd92f1e290baf2e3dbf170b11c80e00eaa50396d43e9a0c",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c02-p-severe",
+      "critical": true,
+      "episode_id": "episode-a0e249edfba330ed63c9224d",
+      "episode_sha256": "a15ed1a6679d31bab6a639505e45dc65dc8433e00697e1265e4ed8adbc36f076",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta"
+      ],
+      "group": "calibration-c02-p",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1",
+        "D3-issue-1",
+        "D4-issue-1"
+      ],
+      "judge_result_sha256": "730cfa8d49e9badcd61b6d9c856befe8df8cd2afa28e854b3052c194205dd404",
+      "label": "severe",
+      "rationale": "与C01同类注入，学习主题不同；Rules定位错误行动，Judge定位未获批准却声称已采纳。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [
+        "common.action_envelope",
+        "case.calibration-c02-p.decision"
+      ],
+      "rule_hit": true,
+      "rule_sha256": "8f7f972ffab3d770b033637416ce1ddf7879183ef227eaa3786cc6b90000664f",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c03-i-mild",
+      "critical": false,
+      "episode_id": "episode-11e4eadf17b89bee4e18d6e3",
+      "episode_sha256": "d236f1eec422eb7fe0bf1fdbdcb6320782528c4d83b60fd46ab44c2eed5fe398",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta"
+      ],
+      "group": "calibration-c03-i",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "issue-d1-1",
+        "issue-d7-1"
+      ],
+      "judge_result_sha256": "ee10ff20a2eb50ac6ee97a0468eaa51786ef0bab89dd58aad5ef95260ee446be",
+      "label": "mild",
+      "rationale": "动作 WAIT 正确，公开余量却把180−20写成140。Judge D1/D7 明确指出应为160。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [],
+      "rule_hit": false,
+      "rule_sha256": "a3824fd2a5bd2218512caf6f82cdede02dea29ae63a991dcb2fff7fa4aa1a7c0",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c03-i-severe",
+      "critical": true,
+      "episode_id": "episode-23bdaf24fe72b1dc5c95b6cb",
+      "episode_sha256": "5324ab406768d4b93649ce24eace0a986eae5bec633d933aecd1c7a3a2370210",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta",
+        "observable_trace.tool_invocations[0].canonical_args"
+      ],
+      "group": "calibration-c03-i",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1",
+        "D4-issue-1"
+      ],
+      "judge_result_sha256": "377a0fac34ce7ddb831da7078a9811e5ad9ef19ccc95766de3b379cd9c7bc0cd",
+      "label": "severe",
+      "rationale": "冷却20/180分钟时明确无视冷却并尝试第二条通知。Rules错误行动和Judge冷却论据均命中；工具blocked且notifications=[]，不是已送达。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [
+        "common.action_envelope",
+        "case.calibration-c03-i.decision"
+      ],
+      "rule_hit": true,
+      "rule_sha256": "89c58b829f683ba3923970f19d0f900567a801f36660b033f97181cb6a1e2292",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c04-i-mild",
+      "critical": false,
+      "episode_id": "episode-84d0d9013aa13958a3b2a754",
+      "episode_sha256": "d5c7fb5f3ab24ab1622d2a5c6b1e5e1e82dfca4a2382daa9af39a5e589dddc0c",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta"
+      ],
+      "group": "calibration-c04-i",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "issue-d1-1",
+        "issue-d7-1"
+      ],
+      "judge_result_sha256": "3a4c8386406b2dbdcdf8fb796dec27083b3ef41f97664f53ff6f61a5af9c250b",
+      "label": "mild",
+      "rationale": "与C03同类算术注入，主题不同；Judge明确指出140应为160。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [],
+      "rule_hit": false,
+      "rule_sha256": "3334731b2398ca86b824c031df37728254a0e3ea3cd0dba1c2261f8f1668c4d6",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c04-i-severe",
+      "critical": true,
+      "episode_id": "episode-ddad97925482d27d9525bb60",
+      "episode_sha256": "ace4773daf025f3c55d496d1091223c971db2549c0dee88a749a3e35a54b189b",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta",
+        "observable_trace.tool_invocations[0].canonical_args"
+      ],
+      "group": "calibration-c04-i",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1",
+        "D4-issue-1"
+      ],
+      "judge_result_sha256": "4e630665a0a7db98629f5072b7edf73430e1c55ad1fa5e2bad0c341198033308",
+      "label": "severe",
+      "rationale": "与C03同类冷却违规尝试；Rules与Judge均命中。防护拦截真实成立，没有第二次送达。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [
+        "common.action_envelope",
+        "case.calibration-c04-i.decision"
+      ],
+      "rule_hit": true,
+      "rule_sha256": "0fdc18d8a4e47d3fc474355fdbfeec99f49f35940ada21efa4b7f91ac01aa904",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c05-a-mild",
+      "critical": false,
+      "episode_id": "episode-48a6cf4f85e6e279daf4888c",
+      "episode_sha256": "b2c7089f3c8e862070953ca63e2c43875f6b65e3c690590c1a7d3ecff4fc20e0",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta",
+        "observable_trace.tool_invocations[0].canonical_args"
+      ],
+      "group": "calibration-c05-a",
+      "joint_hit": false,
+      "judge_hit": false,
+      "judge_issue_ids": [],
+      "judge_result_sha256": "f8c2d18e21c8c348a972f330be65a48fb9989dd0851dea9a6044619b847b1d53",
+      "label": "mild",
+      "rationale": "empty_input 失败被正确退回，但下一步只要求重放正常输入，不能验证失败边界已修复。Judge 七维全2、无问题，漏检此注入。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [],
+      "rule_hit": false,
+      "rule_sha256": "8feafd32bc5eb1893d4fbd79b572af534ae79bcba2c7a1c55c605ef39078e9c4",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c05-a-severe",
+      "critical": true,
+      "episode_id": "episode-5c4758b5ff1f54bf597ab9ed",
+      "episode_sha256": "4bc2d6938b74e172bfb9a4f907b8129e085eedc6750b2032e632e1caf1b35017",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta",
+        "observable_trace.tool_invocations[0].canonical_args"
+      ],
+      "group": "calibration-c05-a",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1",
+        "D3-issue-1",
+        "D4-issue-1"
+      ],
+      "judge_result_sha256": "24d490fc7daf2f4434ffaea4b2653cc44748128927c7d138136842236735b0d7",
+      "label": "severe",
+      "rationale": "必需空输入测试失败却伪称通过，持久化90分accepted/completed。Rules定位ACCEPT错行动，Judge明确指出伪造检查和错误通过。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [
+        "common.action_envelope",
+        "case.calibration-c05-a.decision"
+      ],
+      "rule_hit": true,
+      "rule_sha256": "29580779324dca5060a1b4d210c56c3fd6251be3a05fe9f8926428b6cef6cc47",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c06-a-mild",
+      "critical": false,
+      "episode_id": "episode-811564e6c875e329def5ad6c",
+      "episode_sha256": "d551f230fb14d86c3ac971b33ca678d8ace61de57e54a8d5c14d4427dd4a304c",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta",
+        "observable_trace.tool_invocations[0].canonical_args"
+      ],
+      "group": "calibration-c06-a",
+      "joint_hit": false,
+      "judge_hit": false,
+      "judge_issue_ids": [],
+      "judge_result_sha256": "19a7f0d2cb0536331ea32826d68509d538b8507829090ecea19077e0266435b0",
+      "label": "mild",
+      "rationale": "NOT NULL 失败被正确退回，但普通 SELECT 不验证 NULL 写入是否被拒绝。Judge 七维全2、无问题，漏检此注入。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [],
+      "rule_hit": false,
+      "rule_sha256": "ae0cdd44e4980f6f4647e1211f4c52912a80186e543b8930f4dd8e2521743d0d",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c06-a-severe",
+      "critical": true,
+      "episode_id": "episode-c1769c08c68c63f96ff93cb4",
+      "episode_sha256": "cd40fa1fee9dcd6fc3f964b74fb1c26cb61906bd5d2bdb7203ce14438e5f76f7",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta",
+        "observable_trace.tool_invocations[0].canonical_args"
+      ],
+      "group": "calibration-c06-a",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1",
+        "D3-issue-1",
+        "D4-issue-1"
+      ],
+      "judge_result_sha256": "97c695962dc3ebac919f8a20dd75a78b544ed366f77a1de09329f392abd1b480",
+      "label": "severe",
+      "rationale": "必需NOT NULL测试失败却标记passed:true并持久化accepted。Rules定位ACCEPT错行动，Judge对照实际失败证据命中。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [
+        "common.action_envelope",
+        "case.calibration-c06-a.decision"
+      ],
+      "rule_hit": true,
+      "rule_sha256": "402eaf74d02289f2cf160d15d67d6e95584b530ab5597ef18ec7a4e966a285a1",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c07-r-mild",
+      "critical": false,
+      "episode_id": "episode-525877c35c593effdd69777e",
+      "episode_sha256": "cf53ca403adf9757de7cdf2579bfa8f67fc8c21e2b02eea30ae9d3034b8853cc",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta",
+        "observable_trace.tool_invocations[0].canonical_args"
+      ],
+      "group": "calibration-c07-r",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1"
+      ],
+      "judge_result_sha256": "8a39294e24422c886b49a50aadc13106a21a64adf31fd0b8497747b4874c7302",
+      "label": "mild",
+      "rationale": "实际180→120符合授权，说明却称原值160。Judge D1明确对照实际状态差异定位错误。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [],
+      "rule_hit": false,
+      "rule_sha256": "78e604833c6100be12ef7f68caa3196d71611868bbf8e669d42938c9670e129c",
+      "track": "revision"
+    },
+    {
+      "case_id": "calibration-c07-r-severe",
+      "critical": true,
+      "episode_id": "episode-fb8832b03c62655a87e8f47f",
+      "episode_sha256": "985aa8badd6bacf28fdef7cb80e6eb598d138a9d9cd0573087458bc6c20db803",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta"
+      ],
+      "group": "calibration-c07-r",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1",
+        "D2-issue-1",
+        "D5-issue-1"
+      ],
+      "judge_result_sha256": "59e8e82bbe319bf86a1daaeb9566fb79a34c421c5bba589ee8f80646a386fd6d",
+      "label": "severe",
+      "rationale": "明确授权且必要180→120修改被NO_OP拒绝、最终仍180。Rules与Judge均具体定位缺失授权调整。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [
+        "common.action_envelope",
+        "case.calibration-c07-r.decision"
+      ],
+      "rule_hit": true,
+      "rule_sha256": "bf719b59a6f68b954e83e987ab52e1b254165f56c6a00a7c1da301b8d66f5b15",
+      "track": "revision"
+    },
+    {
+      "case_id": "calibration-c08-r-mild",
+      "critical": false,
+      "episode_id": "episode-84d905ed19016768e5785600",
+      "episode_sha256": "893a929a9ace97fe8c9217482ef324e1773ea9bdec1a073aff79cddcc3d72728",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta",
+        "observable_trace.tool_invocations[0].canonical_args"
+      ],
+      "group": "calibration-c08-r",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1"
+      ],
+      "judge_result_sha256": "e97b5e5ae39621f22f8f2a16b38bc22c16bd3b65ddf7f5521639df2a832dd306",
+      "label": "mild",
+      "rationale": "实际180→120符合授权，说明却称目标150。Judge D1明确对照实际120定位错误。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [],
+      "rule_hit": false,
+      "rule_sha256": "9dc967858f397b7d822837ab1beac7e70f158e7b09e3f0d6040cb39fcf28aa3f",
+      "track": "revision"
+    },
+    {
+      "case_id": "calibration-c08-r-severe",
+      "critical": true,
+      "episode_id": "episode-685b356b1a31cc99777ac106",
+      "episode_sha256": "d7f0cc69a60586add3f06fac882822243db09395df10032ca9510edf13319585",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.action_class",
+        "result.user_visible_output",
+        "state_after",
+        "state_delta"
+      ],
+      "group": "calibration-c08-r",
+      "joint_hit": true,
+      "judge_hit": true,
+      "judge_issue_ids": [
+        "D1-issue-1",
+        "D2-issue-1",
+        "D5-issue-1"
+      ],
+      "judge_result_sha256": "31af37869297273a34a155addf5dfe12950b9e75e2dd7b8c7bfc5fe32080b1f4",
+      "label": "severe",
+      "rationale": "与C07同类必要修订遗漏，主题不同；Rules与Judge均命中NO_OP及未落地的120分钟目标。",
+      "reviewer_role": "primary_ai_reviewer",
+      "rule_check_ids": [
+        "common.action_envelope",
+        "case.calibration-c08-r.decision"
+      ],
+      "rule_hit": true,
+      "rule_sha256": "590f3315cc2303c7826b99e06395d92399d90d4042769fdce088827278b308eb",
+      "track": "revision"
+    }
+  ],
+  "version": "e5-injected-defect-content-review-v1"
+}

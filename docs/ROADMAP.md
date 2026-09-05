@@ -22,7 +22,7 @@
 - [x] E3.1.1：以 v4 干净切换闭合 14 类动作、跨轨/组合/失败尝试、并发子 Agent ordinal 与因果 call、Failure-only 分区、formal 单调继承、Case predicate 语义、隔离 Hard Gate 和 Rules/Aggregate 实现源码摘要。
 - [x] E3.1.2：发布 Evaluation Protocol Release 1.0；建立空的生产可信 Benchmark 注册表、完整 Suite/终态闭合、formal 三层语义、唯一活动入口、source bundle、独立 Schema Lock 与 `model-action-declaration-v2`。
 - [x] E4（内容与工程验收完成）：48 Primary、24 Calibration及8来源已完成摘要绑定的AI内容裁决，候选已重建；历史真实Primary保留45 Episode + 3 Failure。当前验收内容与工程链；原正式冻结/登记承诺移至E5方法稳定后、E6前。进展见 [E4验收记录](E4验收工作记录.md)。
-- [ ] E5（用户已授权，实验待执行）：先修复 S06 可证实的问题，完成判别力与重复一致性，实际体验并审计产品，详见 [开发交接](E5开发交接.md)。独立人工一致性、反事实、对抗及安全实验按方案条件实施。方法稳定后、E6 前完成正式测试输入、协议/Benchmark 冻结与可信登记。
+- [x] E5（必需实验与最低方法目标完成）：S06 机制修复；24 例判别力与 16×5 重复实验，88/88 有效；排序 6/8、Good>Severe 8/8、Critical 联合召回 8/8，结论一致 96.25%、平均标准差 2.243425；浏览器体验、必要修复与 AI 审计完成，详见 [验收记录](E5验收工作记录.md)。Assessment 漏检及 Planning 波动保留；独立人工、反事实、对抗及安全扩展未完成。E6 前仍需正式测试输入、协议/Benchmark 冻结与可信登记。
 - [ ] E6：完成正式评测、逐 Episode/维度/轨道结果与错误类型归因。
 - [ ] E7：完成冻结 Baseline/Candidate 版本回归，保持 Test 一次冻结。
 - [ ] E8：完成 Case、报告、README、Release 与两分钟 Demo 材料。

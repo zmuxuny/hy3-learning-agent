@@ -62,7 +62,7 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 产品内的“学习成果验收”判断用户是否学会；第三阶段评测判断 Hy3 的规划、介入、验收和调整是否做得正确。两者共享可观察事实，但职责清晰分离。整体构思见[第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md)，工程协议见[第三阶段评测实施方案](docs/腾讯犀牛鸟开源实习第三阶段评测实施方案.md)。
 
-第三阶段已实现隔离 Runtime、轨迹导出、Rules、盲化 Judge、聚合及协议绑定。E4 的 48 Primary、24 Calibration 和 8 来源已完成 AI 逐例内容裁决、候选重建和最终回归。用户已授权 S06 修复与 E5 接续开发，实验尚未开始，入口见 [E5 开发交接](docs/E5开发交接.md)。历史真实 Primary 保留 45 Episode + 3 Failure；当前修订输入作为探索候选，24 个受控 Calibration 已重新导出。Judge 有效性实验与正式冻结/登记仍待完成，没有正式能力结论。完成基线见 [E4 验收记录](docs/E4验收工作记录.md)，历史终态见 [原始运行记录](evaluation/artifacts/e4-candidate-20260905/README.md)，运行方法见 [评测包说明](evaluation/README.md)。
+第三阶段已实现隔离 Runtime、轨迹导出、Rules、盲化 Judge、聚合及协议绑定。E4 的 48 Primary、24 Calibration 和 8 来源已完成 AI 逐例内容裁决、候选重建和最终回归。S06 机制修复与 E5 必需实验已完成：24 例判别力及预设16×5重复共88个有效评估，严格排序6/8、Good>Severe8/8、Critical联合召回8/8，结论一致96.25%、平均标准差2.243425，达到预设最低方法目标。真实浏览器闭环和AI审计完成，具体漏检/波动、费用与版本见 [E5 验收记录](docs/E5验收工作记录.md)。历史真实 Primary 保留 45 Episode + 3 Failure；当前输入为探索候选，正式未见测试、冻结/登记和能力评测仍待完成。完成基线见 [E4 验收记录](docs/E4验收工作记录.md)，历史终态见 [原始运行记录](evaluation/artifacts/e4-candidate-20260905/README.md)，运行方法见 [评测包说明](evaluation/README.md)。
 
 ## Demo
 
