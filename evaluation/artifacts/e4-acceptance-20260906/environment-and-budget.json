@@ -1,0 +1,69 @@
+{
+  "additional_regression_commit": "4c9a63228b4fb20d4a8e5dc5c0e6e279c96157ea",
+  "budget": {
+    "is_actual_account_invoice": false,
+    "ledger_mode": "0600",
+    "ledger_sha256": "b7300434aaac02817b689845052340210f97da2e293e23e1425eb4ec53b1c025",
+    "limit_micro_cny": 14000000,
+    "new_real_requests": 0,
+    "occupied_micro_cny": 5397645,
+    "remaining_micro_cny": 8602355,
+    "requests": 190,
+    "unchanged_from_handoff": true,
+    "unknown_usage_requests": 4,
+    "unknown_usage_reserved_micro_cny": 1042432,
+    "usage_estimate_micro_cny": 4355213
+  },
+  "environment": {
+    "existing_product_demo": {
+      "path": "assets/demo/learning-agent-hy3-demo.mp4",
+      "probe": {
+        "format": {
+          "duration": "92.600000"
+        },
+        "programs": [],
+        "streams": [
+          {
+            "codec_type": "video",
+            "height": 1080,
+            "width": 1920
+          }
+        ]
+      },
+      "sha256": "6c755e3dde65d39231b4c6b6557889d53bfd864a329c9d48eac4e4fc0ef2d01c"
+    },
+    "frontend": {
+      "absent_optional_packages": 28,
+      "dist_files": {
+        "dist/assets/index-CLkEPLlD.js": "d4d6454fd6271db49a0abc0cbe995fc4babf56b3d6e2d8565f33e202fa2152ba",
+        "dist/assets/index-CO-GQE6F.css": "994bdc8f818fa0cc550ba3b2778962c88e8b948acb6d88b09f1f64e414363cbd",
+        "dist/index.html": "6c213fcfdc469d54d5c336693682a50e35fe3944ec4bc8840bdd4b5a19925e7e",
+        "dist/sw.js": "af3fd3c493355fe1e61e5ee8b9aa969f73f5aef2962e0a3cd82d1d53ae64a802"
+      },
+      "fresh_offline_builds": [
+        "frontend-build-full",
+        "frontend-build-runtime",
+        "frontend-build-final"
+      ],
+      "installed_packages": 221,
+      "installed_versions_match_lock": true
+    },
+    "isolation": {
+      "node_guard_timing": "Added after the first missing-dependency attempt; used by the complete rerun and successful frontend/release recovery.",
+      "node_network_guard": "hooks/node-network-guard.cjs",
+      "npm_offline_for_complete_rerun": true,
+      "original_env_and_data_copied": false,
+      "python_file_and_network_audit_hook": "hooks/sitecustomize.py"
+    },
+    "node": "v24.14.0",
+    "npm": "11.9.0",
+    "packages": {
+      "openai": "2.51.0",
+      "pytest": "9.1.1",
+      "ruff": "0.16.4"
+    },
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.13.12"
+  },
+  "test_source_commit": "946d73541e935fcee40f2a60ae33ad7073f1587b"
+}

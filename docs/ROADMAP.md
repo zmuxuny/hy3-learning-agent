@@ -1,6 +1,6 @@
 # 开发路线图
 
-> 状态口径（2026-09-05）：M0–M12 是历史版本记录，H1–H8 工程门禁已经通过。第三阶段“关键决策评测”已完成 E0–E3 工程骨架和 E3.1/E3.1.1/E3.1.2 正式评测前置修复；唯一活动链由 Evaluation Protocol Release 1.0 管理，v1/v2/v3 只作 engineering-only 历史回归，生产可信 Benchmark 注册表当前为空。M15–M20 是独立的 2.0 产品能力路线，不在本阶段范围。当前事实以 [`STATUS.md`](STATUS.md) 为准，评测执行以 [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) 为准。
+> 状态口径（2026-09-06）：M0–M12 是历史版本记录，H1–H8 工程门禁已经通过。第三阶段“关键决策评测”已完成 E0–E3 工程骨架和 E3.1/E3.1.1/E3.1.2 正式评测前置修复；唯一活动链由 Evaluation Protocol Release 1.0 管理，v1/v2/v3 只作 engineering-only 历史回归，生产可信 Benchmark 注册表当前为空。M15–M20 是独立的 2.0 产品能力路线，不在本阶段范围。当前事实以 [`STATUS.md`](STATUS.md) 为准，评测执行以 [`腾讯犀牛鸟开源实习第三阶段评测实施方案.md`](腾讯犀牛鸟开源实习第三阶段评测实施方案.md) 为准。
 
 ## 项目管理规则
 
@@ -21,8 +21,8 @@
 - [x] E3.1：以 v3 干净切换修复有效性边界；分离结构无效与行为失败，新增 CaseSpec/JudgeReference、可重建层级轨迹、失败制品、Provider 可审计归因，并关闭精确盲化、Assessment ACCEPT、多实体身份、相对路径隔离与隐私误报缺口。
 - [x] E3.1.1：以 v4 干净切换闭合 14 类动作、跨轨/组合/失败尝试、并发子 Agent ordinal 与因果 call、Failure-only 分区、formal 单调继承、Case predicate 语义、隔离 Hard Gate 和 Rules/Aggregate 实现源码摘要。
 - [x] E3.1.2：发布 Evaluation Protocol Release 1.0；建立空的生产可信 Benchmark 注册表、完整 Suite/终态闭合、formal 三层语义、唯一活动入口、source bundle、独立 Schema Lock 与 `model-action-declaration-v2`。
-- [ ] E4（最终回归中）：48 Primary、24 Calibration及8来源已完成摘要绑定的AI内容裁决，候选已重建；历史真实Primary保留45 Episode + 3 Failure。当前验收内容与工程链；原正式冻结/登记承诺移至E5方法稳定后、E6前。进展见 [E4验收记录](E4验收工作记录.md)。
-- [ ] E5：完成判别力、重复一致性、人工一致性、反事实、对抗与安全有效性实验。
+- [x] E4（内容与工程验收完成，已暂停）：48 Primary、24 Calibration及8来源已完成摘要绑定的AI内容裁决，候选已重建；历史真实Primary保留45 Episode + 3 Failure。当前验收内容与工程链；原正式冻结/登记承诺移至E5方法稳定后、E6前。进展见 [E4验收记录](E4验收工作记录.md)。
+- [ ] E5：优先完成判别力与重复一致性；独立人工一致性、反事实、对抗及安全实验按方案条件实施。方法稳定后、E6 前完成正式测试输入、协议/Benchmark 冻结与可信登记。
 - [ ] E6：完成正式评测、逐 Episode/维度/轨道结果与错误类型归因。
 - [ ] E7：完成冻结 Baseline/Candidate 版本回归，保持 Test 一次冻结。
 - [ ] E8：完成 Case、报告、README、Release 与两分钟 Demo 材料。

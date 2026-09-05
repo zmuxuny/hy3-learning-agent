@@ -1,0 +1,156 @@
+{
+  "checks": {
+    "doc-links-final": {
+      "command": [
+        "/root/workspace/tencent_rhinobird2026/learning_travel/.venv/bin/python",
+        "scripts/check_doc_links.py"
+      ],
+      "cwd": "/root/workspace/tencent_rhinobird2026/learning_travel",
+      "elapsed_seconds": 0.16,
+      "exit_code": 0,
+      "git_commit": "4c9a63228b4fb20d4a8e5dc5c0e6e279c96157ea",
+      "log": "doc-links-final.txt",
+      "log_sha256": "c5ef3828817b3ebfd8a137ad58be91fea9af7d13ce562c5cbfdfab2e7e1b8cfb",
+      "output": "Markdown relative links: OK\n",
+      "worktree_status": [
+        "M  README.md",
+        "M  \"docs/E4\\345\\200\\231\\351\\200\\211\\346\\225\\260\\346\\215\\256\\346\\224\\266\\345\\217\\243\\344\\270\\216\\346\\226\\271\\346\\241\\210\\345\\244\\215\\346\\240\\270.md\"",
+        "M  \"docs/E4\\351\\252\\214\\346\\224\\266\\345\\267\\245\\344\\275\\234\\350\\256\\260\\345\\275\\225.md\"",
+        "M  docs/ROADMAP.md",
+        "M  docs/STATUS.md",
+        "M  \"docs/\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\345\\274\\200\\345\\217\\221\\344\\272\\244\\346\\216\\245.md\"",
+        "M  \"docs/\\350\\205\\276\\350\\256\\257\\347\\212\\200\\347\\211\\233\\351\\270\\237\\345\\274\\200\\346\\272\\220\\345\\256\\236\\344\\271\\240\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\350\\257\\204\\346\\265\\213\\345\\256\\236\\346\\226\\275\\346\\226\\271\\346\\241\\210.md\"",
+        "M  \"docs/\\350\\205\\276\\350\\256\\257\\347\\212\\200\\347\\211\\233\\351\\270\\237\\345\\274\\200\\346\\272\\220\\345\\256\\236\\344\\271\\240\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\351\\241\\271\\347\\233\\256\\346\\226\\271\\346\\241\\210.md\"",
+        "M  evaluation/README.md",
+        "M  evaluation/artifacts/e4-acceptance-20260906/README.md",
+        "A  evaluation/artifacts/e4-acceptance-20260906/calibration-runtime-and-rules-946d735.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/calibration-runtime-and-rules-946d735.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/environment-and-budget.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/independent-checks.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/outbox-failure-fixture-summary.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/outbox-ruff-baseline.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/ruff-baseline.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/source-inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-offline-full-chains-946d735.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-offline-full-chains-946d735.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-smokes.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-logs.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-logs.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-summary.json",
+        "M  evaluation/case-design/README.md"
+      ]
+    },
+    "secret-scan-final": {
+      "command": [
+        "/root/workspace/tencent_rhinobird2026/learning_travel/.venv/bin/python",
+        "scripts/release-check.py",
+        "secret_scan"
+      ],
+      "cwd": "/root/workspace/tencent_rhinobird2026/learning_travel",
+      "elapsed_seconds": 0.68,
+      "exit_code": 0,
+      "git_commit": "4c9a63228b4fb20d4a8e5dc5c0e6e279c96157ea",
+      "log": "secret-scan-final.txt",
+      "log_sha256": "507fd6f12dcefade842f8bd06ec4cf8c3c91944358303ca4cfc173c791a30106",
+      "output": "secret_scan_ok tracked=631 staged_diff_sha256=2d47f392982e9dbf0456935f8b5203a3618d53c64933b1b2c3c5dd882cbb6b07\n",
+      "worktree_status": [
+        "M  README.md",
+        "M  \"docs/E4\\345\\200\\231\\351\\200\\211\\346\\225\\260\\346\\215\\256\\346\\224\\266\\345\\217\\243\\344\\270\\216\\346\\226\\271\\346\\241\\210\\345\\244\\215\\346\\240\\270.md\"",
+        "M  \"docs/E4\\351\\252\\214\\346\\224\\266\\345\\267\\245\\344\\275\\234\\350\\256\\260\\345\\275\\225.md\"",
+        "M  docs/ROADMAP.md",
+        "M  docs/STATUS.md",
+        "M  \"docs/\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\345\\274\\200\\345\\217\\221\\344\\272\\244\\346\\216\\245.md\"",
+        "M  \"docs/\\350\\205\\276\\350\\256\\257\\347\\212\\200\\347\\211\\233\\351\\270\\237\\345\\274\\200\\346\\272\\220\\345\\256\\236\\344\\271\\240\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\350\\257\\204\\346\\265\\213\\345\\256\\236\\346\\226\\275\\346\\226\\271\\346\\241\\210.md\"",
+        "M  \"docs/\\350\\205\\276\\350\\256\\257\\347\\212\\200\\347\\211\\233\\351\\270\\237\\345\\274\\200\\346\\272\\220\\345\\256\\236\\344\\271\\240\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\351\\241\\271\\347\\233\\256\\346\\226\\271\\346\\241\\210.md\"",
+        "M  evaluation/README.md",
+        "M  evaluation/artifacts/e4-acceptance-20260906/README.md",
+        "A  evaluation/artifacts/e4-acceptance-20260906/calibration-runtime-and-rules-946d735.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/calibration-runtime-and-rules-946d735.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/environment-and-budget.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/independent-checks.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/outbox-failure-fixture-summary.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/outbox-ruff-baseline.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/ruff-baseline.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/source-inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-offline-full-chains-946d735.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-offline-full-chains-946d735.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-smokes.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-logs.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-logs.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-summary.json",
+        "M  evaluation/case-design/README.md"
+      ]
+    },
+    "staged-diff-final": {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "cwd": "/root/workspace/tencent_rhinobird2026/learning_travel",
+      "elapsed_seconds": 0.02,
+      "exit_code": 0,
+      "git_commit": "4c9a63228b4fb20d4a8e5dc5c0e6e279c96157ea",
+      "log": "staged-diff-final.txt",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output": "",
+      "worktree_status": [
+        "M  README.md",
+        "M  \"docs/E4\\345\\200\\231\\351\\200\\211\\346\\225\\260\\346\\215\\256\\346\\224\\266\\345\\217\\243\\344\\270\\216\\346\\226\\271\\346\\241\\210\\345\\244\\215\\346\\240\\270.md\"",
+        "M  \"docs/E4\\351\\252\\214\\346\\224\\266\\345\\267\\245\\344\\275\\234\\350\\256\\260\\345\\275\\225.md\"",
+        "M  docs/ROADMAP.md",
+        "M  docs/STATUS.md",
+        "M  \"docs/\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\345\\274\\200\\345\\217\\221\\344\\272\\244\\346\\216\\245.md\"",
+        "M  \"docs/\\350\\205\\276\\350\\256\\257\\347\\212\\200\\347\\211\\233\\351\\270\\237\\345\\274\\200\\346\\272\\220\\345\\256\\236\\344\\271\\240\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\350\\257\\204\\346\\265\\213\\345\\256\\236\\346\\226\\275\\346\\226\\271\\346\\241\\210.md\"",
+        "M  \"docs/\\350\\205\\276\\350\\256\\257\\347\\212\\200\\347\\211\\233\\351\\270\\237\\345\\274\\200\\346\\272\\220\\345\\256\\236\\344\\271\\240\\347\\254\\254\\344\\270\\211\\351\\230\\266\\346\\256\\265\\351\\241\\271\\347\\233\\256\\346\\226\\271\\346\\241\\210.md\"",
+        "M  evaluation/README.md",
+        "M  evaluation/artifacts/e4-acceptance-20260906/README.md",
+        "A  evaluation/artifacts/e4-acceptance-20260906/calibration-runtime-and-rules-946d735.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/calibration-runtime-and-rules-946d735.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/environment-and-budget.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/independent-checks.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/outbox-failure-fixture-summary.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/outbox-ruff-baseline.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/ruff-baseline.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/source-inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-offline-full-chains-946d735.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-offline-full-chains-946d735.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/two-smokes.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-logs.tar.gz",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-logs.tar.gz.inventory.json",
+        "A  evaluation/artifacts/e4-acceptance-20260906/validation-summary.json",
+        "M  evaluation/case-design/README.md"
+      ]
+    }
+  },
+  "integrity": {
+    "archives": {
+      "calibration-runtime-and-rules-946d735.tar.gz": {
+        "files": 74,
+        "sha256": "03cd4f7e9465eaf7b27dcc53ebb345fd46eb78df227c367a8dc449707062e56a"
+      },
+      "inputs-at-handoff-a875ea0.tar.gz": {
+        "files": 93,
+        "sha256": "e30131f27b4b71164af917b022f89107fa8f5ecb66dc7601b5e47fd43fc26cda"
+      },
+      "two-offline-full-chains-946d735.tar.gz": {
+        "files": 128,
+        "sha256": "7dd7769d2271a6dfad2c30f931d9b461ed2b1b23ccd4934e51c5044a07e3bc8f"
+      },
+      "validation-logs.tar.gz": {
+        "files": 107,
+        "sha256": "3426e7c2bf0ebee8da43ca35bcbdda641238d34ab8c1b070e5a9657d337e5a64"
+      }
+    },
+    "occupied_micro_cny": 5397645,
+    "old_artifacts_byte_unchanged": true,
+    "original_budget_sha256": "b7300434aaac02817b689845052340210f97da2e293e23e1425eb4ec53b1c025",
+    "registry_entries": 0,
+    "requests": 190,
+    "source_commit": "4c9a63228b4fb20d4a8e5dc5c0e6e279c96157ea",
+    "source_files_matched": 511
+  },
+  "recorded_at_utc": "2026-09-05T18:58:42.254863+00:00",
+  "snapshot_note": "These gate outputs precede appending their own report and marking the checklist complete. The final staged snapshot is checked again before commit."
+}

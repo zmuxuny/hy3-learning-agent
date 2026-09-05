@@ -1,0 +1,159 @@
+{
+  "byte_identical_files": 64,
+  "commands": [
+    {
+      "actual": 2,
+      "expected": 2,
+      "label": "smoke-a-runtime"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-a-runtime-validate"
+    },
+    {
+      "actual": 2,
+      "expected": 2,
+      "label": "smoke-a-rules"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-a-rules-validate"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-a-judges"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-a-judges-validate"
+    },
+    {
+      "actual": 3,
+      "expected": 3,
+      "label": "smoke-a-aggregate"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-a-aggregate-validate"
+    },
+    {
+      "actual": 2,
+      "expected": 2,
+      "label": "smoke-b-runtime"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-b-runtime-validate"
+    },
+    {
+      "actual": 2,
+      "expected": 2,
+      "label": "smoke-b-rules"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-b-rules-validate"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-b-judges"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-b-judges-validate"
+    },
+    {
+      "actual": 3,
+      "expected": 3,
+      "label": "smoke-b-aggregate"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "label": "smoke-b-aggregate-validate"
+    }
+  ],
+  "files": {
+    "aggregates/episodes/episode-027617c2a5f02cf5b3bbafc6.json": "63168a8f9a9ed88ee35a0ee0dfdefa4e354fa1c508abac1c272215256da34c81",
+    "aggregates/episodes/episode-11aa76316f02cecac49ad58d.json": "ba6dd37569e3a4ce721921559ff2e76a3c820a5d4b0158d5707b952b28f1580a",
+    "aggregates/episodes/episode-1c881c039b09e7e131d883b1.json": "38ad11b5f9810295bda977bc25189af56cbe996d37e4ad7270158b004e77a25d",
+    "aggregates/episodes/episode-40066a0c81327d7fafa1ecc1.json": "b9a2dd0e2bc75b68b1d3b325e1a32a70df3601bd7717fa2f936e20a1f3a1d2d0",
+    "aggregates/episodes/episode-452edf36a31e2df9e1a893f0.json": "7020c92b781b88ba3f3c15cb1a783130df083950f67a02a8a4db9a1e696c1719",
+    "aggregates/episodes/episode-4b9701db614f3f4b585cfdd7.json": "ac486377ddb58bb781995e0782ad428fdc5b2c32e2cbc31b7350dea9c8133174",
+    "aggregates/episodes/episode-7f949f1b7d9bc894537ad66d.json": "90cbb539a764133a1907c547f3502bd3bbc82a7b8ac18040319408542738ee60",
+    "aggregates/episodes/episode-97064d6eb3996015c0218892.json": "81e7ca428c24f8d53fc422768385f4623172674864b5a0eb0e52ffd5d69960ac",
+    "aggregates/episodes/episode-9be50e4c9ef44fed7aa4b713.json": "efa730f0bdfcc5c7e7f8dea89d8091cd2e3942a47528976e60fb2fb7ab0b6f02",
+    "aggregates/episodes/episode-9de7cb771389e957be3a8610.json": "6230da3dcae96942ee15f458a60e85d6adaa37a1f04cf1a2518651da9be1cb09",
+    "aggregates/episodes/episode-9f49914dab8165f3d001ea65.json": "67765041825d5af1b833230c3052fbe437643d705d4275e6973cddb118545f26",
+    "aggregates/run-manifest.json": "a19d03379d3793160eddd0fe4f77c807ea1999e5ebe1f7391325465544319f3e",
+    "aggregates/tracks/assessment.json": "0923cd3a9db09b855268e3c8ddcf497768092245d322a20187fda9e900138c9a",
+    "aggregates/tracks/intervention.json": "5065c8192417135becfde3d4314334407a054fc2e792b43a51fe610fdcaaaae7",
+    "aggregates/tracks/planning.json": "7ee335896737b7113cadc41b5a6824a1ae864d657aeef828217f9680147f819f",
+    "aggregates/tracks/revision.json": "893ca4096b789bfb0f2493103905866242d865e530163d4d29cd14c2979bf38f",
+    "judges/judge-results/episode-027617c2a5f02cf5b3bbafc6.json": "6b47b176adb43302feae0723dca74e7e6b92eb7ae5f90efffa3819bc4bc0e5c8",
+    "judges/judge-results/episode-11aa76316f02cecac49ad58d.json": "6f8cb1a4e54bdade15b09c0a302d2606e998a5b1a06e915b228c8313c31e4e3c",
+    "judges/judge-results/episode-1c881c039b09e7e131d883b1.json": "a072562e301ca30a7e2d96feefa9ac5cb38379581b29f80e86d050b80f2212cc",
+    "judges/judge-results/episode-40066a0c81327d7fafa1ecc1.json": "7b2615da0fbf6584c2967e1fd2a825eb9a693b5428cca14c0db73d0d459b8802",
+    "judges/judge-results/episode-452edf36a31e2df9e1a893f0.json": "3f9b74663299cca6f727e7cbe65145a1df4e89b42d21b395e018452960717df8",
+    "judges/judge-results/episode-4b9701db614f3f4b585cfdd7.json": "7900aac8723992ebde6aa8c10b4d3eaf665d1a2816db0cf621d73f01d4d9b895",
+    "judges/judge-results/episode-7f949f1b7d9bc894537ad66d.json": "1ebb6b17e44833c6a9664f7f47e5fd476188d18b864d125b8f8610f32c5a3651",
+    "judges/judge-results/episode-97064d6eb3996015c0218892.json": "8e2e74d9bc559465e93a35c78d9e654fce51bc8f48bb0b07d9476822f03d8c6c",
+    "judges/judge-results/episode-9be50e4c9ef44fed7aa4b713.json": "a547d017b6788f7bf24dffd4ea34da88c1ff40efe5587dae80943b2005e554ca",
+    "judges/judge-results/episode-9de7cb771389e957be3a8610.json": "58d407325bdec9b92ebd601e6c530f0ed909f7843cff61a184767d684ebb5bd7",
+    "judges/judge-results/episode-9f49914dab8165f3d001ea65.json": "f28c97e636205a3c9e984bf4480327090be890505b5e306c7ae3b17a8c8e64da",
+    "judges/run-manifest.json": "a0381fc38afeac0d64a7a53625a2ea1dcad3c0fef351bae401a2333effd9a97f",
+    "rules/rule-manifest.json": "01c0760994f410b0d398dd0c42f2c737ee3f957dfcda701436109caabdd93fbb",
+    "rules/rules/episode-027617c2a5f02cf5b3bbafc6.json": "53e3eda13b42ed1b490012c8bb035882e81753956c36ee6443bd9ddd9d0b3410",
+    "rules/rules/episode-11aa76316f02cecac49ad58d.json": "b532967f1a8c23249da4c2f95daacae46f0b05eb4516941f23b9025f283033bd",
+    "rules/rules/episode-1c881c039b09e7e131d883b1.json": "7ed765c6362cdaf7c34021a7fb4a685ef124e9e3ed4d0802994b0aa0201d30f5",
+    "rules/rules/episode-40066a0c81327d7fafa1ecc1.json": "6040fd0c58bb5e4d90bf1a4b27bd00e239745aed9d7c2cf1528bd3c32b88a519",
+    "rules/rules/episode-452edf36a31e2df9e1a893f0.json": "a99648e6452cadaf14a565c34c5e6d86466ec41f892f2383d277fe4417c22554",
+    "rules/rules/episode-4b9701db614f3f4b585cfdd7.json": "00b4258e190fb272742e2aa25e6f547b6d03351e77a71d6e8a4b096d982b09fe",
+    "rules/rules/episode-7f949f1b7d9bc894537ad66d.json": "4613f99110052b38e2b46ac6b7da32dd5490f2b197ff3ade3c42c77739629e17",
+    "rules/rules/episode-97064d6eb3996015c0218892.json": "d67319ead27cbb8b3fa118bc95fedc889fd3929265361587fcfaa6cf5e7dac0f",
+    "rules/rules/episode-9be50e4c9ef44fed7aa4b713.json": "562b5bd547681f6c11ee3eb3606f1687eeb1e24d8a7d757e46b29e40c5bc835d",
+    "rules/rules/episode-9de7cb771389e957be3a8610.json": "9494ac4b0ff6c9895b0377ff4c40d4db32b64adac35976d47f4d3436c9fce5f0",
+    "rules/rules/episode-9f49914dab8165f3d001ea65.json": "92a6868d156e1cfe9cd50388de4063bcad9e5c57c5163751a342672842f9258c",
+    "runtime/episodes/episode-027617c2a5f02cf5b3bbafc6.json": "f0fed712a2070418cb148a7846f4be60e2c12de7402a7ee200d4d18f05eb3453",
+    "runtime/episodes/episode-11aa76316f02cecac49ad58d.json": "32056acc1cace6a9dcc82414962aff376f2b480ba72d7d7f4cc523826d7bbab2",
+    "runtime/episodes/episode-1c881c039b09e7e131d883b1.json": "f30988c0ccdfded83ec3580f3ebb79a102a2aed7d428ba5bf66b41016bef569b",
+    "runtime/episodes/episode-40066a0c81327d7fafa1ecc1.json": "22ebfcbdf47534c07b85c0791c5fc52e9713333d6e4de5638fb572189323df86",
+    "runtime/episodes/episode-452edf36a31e2df9e1a893f0.json": "f50d8de5ec1d1577b8565a2c08af25fe493500ddbd7db3a8c24bbec297663534",
+    "runtime/episodes/episode-4b9701db614f3f4b585cfdd7.json": "53b6cca96e8453b9a7a0beec2643edad430f908fc9cdbed2a788cbaea3dd75f6",
+    "runtime/episodes/episode-7f949f1b7d9bc894537ad66d.json": "ea341ddc78c643ac9947f54e3390a0d55bc15aecf11ff31c8e88315173ee0092",
+    "runtime/episodes/episode-97064d6eb3996015c0218892.json": "a6fe5ed585271ee3fbe2ee30a79d98a4f4c896226836acf3b82b78bc7c4bbb65",
+    "runtime/episodes/episode-9be50e4c9ef44fed7aa4b713.json": "e15d69c0f9a7f1c97c6efce900f4cea87a31e4779568586387abfb74281e288e",
+    "runtime/episodes/episode-9de7cb771389e957be3a8610.json": "17e261f456d0e2a203dc2605749c72eb0e0dfe6bf33e1559877a620849811390",
+    "runtime/episodes/episode-9f49914dab8165f3d001ea65.json": "ebbfa0ac5f715c50e124d15f052cea89701636bd9cb95c657cc85c21dfe76bff",
+    "runtime/failures/failure:case-e31-p-provider-failure.json": "d80b8fd40a890465c1cf8b18505ad4807c02b7c3ada5560b006303307e5182c9",
+    "runtime/judge-references/episode-027617c2a5f02cf5b3bbafc6.json": "1d1c1132d3a147fb64626fa1869f0fe3f17baa6d7e03698bc3eb1c97166bd59e",
+    "runtime/judge-references/episode-11aa76316f02cecac49ad58d.json": "152a0efb68063de4c2c9924fab43388238133bb72336b1b23fb35c35e41a3d0b",
+    "runtime/judge-references/episode-1c881c039b09e7e131d883b1.json": "ab98c18e5d9434a953b7e25d5c25c35b4a56c5d10ceb5a035768dc1797992496",
+    "runtime/judge-references/episode-40066a0c81327d7fafa1ecc1.json": "7b0da38b9f31b87a466481c3daec3186e5aa7b2b079f24df3c7614f39e1b03be",
+    "runtime/judge-references/episode-452edf36a31e2df9e1a893f0.json": "b3f9419cf103d386129660a06482d3a5a8e4d2e54c86a33d6fa4b05db3c820a7",
+    "runtime/judge-references/episode-4b9701db614f3f4b585cfdd7.json": "6893cba9f301f90df49c4065852b034ebcaf1b73b00e9b01f029a34752403c9a",
+    "runtime/judge-references/episode-7f949f1b7d9bc894537ad66d.json": "5454b976168ebcbba51bf5b3627d14e074ea256f8a7c7b1189b8640dd281fef5",
+    "runtime/judge-references/episode-97064d6eb3996015c0218892.json": "840c417eabf147795007864a1babfa25ae866b61d3307779f0dc202ae23f88e0",
+    "runtime/judge-references/episode-9be50e4c9ef44fed7aa4b713.json": "067d984ca2b26a942de1b2f5b58d9208d3e95fd3e1e46ae8f23dc909068a68a0",
+    "runtime/judge-references/episode-9de7cb771389e957be3a8610.json": "e9c7c2be30741811cee646c78fe71788611279a5407b753a37e1700024bb2249",
+    "runtime/judge-references/episode-9f49914dab8165f3d001ea65.json": "7f032675bc0cfaeb3a8c5b17d9e140862a9eab3f094f0ffc3e179f40b6a7ccec",
+    "runtime/run-manifest.json": "538b7acf7768b51c6be8752c174ab4fa678702ce0b468557e773c8396aeec3e0"
+  },
+  "git_commit": "946d73541e935fcee40f2a60ae33ad7073f1587b",
+  "per_round": {
+    "episodes": 11,
+    "failures": 1,
+    "terminals": 12
+  },
+  "real_judge_calls": 0,
+  "rounds": 2
+}

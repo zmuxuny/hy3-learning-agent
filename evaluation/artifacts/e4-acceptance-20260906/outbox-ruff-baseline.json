@@ -1,0 +1,982 @@
+{
+  "after": [
+    {
+      "cell": null,
+      "code": "I001",
+      "end_location": {
+        "column": 42,
+        "row": 82
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "from __future__ import annotations\n\nimport ast\nimport asyncio\nimport importlib\nimport inspect\nimport json\nimport re\nimport threading\nfrom collections.abc import AsyncIterator, Awaitable, Callable\nfrom dataclasses import fields\nfrom datetime import datetime, timedelta, timezone\nfrom enum import Enum\nfrom pathlib import Path\nfrom types import ModuleType, SimpleNamespace\nfrom typing import Any\n\nimport app.context.memory as memory_context_module\nimport app.core.execution_policy as execution_policy\nimport app.outbox as outbox_module\nimport app.runtime.agent as agent_runtime_module\nimport app.runtime.scheduler as scheduler_module\nimport app.runtime.subagents as runtime_subagents\nimport app.tools.registry as tool_registry\nimport app.tools.subagents as subagent_tools\nimport app.tools.web as web_tools\nimport app.tools.workspace as workspace_tools\nimport pytest\nimport pytest_asyncio\nfrom app.db.migrations import migrate_sqlite_database\nfrom app.db.uow import DatabaseBusyError\nfrom app.db.uow import commit as commit_uow\nfrom app.db.uow import rollback as rollback_uow\nfrom app.models import (\n    AgentRun,\n    Artifact,\n    ChatMessage,\n    EvidenceObservation,\n    LearningEvent,\n    Memory,\n    Notification,\n    Operation,\n    OutboxAction,\n    OutboxReceipt,\n    Owner,\n    Plan,\n    RunEvent,\n    Session,\n    Stage,\n    Task,\n    TaskSubmission,\n    ToolInvocation,\n    UserProfile,\n)\nfrom app.notifications.service import NotificationService\nfrom app.runtime.agent import AgentRuntime\nfrom app.runtime.checkpoints import make_checkpoint\nfrom app.runtime.events import emit_event\nfrom app.runtime.scheduler import ProactiveScheduler\nfrom app.services.evidence import append_observation, create_artifact\nfrom app.tools import ToolContext, execute_tool\nfrom app.tools.base import ToolDefinition\nfrom pydantic import BaseModel\nfrom sqlalchemy import event, func, select, text\nfrom sqlalchemy.exc import OperationalError\nfrom sqlalchemy.ext.asyncio import (\n    AsyncSession,\n    async_sessionmaker,\n    create_async_engine,\n)\n\n",
+            "end_location": {
+              "column": 1,
+              "row": 85
+            },
+            "location": {
+              "column": 1,
+              "row": 14
+            }
+          }
+        ],
+        "message": "Organize imports"
+      },
+      "location": {
+        "column": 1,
+        "row": 14
+      },
+      "message": "Import block is un-sorted or un-formatted",
+      "name": "unsorted-imports",
+      "noqa_row": 14,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+    },
+    {
+      "cell": null,
+      "code": "PLR0402",
+      "end_location": {
+        "column": 53,
+        "row": 47
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "from app.core import execution_policy",
+            "end_location": {
+              "column": 53,
+              "row": 47
+            },
+            "location": {
+              "column": 1,
+              "row": 47
+            }
+          }
+        ],
+        "message": "Replace with `from app.core import execution_policy`"
+      },
+      "location": {
+        "column": 8,
+        "row": 47
+      },
+      "message": "Use `from app.core import execution_policy` in lieu of alias",
+      "name": "manual-from-import",
+      "noqa_row": 47,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/manual-from-import"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 172
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"create_run\",\n            \"rename_session\",\n            \"handoff_session\",\n            \"submit_planning_answers\",\n            \"decide_plan_proposal\",\n            \"edit_user_message\",\n            \"cancel_run\",\n            \"enqueue_message\",\n            \"update_queued_message\",\n            \"delete_queued_message\",\n            \"send_queued_message\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 172
+            },
+            "location": {
+              "column": 21,
+              "row": 160
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 160
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 160,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 181
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"create_run\",\n            \"handoff_session\",\n            \"submit_planning_answers\",\n            \"edit_user_message\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 181
+            },
+            "location": {
+              "column": 21,
+              "row": 176
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 176
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 176,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 191
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"create_memory_proposal\",\n            \"confirm_memory\",\n            \"delete_memory\",\n            \"restore_memory\",\n            \"create_snapshot\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 191
+            },
+            "location": {
+              "column": 21,
+              "row": 185
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 185
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 185,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 202
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"create_push_subscription\",\n            \"delete_push_subscription\",\n            \"archive_read_notifications\",\n            \"mark_notification_read\",\n            \"open_notification\",\n            \"set_notification_archived\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 202
+            },
+            "location": {
+              "column": 21,
+              "row": 195
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 195
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 195,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 72,
+        "row": 210
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\"create_plan\", \"set_plan_archived\", \"update_task\")",
+            "end_location": {
+              "column": 72,
+              "row": 210
+            },
+            "location": {
+              "column": 21,
+              "row": 210
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 210
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 210,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 55,
+        "row": 214
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\"read_profile\", \"update_profile\")",
+            "end_location": {
+              "column": 55,
+              "row": 214
+            },
+            "location": {
+              "column": 21,
+              "row": 214
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 214
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 214,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 223
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"update_followup_behavior\",\n            \"update_proactive_pause\",\n            \"update_notification_policy\",\n            \"test_email_configuration\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 223
+            },
+            "location": {
+              "column": 21,
+              "row": 218
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 218
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 218,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 243
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"poll\",\n            \"_claim_ack_jobs\",\n            \"_complete_ack_claims\",\n            \"_fail_ack_claims\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 243
+            },
+            "location": {
+              "column": 21,
+              "row": 238
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 238
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 238,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 254
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"_initialize_run\",\n            \"_refresh_stateless_context\",\n            \"_loop\",\n            \"_after_terminal\",\n            \"_ensure_session\",\n            \"_call_model\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 254
+            },
+            "location": {
+              "column": 21,
+              "row": 247
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 247
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 247,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "SIM102",
+      "end_location": {
+        "column": 19,
+        "row": 673
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": null,
+      "location": {
+        "column": 13,
+        "row": 668
+      },
+      "message": "Use a single `if` statement instead of nested `if` statements",
+      "name": "collapsible-if",
+      "noqa_row": 668,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+    },
+    {
+      "cell": null,
+      "code": "BLE001",
+      "end_location": {
+        "column": 33,
+        "row": 1566
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": null,
+      "location": {
+        "column": 20,
+        "row": 1566
+      },
+      "message": "Do not catch blind exception: `BaseException`",
+      "name": "blind-except",
+      "noqa_row": 1566,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/blind-except"
+    },
+    {
+      "cell": null,
+      "code": "BLE001",
+      "end_location": {
+        "column": 29,
+        "row": 3289
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": null,
+      "location": {
+        "column": 16,
+        "row": 3289
+      },
+      "message": "Do not catch blind exception: `BaseException`",
+      "name": "blind-except",
+      "noqa_row": 3289,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/blind-except"
+    },
+    {
+      "cell": null,
+      "code": "BLE001",
+      "end_location": {
+        "column": 29,
+        "row": 3354
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": null,
+      "location": {
+        "column": 16,
+        "row": 3354
+      },
+      "message": "Do not catch blind exception: `BaseException`",
+      "name": "blind-except",
+      "noqa_row": 3354,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/blind-except"
+    },
+    {
+      "cell": null,
+      "code": "BLE001",
+      "end_location": {
+        "column": 29,
+        "row": 3420
+      },
+      "filename": "/root/workspace/tencent_rhinobird2026/learning_travel/tests/hardening/test_h2_transaction_protocol.py",
+      "fix": null,
+      "location": {
+        "column": 16,
+        "row": 3420
+      },
+      "message": "Do not catch blind exception: `BaseException`",
+      "name": "blind-except",
+      "noqa_row": 3420,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/blind-except"
+    }
+  ],
+  "after_commit": "4c9a63228b4fb20d4a8e5dc5c0e6e279c96157ea",
+  "after_sha256": "8576fe01f78846ac651f086565672f9d9458556f342bfff03c637ac314ce0939",
+  "baseline_commit": "946d73541e935fcee40f2a60ae33ad7073f1587b",
+  "before": [
+    {
+      "cell": null,
+      "code": "I001",
+      "end_location": {
+        "column": 42,
+        "row": 82
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "from __future__ import annotations\n\nimport ast\nimport asyncio\nimport importlib\nimport inspect\nimport json\nimport re\nimport threading\nfrom collections.abc import AsyncIterator, Awaitable, Callable\nfrom dataclasses import fields\nfrom datetime import datetime, timedelta, timezone\nfrom enum import Enum\nfrom pathlib import Path\nfrom types import ModuleType, SimpleNamespace\nfrom typing import Any\n\nimport app.context.memory as memory_context_module\nimport app.core.execution_policy as execution_policy\nimport app.outbox as outbox_module\nimport app.runtime.agent as agent_runtime_module\nimport app.runtime.scheduler as scheduler_module\nimport app.runtime.subagents as runtime_subagents\nimport app.tools.registry as tool_registry\nimport app.tools.subagents as subagent_tools\nimport app.tools.web as web_tools\nimport app.tools.workspace as workspace_tools\nimport pytest\nimport pytest_asyncio\nfrom app.db.migrations import migrate_sqlite_database\nfrom app.db.uow import DatabaseBusyError\nfrom app.db.uow import commit as commit_uow\nfrom app.db.uow import rollback as rollback_uow\nfrom app.models import (\n    AgentRun,\n    Artifact,\n    ChatMessage,\n    EvidenceObservation,\n    LearningEvent,\n    Memory,\n    Notification,\n    Operation,\n    OutboxAction,\n    OutboxReceipt,\n    Owner,\n    Plan,\n    RunEvent,\n    Session,\n    Stage,\n    Task,\n    TaskSubmission,\n    ToolInvocation,\n    UserProfile,\n)\nfrom app.notifications.service import NotificationService\nfrom app.runtime.agent import AgentRuntime\nfrom app.runtime.checkpoints import make_checkpoint\nfrom app.runtime.events import emit_event\nfrom app.runtime.scheduler import ProactiveScheduler\nfrom app.services.evidence import append_observation, create_artifact\nfrom app.tools import ToolContext, execute_tool\nfrom app.tools.base import ToolDefinition\nfrom pydantic import BaseModel\nfrom sqlalchemy import event, func, select, text\nfrom sqlalchemy.exc import OperationalError\nfrom sqlalchemy.ext.asyncio import (\n    AsyncSession,\n    async_sessionmaker,\n    create_async_engine,\n)\n\n",
+            "end_location": {
+              "column": 1,
+              "row": 85
+            },
+            "location": {
+              "column": 1,
+              "row": 14
+            }
+          }
+        ],
+        "message": "Organize imports"
+      },
+      "location": {
+        "column": 1,
+        "row": 14
+      },
+      "message": "Import block is un-sorted or un-formatted",
+      "name": "unsorted-imports",
+      "noqa_row": 14,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+    },
+    {
+      "cell": null,
+      "code": "PLR0402",
+      "end_location": {
+        "column": 53,
+        "row": 47
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "from app.core import execution_policy",
+            "end_location": {
+              "column": 53,
+              "row": 47
+            },
+            "location": {
+              "column": 1,
+              "row": 47
+            }
+          }
+        ],
+        "message": "Replace with `from app.core import execution_policy`"
+      },
+      "location": {
+        "column": 8,
+        "row": 47
+      },
+      "message": "Use `from app.core import execution_policy` in lieu of alias",
+      "name": "manual-from-import",
+      "noqa_row": 47,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/manual-from-import"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 172
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"create_run\",\n            \"rename_session\",\n            \"handoff_session\",\n            \"submit_planning_answers\",\n            \"decide_plan_proposal\",\n            \"edit_user_message\",\n            \"cancel_run\",\n            \"enqueue_message\",\n            \"update_queued_message\",\n            \"delete_queued_message\",\n            \"send_queued_message\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 172
+            },
+            "location": {
+              "column": 21,
+              "row": 160
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 160
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 160,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 181
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"create_run\",\n            \"handoff_session\",\n            \"submit_planning_answers\",\n            \"edit_user_message\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 181
+            },
+            "location": {
+              "column": 21,
+              "row": 176
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 176
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 176,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 191
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"create_memory_proposal\",\n            \"confirm_memory\",\n            \"delete_memory\",\n            \"restore_memory\",\n            \"create_snapshot\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 191
+            },
+            "location": {
+              "column": 21,
+              "row": 185
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 185
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 185,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 202
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"create_push_subscription\",\n            \"delete_push_subscription\",\n            \"archive_read_notifications\",\n            \"mark_notification_read\",\n            \"open_notification\",\n            \"set_notification_archived\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 202
+            },
+            "location": {
+              "column": 21,
+              "row": 195
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 195
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 195,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 72,
+        "row": 210
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\"create_plan\", \"set_plan_archived\", \"update_task\")",
+            "end_location": {
+              "column": 72,
+              "row": 210
+            },
+            "location": {
+              "column": 21,
+              "row": 210
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 210
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 210,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 55,
+        "row": 214
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\"read_profile\", \"update_profile\")",
+            "end_location": {
+              "column": 55,
+              "row": 214
+            },
+            "location": {
+              "column": 21,
+              "row": 214
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 214
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 214,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 223
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"update_followup_behavior\",\n            \"update_proactive_pause\",\n            \"update_notification_policy\",\n            \"test_email_configuration\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 223
+            },
+            "location": {
+              "column": 21,
+              "row": 218
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 218
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 218,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 243
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"poll\",\n            \"_claim_ack_jobs\",\n            \"_complete_ack_claims\",\n            \"_fail_ack_claims\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 243
+            },
+            "location": {
+              "column": 21,
+              "row": 238
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 238
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 238,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "PLC0208",
+      "end_location": {
+        "column": 10,
+        "row": 254
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": {
+        "applicability": "safe",
+        "edits": [
+          {
+            "content": "(\n            \"_initialize_run\",\n            \"_refresh_stateless_context\",\n            \"_loop\",\n            \"_after_terminal\",\n            \"_ensure_session\",\n            \"_call_model\",\n        )",
+            "end_location": {
+              "column": 10,
+              "row": 254
+            },
+            "location": {
+              "column": 21,
+              "row": 247
+            }
+          }
+        ],
+        "message": "Convert to `tuple`"
+      },
+      "location": {
+        "column": 21,
+        "row": 247
+      },
+      "message": "Use a sequence type instead of a `set` when iterating over values",
+      "name": "iteration-over-set",
+      "noqa_row": 247,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/iteration-over-set"
+    },
+    {
+      "cell": null,
+      "code": "SIM102",
+      "end_location": {
+        "column": 19,
+        "row": 673
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": null,
+      "location": {
+        "column": 13,
+        "row": 668
+      },
+      "message": "Use a single `if` statement instead of nested `if` statements",
+      "name": "collapsible-if",
+      "noqa_row": 668,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+    },
+    {
+      "cell": null,
+      "code": "BLE001",
+      "end_location": {
+        "column": 33,
+        "row": 1566
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": null,
+      "location": {
+        "column": 20,
+        "row": 1566
+      },
+      "message": "Do not catch blind exception: `BaseException`",
+      "name": "blind-except",
+      "noqa_row": 1566,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/blind-except"
+    },
+    {
+      "cell": null,
+      "code": "BLE001",
+      "end_location": {
+        "column": 29,
+        "row": 3273
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": null,
+      "location": {
+        "column": 16,
+        "row": 3273
+      },
+      "message": "Do not catch blind exception: `BaseException`",
+      "name": "blind-except",
+      "noqa_row": 3273,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/blind-except"
+    },
+    {
+      "cell": null,
+      "code": "BLE001",
+      "end_location": {
+        "column": 29,
+        "row": 3338
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": null,
+      "location": {
+        "column": 16,
+        "row": 3338
+      },
+      "message": "Do not catch blind exception: `BaseException`",
+      "name": "blind-except",
+      "noqa_row": 3338,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/blind-except"
+    },
+    {
+      "cell": null,
+      "code": "BLE001",
+      "end_location": {
+        "column": 29,
+        "row": 3404
+      },
+      "filename": "/tmp/learning-travel-e4-acceptance-4E6ideiE/outbox-baseline-test.py",
+      "fix": null,
+      "location": {
+        "column": 16,
+        "row": 3404
+      },
+      "message": "Do not catch blind exception: `BaseException`",
+      "name": "blind-except",
+      "noqa_row": 3404,
+      "severity": "error",
+      "url": "https://docs.astral.sh/ruff/rules/blind-except"
+    }
+  ],
+  "before_sha256": "2d6d27b34aabae5e55329896a9dea16fcbd33160f39de12b27e5a1512c0b9c82",
+  "command_template": [
+    ".venv/bin/python",
+    "-m",
+    "ruff",
+    "check",
+    "--no-cache",
+    "--output-format",
+    "json",
+    "<baseline-or-current-file>"
+  ],
+  "new_findings": 0,
+  "scope": "tests/hardening/test_h2_transaction_protocol.py"
+}

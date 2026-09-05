@@ -1,0 +1,17 @@
+{
+  "baseline_commit": "a875ea01f10d0c9c44cc946a3fbc2bfba4648958",
+  "baseline_files": [
+    "evaluation/scripts/build_e4_candidates.py",
+    "evaluation/scripts/check_e4_candidates.py"
+  ],
+  "baseline_findings": [],
+  "changed_files": [
+    "evaluation/scripts/build_e4_candidates.py",
+    "evaluation/scripts/check_e4_candidates.py",
+    "evaluation/tests/test_e4_content_review.py"
+  ],
+  "current_findings": [],
+  "new_findings": 0,
+  "scope": "Modified Python files only; this is not a repository-wide default Ruff pass.",
+  "test_source_commit": "946d73541e935fcee40f2a60ae33ad7073f1587b"
+}

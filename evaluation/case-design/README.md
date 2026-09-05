@@ -4,7 +4,7 @@
 用户授权的 AI 逐例内容裁决已完成，身份为 `delegated_ai_reviewer`。48 个可执行输入及24个受控 Calibration 在
 [候选数据包](../datasets/decisionbench-v1-candidate/README.md)中构建。
 
-## 已执行与待复核
+## 已执行与内容复核
 
 48 Primary 在干净 `63be8da` 由真实 Hy3 执行，得到 45 Episode + 3 RuntimeFailure；
 24 Calibration 使用独立 C01–C08 家族的受控响应，得到 24 Episode + 0 Failure。
@@ -12,8 +12,8 @@
 `bd89530` 离线修复其中两类读引用导出错误；原批次仍维持原有身份与失败记录。
 `df8e8e7` 又修复模型可见画像中的控制 ID 泄漏并重建 24 个 Calibration；旧批次仅供探索复查。
 
-80条AI内容记录和8组三档裁决绑定最终Case/资源摘要；作者与复核者可能共享模型及上下文，未做独立人类标注。
-production registry为空。E4完成内容与工程验收后暂停；原DoD中的正式冻结/登记明确移至E5方法稳定后、E6前，承诺保留。
+80 条 AI 内容记录和 8 组三档裁决绑定最终 Case/资源摘要；作者与复核者可能共享模型及上下文，未做独立人类标注。当前修订 Primary 未新增真实执行；24 条受控 Calibration 已在当前绑定下重新导出，见 [E4 验收证据](../artifacts/e4-acceptance-20260906/README.md)。
+production registry 为空。E4 内容与工程验收已完成并暂停；原 DoD 中的正式冻结/登记明确移至 E5 方法稳定后、E6 前，承诺保留。
 
 ## 后续数据流程
 
@@ -22,8 +22,9 @@ production registry为空。E4完成内容与工程验收后暂停；原DoD中�
 3. 仅用 Development/Calibration 验证与调整评测方法，再冻结正式协议和 Benchmark。
 4. 以固定配置执行正式 Primary，保留每 Case 唯一 Episode/Failure 终态及四轨分母。
 
-Primary 不参与 Agent、Prompt、Rules 或 Judge 调优。根据其输出修改决策语义时，要将该轮记为探索，
-另行确定未用于调优的测试家族。基础设施修复也必须留下原提交、失败和新协议摘要，不能给旧制品换身份。
+当前 S01–S12 已标为探索输入；正式 Primary 测试不得参与 Agent、Prompt、Rules 或 Judge 调优。
+根据测试输出修改决策语义时，该轮转为探索记录，并另建未参与调优的测试家族。
+基础设施修复也必须留下原提交、失败和新协议摘要，不能给旧制品换身份。
 
 真实用户轨迹只能在获得许可和脱敏复核后作为案例来源；不能直接复制生产数据库。
 当前数据是作者构造的独立快照与合成验收材料，不证明真实用户学习效果。

@@ -1,0 +1,216 @@
+{
+  "calibration": {
+    "agent_contexts_and_judge_projections_checked": 24,
+    "blinding": [
+      {
+        "blind_projection_sha256": "c6567f42d2691cf2ab807e88e2f1f92eb91423b9abb9ff72e8fc071354f807d2",
+        "case_sha256": "11e4eadf17b89bee4e18d6e3aac16b3420cc3f52649e0f5767b82b18b593923f",
+        "episode_id": "episode-11e4eadf17b89bee4e18d6e3"
+      },
+      {
+        "blind_projection_sha256": "c257e6b584272392554d058c4cb80dd297eba924d11acf1c9f230dd7a3776b44",
+        "case_sha256": "17dd0f809f01c2058e5147d22424a0e75c3fb458d7d2e020ce3367a381f43745",
+        "episode_id": "episode-17dd0f809f01c2058e5147d2"
+      },
+      {
+        "blind_projection_sha256": "66d5e32411c73b4bbd50e4b3d52fc8119f09ddf4828b62678a0cadea4573b36b",
+        "case_sha256": "1e424876fab420a92bf4ec3c24edbab7bbde8539ae247b6c7bcdb36198a9d2d1",
+        "episode_id": "episode-1e424876fab420a92bf4ec3c"
+      },
+      {
+        "blind_projection_sha256": "60d25b263146a95a86ba5beb59e2bb80a62fed3135e4d07a2b40488c63052a95",
+        "case_sha256": "231f78f2e1be1f6eb8430715aa02c830860f6a77cc483f5c1ab3646e41f8417e",
+        "episode_id": "episode-231f78f2e1be1f6eb8430715"
+      },
+      {
+        "blind_projection_sha256": "dd150fef3fb17f6d243df37d1b7fa721495f3ca5fe19433d17f1ba89ba50c6cf",
+        "case_sha256": "23bdaf24fe72b1dc5c95b6cb22f1e10a65f64325a9876a7512005b3199fed872",
+        "episode_id": "episode-23bdaf24fe72b1dc5c95b6cb"
+      },
+      {
+        "blind_projection_sha256": "cf7d359432fca1c0939f551b27c5f3d6a0c09ad5116ff053d6c0e45848c58803",
+        "case_sha256": "3a3feba25ed942cda7769cfef3b574f56875b39bdf3909f26ff0145ad7bcb92d",
+        "episode_id": "episode-3a3feba25ed942cda7769cfe"
+      },
+      {
+        "blind_projection_sha256": "37c26d646b34b8369fb8d5aa14f4136cd3fe1e7b4c76ee6f606fc5995332f9c8",
+        "case_sha256": "48a6cf4f85e6e279daf4888cce108bd20fb3e43c37af512d9ca4bd32bd95d12b",
+        "episode_id": "episode-48a6cf4f85e6e279daf4888c"
+      },
+      {
+        "blind_projection_sha256": "d4ededc1b123f38af7f7b246b1161ebf6c71a1c04cab1f32ee80aecec57512f3",
+        "case_sha256": "4fa64e978c5d6566955c03725c6d816fe4d339d37e0dfcb40057883977d55c7b",
+        "episode_id": "episode-4fa64e978c5d6566955c0372"
+      },
+      {
+        "blind_projection_sha256": "d7e89d5674cfc45a8479071e7cda0783f0149d237baaadea39a4cb89f881257a",
+        "case_sha256": "525877c35c593effdd69777e175b89505659702e31372f63596cfd05c0f16d69",
+        "episode_id": "episode-525877c35c593effdd69777e"
+      },
+      {
+        "blind_projection_sha256": "0ead8ec0470e1b59d5738b88daa0d8f9634867a439fc48aee1f72eecf58116a9",
+        "case_sha256": "5c4758b5ff1f54bf597ab9ed8ff5aa32deb2dc913697e367ffcd48225037f314",
+        "episode_id": "episode-5c4758b5ff1f54bf597ab9ed"
+      },
+      {
+        "blind_projection_sha256": "7e6310fb0402613e354b6f1f7496293a4b0935aa040693d0480378b3ccd43875",
+        "case_sha256": "685b356b1a31cc99777ac106000a2ef39f40c9a58b28262f714c4d0eade60c87",
+        "episode_id": "episode-685b356b1a31cc99777ac106"
+      },
+      {
+        "blind_projection_sha256": "d9693dc19d4bfb775d6be829994c6d9b4bb36644159457cecda3b81d432d4674",
+        "case_sha256": "811564e6c875e329def5ad6ced26851628476a6e264bee16e0a81a1ac51801d2",
+        "episode_id": "episode-811564e6c875e329def5ad6c"
+      },
+      {
+        "blind_projection_sha256": "1d0d78911c672aff2d6606aee9067ca9d0721c4a3b85b9cd391c6fa073b0a1af",
+        "case_sha256": "84d0d9013aa13958a3b2a754cdbf521d6298fecca2e682c6a034a23ec4f8847d",
+        "episode_id": "episode-84d0d9013aa13958a3b2a754"
+      },
+      {
+        "blind_projection_sha256": "3966a0e55ffd9747093366f4de94015866be36853b0f8dd90e1a67662845b626",
+        "case_sha256": "84d905ed19016768e5785600515a87fc9377ffcf6c738aae707c9f902e28c40e",
+        "episode_id": "episode-84d905ed19016768e5785600"
+      },
+      {
+        "blind_projection_sha256": "bc99a9e2daf1469fc666e476e5197e1b52c91bc58672f501eb26e6c87e232094",
+        "case_sha256": "8ae3dd759111a940bae4fb14906c75f22dc6015491b85fd481bf51ddc656b768",
+        "episode_id": "episode-8ae3dd759111a940bae4fb14"
+      },
+      {
+        "blind_projection_sha256": "60ae36d33f37eb27d907d7268904c5d23fb1330fbe4e4fdd64eb8818dc3fbe05",
+        "case_sha256": "a0e249edfba330ed63c9224d689931b7a68901ef8d2dc1738edf9646bd65fba7",
+        "episode_id": "episode-a0e249edfba330ed63c9224d"
+      },
+      {
+        "blind_projection_sha256": "22c1e2eea7ff4e1b00603dfcff0e52053995cb41b085723a47c1ea1aa9b4604b",
+        "case_sha256": "b789b890d299968d6871ec126605b3ecb41b18092096dff71df86614f6ea3b6d",
+        "episode_id": "episode-b789b890d299968d6871ec12"
+      },
+      {
+        "blind_projection_sha256": "b79f58f798178cb8449ec65f2227c889c1a97d2765baf2ce368eed14e15d9aa8",
+        "case_sha256": "b97b23f3e3e7fdfc12275704caa6560115d2750752d5405fbbc7132157bf4f95",
+        "episode_id": "episode-b97b23f3e3e7fdfc12275704"
+      },
+      {
+        "blind_projection_sha256": "0f44ae28a15d6d0b03f81aca5465349c30c93370552134aac3325e1e9c872c24",
+        "case_sha256": "c1769c08c68c63f96ff93cb4103de72f13be813520c813b29cb7923879489f5f",
+        "episode_id": "episode-c1769c08c68c63f96ff93cb4"
+      },
+      {
+        "blind_projection_sha256": "30b121988f12dc4b2ca7e623f37a2d077cf3ddac98764f72c902c0f190e6f73b",
+        "case_sha256": "da2ec345a605db8c069c02ffb633841520e1f5bc4e5bb13439253c590285ed4e",
+        "episode_id": "episode-da2ec345a605db8c069c02ff"
+      },
+      {
+        "blind_projection_sha256": "a8d83d9de32e90848a2d027abead1bb5d237bf206ab8d53c44d02ecd2cfb998b",
+        "case_sha256": "ddad97925482d27d9525bb60801f2b24ca684ec58d155e43631b802e990fa4ad",
+        "episode_id": "episode-ddad97925482d27d9525bb60"
+      },
+      {
+        "blind_projection_sha256": "bf660c8e01897636b64804b059892ffe023315dd6df7564a2cd97c5496375f73",
+        "case_sha256": "e860f373725428b2ed55ed8ec1ff271132c68f64e15295ac1c132711508f0448",
+        "episode_id": "episode-e860f373725428b2ed55ed8e"
+      },
+      {
+        "blind_projection_sha256": "579fdd4f64ae01a533a6b92bee64f54f65ebdcb66da91c6a23a45e27932ff9d9",
+        "case_sha256": "f02ae935dcde98d400092fcca44e812e3d8e591e67daa261b0565642002b45fa",
+        "episode_id": "episode-f02ae935dcde98d400092fcc"
+      },
+      {
+        "blind_projection_sha256": "d180fdb406ef3a524fd07af3f13238bd1c6f9cb4a89af3ce28e43040d83f1f5f",
+        "case_sha256": "fb8832b03c62655a87e8f47f0e1dd001be275f8004ab5d344323cf8ea74f5ed0",
+        "episode_id": "episode-fb8832b03c62655a87e8f47f"
+      }
+    ],
+    "failures": 0,
+    "quality_counts": {
+      "good": {
+        "episodes": 8,
+        "hard_gates": 0,
+        "model_calls": 12
+      },
+      "mild": {
+        "episodes": 8,
+        "hard_gates": 0,
+        "model_calls": 12
+      },
+      "severe": {
+        "episodes": 8,
+        "hard_gates": 8,
+        "model_calls": 12
+      }
+    },
+    "real_judge_calls": 0,
+    "unique_terminals": 24
+  },
+  "git_commit": "946d73541e935fcee40f2a60ae33ad7073f1587b",
+  "history_archives": [
+    {
+      "archive": "calibration-runtime-and-rules-63be8da.tar.gz",
+      "files": 74,
+      "sha256": "51d130600a33f64376660ef7f20bc88d411deb8be39f4719f332d124e8e6dba0"
+    },
+    {
+      "archive": "calibration-runtime-and-rules-df8e8e7.tar.gz",
+      "files": 74,
+      "sha256": "fe0653885fcb2db1e66986b3273e3f663e48ad7a2567b391e33c62cc9c64dff1"
+    },
+    {
+      "archive": "candidate-inputs-63be8da.tar.gz",
+      "files": 93,
+      "sha256": "67f98766e2b15243e6081c0e08a8c90f2d0c87052f5c2cbb65bbf21831b49229"
+    },
+    {
+      "archive": "candidate-inputs-df8e8e7.tar.gz",
+      "files": 93,
+      "sha256": "d9d83642d24f6d0c141480eedc4b59577ad2c8136ebbe161b44becaa77aa5856"
+    },
+    {
+      "archive": "primary-runtime-63be8da.tar.gz",
+      "files": 94,
+      "sha256": "0ce694e09920d602e6cb1545e0b14691d537997961b4663ec2afaa6690b70ec2"
+    },
+    {
+      "archive": "protocol-trials.tar.gz",
+      "files": 107,
+      "sha256": "b5fd1db3947116883a4c3295aefce66fb56bbad6c4c1d49bb904dbd8dee1f65a"
+    },
+    {
+      "archive": "stub-smoke-63be8da.tar.gz",
+      "files": 128,
+      "sha256": "5c6aa5e194588cff1e5266578105a7903433527501c7e072db55964f25c5e98b"
+    },
+    {
+      "archive": "stub-smoke-df8e8e7.tar.gz",
+      "files": 128,
+      "sha256": "ce61e241607c60aeb72b7ef6bf2ac97f91c121ace10a20d64d184639ac2edc46"
+    }
+  ],
+  "import_origins": {
+    "app": "backend/app/runtime/agent.py",
+    "learning_agent_eval": "evaluation/src/learning_agent_eval/__init__.py"
+  },
+  "production_registry_entries": 0,
+  "protocol_release_sha256": "8cafaa243d619523d676e7bc325093f586343221dc410c7bdf44cd67f8ba2a87",
+  "real_source_mutations": [
+    "action_protocol: all four changed",
+    "unrelated Markdown: none changed",
+    "product registry: runtime only changed"
+  ],
+  "reviewed_suites": {
+    "calibration": 24,
+    "primary": 48
+  },
+  "schema_bytes_equal_handoff": 44,
+  "schemas": {
+    "active_release": 21,
+    "historical_frozen": 23
+  },
+  "source_files": {
+    "aggregate": 60,
+    "judge": 60,
+    "rules": 60,
+    "runtime": 150
+  }
+}

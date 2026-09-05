@@ -1,0 +1,20 @@
+{
+  "access": "read-only SQLite mode=ro",
+  "fixture_path": "pytest-full-repo-complete/test_bounded_duplicate_notific0/h2-transaction-protocol.sqlite3",
+  "outbox_attempts": [],
+  "stored_result_payload_empty": [
+    true
+  ],
+  "synthetic_test_data": true,
+  "tables": {
+    "notifications": [],
+    "outbox_actions": [],
+    "outbox_receipts": [],
+    "tool_invocations": [
+      {
+        "count": 1,
+        "status": "retry_pending"
+      }
+    ]
+  }
+}
