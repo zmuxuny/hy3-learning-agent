@@ -468,6 +468,7 @@ def test_repeated_events_at_one_frozen_time_keep_distinct_identities(tmp_path):
 @pytest.mark.parametrize("track,calls", [
     ("a", [("submission_list", {"plan_id": 1}), ("study_state_get", {"plan_id": 1})]),
     ("p", [("web_search", {"query": "synthetic cuda profiling guide", "save_results": False})]),
+    ("r", [("planning_intake_get", {})]),
 ])
 def test_real_read_result_shapes_remain_exportable(tmp_path, track, calls):
     case = load(DATA / f"cases/case-e31-{track}-positive.json")
@@ -550,6 +551,61 @@ def test_digest_reference_is_not_a_phone_but_adjacent_phone_still_is():
     assert privacy_issues({"public_text": f"case@{digest} 联系人13800138000"})
     assert privacy_issues({"api_key": digest})
     assert privacy_issues({"private_reasoning": digest})
+
+
+def test_profile_read_preserves_declared_public_context_references(tmp_path):
+    case = load(DATA / "cases/case-e31-r-positive.json")
+    turns = deepcopy(case["runtime_setup"]["scripted_turns"])
+    inspect = deepcopy(turns[-1])
+    inspect.update(ordinal=1, assistant_text="", declared_actions=[], tool_calls=[
+        {"call_id": "inspect-profile", "name": "profile_get", "arguments": {}}])
+    case["runtime_setup"]["scripted_turns"] = [inspect, *turns]
+    for ordinal, turn in enumerate(case["runtime_setup"]["scripted_turns"], 1):
+        turn["ordinal"] = ordinal
+    dataset = suite_for(tmp_path, [case])
+    summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+    assert not summary.failure_ids
+    assert validate_dataset(tmp_path / "runtime").ok
+    episode = load(next((tmp_path / "runtime/episodes").glob("*.json")))
+    messages = episode["observable_trace"]["model_calls"][1]["visible_context"]["messages"]
+    result = next(json.loads(m["payload"]["content"]) for m in messages if m["role"] == "tool")
+    entities = result["data"]["preferences"]["public_case_context"]["entities"]
+    assert any(e["logical_id"] == "constraint:e1:r:001" for e in entities)
+
+
+def test_nested_logical_reference_requires_a_declared_entity():
+    from learning_agent_eval.normalizers import StableIdentityRegistry
+    from learning_agent_eval.snapshots import (
+        SnapshotCollectionError,
+        _normalize_references,
+    )
+
+    registry = StableIdentityRegistry(episode_id="independent", declarations={"constraint": ["constraint:time"]})
+    public = {"entities": [{"entity_type": "constraint", "logical_id": "constraint:time"}]}
+    assert _normalize_references(public, registry) == public
+    for invalid in (123, "constraint:unknown", "plan:time"):
+        public["entities"][0]["logical_id"] = invalid
+        with pytest.raises(SnapshotCollectionError):
+            _normalize_references(public, registry)
+
+
+def test_empty_intake_reference_is_only_allowed_for_an_absent_read_result():
+    from learning_agent_eval.normalizers import (
+        NormalizationError,
+        StableIdentityRegistry,
+    )
+    from learning_agent_eval.snapshots import _normalize_references
+
+    registry = StableIdentityRegistry(episode_id="independent-empty-intake")
+    result = {"name": "planning_intake_get", "result": {"data": {"exists": False, "session_id": ""}}}
+    assert _normalize_references(result, registry)["result"]["data"]["session_ref"] is None
+    result["result"]["data"]["exists"] = True
+    with pytest.raises(NormalizationError):
+        _normalize_references(result, registry)
+    result["result"]["data"]["exists"] = False
+    result["name"] = "plan_get"
+    with pytest.raises(NormalizationError):
+        _normalize_references(result, registry)
 
 
 def test_projection_failure_retains_original_public_tool_arguments():

@@ -432,6 +432,8 @@ _CONTAINER_ID_TYPES = {
 _TOOL_RESULT_ID_TYPES = {
     "plan_get": "plan", "submission_get": "submission", "quiz_get": "quiz",
     "plan.get": "plan", "submission.get": "submission", "quiz.get": "quiz",
+    "planning_intake_get": "planning_intake",
+    "planning.intake.get": "planning_intake",
 }
 _REFERENCE_LIST_TYPES = {
     "saved_resource_ids": "resource",
@@ -809,6 +811,16 @@ def _normalize_references(value: object, registry: StableIdentityRegistry) -> An
             for key, child in item.items():
                 entity_type = _REFERENCE_TYPES.get(key)
                 public_key = key
+                if key == "logical_id" and container_key == "entities":
+                    # Public Case context is echoed by profile_get. Its entity
+                    # keys already name declared logical facts, not ORM rows.
+                    declared_type = item.get("entity_type")
+                    if (not isinstance(declared_type, str)
+                            or not isinstance(child, str)
+                            or child not in registry.declared(declared_type)):
+                        raise SnapshotCollectionError("snapshot.undeclared_logical_reference")
+                    result[key] = child
+                    continue
                 if key == "id":
                     if container_key == "open_questions":
                         result["question_key"] = child  # A public form key, not an ORM ID.
@@ -827,6 +839,12 @@ def _normalize_references(value: object, registry: StableIdentityRegistry) -> An
                                 raise
                 elif entity_type is not None:
                     public_key = f"{key.removesuffix('_id')}_ref"
+                    if (key == "session_id" and child == "" and container_key == "data"
+                            and tool_name in {"planning_intake_get", "planning.intake.get"}
+                            and item.get("exists") is False):
+                        # The product's absent-intake response uses an empty
+                        # sentinel; there is no row identity to bind here.
+                        child = None
                     if child is not None:
                         try:
                             child = registry.resolve(entity_type, child)
