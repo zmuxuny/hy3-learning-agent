@@ -674,6 +674,15 @@ def _semantic_key(
             "content": row.content,
             "created_at": row.created_at,
         }
+    if entity_type == "learning_event":
+        return {
+            "plan_ref": registry.resolve("plan", row.plan_id),
+            "task_ref": registry.resolve("task", row.task_id),
+            "run_ref": registry.resolve("agent_run", row.run_id),
+            "event_type": row.event_type,
+            "payload": normalize_json(row.payload),
+            "occurred_at": row.occurred_at,
+        }
     if entity_type == "run_event":
         return {
             "run_ref": registry.resolve("agent_run", row.run_id),
@@ -748,6 +757,21 @@ def _register_identities(
                 )
                 ready_ids = {row.id for row in ready}
                 remaining = [row for row in remaining if row.id not in ready_ids]
+            continue
+        entity_rows = rows.get(entity_type, [])
+        if entity_type in {"learning_event", "evidence_observation"}:
+            # Frozen clocks can contain several equal append-only events. The
+            # committed insertion order distinguishes occurrences; raw DB IDs
+            # determine order only and never become public logical identities.
+            occurrences: dict[str, int] = {}
+            candidates = []
+            for row in sorted(entity_rows, key=lambda item: item.id):
+                semantic = _semantic_key(entity_type, row, registry)
+                digest = sha256_digest(normalize_json(semantic))
+                occurrences[digest] = occurrences.get(digest, 0) + 1
+                candidates.append(IdentityCandidate(raw_id=_raw_id(entity_type, row),
+                                  semantic_key={**semantic, "occurrence": occurrences[digest]}))
+            registry.register_many(entity_type, candidates)
             continue
         candidates = [
             IdentityCandidate(

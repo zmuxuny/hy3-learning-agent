@@ -185,3 +185,14 @@ def test_inspection_does_not_exempt_writes_or_final_answers():
     assert not inspection_only_response("", [{"name":"plan_get"}, {"name":"plan_patch"}])
     assert not inspection_only_response("", [{"name":"unknown_read_tool"}])
     assert not inspection_only_response("", [])
+    assert inspection_only_response("", [{"name":"web_search", "canonical_arguments":{}}])
+    assert not inspection_only_response("", [{"name":"web_search", "canonical_arguments":{"save_results":True}}])
+
+
+def test_resource_catalog_lists_real_snapshot_inputs(tmp_path):
+    from learning_agent_eval.resources import EvaluationSnapshotProvider
+
+    snapshot = EvaluationSnapshotProvider(ROOT / "evaluation/datasets/decisionbench-v4-engineering/resources/snapshot.json")
+    catalog = snapshot.public_catalog()
+    assert catalog["queries"] == ["synthetic cuda profiling guide", "synthetic spaced review checklist"]
+    assert {p["url"] for p in catalog["pages"]} == {p["url"] for p in snapshot.document["pages"]}

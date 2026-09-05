@@ -70,6 +70,7 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
                 ],
                 "facts": fixture["state_before"]["facts"],
                 "trigger": fixture["trigger"]["payload"],
+                "available_resource_catalog": fixture.get("resource_catalog", {}),
             }
             profile.preferences = {**profile.preferences, "public_case_context": public_facts}
         await db.flush()

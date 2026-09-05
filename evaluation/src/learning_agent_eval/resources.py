@@ -37,6 +37,16 @@ class EvaluationSnapshotProvider:
         self._pages = {item["url"]: item for item in document["pages"]}
         self.calls = {"search": 0, "open": 0, "validate": 0}
 
+    def public_catalog(self) -> dict[str, Any]:
+        """Tell the model which bounded resources and exact queries exist."""
+        return {
+            "snapshot_version": self.version,
+            "policy": "Only these frozen URLs and exact search queries are available. Unknown queries/URLs return unavailable; no live web fallback exists.",
+            "queries": sorted(self._queries),
+            "pages": [{"url": page["url"], "title": page["title"]}
+                      for page in sorted(self._pages.values(), key=lambda page: page["url"])],
+        }
+
     @staticmethod
     def _unavailable(kind: str) -> Exception:
         error = import_module("app.search.snapshots").SnapshotResourceUnavailable

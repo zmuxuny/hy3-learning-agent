@@ -445,6 +445,26 @@ def test_invalid_attempted_entity_is_scoreable_and_raw_arguments_survive(tmp_pat
     assert result.hard_gate_episode_ids
 
 
+def test_repeated_events_at_one_frozen_time_keep_distinct_identities(tmp_path):
+    case = load(DATA / "cases/case-e31-a-positive.json")
+    original = case["runtime_setup"]["scripted_turns"]
+    update = deepcopy(original[0])
+    update["tool_calls"] = [{"call_id":f"task-amend-{i}", "name":"task_patch",
+                            "arguments":{"task_id":1,"changes":{"description":"Explicit public criterion"},"reason":"Clarify task"}} for i in range(3)]
+    case["runtime_setup"]["scripted_turns"] = [update, original[-1]]
+    for ordinal, turn in enumerate(case["runtime_setup"]["scripted_turns"], 1):
+        turn["ordinal"] = ordinal
+    dataset = suite_for(tmp_path, [case])
+    summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+    assert not summary.failure_ids
+    episode = load(next((tmp_path / "runtime/episodes").glob("*.json")))
+    events = [e for e in episode["state_after"]["logical_entities"] if e["entity_type"] == "learning_event" and e["data"]["event_type"] == "task.updated"]
+    assert len(events) >= 3
+    assert len({e["logical_id"] for e in events}) == len(events)
+    assert len({e["data"]["occurred_at"] for e in events}) == 1
+    assert validate_dataset(tmp_path / "runtime").ok
+
+
 def test_projection_failure_retains_original_public_tool_arguments():
     from learning_agent_eval.active_worker import _public_model_records
     from learning_agent_eval.normalizers import NormalizationError

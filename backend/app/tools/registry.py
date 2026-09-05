@@ -318,6 +318,11 @@ async def task_patch(ctx: ToolContext, args: TaskPatchArgs) -> dict:
         before["completed_at"] = task.completed_at
     if "evidence" in changes:
         before["task_metadata"] = dict(task.task_metadata)
+    before_plan = {"version": task_plan.version, "progress": task_plan.progress}
+    before_stages = [
+        {"stage_id": stage.id, "changes": {"status": stage.status}}
+        for stage in task_plan.stages
+    ]
     updated = await plan_service.update_task(
         ctx.db,
         ctx.owner_id,
@@ -341,8 +346,19 @@ async def task_patch(ctx: ToolContext, args: TaskPatchArgs) -> dict:
             "evidence_protocol": 1,
             "changes": forward_changes,
             "reason": args.reason,
+            "affected": {"plan_id": task_plan.id},
+            "plan": {"version": task_plan.version, "progress": task_plan.progress},
+            "entities": [
+                {"stage_id": stage.id, "changes": {"status": stage.status}}
+                for stage in task_plan.stages
+            ],
         },
-        inverse_patch={"changes": json_safe(before)},
+        inverse_patch={
+            "changes": json_safe(before),
+            "affected": {"plan_id": task_plan.id},
+            "plan": before_plan,
+            "entities": before_stages,
+        },
     )
     ctx.db.add(operation)
     await flush_uow(ctx.db)

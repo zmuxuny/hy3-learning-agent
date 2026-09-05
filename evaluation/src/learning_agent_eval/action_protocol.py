@@ -175,12 +175,18 @@ INSPECTION_TOOLS = frozenset({
     "profile_get", "plan_list", "plan_get", "planning_intake_get", "quiz_get",
     "submission_get", "submission_list", "resource_list", "learning_event_list",
     "study_state_get", "competency_get", "competency_graph_get", "evidence_list",
+    "web_open", "web_search",
 })
 
 
 def inspection_only_response(text: str, tool_calls: Iterable[Mapping[str, Any]]) -> bool:
     calls = list(tool_calls)
-    return not text.strip() and bool(calls) and all(call.get("name") in INSPECTION_TOOLS for call in calls)
+    return not text.strip() and bool(calls) and all(
+        call.get("name") in INSPECTION_TOOLS and (
+            call.get("name") != "web_search"
+            or call.get("canonical_arguments", {}).get("save_results", False) is False
+        ) for call in calls
+    )
 
 _SEMANTIC_DICTIONARY = canonical_json(ACTION_SEMANTICS)
 ACTION_DECLARATION_INSTRUCTION = (
@@ -194,6 +200,7 @@ ACTION_DECLARATION_INSTRUCTION = (
     "not whether an effect succeeded. Child and auxiliary calls do not declare "
     "actions. A main response with no text and only these read tools is inspection, "
     f"not an action declaration: {', '.join(sorted(INSPECTION_TOOLS))}. "
+    "web_search is inspection only when save_results is false or omitted. "
     "Every write attempt and final answer still requires a declaration. "
     "The following canonical JSON dictionary is normative, including "
     "track, boundaries, fields, examples, combinations, and missing-declaration "
@@ -218,7 +225,8 @@ ACTION_DECLARATION_PROTOCOL_DOCUMENT = {
     "actions": ACTION_SEMANTICS,
     "allowed_combinations": [list(item) for item in ALLOWED_ACTION_COMBINATIONS],
     "missing_or_invalid_policy": "retain_episode_and_score_behavior_failure",
-    "inspection_exception": {"assistant_content": "empty", "all_tools_in": sorted(INSPECTION_TOOLS), "trajectory_retained": True},
+    "inspection_exception": {"assistant_content": "empty", "all_tools_in": sorted(INSPECTION_TOOLS),
+                             "web_search_save_results": False, "trajectory_retained": True},
     "instruction": ACTION_DECLARATION_INSTRUCTION,
 }
 ACTION_DECLARATION_PROTOCOL_SHA256 = sha256_digest(

@@ -6,7 +6,7 @@ import pytest
 from app.api.operations import undo_operation
 from app.core.config import settings
 from app.db.database import AsyncSessionLocal
-from app.models import AgentRun, Plan, Stage
+from app.models import AgentRun, Operation, Plan, Stage, Task
 from app.notifications.service import NotificationService
 from app.tools.base import ToolContext
 from app.tools.registry import execute_tool
@@ -61,6 +61,35 @@ async def test_create_stage_undo_restores_sibling_order():
         assert [(stage.title, stage.position) for stage in stages] == [
             (f"Old {i}", i) for i in range(3)
         ]
+
+
+@pytest.mark.asyncio
+async def test_task_patch_records_parent_effects_and_undo_restores_learning_state():
+    async with AsyncSessionLocal() as db:
+        plan = Plan(owner_id="local", title="Task patch attribution", status="active", version=1)
+        db.add(plan)
+        await db.flush()
+        stage = Stage(plan_id=plan.id, title="Stage", position=0, status="pending")
+        db.add(stage)
+        await db.flush()
+        task = Task(stage_id=stage.id, title="Task", position=0, status="pending")
+        run = AgentRun(owner_id="local", plan_id=plan.id, trigger="user_message", objective="Start task")
+        db.add_all([task, run])
+        await db.commit()
+        ctx = ToolContext(db=db, owner_id="local", run_id=run.id, plan_id=plan.id,
+                          trigger="user_message", tool_call_id="audit-task-start")
+        result = await execute_tool("task_patch", json.dumps({"task_id": task.id,
+                                    "changes": {"status": "active"}, "reason": "User started"}), ctx)
+        assert result["ok"], result
+        operation = await db.get(Operation, result["data"]["operation_id"])
+        assert operation.forward_patch["affected"] == {"plan_id": plan.id}
+        assert operation.inverse_patch["plan"] == {"version": 1, "progress": 0.0}
+        assert operation.forward_patch["plan"] == {"version": 2, "progress": 0.0}
+        assert operation.forward_patch["entities"] == [{"stage_id": stage.id, "changes": {"status": "active"}}]
+        await db.commit()
+        await undo_operation(operation.id, db)
+        assert task.status == stage.status == "pending"
+        assert plan.version == 3
 
 
 @pytest.mark.asyncio

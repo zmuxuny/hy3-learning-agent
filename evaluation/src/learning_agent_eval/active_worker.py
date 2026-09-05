@@ -249,6 +249,8 @@ async def _execute_inner(
     reference = reference_builder(case)
     fixture = fixture_builder(case)
     snapshot = EvaluationSnapshotProvider(request["resource_path"])
+    if active:
+        fixture["resource_catalog"] = snapshot.public_catalog()
     progress["snapshot"] = snapshot
     if snapshot.version != runtime_setup["resource_snapshot_version"]:
         raise WorkerFailure(
@@ -349,7 +351,7 @@ async def _execute_inner(
             client,
             invocation_mode=request["model_mode"],
             metadata_provider=model_clients.current_model_call_metadata,
-            max_calls=12 if pilot else None,
+            max_calls=24 if pilot else None,
             max_output_tokens=OUTPUT_LIMIT if budget is not None else None,
             budget=budget,
             budget_scope=case["case_id"],

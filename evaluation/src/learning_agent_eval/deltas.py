@@ -201,10 +201,10 @@ def _patch_value(patch: Mapping[str, Any], entity_type: str, path: str, entity_r
         if isinstance(item, Mapping) and item.get(f"{entity_type}_ref") == entity_ref
         and isinstance(item.get("changes"), Mapping)
     )
-    if isinstance(patch.get("changes"), Mapping):
-        candidates.append(patch["changes"])
     if isinstance(patch.get(entity_type), Mapping):
         candidates.append(patch[entity_type])
+    if isinstance(patch.get("changes"), Mapping):
+        candidates.append(patch["changes"])
     award = patch.get("award")
     if isinstance(award, Mapping):
         award_key = {
