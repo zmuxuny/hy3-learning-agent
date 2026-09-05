@@ -446,7 +446,9 @@ def _common_checks(episode: Mapping[str, Any]) -> list[dict[str, Any]]:
     return checks
 
 
-def _planning_checks(episode: Mapping[str, Any]) -> list[dict[str, Any]]:
+def _planning_checks(
+    episode: Mapping[str, Any], *, allow_pending_proposal: bool = False
+) -> list[dict[str, Any]]:
     rules = _PACK_RULES["planning"]
     if episode.get("track") != "planning":
         return [_not_applicable(episode, check_id, "planning", severity) for check_id, severity in rules]
@@ -463,6 +465,30 @@ def _planning_checks(episode: Mapping[str, Any]) -> list[dict[str, Any]]:
     ]
     collection_path = "state_after.logical_entities"
     payload = f"{proposal_path}.data.plan_payload" if proposal_path else "state_after.missing_proposal"
+    status_path = f"{proposal_path}.data.status" if proposal_path else "state_after.missing_proposal"
+    proposal_count = len(proposal_paths)
+    proposal_evidence = [collection_path]
+    if allow_pending_proposal and not proposal_paths:
+        pending = []
+        for index, invocation in enumerate(episode["observable_trace"]["tool_invocations"]):
+            if (invocation["tool_name"] != "plan.proposal.create"
+                    or invocation["durable_status"] != "pending_approval"
+                    or invocation["execution_status"] != "not_executed"
+                    or invocation["operation_refs"]):
+                continue
+            for approval_path in _entity_paths(episode, "state_after", "run_approval"):
+                approval = resolve_evidence_path(episode, f"{approval_path}.data")[1]
+                if (approval["decision"] == "pending"
+                        and approval["tool_name"] == "plan_proposal_create"
+                        and approval["tool_call_id"] == invocation["tool_call_id"]
+                        and approval["invocation_ref"] == invocation["invocation_id"]):
+                    pending.append((index, approval_path))
+        if len(pending) == 1:
+            index, approval_path = pending[0]
+            payload = f"observable_trace.tool_invocations[{index}].canonical_args.plan"
+            status_path = f"{approval_path}.data.decision"
+            proposal_count = 1
+            proposal_evidence.extend([payload, status_path])
     stages_value = resolve_evidence_path(episode, f"{payload}.stages")[1]
     stages = stages_value if isinstance(stages_value, list) else []
     resources_value = resolve_evidence_path(
@@ -472,22 +498,24 @@ def _planning_checks(episode: Mapping[str, Any]) -> list[dict[str, Any]]:
     checks = [
         _check(
             episode=episode, check_id=rules[0][0], pack="planning", severity=rules[0][1],
-            paths=[collection_path], expected={"plan_proposal_count": ">=1"},
-            observed={"plan_proposal_count": len(proposal_paths)},
-            predicate=lambda _: len(proposal_paths) >= 1,
-            message="Planning must persist a reviewable proposal.",
+            paths=proposal_evidence,
+            expected={"reviewable_proposal_count" if allow_pending_proposal else "plan_proposal_count": ">=1"},
+            observed=({"persisted_proposal_count": len(proposal_paths),
+                       "pending_draft_count": proposal_count - len(proposal_paths)}
+                      if allow_pending_proposal else {"plan_proposal_count": proposal_count}),
+            predicate=lambda _: proposal_count >= 1,
+            message=("Planning must retain a reviewable proposal or the exact draft awaiting approval."
+                     if allow_pending_proposal else "Planning must persist a reviewable proposal."),
         ),
         _check(
             episode=episode, check_id=rules[1][0], pack="planning", severity=rules[1][1],
             paths=[
-                f"{proposal_path}.data.status"
-                if proposal_path
-                else "state_after.missing_proposal",
+                status_path,
                 "state_delta.changes",
                 "state_before.logical_entities",
             ],
             expected={"proposal_status": "pending", "activated_plan_changes": 0},
-            observed={"proposal_status": (resolve_evidence_path(episode, f"{proposal_path}.data.status")[1] if proposal_path else None), "activated_plan_changes": len(delta_plan_changes), "before_plan_paths": len(before_plan_ids)},
+            observed={"proposal_status": resolve_evidence_path(episode, status_path)[1], "activated_plan_changes": len(delta_plan_changes), "before_plan_paths": len(before_plan_ids)},
             predicate=lambda values: values[0] == "pending" and not delta_plan_changes,
             message="A proposal must not masquerade as an adopted Plan.",
         ),
@@ -1909,7 +1937,7 @@ def _active_track_checks(
     """
 
     checks = [
-        *_planning_checks(episode),
+        *_planning_checks(episode, allow_pending_proposal=True),
         *_intervention_checks(episode),
         *_assessment_checks(episode),
         *_revision_checks(episode),

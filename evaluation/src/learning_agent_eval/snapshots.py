@@ -436,6 +436,7 @@ _TOOL_RESULT_ID_TYPES = {
 _REFERENCE_LIST_TYPES = {
     "saved_resource_ids": "resource",
     "unscoped_observation_ids": "evidence_observation",
+    "source_run_ids": "agent_run",
 }
 _PUBLIC_ID_FIELDS = {
     "call_id",

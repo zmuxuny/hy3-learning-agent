@@ -2712,6 +2712,13 @@ class ActionMeaningV2(StrictContractModel):
     missing_declaration_policy: Literal["record_as_scoreable_behavior_failure"]
 
 
+class InspectionExceptionV1(StrictContractModel):
+    assistant_content: Literal["empty"]
+    all_tools_in: Annotated[list[StableId], Field(min_length=1)]
+    web_search_save_results: Literal[False]
+    trajectory_retained: Literal[True]
+
+
 class ActionDeclarationProtocolV2(StrictContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2729,10 +2736,13 @@ class ActionDeclarationProtocolV2(StrictContractModel):
     actions: dict[ActionClass, ActionMeaningV2]
     allowed_combinations: list[list[ActionClass]]
     missing_or_invalid_policy: Literal["retain_episode_and_score_behavior_failure"]
+    inspection_exception: InspectionExceptionV1
     instruction: ActionProtocolInstruction
 
     @model_validator(mode="after")
     def validate_dictionary(self) -> Self:
+        from .action_protocol import INSPECTION_TOOLS
+
         expected = set(ActionClass.__args__)  # type: ignore[attr-defined]
         if set(self.actions) != expected or len(self.actions) != len(expected):
             raise ValueError("action dictionary must contain all 14 canonical actions")
@@ -2740,6 +2750,8 @@ class ActionDeclarationProtocolV2(StrictContractModel):
             ["INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"]
         ]:
             raise ValueError("action combinations must match the frozen protocol")
+        if self.inspection_exception.all_tools_in != sorted(INSPECTION_TOOLS):
+            raise ValueError("inspection exception must match the recorded read tool policy")
         return self
 
 

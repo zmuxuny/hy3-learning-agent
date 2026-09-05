@@ -485,6 +485,27 @@ def test_real_read_result_shapes_remain_exportable(tmp_path, track, calls):
     assert validate_dataset(tmp_path / "runtime").ok
 
 
+def test_resource_read_then_proposal_keeps_approval_source_refs(tmp_path):
+    case = load(DATA / "cases/case-e31-p-positive.json")
+    proposal = deepcopy(case["runtime_setup"]["scripted_turns"][0])
+    inspect = deepcopy(proposal)
+    inspect.update(ordinal=1, assistant_text="", declared_actions=[], tool_calls=[
+        {"call_id": "read-first", "name": "web_open", "arguments": {
+            "url": "https://cuda.example.test/profiling-guide", "max_chars": 8000}}
+    ])
+    proposal["ordinal"] = 2
+    case["runtime_setup"]["scripted_turns"] = [inspect, proposal]
+    dataset = suite_for(tmp_path, [case])
+    summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+    assert not summary.failure_ids
+    episode = load(next((tmp_path / "runtime/episodes").glob("*.json")))
+    assert any(entity["entity_type"] == "run_approval" for entity in episode["state_after"]["logical_entities"])
+    assert validate_dataset(tmp_path / "runtime").ok
+    rules = evaluate_active_rules(input_path=tmp_path / "runtime", output=tmp_path / "rules")
+    assert not rules.hard_gate_episode_ids
+    assert not rules.invalid_episode_ids
+
+
 def test_projection_failure_retains_original_public_tool_arguments():
     from learning_agent_eval.active_worker import _public_model_records
     from learning_agent_eval.normalizers import NormalizationError

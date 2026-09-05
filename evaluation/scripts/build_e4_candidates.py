@@ -195,6 +195,10 @@ def case_input(
     case = json.loads((TEMPLATES / f"case-e31-{key}-positive.json").read_text())
     suffix = f"-{quality}" if quality else ""
     case_id = f"{family}-{key}{suffix}"
+    # Control labels must not reappear in JSON tool responses as Session/Run IDs.
+    opaque_table = str.maketrans("0123456789abcdef", "ghijklmnopqrstuv")
+    execution_key = sha256_digest(case_id)[:20].translate(opaque_table)
+    owner_key = sha256_digest(f"{family}-{key}")[:20].translate(opaque_table)
     plan_ref = f"plan:{family}:{key}"
     learner_ref = f"learner:{family}:{key}"
     goal_ref = f"goal:{family}:{key}"
@@ -311,11 +315,9 @@ def case_input(
     setup = case["runtime_setup"]
     setup.update(
         invocation_mode=mode,
-        owner_id=f"owner-{family}-{key}",
-        run_id=f"run:{family}:{key}{suffix}",
-        session_id=None
-        if track == "intervention"
-        else f"session:{family}:{key}{suffix}",
+        owner_id=f"owner-{owner_key}",
+        run_id=f"run:{execution_key}",
+        session_id=None if track == "intervention" else f"session:{execution_key}",
         frozen_time=frozen,
         timezone="Asia/Shanghai",
         seed_kind=track,
@@ -439,6 +441,10 @@ def primary_cases():
             content, criteria = ASSESSMENTS[index]
             note = f"请验收已提交的{row['topic']}作业，遵循任务标准，不按提交者自评分判定。"
             seed.update(submission_content=content, submission_status="submitted")
+            if index not in {2, 6, 10}:
+                seed["submission_artifacts"] = [
+                    report_reference(f"s{index + 1:02d}", content)
+                ]
             facts.update(acceptance_criteria=criteria, pass_threshold=70)
         elif track == "intervention":
             note = INTERVENTIONS[index]
@@ -664,6 +670,10 @@ def calibration_cases():
                             },
                         )
                     ]
+            if track == "assessment":
+                seed["submission_artifacts"] = [
+                    report_reference(f"c{index:02d}", seed["submission_content"])
+                ]
             case = case_input(
                 family=family,
                 track=track,
@@ -676,32 +686,86 @@ def calibration_cases():
                 mode="stub",
                 quality=quality,
             )
+            case["runtime_setup"]["resource_snapshot_version"] = (
+                "authored-resource-pack-b-v1"
+            )
             case["runtime_setup"]["scripted_turns"] = turns(action, text, calls)
             case["case_spec_sha256"] = case_spec_digest(case)
             result.append(case)
     return result
 
 
-def resource_snapshot():
-    pages = [
-        {
-            "url": f"https://learning.example.test/e4/s{i + 1:02d}",
-            "title": f"E4 自制学习资料 {i + 1}",
-            "content": f"作者编写的模拟教学材料，不声称抓取自外部网站。{note} 教学提示：{guide}",
-        }
-        for i, (note, guide) in enumerate(PLANNING)
-    ]
-    resource = {
-        "schema_version": "e1-resource-snapshot-v1",
-        "snapshot_version": SNAPSHOT_VERSION,
-        "provenance": "public_and_fully_synthetic",
-        "queries": [
+def report_content(content):
+    return (
+        "# 作者提供的合成验收记录\n这是题目给定的模拟记录，不是真实用户或真实硬件的运行日志。\n"
+        + content
+    )
+
+
+def report_reference(key, content):
+    return {
+        "kind": "provided_synthetic_report",
+        "title": "题目提供的验收记录",
+        "url": f"https://learning.example.test/e4/evidence/{key}",
+        "content_sha256": sha256_digest(report_content(content)),
+    }
+
+
+def resource_snapshot(*, calibration=False):
+    if calibration:
+        cases = calibration_cases()
+        pages = [
+            {
+                "url": item["runtime_setup"]["seed"]["submission_artifacts"][0]["url"],
+                "title": "题目提供的合成验收记录",
+                "content": report_content(
+                    item["runtime_setup"]["seed"]["submission_content"]
+                ),
+            }
+            for item in cases
+            if item["track"] == "assessment"
+            and item["private_annotations"]["quality_label"] == "good"
+        ]
+        queries = [
+            {
+                "query": "题目验收记录",
+                "results": [
+                    {"url": page["url"], "title": page["title"]} for page in pages
+                ],
+            }
+        ]
+    else:
+        pages = [
+            {
+                "url": f"https://learning.example.test/e4/s{i + 1:02d}",
+                "title": f"E4 自制学习资料 {i + 1}",
+                "content": f"作者编写的模拟教学材料，不声称抓取自外部网站。教学提示：{guide}",
+            }
+            for i, (_, guide) in enumerate(PLANNING)
+        ]
+        queries = [
             {
                 "query": f"E4 资料 {i + 1}",
-                "results": [{"url": p["url"], "title": p["title"]}],
+                "results": [{"url": page["url"], "title": page["title"]}],
             }
-            for i, p in enumerate(pages)
-        ],
+            for i, page in enumerate(pages)
+        ]
+        pages.extend(
+            {
+                "url": f"https://learning.example.test/e4/evidence/s{i + 1:02d}",
+                "title": "题目提供的合成验收记录",
+                "content": report_content(content),
+            }
+            for i, (content, _) in enumerate(ASSESSMENTS)
+            if i not in {2, 6, 10}
+        )
+    resource = {
+        "schema_version": "e1-resource-snapshot-v1",
+        "snapshot_version": "authored-resource-pack-b-v1"
+        if calibration
+        else SNAPSHOT_VERSION,
+        "provenance": "public_and_fully_synthetic",
+        "queries": queries,
         "pages": pages,
     }
     resource["manifest_sha256"] = sha256_digest(resource)
@@ -817,6 +881,10 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     resource = args.output / "resource-snapshot.json"
     resource.write_bytes(canonical_json_bytes(resource_snapshot()))
+    calibration_resource = args.output / "calibration-resource-snapshot.json"
+    calibration_resource.write_bytes(
+        canonical_json_bytes(resource_snapshot(calibration=True))
+    )
     primary = primary_cases()
     calibration = calibration_cases()
     mutation_manifest(args.output, calibration)
@@ -829,7 +897,7 @@ def main():
     write_candidate_suite(
         args.output / "calibration",
         cases=calibration,
-        resource_snapshot=resource,
+        resource_snapshot=calibration_resource,
         dataset_version="decisionbench-v1-calibration-candidate",
     )
     inventory = [
