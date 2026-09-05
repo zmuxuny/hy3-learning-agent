@@ -121,8 +121,8 @@ async function toggleSearch() {
       <input ref="searchInput" v-model="searchQuery" placeholder="搜索对话" @keydown.esc="toggleSearch" />
     </label>
 
-    <button class="new-run" @click="shell.startNewConversation">
-      <PencilSquareIcon /> 新对话
+    <button class="new-run" title="新对话" aria-label="新对话" @click="shell.startNewConversation">
+      <PencilSquareIcon /><span>新对话</span>
     </button>
 
     <nav class="nav-list">

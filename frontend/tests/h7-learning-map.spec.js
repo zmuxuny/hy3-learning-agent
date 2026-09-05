@@ -159,7 +159,7 @@ describe('H7 M14 read-only learning map', () => {
     expect(map.text()).toContain('事务原子性');
     expect(map.text()).toContain('训练 · 编写回滚实验');
     expect(map.text()).toContain('证明 · 编写回滚实验');
-    expect(map.text()).toContain('成果验收 · passed');
+    expect(map.text()).toContain('成果验收 · 通过');
     expect(map.text()).toContain('已证明');
     expect(map.text()).toContain('计入成功证据');
     expect(map.text()).toContain('不把完成进度推断成掌握度');

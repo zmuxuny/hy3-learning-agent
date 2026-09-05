@@ -195,7 +195,7 @@ async def plan_get(ctx: ToolContext, args: PlanIdArgs) -> dict:
         "status": plan.status,
         "progress": plan.progress,
         "version": plan.version,
-        "memory_summary": plan.memory_summary,
+        "memory_summary": plan_service.build_plan_memory_summary(plan),
         "stages": [
             {
                 "id": stage.id,

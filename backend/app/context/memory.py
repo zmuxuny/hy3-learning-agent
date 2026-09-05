@@ -48,6 +48,7 @@ from app.retrieval import get_embedding_provider
 from app.retrieval.bm25 import BM25
 from app.retrieval.provider import embedding_similarity
 from app.retrieval.text import tokenize_terms
+from app.services.plans import build_plan_memory_summary
 
 
 LAYER_WEIGHT = {"semantic": 4.0, "long_term": 4.0, "episodic": 2.5, "short_term": 2.0, "working": 1.0}
@@ -1507,19 +1508,7 @@ class MemoryManager:
                     "missing_plan_scope",
                 )
 
-        plan_summaries: dict[int, str] = {}
-        for plan in plans:
-            tasks = [task for stage in plan.stages for task in stage.tasks]
-            completed = [task for task in tasks if task.status == "completed"]
-            blocked = [task.title for task in tasks if task.status == "blocked"]
-            active = [task.title for task in tasks if task.status == "active"]
-            next_pending = next((task.title for task in tasks if task.status == "pending"), "")
-            plan_summaries[plan.id] = (
-                f"进度 {len(completed)}/{len(tasks)}；"
-                f"当前任务：{'、'.join(active[:3]) or next_pending or '无'}；"
-                f"阻塞：{'、'.join(blocked[:3]) or '无'}；"
-                f"计划版本 {plan.version}。"
-            )
+        plan_summaries = {plan.id: build_plan_memory_summary(plan) for plan in plans}
 
         embedding_updates: dict[int, list[float]] = {}
         if provider is not None:

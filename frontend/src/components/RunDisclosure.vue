@@ -280,8 +280,12 @@ function eventLabel(event) {
   if (event.type === 'assistant.status') return event.summary || '继续处理';
   if (event.type === 'assistant.reasoning') return event.summary || event.payload?.text || '正在分析下一步';
   if (event.type === 'steer.received') return '已接收你的补充要求，并调整当前处理方向';
-  if (event.type === 'approval.required') return `等待确认 ${event.payload?.tool_name || '操作'}`;
-  if (event.type === 'approval.resolved') return event.payload?.approved ? '操作已获批准' : '操作已被拒绝，正在调整方案';
+  if (event.type === 'approval.required') return `等待确认：${toolLabel(event.payload?.tool_name)}`;
+  if (event.type === 'approval.resolved') {
+    if (event.payload?.decision === 'approve' || event.payload?.approved === true) return '操作已获批准';
+    if (event.payload?.decision === 'answer') return '已接收补充要求，正在调整方案';
+    return '操作已被拒绝，正在调整方案';
+  }
   if (event.type === 'run.retrying') return event.summary || '暂时失败，正在重试';
   if (event.type === 'run.budget_exceeded') return event.summary || '已达到本次运行预算';
   if (event.type === 'run.failed') return event.summary || '运行没有正常完成';

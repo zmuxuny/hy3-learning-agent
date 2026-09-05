@@ -16,6 +16,22 @@ from app.services.gamification import evaluate_achievements
 PLAN_LOAD = selectinload(Plan.stages).selectinload(Stage.tasks)
 
 
+def build_plan_memory_summary(plan: Plan) -> str:
+    """Summarize already loaded plan facts without a provider or a database write."""
+
+    tasks = [task for stage in plan.stages for task in stage.tasks]
+    completed = [task for task in tasks if task.status == "completed"]
+    blocked = [task.title for task in tasks if task.status == "blocked"]
+    active = [task.title for task in tasks if task.status == "active"]
+    next_pending = next((task.title for task in tasks if task.status == "pending"), "")
+    return (
+        f"进度 {len(completed)}/{len(tasks)}；"
+        f"当前任务：{'、'.join(active[:3]) or next_pending or '无'}；"
+        f"阻塞：{'、'.join(blocked[:3]) or '无'}；"
+        f"计划版本 {plan.version}。"
+    )
+
+
 def plan_completeness_issues(data: PlanCreate) -> list[str]:
     """Return structural gaps that make a formal learning plan unusable."""
     issues: list[str] = []

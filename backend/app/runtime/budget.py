@@ -17,6 +17,7 @@ def default_budget() -> dict[str, int | float | str]:
         "tool_calls": 0,
         "network_requests": 0,
         "elapsed_ms": 0,
+        "approval_wait_ms": 0,
         "estimated_cost_usd": 0.0,
         "stopped_reason": "",
     }
@@ -43,7 +44,7 @@ def refresh_elapsed(
                 - coerce_legacy_utc(started_at)
             ).total_seconds()
             * 1000
-        ),
+        ) - max(0, int(budget.get("approval_wait_ms") or 0)),
     )
 
 
@@ -53,7 +54,7 @@ def budget_reason(
     started_at: datetime | None,
     tool_call_limit: int | None = None,
 ) -> str | None:
-    """Return the first shared limit reached after refreshing wall time."""
+    """Check execution time and usage, excluding durable user approval waits."""
 
     refresh_elapsed(budget, started_at)
     if (

@@ -42,6 +42,7 @@ from app.models import (
     Session,
     ToolInvocation,
 )
+from app.runtime.budget import normalize_budget, refresh_elapsed
 from app.runtime.checkpoints import (
     CHECKPOINT_SCHEMA_VERSION,
     make_checkpoint,
@@ -136,14 +137,25 @@ def _event_payload(event: RunEvent) -> dict[str, Any]:
     }
 
 
-def _terminal_budget(run: AgentRun, checkpoint: dict[str, Any], now: datetime) -> dict[str, Any]:
-    budget = dict(checkpoint.get("budget_usage") or run.budget_usage or {})
-    started = run.started_at or run.created_at
-    if started is not None:
-        budget["elapsed_ms"] = max(
-            int(budget.get("elapsed_ms") or 0),
-            max(0, int((coerce_legacy_utc(now) - coerce_legacy_utc(started)).total_seconds() * 1000)),
-        )
+async def _refresh_run_budget(
+    db: AsyncSession, run: AgentRun, checkpoint: dict[str, Any], now: datetime,
+) -> dict[str, Any]:
+    """Rebuild this Run's waiting total from durable facts, never increment twice."""
+
+    previous = checkpoint.get("budget_usage") or run.budget_usage or {}
+    budget = normalize_budget(previous)
+    approvals = (await db.execute(
+        select(RunApproval).where(RunApproval.run_id == run.id)
+    )).scalars().all()
+    wait_ms = sum(max(0, int((
+        coerce_legacy_utc(approval.decided_at or approval.consumed_at or now)
+        - coerce_legacy_utc(approval.created_at)
+    ).total_seconds() * 1000)) for approval in approvals)
+    if "approval_wait_ms" not in previous:
+        # Pre-upgrade checkpoints may already include earlier approval waits.
+        budget["elapsed_ms"] = max(0, int(budget["elapsed_ms"]) - wait_ms)
+    budget["approval_wait_ms"] = wait_ms
+    refresh_elapsed(budget, run.started_at or run.created_at, ended_at=now)
     return budget
 
 
@@ -190,6 +202,9 @@ async def claim_run(
         run.updated_at = now
         run.state_version = int(run.state_version or 1) + 1
         if checkpoint is not None:
+            budget = await _refresh_run_budget(db, run, checkpoint, now)
+            checkpoint["budget_usage"] = budget
+            run.budget_usage = budget
             checkpoint["state_version"] = run.state_version
             checkpoint = sanitize_checkpoint(checkpoint)
             run.checkpoint = checkpoint
@@ -397,6 +412,7 @@ async def pause_for_approval(
     if run is None:
         await rollback_uow(db)
         raise RunStateError("run disappeared before approval pause")
+    now = utc_now()
     invocation = (await db.execute(
         select(ToolInvocation).where(
             ToolInvocation.run_id == lease.run_id,
@@ -455,6 +471,7 @@ async def pause_for_approval(
             tool_call=safe_tool_call,
             remaining_tool_calls=safe_remaining_tool_calls,
             reason=safe_reason,
+            created_at=now,
         )
         db.add(approval)
     elif (
@@ -475,6 +492,9 @@ async def pause_for_approval(
         "step": int(checkpoint.get("step") or 0),
     }
     canonical = normalize_checkpoint(checkpoint) or checkpoint
+    budget = normalize_budget(canonical.get("budget_usage") or run.budget_usage)
+    refresh_elapsed(budget, run.started_at or run.created_at, ended_at=now)
+    canonical["budget_usage"] = budget
     new_version = lease.version + 1
     canonical["phase"] = "waiting_approval"
     canonical["state_version"] = new_version
@@ -489,12 +509,13 @@ async def pause_for_approval(
             checkpoint=canonical,
             checkpoint_schema_version=CHECKPOINT_SCHEMA_VERSION,
             pending_approval=pending,
+            budget_usage=budget,
             state_version=new_version,
             lease_token=None,
             lease_owner=None,
             lease_acquired_at=None,
             lease_expires_at=None,
-            updated_at=utc_now(),
+            updated_at=now,
         )
         .execution_options(synchronize_session=False)
     )
@@ -579,6 +600,13 @@ async def decide_approval(
     run.status = "queued"
     run.phase = "waiting_approval"
     run.state_version = int(run.state_version or 1) + 1
+    checkpoint = normalize_checkpoint(run.checkpoint)
+    budget = await _refresh_run_budget(db, run, checkpoint or {}, now)
+    run.budget_usage = budget
+    if checkpoint is not None:
+        checkpoint["budget_usage"] = budget
+        checkpoint["state_version"] = run.state_version
+        run.checkpoint = sanitize_checkpoint(checkpoint)
     run.updated_at = now
     await stage_event(
         db,
@@ -842,7 +870,7 @@ async def finalize_run(
         final_text = str(checkpoint.get("final_text") or "")
         message_key = str(checkpoint.get("final_message_key") or f"run:{run.id}:final")
         now = utc_now()
-        terminal_budget = _terminal_budget(run, checkpoint, now)
+        terminal_budget = await _refresh_run_budget(db, run, checkpoint, now)
         if run.session_id and final_text:
             message = (await db.execute(
                 select(ChatMessage).where(
@@ -964,7 +992,7 @@ async def finalize_child(
             raise RunLeaseLostError("child finalization lease/version changed")
         checkpoint = normalize_checkpoint(child.checkpoint, kind="subagent") or {}
         now = utc_now()
-        terminal_budget = _terminal_budget(child, checkpoint, now)
+        terminal_budget = await _refresh_run_budget(db, child, checkpoint, now)
         event_type = {
             "completed": "run.completed",
             "failed": "run.failed",
@@ -1171,6 +1199,9 @@ async def terminate_run(
         ):
             raise RunLeaseLostError("run termination lease/version changed")
         now = utc_now()
+        run.budget_usage = await _refresh_run_budget(
+            db, run, normalize_checkpoint(run.checkpoint) or {}, now,
+        )
         await _consume_terminal_approval(
             db,
             run,
@@ -1387,6 +1418,9 @@ async def reconcile_run_after_restart(
         if not scope_valid:
             now = utc_now()
             summary = "运行所属的计划或会话已不可用。"
+            run.budget_usage = await _refresh_run_budget(
+                db, run, normalize_checkpoint(run.checkpoint) or {}, now,
+            )
             await _consume_terminal_approval(
                 db,
                 run,

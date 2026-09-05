@@ -82,7 +82,8 @@ chatbot, and you must not simulate actions that were not executed.
 
 ## User-visible communication
 - Never expose private chain-of-thought. Emit only short status summaries suitable for an observable run trace.
-- Match the learner's language; default to concise Simplified Chinese when a background trigger has no user-authored language.
+- Match the learner's language in every user-visible message, including progress before tools and the final reply.
+  Default to concise Simplified Chinese when a background trigger has no user-authored language.
 - When the objective is complete, return a concise final response stating what happened, what evidence was used, and
   whether any operation can be undone or still needs approval.
 """

@@ -61,6 +61,19 @@ const approvalRequest = computed(() => {
   }
 });
 const approvalPlan = computed(() => approvalRequest.value?.name === 'plan_proposal_create' ? approvalRequest.value.args.plan : null);
+const approvalSubmission = computed(() => approvalRequest.value?.name === 'submission_create' ? approvalRequest.value.args : null);
+const approvalAssessment = computed(() => approvalRequest.value?.name === 'submission_check' ? approvalRequest.value.args : null);
+const approvalTitle = computed(() => (
+  approvalPlan.value ? '生成可审阅的计划提案'
+    : approvalSubmission.value ? '保存学习证据'
+      : approvalAssessment.value ? '记录成果验收结果' : '确认待执行操作'
+));
+const approvalReason = computed(() => {
+  const reason = approvalEvent.value?.payload?.reason || resolvedRun.value?.pending_approval?.reason;
+  return reason === 'External untrusted content cannot authorize this side effect without approval of the exact request.'
+    ? 'Agent 参考了网页或文件。请核对下方具体内容，批准后保存。'
+    : reason || '该操作需要你批准后才会执行。';
+});
 const liveIntakeMatches = computed(() => (
   live.value
   && props.cards.length === 0
@@ -166,11 +179,11 @@ async function copyAnswer() {
       <section v-if="approvalPending" class="approval-card thread-approval-card">
         <div class="approval-copy">
           <small>需要你的确认</small>
-          <strong>{{ approvalPlan ? '生成可审阅的计划提案' : approvalEvent?.payload?.tool_name || 'Agent 操作' }}</strong>
-          <p>{{ approvalEvent?.payload?.reason || resolvedRun.pending_approval?.reason || '该操作需要你批准后才会执行。' }}</p>
+          <strong>{{ approvalTitle }}</strong>
+          <p>{{ approvalReason }}</p>
         </div>
         <details v-if="approvalRequest" class="approval-request-preview" open>
-          <summary>{{ approvalPlan ? approvalPlan.title : '查看待执行内容' }}</summary>
+          <summary>{{ approvalPlan ? approvalPlan.title : approvalSubmission ? `任务 ${approvalSubmission.task_id} 的提交内容` : approvalAssessment ? `提交 ${approvalAssessment.submission_id} 的验收结果` : '查看待执行内容' }}</summary>
           <template v-if="approvalPlan">
             <p>每周 {{ approvalPlan.weekly_minutes }} 分钟 · {{ approvalPlan.description }}</p>
             <p>{{ approvalPlan.expected_outcome }}</p>
@@ -179,6 +192,18 @@ async function copyAnswer() {
               <p v-for="(task, taskIndex) in stage.tasks" :key="taskIndex">{{ task.title }}（{{ task.estimated_minutes }} 分钟）<br>{{ task.description }}</p>
             </div>
             <p>批准后生成提案；采用提案时再创建学习计划。</p>
+          </template>
+          <template v-else-if="approvalSubmission">
+            <p v-for="(artifact, index) in approvalSubmission.artifacts" :key="index">{{ artifact.path || artifact.url }}<br>{{ artifact.note }}</p>
+            <pre>{{ approvalSubmission.content }}</pre>
+          </template>
+          <template v-else-if="approvalAssessment">
+            <p>评分 {{ approvalAssessment.score }} · 通过线 {{ approvalAssessment.pass_threshold ?? 70 }}</p>
+            <div v-for="(check, index) in approvalAssessment.checks" :key="index">
+              <strong>{{ check.name || check.criterion }} · {{ check.result === 'pass' ? '通过' : check.result === 'fail' ? '未通过' : check.result }}</strong>
+              <p>{{ check.evidence }}</p>
+            </div>
+            <pre>{{ approvalAssessment.feedback }}</pre>
           </template>
           <pre v-else>{{ JSON.stringify(approvalRequest.args, null, 2) }}</pre>
         </details>

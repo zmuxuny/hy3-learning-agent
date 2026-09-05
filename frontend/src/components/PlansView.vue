@@ -92,12 +92,37 @@ function evidenceStageLabel(stage) {
 
 function evidenceSourceLabel(sourceType) {
   return {
+    submission: '学习成果',
+    quiz: '学习考核',
     submission_checked: '成果验收',
     quiz_graded: '考核评分',
     task_evidence: '任务证据',
     self_report: '学习者自述',
     email_reply: '邮件回复',
   }[sourceType] || sourceType;
+}
+
+function evidenceOutcomeLabel(outcome) {
+  return { accepted: '验收通过', submitted: '已提交', revision_required: '需修改', passed: '通过', failed: '未通过' }[outcome] || outcome;
+}
+
+function evidenceEligibilityLabel(observation) {
+  if (observation.counts_as_success) return '计入成功证据';
+  return {
+    ATTEMPT_RECORDED: '已记录本次练习',
+    LATEST_FAILED_ATTEMPT: '最近一次检查未通过',
+    OPERATION_UNDONE: '相关操作已撤销',
+    SUPPORTING_EVIDENCE_ONLY: '作为辅助证据',
+    LOW_CONFIDENCE_SOURCE: '来源仍需核验',
+    MISSING_DURABLE_ARTIFACT: '缺少已保存的成果',
+    ARTIFACT_NOT_DURABLY_STORED: '成果尚未保存',
+    MISSING_EVALUATOR: '尚未验收',
+    MISSING_RUBRIC: '缺少验收标准',
+    UNVERIFIED_TASK_CLAIM: '完成情况待核验',
+    ASSISTED_SUCCESS_CAPPED: '已在协助下完成',
+    NON_ASSESSMENT_OBSERVATION: '学习过程记录',
+    CONTROL_FACT: '证据状态记录',
+  }[observation.eligibility_reason] || '暂未计入成功证据';
 }
 
 function taskTitle(taskId) {
@@ -165,7 +190,7 @@ function askAgentAboutTask(task) {
 
 function submitTaskToAgent(task) {
   shell.startRun(
-    `我要提交任务 ${task.id}「${task.title}」的学习成果。请先读取任务要求，询问我需要提交的文字、文件路径、代码或链接；收到后使用 submission_create 保存证据，必要时读取文件或运行代码，再用 submission_check 给出验收结果。`,
+    `我要提交任务 ${task.id}「${task.title}」的学习成果。请先读取任务要求，告诉我需要提交哪些文字、文件、代码或链接；收到后保存证据，完成必要检查，逐项给出验收结果。`,
     planStore.currentPlan.id,
   );
 }
@@ -385,21 +410,21 @@ function createPlanWithAgent() {
 
             <div class="evidence-ledger">
               <div class="evidence-ledger-heading">
-                <h3>最近 Evidence</h3>
+                <h3>最近学习证据</h3>
                 <span>{{ planStore.evidenceObservations.length }} 条事实</span>
               </div>
               <article v-for="observation in evidenceTimeline" :key="observation.id" class="evidence-row">
                 <time :datetime="observation.occurred_at">{{ formatUpdated(observation.occurred_at) }}</time>
                 <div>
                   <strong>{{ taskTitle(observation.task_id) }}</strong>
-                  <p>{{ evidenceSourceLabel(observation.source_type) }} · {{ observation.outcome }}</p>
+                  <p>{{ evidenceSourceLabel(observation.source_type) }} · {{ evidenceOutcomeLabel(observation.outcome) }}</p>
                   <span v-if="observation.competency_refs?.length" class="evidence-competencies">
                     {{ observation.competency_refs.map((reference) => competencyTitle(reference.competency_id)).join(' · ') }}
                   </span>
                 </div>
                 <div class="evidence-stage">
                   <strong>{{ evidenceStageLabel(observation.eligibility_stage) }}</strong>
-                  <small>{{ observation.counts_as_success ? '计入成功证据' : observation.eligibility_reason }}</small>
+                  <small>{{ evidenceEligibilityLabel(observation) }}</small>
                 </div>
               </article>
               <p v-if="!evidenceTimeline.length" class="learning-map-empty">完成学习并提交成果后，来源、时间和适用技能会显示在这里。</p>
@@ -447,7 +472,7 @@ function createPlanWithAgent() {
                           <span v-if="task.review_due_at" class="review-fact"><BoltIcon />复习 {{ formatDate(task.review_due_at, true) }}</span>
                         </div>
                         <div class="task-tags">
-                          <span>{{ task.kind }}</span>
+                          <span>{{ { learning: '学习', practice: '练习', review: '复习', assessment: '考核' }[task.kind] || task.kind }}</span>
                           <span v-if="task.is_core || task.evidence_required" class="evidence-tag"><ShieldCheckIcon /> 核心 · 需证据</span>
                           <span v-if="wasTouchedByAgent(task)" class="agent-tag"><SparklesIcon /> Agent 已调整</span>
                         </div>

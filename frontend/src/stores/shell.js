@@ -192,9 +192,21 @@ export const useShellStore = defineStore('shell', () => {
     if (!objective.trim()) return false;
     const { inbox, plan, run, session } = domains();
     const resolvedPlanId = planId === undefined ? plan.focusPlanId : planId;
-    if (resolvedPlanId != null && !session.activeSessionId) {
-      const prior = session.sessions.find((item) => sameId(item.plan_id, resolvedPlanId));
-      if (prior) await selectSession(prior);
+    const activeSession = session.sessions.find((item) => sameId(item.id, session.activeSessionId));
+    if (resolvedPlanId != null && (!activeSession || !sameId(activeSession.plan_id, resolvedPlanId))) {
+      try {
+        const prior = session.sessions.find((item) => sameId(item.plan_id, resolvedPlanId));
+        if (prior) await selectSession(prior);
+        else if (activeSession?.plan_id == null && activeSession?.linked_plan_ids?.some((id) => sameId(id, resolvedPlanId))) {
+          await continueInPlan(resolvedPlanId);
+        } else {
+          resetExecutionContext();
+          plan.setFocus(resolvedPlanId);
+        }
+      } catch (requestError) {
+        setError(requestError);
+        return false;
+      }
     }
     if (options.mode === 'queue' && run.currentRun && isRunBlocking(run.currentRun.status)) {
       await session.enqueueMessage(objective, resolvedPlanId ?? null);

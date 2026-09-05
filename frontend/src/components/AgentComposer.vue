@@ -141,7 +141,7 @@ async function uploadFile(event) {
   uploading.value = true;
   try {
     const response = await api.upload('/workspace/files', file);
-    prompt.value = `请读取并检查我上传的学习成果文件 \`${response.data.path}\`。如果当前对话聚焦某个任务，请把它作为 submission_create 的证据；需要时运行代码或测试，再用 submission_check 给出验收结果。`;
+    prompt.value = `请读取并检查我上传的学习成果文件 \`${response.data.path}\`。如果当前对话聚焦某个任务，请把它保存为该任务的证据，完成必要检查，逐项给出验收结果。`;
   } catch (uploadError) {
     shell.error = uploadError.message;
   } finally {
