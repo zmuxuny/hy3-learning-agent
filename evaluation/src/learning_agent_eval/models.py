@@ -17,6 +17,7 @@ from pydantic import (
 )
 
 from .eligibility import isolation_evidence_protocol_eligible
+from .runtime_seed import RuntimeSeed
 
 SCHEMA_BASE_URI = "https://zmuxuny.github.io/hy3-learning-agent/evaluation/schemas"
 SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
@@ -1461,6 +1462,7 @@ class E1RunOutputManifest(StrictContractModel):
 # E3.1 clean-switch contracts.  The frozen v1/v2 models above remain readable
 # engineering history; only the contracts below may represent a formal run.
 DatasetRoleV3 = Literal["engineering_mini", "primary_episode", "calibration_output"]
+ActiveDatasetRole = Literal["engineering_mini", "primary_episode", "calibration_output", "protocol_pilot"]
 ConstraintKindV1 = Literal["must_satisfy", "must_not"]
 ConstraintEvaluationV1 = Literal["deterministic_rule", "semantic_judge"]
 FailureClassV1 = Literal[
@@ -2849,7 +2851,7 @@ class BenchmarkCaseBindingV1(StrictContractModel):
     relative_path: NonEmptyText
     case_id: StableId
     case_spec_sha256: Sha256
-    dataset_role: DatasetRoleV3
+    dataset_role: ActiveDatasetRole
     split: Split
     track: Track
 
@@ -2869,7 +2871,7 @@ class BenchmarkTrackCountsV1(StrictContractModel):
 
 
 class BenchmarkPartitionV1(StrictContractModel):
-    dataset_role: DatasetRoleV3
+    dataset_role: ActiveDatasetRole
     case_ids: list[StableId]
     expected_track_counts: BenchmarkTrackCountsV1
 
@@ -2927,7 +2929,7 @@ class BenchmarkReleaseManifestV1(StrictContractModel):
     case_suite_digest_rule: Literal["ordered-case-bindings-and-resource-v1"]
     cases: Annotated[list[BenchmarkCaseBindingV1], Field(min_length=1)]
     case_suite_sha256: Sha256
-    partitions: Annotated[list[BenchmarkPartitionV1], Field(min_length=3, max_length=3)]
+    partitions: Annotated[list[BenchmarkPartitionV1], Field(min_length=3, max_length=4)]
     expected_total_cases: Annotated[int, Field(ge=1)]
     mutation_source_lineage_sha256: Sha256
     resource_snapshots: Annotated[
@@ -2953,7 +2955,12 @@ class BenchmarkReleaseManifestV1(StrictContractModel):
         if self.expected_total_cases != len(self.cases):
             raise ValueError("Benchmark expected total must match bound Cases")
         roles = [item.dataset_role for item in self.partitions]
-        if roles != ["calibration_output", "engineering_mini", "primary_episode"]:
+        expected_roles = ["calibration_output", "engineering_mini", "primary_episode"]
+        if any(item.dataset_role == "protocol_pilot" for item in self.cases):
+            expected_roles.append("protocol_pilot")
+            if self.release_status != "engineering":
+                raise ValueError("protocol pilots cannot become a released Benchmark")
+        if roles != expected_roles:
             raise ValueError("Benchmark partitions must use fixed role order")
         partition_ids = [case_id for item in self.partitions for case_id in item.case_ids]
         if len(partition_ids) != len(set(partition_ids)) or set(partition_ids) != set(
@@ -3126,10 +3133,17 @@ class ScriptedModelTurnV2(ScriptedModelTurn):
 
 
 class CaseRuntimeSetupV2(CaseRuntimeSetupV1):
+    seed: RuntimeSeed
     scripted_turns: list[ScriptedModelTurnV2]
 
     @model_validator(mode="after")
     def validate_active_script(self) -> Self:
+        if self.seed_kind != "planning" and not self.seed.get("plan_title"):
+            raise ValueError("a seeded learning plan requires a title")
+        if self.seed_kind == "assessment" and not self.seed.get("task_title"):
+            raise ValueError("Assessment requires a seeded task")
+        if self.invocation_mode == "real" and self.seed.get("evaluation_injected_failure"):
+            raise ValueError("real Cases cannot inject engineering failures")
         ordinals = [turn.ordinal for turn in self.scripted_turns]
         if ordinals != list(range(1, len(ordinals) + 1)):
             raise ValueError("scripted turn ordinals must be consecutive")
@@ -3172,6 +3186,7 @@ class CaseSpecV2(CaseSpecV1):
     )
 
     schema_version: Literal["case-spec-v2"]  # type: ignore[assignment]
+    dataset_role: ActiveDatasetRole
     runtime_setup: CaseRuntimeSetupV2
     judge_criteria: CaseJudgeCriteriaV2
 
@@ -3191,6 +3206,8 @@ class JudgeReferenceV2(JudgeReferenceV1):
 
 
 class ModelCallV4(ModelCallV3):
+    request_config: dict[str, JsonValue] = Field(default_factory=dict)
+    response_validation_errors: list[dict[str, str]] = Field(default_factory=list)
     action_protocol_version: Literal["model-action-declaration-v2"]
     action_protocol_sha256: Sha256
     action_declaration_status: ActionDeclarationStatusV1
@@ -3324,7 +3341,7 @@ class DecisionResultV4(StrictContractModel):
 class ActiveArtifactProvenanceV1(StrictContractModel):
     source_type: Literal["runtime_export"]
     construction_method: Literal["runtime_recorded"]
-    dataset_role: DatasetRoleV3
+    dataset_role: ActiveDatasetRole
     runtime_executed: Literal[True]
     protocol_eligible: bool
     provider_eligible: bool
@@ -3521,6 +3538,14 @@ class RuntimeRunManifestV3(StrictContractModel):
     @model_validator(mode="after")
     def validate_runtime_manifest(self) -> Self:
         terminal_cases = [item.case_id for item in self.terminals]
+        if self.suite_complete:
+            counts = {
+                track: sum(item.track == track for item in self.terminals)
+                for track in ("planning", "intervention", "assessment", "revision")
+            }
+            if (len(self.terminals) != self.benchmark_expected_total_cases
+                    or counts != self.benchmark_expected_track_counts.model_dump()):
+                raise ValueError("complete Suite must match declared total and track inventory")
         if self.selected_case_ids != sorted(set(self.selected_case_ids)):
             raise ValueError("selected runtime Case IDs must be sorted and unique")
         if terminal_cases != self.selected_case_ids:

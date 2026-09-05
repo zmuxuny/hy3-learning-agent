@@ -175,11 +175,7 @@
           "type": "array"
         },
         "seed": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Seed",
-          "type": "object"
+          "$ref": "#/$defs/RuntimeSeed"
         },
         "seed_kind": {
           "enum": [
@@ -452,6 +448,98 @@
       "title": "LogicalEntity",
       "type": "object"
     },
+    "RuntimeSeed": {
+      "additionalProperties": false,
+      "properties": {
+        "additional_stages": {
+          "items": {
+            "$ref": "#/$defs/SeedStage"
+          },
+          "title": "Additional Stages",
+          "type": "array"
+        },
+        "current_level": {
+          "title": "Current Level",
+          "type": "string"
+        },
+        "daily_notification_limit": {
+          "minimum": 0,
+          "title": "Daily Notification Limit",
+          "type": "integer"
+        },
+        "evaluation_injected_failure": {
+          "const": "provider_error",
+          "title": "Evaluation Injected Failure",
+          "type": "string"
+        },
+        "expected_outcome": {
+          "title": "Expected Outcome",
+          "type": "string"
+        },
+        "goal": {
+          "title": "Goal",
+          "type": "string"
+        },
+        "notification_cooldown_minutes": {
+          "minimum": 0,
+          "title": "Notification Cooldown Minutes",
+          "type": "integer"
+        },
+        "plan_description": {
+          "title": "Plan Description",
+          "type": "string"
+        },
+        "plan_title": {
+          "title": "Plan Title",
+          "type": "string"
+        },
+        "plan_version": {
+          "minimum": 1,
+          "title": "Plan Version",
+          "type": "integer"
+        },
+        "planning_readiness": {
+          "enum": [
+            "ready",
+            "collecting"
+          ],
+          "title": "Planning Readiness",
+          "type": "string"
+        },
+        "quiet_end": {
+          "title": "Quiet End",
+          "type": "string"
+        },
+        "quiet_start": {
+          "title": "Quiet Start",
+          "type": "string"
+        },
+        "submission_content": {
+          "title": "Submission Content",
+          "type": "string"
+        },
+        "submission_status": {
+          "enum": [
+            "submitted",
+            "accepted",
+            "revision_required"
+          ],
+          "title": "Submission Status",
+          "type": "string"
+        },
+        "task_title": {
+          "title": "Task Title",
+          "type": "string"
+        },
+        "weekly_minutes": {
+          "minimum": 1,
+          "title": "Weekly Minutes",
+          "type": "integer"
+        }
+      },
+      "title": "RuntimeSeed",
+      "type": "object"
+    },
     "ScriptedFunctionCall": {
       "additionalProperties": false,
       "properties": {
@@ -558,6 +646,52 @@
         "declared_actions"
       ],
       "title": "ScriptedModelTurnV2",
+      "type": "object"
+    },
+    "SeedStage": {
+      "additionalProperties": false,
+      "properties": {
+        "position": {
+          "title": "Position",
+          "type": "integer"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/SeedTask"
+          },
+          "title": "Tasks",
+          "type": "array"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "position",
+        "tasks"
+      ],
+      "title": "SeedStage",
+      "type": "object"
+    },
+    "SeedTask": {
+      "additionalProperties": false,
+      "properties": {
+        "position": {
+          "title": "Position",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "position"
+      ],
+      "title": "SeedTask",
       "type": "object"
     },
     "StateBefore": {
@@ -726,7 +860,8 @@
       "enum": [
         "engineering_mini",
         "primary_episode",
-        "calibration_output"
+        "calibration_output",
+        "protocol_pilot"
       ],
       "title": "Dataset Role",
       "type": "string"

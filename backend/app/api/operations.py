@@ -482,6 +482,12 @@ async def undo_operation(operation_id: str, db: AsyncSession = Depends(get_db)):
     elif operation.entity_type == "stage" and "delete" in inverse:
         stage = await db.get(Stage, int(inverse["delete"]))
         if stage:
+            for shifted in inverse.get("entities", []):
+                sibling = await db.get(Stage, shifted["stage_id"])
+                previous = shifted["changes"]["position"]
+                if sibling is None or sibling.plan_id != stage.plan_id or sibling.position != previous + 1:
+                    raise HTTPException(status_code=409, detail="Stage ordering changed after creation")
+                sibling.position = previous
             audit_plan_id = stage.plan_id
             await db.delete(stage)
             await flush_uow(db)

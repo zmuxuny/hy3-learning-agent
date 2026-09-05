@@ -20,9 +20,11 @@ _OPAQUE_ROUTING_FIELDS = {
 class RecordingDeliverySink:
     def __init__(self) -> None:
         self.attempts: list[dict[str, Any]] = []
+        self.delivery_calls = 0
         self._identities: dict[str, str] = {}
 
     def _record(self, action: Any, destination: str) -> dict[str, Any]:
+        self.delivery_calls += 1
         if destination not in {"smtp", "web_push"}:
             raise ValueError("evaluation sink rejects non-notification destinations")
         payload = dict(action.payload or {})

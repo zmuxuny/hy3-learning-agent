@@ -215,8 +215,11 @@ async def stage_create(ctx: ToolContext, args: StageCreateArgs) -> dict:
     if error := _archived(plan):
         return error
     position = len(plan.stages) if args.position is None else args.position
+    before_version = plan.version
+    shifted = []
     for existing_stage in plan.stages:
         if existing_stage.position >= position:
+            shifted.append({"stage_id": existing_stage.id, "changes": {"position": existing_stage.position}})
             existing_stage.position += 1
     stage = Stage(plan_id=plan.id, title=args.title, description=args.description, objectives=args.objectives, position=position)
     ctx.db.add(stage)
@@ -225,7 +228,12 @@ async def stage_create(ctx: ToolContext, args: StageCreateArgs) -> dict:
     operation = Operation(
         owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
         run_id=ctx.run_id, tool_name="stage.create",
-        entity_type="stage", entity_id=str(stage.id), forward_patch={"created": stage.id}, inverse_patch={"delete": stage.id},
+        entity_type="stage", entity_id=str(stage.id),
+        forward_patch={"created": stage.id, "affected": {"plan_id": plan.id},
+                       "plan": {"version": plan.version},
+                       "entities": [{"stage_id": item["stage_id"], "changes": {"position": item["changes"]["position"] + 1}} for item in shifted]},
+        inverse_patch={"delete": stage.id, "affected": {"plan_id": plan.id},
+                       "plan": {"version": before_version}, "entities": shifted},
     )
     ctx.db.add(operation)
     await flush_uow(ctx.db)
@@ -244,6 +252,7 @@ async def task_create(ctx: ToolContext, args: TaskCreateArgs) -> dict:
     if error := _archived(plan):
         return error
     existing = list((await ctx.db.execute(select(Task).where(Task.stage_id == stage.id))).scalars())
+    before_version = plan.version
     values = args.model_dump(exclude={"stage_id", "metadata"})
     task = Task(stage_id=stage.id, position=len(existing), task_metadata=args.metadata, **values)
     ctx.db.add(task)
@@ -252,7 +261,9 @@ async def task_create(ctx: ToolContext, args: TaskCreateArgs) -> dict:
     operation = Operation(
         owner_id=ctx.owner_id, invocation_id=ctx.invocation_id,
         run_id=ctx.run_id, tool_name="task.create",
-        entity_type="task", entity_id=str(task.id), forward_patch={"created": task.id}, inverse_patch={"delete": task.id},
+        entity_type="task", entity_id=str(task.id),
+        forward_patch={"created": task.id, "affected": {"plan_id": plan.id}, "plan": {"version": plan.version}},
+        inverse_patch={"delete": task.id, "affected": {"plan_id": plan.id}, "plan": {"version": before_version}},
     )
     ctx.db.add(operation)
     await flush_uow(ctx.db)

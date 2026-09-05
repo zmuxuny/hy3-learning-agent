@@ -19,7 +19,8 @@
           "enum": [
             "engineering_mini",
             "primary_episode",
-            "calibration_output"
+            "calibration_output",
+            "protocol_pilot"
           ],
           "title": "Dataset Role",
           "type": "string"
@@ -83,7 +84,8 @@
           "enum": [
             "engineering_mini",
             "primary_episode",
-            "calibration_output"
+            "calibration_output",
+            "protocol_pilot"
           ],
           "title": "Dataset Role",
           "type": "string"
@@ -320,7 +322,7 @@
       "items": {
         "$ref": "#/$defs/BenchmarkPartitionV1"
       },
-      "maxItems": 3,
+      "maxItems": 4,
       "minItems": 3,
       "title": "Partitions",
       "type": "array"

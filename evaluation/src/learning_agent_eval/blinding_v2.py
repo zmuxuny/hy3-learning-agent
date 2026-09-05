@@ -135,6 +135,28 @@ def _trace_projection(trace: Mapping[str, Any], *, salt: str) -> dict[str, Any]:
     return _sanitize(projected, salt=salt)
 
 
+def _delta_projection(episode: Mapping[str, Any], *, salt: str) -> dict[str, Any]:
+    projected = deepcopy(dict(episode["state_delta"]))
+    run_refs = {
+        entity["logical_id"]
+        for root in ("state_before", "state_after")
+        for entity in episode[root]["logical_entities"]
+        if entity["entity_type"] == "agent_run"
+    }
+    for change in projected.get("changes", []):
+        if change.get("entity_ref") not in run_refs:
+            continue
+        for side in ("before", "after"):
+            value = change.get(side, {}).get("value")
+            if isinstance(value, dict):
+                value.pop("model", None)
+                if isinstance(value.get("data"), dict):
+                    value["data"].pop("model", None)
+            elif change.get("field_path") == "data.model":
+                change[side]["value"] = "<withheld-model-identity>"
+    return _sanitize(projected, salt=salt)
+
+
 def _episode_projection(episode: Mapping[str, Any], *, salt: str) -> dict[str, Any]:
     environment = episode["environment"]
     projection = {
@@ -142,7 +164,7 @@ def _episode_projection(episode: Mapping[str, Any], *, salt: str) -> dict[str, A
         "track": episode["track"],
         "trigger": _sanitize(episode["trigger"], salt=salt),
         "state_after": _state_projection(episode["state_after"], salt=salt),
-        "state_delta": _sanitize(episode["state_delta"], salt=salt),
+        "state_delta": _delta_projection(episode, salt=salt),
         "environment": _sanitize(
             {
                 "schema_version": environment["schema_version"],

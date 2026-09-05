@@ -35,20 +35,28 @@ def public_projection(value: object) -> object:
     raise TypeError(f"unsupported recorder projection type: {type(value).__name__}")
 
 
+def _public_arguments(raw_arguments: object) -> tuple[dict[str, Any], str | None]:
+    try:
+        arguments = json.loads(raw_arguments)
+    except (TypeError, json.JSONDecodeError):
+        return {}, "invalid_json"
+    if not isinstance(arguments, dict):
+        return {}, "non_object_json"
+    return public_projection(arguments), None
+
+
 def _tool_call(call: Any) -> dict[str, Any]:
     function = getattr(call, "function", None)
     raw_arguments = getattr(function, "arguments", "{}") or "{}"
-    try:
-        arguments = json.loads(raw_arguments)
-    except (TypeError, json.JSONDecodeError) as exc:
-        raise RecorderPrivacyError("model tool arguments are not canonical JSON") from exc
-    if not isinstance(arguments, dict):
-        raise RecorderPrivacyError("model tool arguments must be an object")
-    return {
+    arguments, error = _public_arguments(raw_arguments)
+    result = {
         "call_id": str(getattr(call, "id", "")),
         "name": str(getattr(function, "name", "")),
-        "canonical_arguments": public_projection(arguments),
+        "canonical_arguments": arguments,
     }
+    if error:
+        result["argument_error"] = error
+    return result
 
 
 class _RecordedStream:
@@ -70,7 +78,11 @@ class _RecordedStream:
         try:
             chunk = await self._source.__anext__()
         except StopAsyncIteration:
-            self._recorder._finish_stream(self._pending)
+            try:
+                self._recorder._finish_stream(self._pending)
+            except (RecorderPrivacyError, TypeError, ValueError):
+                self._recorder._finish_projection_error(self._pending)
+                raise
             raise
         except asyncio.CancelledError:
             self._recorder._finish_error(self._pending, status="cancelled")
@@ -99,7 +111,11 @@ class _CompletionsDecorator:
             raise
         if hasattr(response, "__aiter__"):
             return _RecordedStream(response.__aiter__(), self._recorder, pending)
-        self._recorder._finish_message(pending, response)
+        try:
+            self._recorder._finish_message(pending, response)
+        except (RecorderPrivacyError, AttributeError, IndexError, TypeError, ValueError):
+            self._recorder._finish_projection_error(pending)
+            raise
         # Preserve the provider SDK's response identity. Runtime consumers may
         # rely on it, and OpenAI-compatible response models have a writable
         # instance dictionary even when their public schema forbids extras.
@@ -239,17 +255,13 @@ class EvaluationModelRecorder:
     def _finish_stream(self, pending: dict[str, Any]) -> None:
         calls = []
         for _, raw in sorted(pending.pop("_stream_calls").items()):
-            try:
-                arguments = json.loads(raw["arguments"] or "{}")
-            except json.JSONDecodeError as exc:
-                raise RecorderPrivacyError("model tool arguments are not canonical JSON") from exc
-            if not isinstance(arguments, dict):
-                raise RecorderPrivacyError("model tool arguments must be an object")
+            arguments, error = _public_arguments(raw["arguments"] or "{}")
             calls.append(
                 {
                     "call_id": raw["call_id"],
                     "name": raw["name"],
-                    "canonical_arguments": public_projection(arguments),
+                    "canonical_arguments": arguments,
+                    **({"argument_error": error} if error else {}),
                 }
             )
         pending["function_calls"] = calls
@@ -293,6 +305,14 @@ class EvaluationModelRecorder:
             pending["responded_at"] = utc_timestamp(datetime.now(timezone.utc))
         pending["response_digest"] = None
         self._publish(pending)
+
+    def _finish_projection_error(self, pending: dict[str, Any]) -> None:
+        # Preserve the public request and attempt without publishing unsafe or
+        # unparseable response material. Never include an exception's text.
+        pending["assistant_text"] = ""
+        pending["function_calls"] = []
+        pending["record_error"] = "response_projection_rejected"
+        self._finish_error(pending, status="framework_error")
 
     def _publish(self, record: dict[str, Any]) -> None:
         self._assert_public(record)

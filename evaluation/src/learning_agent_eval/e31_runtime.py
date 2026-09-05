@@ -230,7 +230,7 @@ def build_model_calls_v4(
 
     calls = build_model_calls_v3(records, normalize_run_id=normalize_run_id)
     result: list[dict[str, Any]] = []
-    for call in calls:
+    for call, record in zip(calls, records, strict=True):
         applicable = call["call_purpose"] == "decision" and call["status"] == "completed"
         if applicable:
             declaration_status, action_classes, _ = parse_action_declaration(
@@ -240,6 +240,11 @@ def build_model_calls_v4(
             declaration_status, action_classes = "not_applicable", ()
         enriched = {
             **call,
+            "request_config": dict(record.get("request_config") or {}),
+            "response_validation_errors": [
+                {"tool_call_id": item["call_id"], "code": item["argument_error"]}
+                for item in record.get("function_calls", []) if item.get("argument_error")
+            ],
             "action_protocol_version": ACTION_DECLARATION_PROTOCOL_VERSION,
             "action_protocol_sha256": ACTION_DECLARATION_PROTOCOL_SHA256,
             "action_declaration_status": declaration_status,
@@ -424,7 +429,7 @@ def build_runtime_failure(
         "failure_sha256": "0" * 64,
     }
     failure["failure_sha256"] = runtime_failure_digest(failure)
-    return RuntimeFailureV1.model_validate(failure).model_dump(mode="json")
+    return RuntimeFailureV1.model_validate(failure).model_dump(mode="json", by_alias=True)
 
 
 def build_runtime_failure_v2(
@@ -482,7 +487,7 @@ def build_runtime_failure_v2(
         "failure_sha256": "0" * 64,
     }
     failure["failure_sha256"] = runtime_failure_digest(failure)
-    return RuntimeFailureV2.model_validate(failure).model_dump(mode="json")
+    return RuntimeFailureV2.model_validate(failure).model_dump(mode="json", by_alias=True)
 
 
 def build_runtime_manifest_v2(

@@ -462,8 +462,10 @@ def _run_runtime(
                     completed = subprocess.run(
                         [
                             sys.executable,
-                            "-m",
-                            "learning_agent_eval.active_worker",
+                            *(["-m", "learning_agent_eval.active_worker"] if active else [
+                                "-c", ("from learning_agent_eval.active_worker import _main; "
+                                "raise SystemExit(_main(contract_version='v3'))"),
+                            ]),
                             "--request",
                             str(worker_root / "request.json"),
                         ],

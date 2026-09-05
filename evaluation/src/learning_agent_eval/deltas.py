@@ -190,12 +190,17 @@ def _nested_value(value: Any, segments: Sequence[str | int]) -> tuple[bool, Any]
     return True, current
 
 
-def _patch_value(patch: Mapping[str, Any], entity_type: str, path: str) -> tuple[bool, Any]:
+def _patch_value(patch: Mapping[str, Any], entity_type: str, path: str, entity_ref: str | None = None) -> tuple[bool, Any]:
     segments = _field_segments(path)
     if not segments or not isinstance(segments[0], str):
         return False, None
     first = segments[0]
     candidates: list[Any] = [patch]
+    candidates.extend(
+        item["changes"] for item in patch.get("entities", [])
+        if isinstance(item, Mapping) and item.get(f"{entity_type}_ref") == entity_ref
+        and isinstance(item.get("changes"), Mapping)
+    )
     if isinstance(patch.get("changes"), Mapping):
         candidates.append(patch["changes"])
     if isinstance(patch.get(entity_type), Mapping):
@@ -307,6 +312,11 @@ def _affected_refs(
     data = operation["data"]
     affected = [data["primary_entity_ref"]]
     patch = data["forward_patch"]
+    for item in patch.get("entities", []):
+        if isinstance(item, Mapping):
+            affected.extend(ref for key, ref in item.items()
+                            if key.endswith("_ref") and isinstance(ref, str)
+                            and ref in after_entities and ref not in affected)
     explicit = patch.get("affected")
     if isinstance(explicit, Mapping):
         for key in ("plan_ref", "stage_ref", "task_ref"):
@@ -400,10 +410,10 @@ def _alignment(
     current = before
     for operation in candidates:
         forward_found, forward_value = _patch_value(
-            operation["data"]["forward_patch"], entity_type, field_path
+            operation["data"]["forward_patch"], entity_type, field_path, entity_ref
         )
         inverse_found, inverse_value = _patch_value(
-            operation["data"]["inverse_patch"], entity_type, field_path
+            operation["data"]["inverse_patch"], entity_type, field_path, entity_ref
         )
         if not forward_found:
             continue
@@ -419,10 +429,10 @@ def _alignment(
     exact: list[str] = []
     for operation in candidates:
         forward_found, forward_value = _patch_value(
-            operation["data"]["forward_patch"], entity_type, field_path
+            operation["data"]["forward_patch"], entity_type, field_path, entity_ref
         )
         inverse_found, inverse_value = _patch_value(
-            operation["data"]["inverse_patch"], entity_type, field_path
+            operation["data"]["inverse_patch"], entity_type, field_path, entity_ref
         )
         field = field_path.removeprefix("data.").split(".", 1)[0].split("[", 1)[0]
         if (

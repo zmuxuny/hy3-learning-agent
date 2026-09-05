@@ -29,7 +29,8 @@
           "enum": [
             "engineering_mini",
             "primary_episode",
-            "calibration_output"
+            "calibration_output",
+            "protocol_pilot"
           ],
           "title": "Dataset Role",
           "type": "string"
@@ -921,6 +922,13 @@
           ],
           "title": "Parent Run Id"
         },
+        "request_config": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Request Config",
+          "type": "object"
+        },
         "request_model": {
           "maxLength": 4000,
           "minLength": 1,
@@ -938,6 +946,16 @@
             }
           ],
           "title": "Response Sha256"
+        },
+        "response_validation_errors": {
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Response Validation Errors",
+          "type": "array"
         },
         "run_id": {
           "maxLength": 128,

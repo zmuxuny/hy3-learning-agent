@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import io
+import subprocess
+import tarfile
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -83,3 +87,39 @@ def source_bundle_sha256(
     """Return the current bundle digest for one active component."""
 
     return str(build_source_bundle(component, project_root=project_root)["bundle_sha256"])
+
+
+@lru_cache(maxsize=128)
+def git_source_bundle_sha256(commit: str, component: SourceComponent) -> str | None:
+    """Recompute the bundle from an immutable Git object, without extraction.
+
+    Workers prime this read-only cache before installing the subprocess guard.
+    This checks source attribution, not proof that a remote provider executed it.
+    """
+    if len(commit) != 40 or any(char not in "0123456789abcdef" for char in commit):
+        return None
+    roots = ["evaluation/src/learning_agent_eval"]
+    if component == "runtime":
+        roots.append("backend/app")
+    result = subprocess.run(
+        ["git", "archive", "--format=tar", commit, "--", *roots],
+        cwd=PROJECT_ROOT, capture_output=True, check=False,
+    )
+    if result.returncode:
+        return None
+    files = []
+    with tarfile.open(fileobj=io.BytesIO(result.stdout)) as archive:
+        for member in archive:
+            if not member.isfile() or not member.name.endswith(".py") or "__pycache__" in member.name.split("/"):
+                continue
+            stream = archive.extractfile(member)
+            if stream is None:
+                return None
+            payload = stream.read()
+            files.append({"relative_path": member.name, "size": len(payload), "sha256": hashlib.sha256(payload).hexdigest()})
+    document = {
+        "schema_version": "source-bundle-manifest-v1", "bundle_version": SOURCE_BUNDLE_VERSION,
+        "component": component, "files": sorted(files, key=lambda item: item["relative_path"]),
+        "inclusion_policy": "evaluation-and-product-runtime-conservative-v1" if component == "runtime" else "evaluation-package-conservative-v1",
+    }
+    return sha256_digest(document)

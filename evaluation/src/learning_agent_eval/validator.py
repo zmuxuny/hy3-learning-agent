@@ -2209,6 +2209,8 @@ def _v4_v3_validation_projection(episode: Mapping[str, Any]) -> dict[str, Any]:
                 "action_protocol_sha256",
                 "action_declaration_status",
                 "declared_action_classes",
+                "request_config",
+                "response_validation_errors",
             }
         }
         for call in episode["observable_trace"]["model_calls"]
@@ -2239,6 +2241,8 @@ def _v4_v3_validation_projection(episode: Mapping[str, Any]) -> dict[str, Any]:
     result["layers"].pop("protocol_eligibility", None)
     attestation = episode["environment"]["provider_attestation"]
     dataset_role = episode["provenance"]["dataset_role"]
+    if dataset_role == "protocol_pilot":
+        dataset_role = "engineering_mini"
     legacy_formal = bool(
         attestation["invocation_mode"] == "real"
         and dataset_role == "primary_episode"
@@ -2291,6 +2295,15 @@ def _episode_v4_semantic_issues(
         for issue in _episode_v3_semantic_issues(projected, file=file)
         if issue.code not in ignored_v3_answer_codes
     ]
+    from .source_bundles import git_source_bundle_sha256
+
+    runtime = episode["environment"]["runtime"]
+    attestation = episode["environment"]["provider_attestation"]
+    git_digest = git_source_bundle_sha256(runtime["git_commit"], "runtime")
+    if (git_digest is None or attestation["git_commit"] != runtime["git_commit"]
+            or runtime["worktree_clean"] and git_digest != episode["provenance"]["runtime_source_bundle_sha256"]):
+        issues.append(_issue("provenance.git_source_mismatch", "$.environment.runtime.git_commit",
+                             "Recorded Git source does not substantiate the Runtime source attribution.", file=file))
     from .action_protocol import ACTION_DECLARATION_PROTOCOL_SHA256
     from .exporter_v4 import (
         ACTION_MAPPING_SHA256_V2,
@@ -2857,6 +2870,24 @@ def _e31_artifact_inventory_issues(
 
     def add(code: str, path: str, message: str, file: str) -> None:
         issues.append(_issue(code, path, message, file=file))
+
+    from .source_bundles import git_source_bundle_sha256
+
+    for version, component, digest_field in (
+        ("runtime-run-manifest-v3", "runtime", "runtime_source_bundle_sha256"),
+        ("rule-run-manifest-v3", "rules", "evaluator_implementation_sha256"),
+        ("judge-run-manifest-v3", "judge", "judge_source_bundle_sha256"),
+        ("aggregate-run-manifest-v3", "aggregate", "aggregate_source_bundle_sha256"),
+    ):
+        for file, manifest in by_version[version]:
+            recorded = git_source_bundle_sha256(manifest["git_commit"], component)
+            if recorded is None or manifest["worktree_clean"] and recorded != manifest[digest_field]:
+                add("manifest.git_source_mismatch", "$.git_commit", "Git source does not match the recorded implementation.", file)
+    for file, failure in by_version["runtime-failure-v2"]:
+        attestation = failure["provider_attestation"]
+        recorded = git_source_bundle_sha256(attestation["git_commit"], "runtime")
+        if recorded is None or attestation["worktree_clean"] and recorded != failure["runtime_source_bundle_sha256"]:
+            add("failure.git_source_mismatch", "$.provider_attestation.git_commit", "Failure source attribution does not match Git.", file)
 
     suites = by_version["case-suite-manifest-v1"]
     if len(suites) > 1:

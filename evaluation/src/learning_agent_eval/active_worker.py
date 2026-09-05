@@ -12,12 +12,6 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
-from ._historical_worker import (
-    WorkerFailure,
-    _drain_recording_sink,
-    _load_json,
-    _seed_fixture,
-)
 from .action_protocol import evaluation_system_prompt
 from .canonical import canonical_json, canonical_json_bytes, sha256_digest
 from .case_specs import (
@@ -47,6 +41,12 @@ from .normalizers import normalize_json, normalize_rfc3339
 from .privacy import privacy_issues
 from .recorder import EvaluationModelRecorder
 from .resources import EvaluationSnapshotProvider
+from .runtime_fixture import (
+    WorkerFailure,
+    _drain_recording_sink,
+    _load_json,
+    _seed_fixture,
+)
 from .runtime_metadata import (
     AGENT_RUNTIME_CONFIG_SHA256,
     ENDPOINT_POLICY_SHA256,
@@ -54,12 +54,14 @@ from .runtime_metadata import (
 )
 from .scripted_model import ScriptedModelClient
 from .snapshots import (
+    FIELD_ALLOWLISTS,
     SnapshotCollectionError,
     audit_projection,
     collect_state_snapshot,
     identity_registry,
     normalize_reference_fields,
 )
+from .source_bundles import git_source_bundle_sha256
 from .validator import validate_episode
 
 
@@ -220,13 +222,16 @@ def _public_model_records(
     return canonicalize_concurrent_model_records(projected) if active else projected
 
 
-async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, Any]:
+async def _execute_inner(
+    request: dict[str, Any], guard: IsolationGuard, progress: dict[str, Any]
+) -> dict[str, Any]:
     active = request.get("contract_version") == "v4"
     case_validator = validate_case_spec_v2 if active else validate_case_spec
     reference_builder = build_judge_reference_v2 if active else build_judge_reference
     fixture_builder = legacy_runtime_projection_v2 if active else legacy_runtime_projection
     episode_builder = build_decision_episode_v4 if active else build_decision_episode_v3
     case = case_validator(_load_json(Path(request["case_path"])))
+    progress["case"] = case
     runtime_setup = case["runtime_setup"]
     if runtime_setup["invocation_mode"] != request["model_mode"]:
         raise WorkerFailure(
@@ -237,6 +242,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
     reference = reference_builder(case)
     fixture = fixture_builder(case)
     snapshot = EvaluationSnapshotProvider(request["resource_path"])
+    progress["snapshot"] = snapshot
     if snapshot.version != runtime_setup["resource_snapshot_version"]:
         raise WorkerFailure(
             "resource_version", "load", "CaseSpec resource Snapshot mismatch"
@@ -301,6 +307,17 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             resource_digest=snapshot.digest,
             phase="before",
         )
+        if active:
+            actual = {entity["logical_id"]: entity for entity in before.document["logical_entities"]}
+            for declared in runtime_setup["state_before"]["logical_entities"]:
+                if declared["entity_type"] in {"goal", "constraint", "resource"}:
+                    continue  # These are declared public facts, not seeded ORM rows.
+                captured = actual.get(declared["logical_id"])
+                if captured is None or any(
+                    captured["data"].get(key) != value
+                    for key, value in declared["data"].items() if key in FIELD_ALLOWLISTS.get(declared["entity_type"], ())
+                ):
+                    raise WorkerFailure("seed.state_mismatch", "seed", "declared pre-state differs from the executable seed")
         if request["model_mode"] == "stub":
             client = ScriptedModelClient(runtime_setup["scripted_turns"])
         else:
@@ -314,6 +331,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             invocation_mode=request["model_mode"],
             metadata_provider=model_clients.current_model_call_metadata,
         )
+        progress.update(recorder=recorder, identities=identities, configured_model=app_config.settings.MODEL_NAME)
         stack.enter_context(model_clients.use_model_client_factory(lambda: recorder))
         runtime = agent_module.AgentRuntime()
         await runtime.run(fixture["run_id"])
@@ -325,6 +343,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             )
 
         sink = RecordingDeliverySink()
+        progress["sink"] = sink
         replay = await _drain_recording_sink(sink)
         after = await collect_state_snapshot(
             database.AsyncSessionLocal,
@@ -351,6 +370,7 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
             "published_sqlite_files": 0,
             "routing_material_exported": False,
         }
+        progress["isolation"] = isolation
         root_runs = [
             item
             for item in after.document["logical_entities"]
@@ -484,18 +504,70 @@ async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, 
     }
 
 
+async def _execute(request: dict[str, Any], guard: IsolationGuard) -> dict[str, Any]:
+    progress: dict[str, Any] = {}
+    try:
+        return await _execute_inner(request, guard, progress)
+    except (WorkerFailure, SnapshotCollectionError, DeltaConstructionError,
+            ExportError, ExportV3Error, ExportV4Error, EvaluationIsolationError,
+            KeyError, TypeError, ValueError, OSError, RuntimeError) as exc:
+        case = progress.get("case")
+        recorder = progress.get("recorder")
+        # Failures before Case validation retain the control-plane error path.
+        if case is None or recorder is None:
+            raise
+        stage = getattr(exc, "stage", "runtime")
+        if isinstance(exc, DeltaConstructionError):
+            stage = "delta"
+        elif isinstance(exc, SnapshotCollectionError):
+            stage = "snapshot"
+        elif isinstance(exc, (ExportError, ExportV3Error, ExportV4Error)):
+            stage = "export"
+        elif isinstance(exc, EvaluationIsolationError):
+            stage = "isolation"
+        records = _public_model_records(
+            recorder.records, progress["identities"],
+            active=request.get("contract_version") == "v4",
+        )
+        sink = progress.get("sink")
+        isolation = progress.get("isolation") or {
+            **guard.evidence(), "temporary_database": True,
+            "snapshot_provider_calls": dict(progress["snapshot"].calls),
+            "recording_sink_attempts": len(sink.attempts) if sink else 0,
+            "outbox_replay_confirmed": False,
+            "agent_observed_pending_delivery": False,
+            "agent_observed_emulated_receipt": False,
+            "published_sqlite_files": 0, "routing_material_exported": False,
+        }
+        failure = _failure_document(
+            request=request, case=case, stage=stage,
+            reason_code=getattr(exc, "code", "worker.framework_error"),
+            public_summary="Isolated execution failed; completed public calls are retained.",
+            records=records, isolation_evidence=isolation,
+            configured_model=progress["configured_model"],
+        )
+        await import_module("app.db.database").engine.dispose()
+        _publish(Path(request["output_path"]), {"failure.json": failure})
+        return {"status": "failure", "case_id": case["case_id"], "track": case["track"],
+                "artifact_id": failure["failure_id"], "artifact_sha256": failure["failure_sha256"]}
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m learning_agent_eval.active_worker")
     parser.add_argument("--request", required=True)
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None, *, contract_version: str = "v4") -> int:
     arguments = _parser().parse_args(argv)
     case_id = "unknown-case"
     stage = "bootstrap"
     try:
         request = _load_json(Path(arguments.request))
+        if request.get("contract_version") != contract_version:
+            raise WorkerFailure("historical_execution_disabled", "preflight", "worker contract is not active")
+        if contract_version == "v4":
+            git_source_bundle_sha256(request["git_commit"], "runtime")
         case_id = str(request.get("case_id") or case_id)
         guard = IsolationGuard(
             project_root=Path(request["project_root"]).resolve(),
@@ -536,6 +608,10 @@ def main(argv: list[str] | None = None) -> int:
         file=sys.stderr,
     )
     return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    return _main(argv, contract_version="v4")
 
 
 if __name__ == "__main__":

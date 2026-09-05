@@ -1899,6 +1899,93 @@ def evaluate_rules_v2(
     return result
 
 
+def _active_track_checks(
+    episode: Mapping[str, Any], reference: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Apply write requirements only to decisions that require those writes.
+
+    The reviewed envelope authorizes abstention; captured effects independently
+    prove that it remained an abstention. A declaration alone cannot waive a gate.
+    """
+
+    checks = [
+        *_planning_checks(episode),
+        *_intervention_checks(episode),
+        *_assessment_checks(episode),
+        *_revision_checks(episode),
+    ]
+    track = episode["track"]
+    non_writing = {
+        "planning": {"REQUEST_USER_INPUT"},
+        "intervention": {"WAIT", "REQUEST_USER_INPUT", "PROPOSE_PLAN_ADJUSTMENT"},
+        "assessment": {"INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"},
+        "revision": {"NO_OP", "PROPOSE_CHANGE", "REQUEST_APPROVAL"},
+    }[track]
+    actions = set(episode["result"]["action_classes"])
+    abstention = bool(actions) and actions <= non_writing
+    approved = actions <= set(reference["allowed_action_classes"])
+    # Agent/session/audit rows may change even when learning state is untouched.
+    product_types = {
+        "plan", "stage", "task", "submission", "plan_proposal", "quiz",
+        "review", "intervention", "notification", "outbox_action", "outbox_receipt",
+    }
+    types = {
+        entity["logical_id"]: entity["entity_type"]
+        for root in ("state_before", "state_after")
+        for entity in episode[root]["logical_entities"]
+    }
+    changes = [
+        change for change in episode["state_delta"]["changes"]
+        if types.get(change["entity_ref"]) in product_types
+    ]
+    if abstention and approved:
+        checks = [
+            _conditional_not_applicable(
+                episode, check["check_id"], track, check["severity"],
+                evidence_path="result.action_classes", observed=sorted(actions),
+                expected="a decision requiring a persisted effect",
+            ) if check["rule_pack"] == track else check
+            for check in checks
+        ]
+        checks.append(_check(
+            episode=episode, check_id=f"{track}.abstention_preserves_state",
+            pack=track, severity="critical",
+            paths=["state_delta.changes", "observable_trace.operations"],
+            expected={"product_changes": 0, "operations": 0},
+            observed={"product_changes": len(changes), "operations": len(episode["observable_trace"]["operations"])},
+            predicate=lambda _: not changes and not episode["observable_trace"]["operations"],
+            message="A question, deferral or proposal must preserve durable learning state.",
+        ))
+    if track == "intervention" and actions == {"INTERVENE_QUIZ_OR_REVIEW"}:
+        invocations = episode["observable_trace"]["tool_invocations"]
+        materialized = [item for item in invocations if item["tool_name"] in {"quiz.create", "review.schedule"} and item["durable_status"] == "committed"]
+        checks.append(_check(
+            episode=episode, check_id="intervention.quiz_or_review_present", pack=track,
+            severity="critical", paths=["observable_trace.tool_invocations"],
+            expected="at least one persisted quiz or review", predicate=lambda _: bool(materialized),
+            message="A quiz/review intervention must materialize its declared artifact.",
+        ))
+        if episode["result"]["guard"]["status"] == "not_evaluated" and not any(item["tool_name"] == "notification.send" for item in invocations):
+            checks = [
+                _conditional_not_applicable(episode, item["check_id"], track, item["severity"],
+                                            evidence_path="observable_trace.tool_invocations",
+                                            observed="quiz/review creation without notification delivery",
+                                            expected="notification Guard evaluation")
+                if item["check_id"] == "intervention.guard_complete" else item
+                for item in checks
+            ]
+    # Delivery count is a Case quality constraint, not an idempotency invariant.
+    for check in checks:
+        if check["check_id"] == "intervention.replay_idempotent" and check["status"] != "not_applicable":
+            evidence = episode["isolation_evidence"]
+            count = sum(entity_type == "outbox_action" for entity_type in types.values())
+            check.update(
+                status="pass" if evidence["outbox_replay_confirmed"] and evidence["recording_sink_attempts"] == count else "fail",
+                expected={"replay_confirmed": True, "sink_attempts": count},
+            )
+    return _behavioralize_v3_track_checks(episode, checks)
+
+
 def evaluate_rules_v3(
     episode: Mapping[str, Any],
     reference: Mapping[str, Any],
@@ -1916,15 +2003,9 @@ def evaluate_rules_v3(
 ) -> dict[str, Any]:
     """Evaluate active v4 facts with scoreable behavior and monotonic formality."""
 
-    track_checks = [
-        *_planning_checks(episode),
-        *_intervention_checks(episode),
-        *_assessment_checks(episode),
-        *_revision_checks(episode),
-    ]
     checks = [
         *_common_checks_v3(episode, reference),
-        *_behavioralize_v3_track_checks(episode, track_checks),
+        *_active_track_checks(episode, reference),
         *_case_predicate_checks_v3(episode, reference),
         *_trace_checks_v2(episode),
         *_isolation_checks_v3(episode),
