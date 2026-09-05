@@ -235,9 +235,14 @@ def _trace(
             )
     model_turns: list[dict[str, Any]] = []
     attempts: list[dict[str, Any]] = []
+    from .snapshots import pending_tool_call_evidence
+
+    queued = pending_tool_call_evidence(after) if include_event_observations else {}
     for record in model_records:
         refs: list[str] = []
         for call in record["function_calls"]:
+            if call["call_id"] in queued and call["call_id"] not in invocation_by_call:
+                continue
             try:
                 refs.append(invocation_by_call[call["call_id"]])
             except KeyError as exc:

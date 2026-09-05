@@ -112,8 +112,11 @@ def _decision_records(records: Sequence[Mapping[str, Any]]) -> list[dict[str, An
 
 
 def _link_model_calls(
-    calls: list[dict[str, Any]], trace: Mapping[str, Any]
+    calls: list[dict[str, Any]], trace: Mapping[str, Any], state_after: dict[str, Any]
 ) -> list[dict[str, Any]]:
+    from .snapshots import pending_tool_call_evidence
+
+    queued = pending_tool_call_evidence(state_after)
     invocation_by_call = {
         item["tool_call_id"]: item["invocation_id"]
         for item in trace["tool_invocations"]
@@ -124,6 +127,7 @@ def _link_model_calls(
             call["tool_call_refs"] = [
                 invocation_by_call[tool_call_id]
                 for tool_call_id in call["tool_call_refs"]
+                if tool_call_id not in queued
             ]
         except KeyError as exc:
             raise ExportV4Error("export_v4.model_call_unresolved") from exc
@@ -468,7 +472,7 @@ def build_decision_episode_v4(
             after=state_after,
             include_event_observations=True,
         )
-        calls = _link_model_calls(build_model_calls_v4(model_records), base_trace)
+        calls = _link_model_calls(build_model_calls_v4(model_records), base_trace, state_after)
         attempts, effects, actions, classification_issues = _effects_and_result(
             episode_id=fixture["episode_id"],
             calls=calls,

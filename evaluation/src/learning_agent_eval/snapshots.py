@@ -1018,7 +1018,7 @@ def _pending_approval_projection(
     approval_ref = _ref(registry, "run_approval", value.get("approval_id"))
     if approval_ref is None:
         raise SnapshotCollectionError("snapshot.pending_approval_fact_missing")
-    return {
+    projection = {
         "approval_ref": approval_ref,
         "tool_call_id": tool_call_id,
         "tool_name": tool_name,
@@ -1026,6 +1026,48 @@ def _pending_approval_projection(
         "reason": value.get("reason"),
         "step": step,
     }
+    if remaining:
+        from .recorder import public_tool_arguments
+
+        queued = []
+        for call in remaining:
+            if not isinstance(call, dict) or not isinstance(call.get("id"), str) or not isinstance(call.get("name"), str):
+                raise SnapshotCollectionError("snapshot.invalid_pending_tool_call")
+            arguments, error = public_tool_arguments(call.get("arguments") or "{}")
+            queued.append({"tool_call_id": call["id"], "tool_name": call["name"],
+                           "arguments_sha256": sha256_digest(arguments), "argument_error": error})
+        projection["unexecuted_tool_calls"] = queued
+    return projection
+
+
+def pending_tool_call_evidence(after: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Identify queued intent backed by the exact durable approval boundary."""
+    entities = {item["logical_id"]: item for item in after["logical_entities"]}
+    attempted = {item["data"]["tool_call_id"] for item in entities.values()
+                 if item["entity_type"] == "tool_invocation"}
+    queued = {}
+    for run in entities.values():
+        if run["entity_type"] != "agent_run":
+            continue
+        pending = run["data"].get("pending_approval")
+        if not isinstance(pending, dict):
+            continue
+        calls = pending.get("unexecuted_tool_calls", [])
+        if not calls:
+            continue
+        approval = entities.get(pending["approval_ref"], {}).get("data", {})
+        if (run["data"]["status"] != "waiting_approval" or approval.get("decision") != "pending"
+                or approval.get("run_ref") != run["logical_id"]
+                or approval.get("tool_call_id") != pending["tool_call_id"]
+                or len(calls) != pending["remaining_tool_call_count"]
+                or len(calls) != approval.get("remaining_tool_call_count")):
+            raise SnapshotCollectionError("snapshot.pending_tool_evidence_mismatch")
+        for call in calls:
+            key = call["tool_call_id"]
+            if key in queued or key in attempted:
+                raise SnapshotCollectionError("snapshot.duplicate_pending_tool_call")
+            queued[key] = {**call, "run_ref": run["logical_id"]}
+    return queued
 
 
 def _data(

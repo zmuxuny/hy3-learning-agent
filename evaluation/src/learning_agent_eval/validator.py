@@ -2315,13 +2315,37 @@ def _episode_v4_semantic_issues(
             issues.append(_issue("trace.observation_source_mismatch", f"$.observable_trace.tool_invocations[{index}]",
                                  "Tool observation source does not match its durable evidence.", file=file))
     observations = {o["invocation_id"]: o for o in episode["observable_trace"]["tool_invocations"]}
+    from .snapshots import pending_tool_call_evidence
+
+    try:
+        queued = pending_tool_call_evidence(episode["state_after"])
+    except (KeyError, TypeError, ValueError, RuntimeError):
+        queued = {}
+        issues.append(_issue("trace.pending_tool_evidence_invalid", "$.state_after",
+                             "Unexecuted tool intent lacks a matching durable approval.", file=file))
+    queued_seen = set()
     for index, call in enumerate(episode["observable_trace"]["model_calls"]):
-        returned = call["returned_tool_calls"]
+        returned = []
+        for item in call["returned_tool_calls"]:
+            pending = queued.get(item["call_id"])
+            if pending is None:
+                returned.append(item)
+                continue
+            if (pending["run_ref"] != call["run_id"] or pending["tool_name"] != item["name"]
+                    or pending["arguments_sha256"] != sha256_digest(item["canonical_arguments"])
+                    or pending.get("argument_error") != item.get("argument_error")
+                    or item["call_id"] in queued_seen):
+                issues.append(_issue("trace.pending_tool_mismatch", f"$.observable_trace.model_calls[{index}]",
+                                     "Returned queued tool differs from its durable pending request.", file=file))
+            queued_seen.add(item["call_id"])
         linked = [observations.get(ref) for ref in call["tool_call_refs"]]
         if (len(returned) != len(linked) or any(o is None or r["call_id"] != o["tool_call_id"]
                 or r["name"].replace("_", ".") != o["tool_name"] for r, o in zip(returned, linked))):
             issues.append(_issue("trace.returned_tool_mismatch", f"$.observable_trace.model_calls[{index}]",
                                  "Returned tool identities differ from their observed execution.", file=file))
+    if queued_seen != set(queued):
+        issues.append(_issue("trace.pending_tool_call_missing", "$.observable_trace.model_calls",
+                             "Queued tool request is absent from the original model response.", file=file))
     git_digest = git_source_bundle_sha256(runtime["git_commit"], "runtime")
     if (git_digest is None or attestation["git_commit"] != runtime["git_commit"]
             or runtime["worktree_clean"] and git_digest != episode["provenance"]["runtime_source_bundle_sha256"]):

@@ -179,9 +179,11 @@ def _failure_document(
 
 def _assert_episode_public(episode: dict[str, Any], reference: dict[str, Any]) -> None:
     version = str(episode["schema_version"])
-    if privacy_issues({"episode": episode, "reference": reference}, file=version):
+    privacy_errors = privacy_issues({"episode": episode, "reference": reference}, file=version)
+    if privacy_errors:
         raise WorkerFailure(
-            "privacy_rejected", "publish", "public evaluation artifacts failed privacy checks"
+            "privacy_rejected", "publish",
+            f"public artifact failed {privacy_errors[0].code} at {privacy_errors[0].path}"
         )
     validation_issues = validate_episode(
         episode, source=f"{episode['episode_id']}.json"

@@ -512,6 +512,46 @@ def test_resource_read_then_proposal_keeps_approval_source_refs(tmp_path, delega
     assert not rules.invalid_episode_ids
 
 
+def test_approval_retains_unexecuted_remainder_of_model_response(tmp_path):
+    case = load(DATA / "cases/case-e31-p-positive.json")
+    proposal = deepcopy(case["runtime_setup"]["scripted_turns"][0])
+    inspect = deepcopy(proposal)
+    inspect.update(ordinal=1, assistant_text="", declared_actions=[], tool_calls=[
+        {"call_id": "read-before-queue", "name": "web_open", "arguments": {
+            "url": "https://cuda.example.test/profiling-guide", "max_chars": 8000}}])
+    proposal["ordinal"] = 2
+    proposal["tool_calls"].insert(0, {"call_id": "blocked-intake", "name": "planning_intake_update", "arguments": {
+        "goal": "A bounded CUDA proposal", "confirmed_facts": [], "open_questions": [],
+        "readiness": "ready", "readiness_confidence": 1.0, "rationale": "Preserve the declared limits"}})
+    case["runtime_setup"]["scripted_turns"] = [inspect, proposal]
+    dataset = suite_for(tmp_path, [case])
+    summary = run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=tmp_path / "runtime")
+    assert not summary.failure_ids
+    episode = load(next((tmp_path / "runtime/episodes").glob("*.json")))
+    last = episode["observable_trace"]["model_calls"][-1]
+    assert len(last["returned_tool_calls"]) == 2
+    assert len(last["tool_call_refs"]) == 1
+    assert not any(item["tool_name"] == "plan.proposal.create" for item in episode["observable_trace"]["tool_invocations"])
+    assert validate_dataset(tmp_path / "runtime").ok
+    from learning_agent_eval.validator import validate_episode
+    broken = deepcopy(episode)
+    run = next(e for e in broken["state_after"]["logical_entities"] if e["entity_type"] == "agent_run")
+    run["data"]["pending_approval"]["unexecuted_tool_calls"][0]["arguments_sha256"] = "f" * 64
+    assert any(issue.code == "trace.pending_tool_mismatch" for issue in validate_episode(broken))
+
+
+def test_digest_reference_is_not_a_phone_but_adjacent_phone_still_is():
+    from learning_agent_eval.privacy import privacy_issues
+
+    digest = "a" * 20 + "13800138000" + "b" * 33
+    assert len(digest) == 64
+    assert not privacy_issues({"source_refs": [f"case:synthetic@{digest}"]})
+    assert not privacy_issues({"public_text": f'{{"content_sha256":"{digest}"}}'})
+    assert privacy_issues({"public_text": f"case@{digest} 联系人13800138000"})
+    assert privacy_issues({"api_key": digest})
+    assert privacy_issues({"private_reasoning": digest})
+
+
 def test_projection_failure_retains_original_public_tool_arguments():
     from learning_agent_eval.active_worker import _public_model_records
     from learning_agent_eval.normalizers import NormalizationError

@@ -85,6 +85,7 @@ _IDENTITY_PATTERNS = (
     re.compile(r"(?<!\d)\d{17}[0-9Xx](?!\d)"),
 )
 _SHA256_VALUE = re.compile(r"^[0-9a-f]{64}$")
+_SHA256_TOKEN = re.compile(r"(?<![A-Za-z0-9])[0-9a-f]{64}(?![A-Za-z0-9])")
 _RESERVED_EMAIL_DOMAINS = {
     "example.com",
     "example.net",
@@ -227,8 +228,10 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
                 )
             )
         digest_shaped_value = _SHA256_VALUE.fullmatch(item) is not None
+        digest_spans = [match.span() for match in _SHA256_TOKEN.finditer(item)]
         if not (verified_digest_shape or digest_shaped_value) and any(
-            pattern.search(item) for pattern in _IDENTITY_PATTERNS
+            not any(start <= match.start() and match.end() <= end for start, end in digest_spans)
+            for pattern in _IDENTITY_PATTERNS for match in pattern.finditer(item)
         ):
             issues.append(
                 ValidationIssue(

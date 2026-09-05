@@ -40,7 +40,7 @@ def public_projection(value: object) -> object:
     raise TypeError(f"unsupported recorder projection type: {type(value).__name__}")
 
 
-def _public_arguments(raw_arguments: object) -> tuple[dict[str, Any], str | None]:
+def public_tool_arguments(raw_arguments: object) -> tuple[dict[str, Any], str | None]:
     try:
         arguments = json.loads(raw_arguments)
     except (TypeError, json.JSONDecodeError):
@@ -53,7 +53,7 @@ def _public_arguments(raw_arguments: object) -> tuple[dict[str, Any], str | None
 def _tool_call(call: Any) -> dict[str, Any]:
     function = getattr(call, "function", None)
     raw_arguments = getattr(function, "arguments", "{}") or "{}"
-    arguments, error = _public_arguments(raw_arguments)
+    arguments, error = public_tool_arguments(raw_arguments)
     result = {
         "call_id": str(getattr(call, "id", "")),
         "name": str(getattr(function, "name", "")),
@@ -298,7 +298,7 @@ class EvaluationModelRecorder:
     def _finish_stream(self, pending: dict[str, Any]) -> None:
         calls = []
         for _, raw in sorted(pending.pop("_stream_calls").items()):
-            arguments, error = _public_arguments(raw["arguments"] or "{}")
+            arguments, error = public_tool_arguments(raw["arguments"] or "{}")
             calls.append(
                 {
                     "call_id": raw["call_id"],
