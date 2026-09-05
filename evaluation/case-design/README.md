@@ -43,7 +43,8 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/prepare_protocol_p
 
 四个 `protocol_pilot` 输入来自工程 Case，明确标注来源与待复核状态；该角色永远不能登记为
 released Benchmark。它们只检验协议与运行工程。真实执行通过 `run-agent --model-mode real
---allow-real-model --budget-ledger <既有共享账本>` 显式启用，当前暂停，不自动执行。
+--allow-real-model --budget-ledger <既有共享账本>` 显式启用。S06 修复与 E5 接续已获授权，
+使用同一预算，真实 Judge 的计费接入及实验顺序见 [E5 开发交接](../../docs/E5开发交接.md)。
 
 ## 费用与限制
 

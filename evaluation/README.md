@@ -30,8 +30,8 @@ CaseSpec v2（控制面，含私有标注）
 确定性、失败分类和 Hard Gate/cap，不是 Hy3 能力结果。E3.1.2 原始收口只运行 stub。
 2026-09-05 经授权完成审计修复及 E4 候选运行：48 Primary 真实执行得到 45 Episode +
 3 RuntimeFailure，24 Calibration 为受控输出。2026-09-06 已完成 48 Primary、24 Calibration
-和 8 来源的 AI 内容裁决、候选重建和最终回归，已在 E4 后暂停；真实 Judge
-有效性实验和可信登记尚未完成。见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
+和 8 来源的 AI 内容裁决、候选重建和最终回归。现已获 S06 修复与 E5 接续授权，
+真实 Judge 有效性实验和可信登记尚未完成；下一轮见 [E5 开发交接](../docs/E5开发交接.md)。见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
 [原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
 
 ## 核心语义
@@ -234,7 +234,7 @@ invalid_input、judge_error 保留审计但阻止能力结论，不按 0 分混�
 Provider Attestation 是可审计归因，不是密码学证明。real 资格要求固定 TokenHub HTTPS
 allowlist、请求模型 `hy3`、响应模型 `hy3`、Provider request ID、请求/响应时间、安全
 配置摘要、当前 Git commit、干净工作树和匹配的 `evaluation-runtime-lock-v1`。Agent real 模式还必须传入共享 `--budget-ledger`，每次调用先预留再按完整 usage 结算，
-未知费用不退还；真实调用本轮已暂停。Agent 和
+未知费用不退还。下一轮真实 Agent/Judge 实验已获授权，Judge 尚需接入同一账本和请求限额，具体见 [E5 开发交接](../docs/E5开发交接.md)。Agent 和
 Judge 的 real 模式还分别要求 `--allow-real-model` / `--allow-real-judge`；Key 只从调用者
 环境读取，CLI 参数、Manifest、日志和错误均不保存 Key 或 endpoint。
 
@@ -253,11 +253,11 @@ v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并�
 缺失、损坏或无法重建的证据仍由 Validator 拒绝。Provider 响应归因能审计声明与响应字段，
 不能证明远端服务的密码学身份；正式运行仍需要组织侧凭据、网络和运行审批。
 
-E4 已完成 48 Primary、24 Calibration 及 8 来源的 AI 内容裁决、绑定重建和最终回归，已在 E4 后暂停。
+E4 已完成 48 Primary、24 Calibration 及 8 来源的 AI 内容裁决、绑定重建和最终回归；E5 接续已获授权，实验待执行。
 历史真实批次仍为 45 Episode + 3 Failure。当前输入为探索候选，复核记录不计作独立人类一致性；
 正式冻结和可信登记保留为 E5 方法稳定后、E6 前的交付，详见 [E4 验收记录](../docs/E4验收工作记录.md)。
 E5–E8 的真实 Judge 有效性实验、正式能力评测、版本回归、最终报告与 Demo 尚未完成。
 固定响应和 engineering 聚合不证明 Judge 标签正确或 Hy3 能力。已授权协议试跑只证明有限样例可执行，
-尚未统计完整 14 类真实遵循率；本轮调用现已暂停，未来不能自动把探索记录升级为正式数据。发布治理细节见
+尚未统计完整 14 类真实遵循率；下一轮调用继续复用原预算，不能自动把探索记录升级为正式数据。发布治理细节见
 [`../docs/E3.1.2正式评测准入与版本治理.md`](../docs/E3.1.2正式评测准入与版本治理.md)，最终验收命令和精确结果
 记录在 [`../docs/STATUS.md`](../docs/STATUS.md)。
