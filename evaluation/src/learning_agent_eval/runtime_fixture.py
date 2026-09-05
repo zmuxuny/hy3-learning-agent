@@ -65,7 +65,10 @@ async def _seed_fixture(fixture: dict[str, Any], frozen: datetime) -> None:
             # facts the Case declares, with a real profile provenance block.
             public_facts = {
                 "entities": [
-                    item for item in fixture["state_before"]["logical_entities"]
+                    # Logical IDs belong to the evaluation control plane. They
+                    # may encode split/family/labels and are not learner facts.
+                    {"entity_type": item["entity_type"], "data": item["data"]}
+                    for item in fixture["state_before"]["logical_entities"]
                     if item["entity_type"] in {"learner", "goal", "constraint", "resource"}
                 ],
                 "facts": fixture["state_before"]["facts"],

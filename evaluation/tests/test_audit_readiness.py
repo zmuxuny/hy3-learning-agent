@@ -553,8 +553,12 @@ def test_digest_reference_is_not_a_phone_but_adjacent_phone_still_is():
     assert privacy_issues({"private_reasoning": digest})
 
 
-def test_profile_read_preserves_declared_public_context_references(tmp_path):
+def test_profile_read_hides_control_ids_but_preserves_business_facts(tmp_path):
     case = load(DATA / "cases/case-e31-r-positive.json")
+    marker = "calibration-c99-severe-unique"
+    case = json.loads(json.dumps(case).replace("constraint:e1:r:001", f"constraint:{marker}"))
+    constraint = next(e for e in case["runtime_setup"]["state_before"]["logical_entities"] if e["entity_type"] == "constraint")
+    constraint["data"]["description"] = "Good baseline candidate reasoning is ordinary business text"
     turns = deepcopy(case["runtime_setup"]["scripted_turns"])
     inspect = deepcopy(turns[-1])
     inspect.update(ordinal=1, assistant_text="", declared_actions=[], tool_calls=[
@@ -570,7 +574,17 @@ def test_profile_read_preserves_declared_public_context_references(tmp_path):
     messages = episode["observable_trace"]["model_calls"][1]["visible_context"]["messages"]
     result = next(json.loads(m["payload"]["content"]) for m in messages if m["role"] == "tool")
     entities = result["data"]["preferences"]["public_case_context"]["entities"]
-    assert any(e["logical_id"] == "constraint:e1:r:001" for e in entities)
+    assert all("logical_id" not in e for e in entities)
+    assert marker not in json.dumps(episode["observable_trace"]["model_calls"])
+    assert "Good baseline candidate reasoning" in json.dumps(entities)
+    evaluate_active_rules(input_path=tmp_path / "runtime", output=tmp_path / "rules")
+    from learning_agent_eval.blinding_v2 import build_blind_judge_input_v3
+
+    name = f"{episode['episode_id']}.json"
+    blind = build_blind_judge_input_v3(episode, load(tmp_path / "rules/rules" / name),
+                                      load(tmp_path / "runtime/judge-references" / name))
+    assert marker not in json.dumps(blind.document)
+    assert "Good baseline candidate reasoning" in json.dumps(blind.document)
 
 
 def test_nested_logical_reference_requires_a_declared_entity():
