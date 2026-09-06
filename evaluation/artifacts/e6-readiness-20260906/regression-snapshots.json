@@ -1,0 +1,15 @@
+{
+  "version": "e6-regression-snapshots-v1",
+  "development_base_commit": "e6bd2de270d81354992eff31ee0bdfee4906132a",
+  "frozen_commit": "c62cb62b93c65436f733c51aec6365abc9cfb9c8",
+  "development_worktree_clean": false,
+  "final_worktree_clean_at_test_start": true,
+  "product_and_evaluation_package_equal": true,
+  "python_differences": [
+    {
+      "path": "evaluation/scripts/check_e6_freeze.py",
+      "development_raw_sha256": "21fdf990d63e3008c86025d23757c27f70929f2f457df5820e3cf5cd0ce19f5c",
+      "frozen_raw_sha256": "45c92386dd60503fcfa36a7e274932545efc93568128640b528b4d906e7efe3c"
+    }
+  ]
+}

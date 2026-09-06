@@ -1,0 +1,317 @@
+{
+  "version": "e6-readiness-ai-audit-v1",
+  "reviewer_role": "primary_ai_reviewer",
+  "author_reviewer_same_agent": true,
+  "independent_human_review": false,
+  "freeze_commit": "c62cb62b93c65436f733c51aec6365abc9cfb9c8",
+  "method_changed": false,
+  "formal_capability_result": false,
+  "new_paid_calls": 0,
+  "checks": [
+    {
+      "check": "calibration-c01-p-mild:episode",
+      "passed": true
+    },
+    {
+      "check": "calibration-c01-p-mild:public_output",
+      "passed": true
+    },
+    {
+      "check": "calibration-c01-p-mild:std",
+      "passed": true
+    },
+    {
+      "check": "calibration-c01-p-mild:repeat1",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r1-planning/judge-results/episode-e860f373725428b2ed55ed8e.json"
+      }
+    },
+    {
+      "check": "calibration-c01-p-mild:repeat2",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r2-planning/judge-results/episode-e860f373725428b2ed55ed8e.json"
+      }
+    },
+    {
+      "check": "calibration-c01-p-mild:repeat3",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r3-planning/judge-results/episode-e860f373725428b2ed55ed8e.json"
+      }
+    },
+    {
+      "check": "calibration-c01-p-mild:repeat4",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r4-planning/judge-results/episode-e860f373725428b2ed55ed8e.json"
+      }
+    },
+    {
+      "check": "calibration-c01-p-mild:repeat5",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r5-planning/judge-results/episode-e860f373725428b2ed55ed8e.json"
+      }
+    },
+    {
+      "check": "calibration-c02-p-mild:episode",
+      "passed": true
+    },
+    {
+      "check": "calibration-c02-p-mild:public_output",
+      "passed": true
+    },
+    {
+      "check": "calibration-c02-p-mild:std",
+      "passed": true
+    },
+    {
+      "check": "calibration-c02-p-mild:repeat1",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r1-planning/judge-results/episode-f02ae935dcde98d400092fcc.json"
+      }
+    },
+    {
+      "check": "calibration-c02-p-mild:repeat2",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r2-planning/judge-results/episode-f02ae935dcde98d400092fcc.json"
+      }
+    },
+    {
+      "check": "calibration-c02-p-mild:repeat3",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r3-planning/judge-results/episode-f02ae935dcde98d400092fcc.json"
+      }
+    },
+    {
+      "check": "calibration-c02-p-mild:repeat4",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r4-planning/judge-results/episode-f02ae935dcde98d400092fcc.json"
+      }
+    },
+    {
+      "check": "calibration-c02-p-mild:repeat5",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r5-planning/judge-results/episode-f02ae935dcde98d400092fcc.json"
+      }
+    },
+    {
+      "check": "calibration-c05-a-mild:episode",
+      "passed": true
+    },
+    {
+      "check": "calibration-c05-a-mild:public_output",
+      "passed": true
+    },
+    {
+      "check": "calibration-c05-a-mild:std",
+      "passed": true
+    },
+    {
+      "check": "calibration-c05-a-mild:repeat1",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r1-assessment/judge-results/episode-48a6cf4f85e6e279daf4888c.json"
+      }
+    },
+    {
+      "check": "calibration-c05-a-mild:repeat2",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r2-assessment/judge-results/episode-48a6cf4f85e6e279daf4888c.json"
+      }
+    },
+    {
+      "check": "calibration-c05-a-mild:repeat3",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r3-assessment/judge-results/episode-48a6cf4f85e6e279daf4888c.json"
+      }
+    },
+    {
+      "check": "calibration-c05-a-mild:repeat4",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r4-assessment/judge-results/episode-48a6cf4f85e6e279daf4888c.json"
+      }
+    },
+    {
+      "check": "calibration-c05-a-mild:repeat5",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r5-assessment/judge-results/episode-48a6cf4f85e6e279daf4888c.json"
+      }
+    },
+    {
+      "check": "calibration-c06-a-mild:episode",
+      "passed": true
+    },
+    {
+      "check": "calibration-c06-a-mild:public_output",
+      "passed": true
+    },
+    {
+      "check": "calibration-c06-a-mild:std",
+      "passed": true
+    },
+    {
+      "check": "calibration-c06-a-mild:repeat1",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r1-assessment/judge-results/episode-811564e6c875e329def5ad6c.json"
+      }
+    },
+    {
+      "check": "calibration-c06-a-mild:repeat2",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r2-assessment/judge-results/episode-811564e6c875e329def5ad6c.json"
+      }
+    },
+    {
+      "check": "calibration-c06-a-mild:repeat3",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r3-assessment/judge-results/episode-811564e6c875e329def5ad6c.json"
+      }
+    },
+    {
+      "check": "calibration-c06-a-mild:repeat4",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r4-assessment/judge-results/episode-811564e6c875e329def5ad6c.json"
+      }
+    },
+    {
+      "check": "calibration-c06-a-mild:repeat5",
+      "passed": true,
+      "detail": {
+        "source": "e5-v2/judge-r5-assessment/judge-results/episode-811564e6c875e329def5ad6c.json"
+      }
+    },
+    {
+      "check": "execution_full_order",
+      "passed": true
+    },
+    {
+      "check": "not_attempted_not_failures",
+      "passed": true
+    },
+    {
+      "check": "per_track_denominators",
+      "passed": true
+    },
+    {
+      "check": "ledger_raw_unchanged",
+      "passed": true
+    },
+    {
+      "check": "ledger_count_amount",
+      "passed": true
+    },
+    {
+      "check": "no_pending_reservations",
+      "passed": true
+    },
+    {
+      "check": "unchanged:backend/app",
+      "passed": true
+    },
+    {
+      "check": "unchanged:evaluation/src/learning_agent_eval",
+      "passed": true
+    },
+    {
+      "check": "unchanged:evaluation/schemas",
+      "passed": true
+    },
+    {
+      "check": "unchanged:evaluation/releases/source-bundles",
+      "passed": true
+    },
+    {
+      "check": "unchanged:evaluation/releases/evaluation-protocol-release-1.0.json",
+      "passed": true
+    },
+    {
+      "check": "unchanged:evaluation/datasets/decisionbench-v1-candidate",
+      "passed": true
+    },
+    {
+      "check": "unchanged:evaluation/artifacts/e4-candidate-20260905",
+      "passed": true
+    },
+    {
+      "check": "unchanged:evaluation/artifacts/e5-acceptance-20260906",
+      "passed": true
+    },
+    {
+      "check": "scoring_package_unchanged_since_e5_v2",
+      "passed": true
+    },
+    {
+      "check": "freeze_bytes:evaluation/case-design/e6-family-design.json",
+      "passed": true
+    },
+    {
+      "check": "freeze_bytes:evaluation/case-design/e6-content-review.json",
+      "passed": true
+    },
+    {
+      "check": "freeze_bytes:evaluation/case-design/e6-run-plan.json",
+      "passed": true
+    },
+    {
+      "check": "freeze_bytes:evaluation/releases/trusted-benchmark-registry-v1.json",
+      "passed": true
+    },
+    {
+      "check": "freeze_bytes:evaluation/releases/evaluation-protocol-release-1.0.json",
+      "passed": true
+    },
+    {
+      "check": "freeze_bytes:evaluation/datasets/decisionbench-v1-e6-test/benchmark-release.json",
+      "passed": true
+    }
+  ],
+  "check_count": 53,
+  "all_passed": true,
+  "source_bindings": [
+    {
+      "path": "evaluation/case-design/e6-family-design.json",
+      "raw_sha256": "735d51f060d6f2402bcb9fab111082e57af5a962baa70e73ceb508a3339ad390"
+    },
+    {
+      "path": "evaluation/case-design/e6-content-review.json",
+      "raw_sha256": "f837ad08776454f948ab7f24177e282d3dfc576700f384bfa696db43374d4de7"
+    },
+    {
+      "path": "evaluation/case-design/e6-run-plan.json",
+      "raw_sha256": "be84bfd411651f109c89f7bbe27753fd5c1e063074fb725db11eda099c358663"
+    },
+    {
+      "path": "evaluation/releases/trusted-benchmark-registry-v1.json",
+      "raw_sha256": "909e0bd3b300f49b546f82796ecbc7705ffe53ab1e251d73ae5a4ea2c3125b05"
+    },
+    {
+      "path": "evaluation/releases/evaluation-protocol-release-1.0.json",
+      "raw_sha256": "2ad99f54bfff2ada980bee7b394884e3cef234f7526bde757b181c8ceba8be11"
+    },
+    {
+      "path": "evaluation/datasets/decisionbench-v1-e6-test/benchmark-release.json",
+      "raw_sha256": "53968934a6c956815edadeab89a0b3a1646ac4bbbec3077246e9761d3c34d8fb"
+    }
+  ],
+  "limitations": [
+    "本轮没有真实新Primary/Judge输出，不能评价正式四轨能力。",
+    "内容作者与自审者共享模型和上下文；机械家族隔离不证明机制独立或训练语料未见。",
+    "费用采用旧批次经验估算，不是未来实扣保证。"
+  ]
+}

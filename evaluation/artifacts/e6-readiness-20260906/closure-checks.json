@@ -1,0 +1,32 @@
+{
+  "version": "e6-closure-checks-v1",
+  "reviewer_role": "primary_ai_reviewer",
+  "archive_members_checked": 4,
+  "archive_checks_passed": true,
+  "test_processes_completed": true,
+  "services_started": 0,
+  "temporary_paths_removed": [
+    "/tmp/learning-travel-e6-testrepo",
+    "/tmp/learning-travel-e6-finalrepo",
+    "/tmp/learning-travel-e6-pytest",
+    "/tmp/learning-travel-e6-finalpytest",
+    "/tmp/learning-travel-e6-evidence",
+    "/tmp/e6_author_design.py",
+    "/tmp/e6_content_review.py",
+    "/tmp/e6_sync_docs.py",
+    "/tmp/e6_audit.py"
+  ],
+  "all_listed_paths_absent": true,
+  "original_e5_archive_preserved": true,
+  "original_e5_persistent_state_preserved": true,
+  "ledger_raw_sha256": "18bf439406ceee17967cba6f5dfd96e3f0deae99a256a7a671cf907b3245ad87",
+  "requests": 330,
+  "charged_micro_cny": 11606238,
+  "remaining_micro_cny": 2393762,
+  "new_paid_calls": 0,
+  "pushed": false,
+  "published": false,
+  "changed_markdown_missing_links": 0,
+  "changed_json_privacy_scanned": 64,
+  "changed_json_privacy_findings": 0
+}

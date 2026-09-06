@@ -1,0 +1,26 @@
+{
+  "archive": "verification.tar.gz",
+  "archive_raw_sha256": "176525c57d39b78bfb3ff975f0d0cd30f282f537515d59c3d45a3e9095dd43c5",
+  "members": [
+    {
+      "path": "logs/evaluation-tests.log",
+      "size": 432,
+      "raw_sha256": "d34f699d7ae0368cdae2f5a95f5b8e77d7d2acde1a3631cca92c6fec08a65cff"
+    },
+    {
+      "path": "logs/final-targeted-tests.log",
+      "size": 99,
+      "raw_sha256": "22b8980b6eaedbee4dfa13f9896f3b5e5a86c0191b55c3946a40f1ad17465b05"
+    },
+    {
+      "path": "snapshots/development/check_e6_freeze.py",
+      "size": 4796,
+      "raw_sha256": "21fdf990d63e3008c86025d23757c27f70929f2f457df5820e3cf5cd0ce19f5c"
+    },
+    {
+      "path": "snapshots/regression-snapshots.json",
+      "size": 607,
+      "raw_sha256": "e3adbbb7ff33997e848de50465c99f56a9957e2e19fe96216bc8abce48060d0d"
+    }
+  ]
+}

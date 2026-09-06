@@ -1,0 +1,62 @@
+{
+  "version": "e6-readiness-validation-v1",
+  "freeze_commit": "c62cb62b93c65436f733c51aec6365abc9cfb9c8",
+  "milestones": {
+    "method_review_complete": true,
+    "method_changed": false,
+    "new_test_inputs": 48,
+    "ai_content_reviews": 48,
+    "protocol_and_benchmark_frozen": true,
+    "production_registry_entries": 1,
+    "formal_primary_run_complete": false,
+    "formal_capability_result": false
+  },
+  "tests": [
+    {
+      "suite": "evaluation/tests",
+      "snapshot": "development copy; exact Python difference from frozen commit recorded in regression-snapshots.json",
+      "passed": 296,
+      "failed": 0,
+      "seconds": 904.03,
+      "log": "verification.tar.gz:logs/evaluation-tests.log"
+    },
+    {
+      "suite": "test_e6_freeze.py + test_e312_release_governance.py + test_e5_budget_and_review.py + test_e5_metrics.py",
+      "snapshot": "clean c62cb62 external clone",
+      "passed": 32,
+      "failed": 0,
+      "seconds": 2.24,
+      "log": "verification.tar.gz:logs/final-targeted-tests.log"
+    }
+  ],
+  "test_counts_overlap": true,
+  "product_tests_execution": "external_clones_and_temporary_databases_only",
+  "source_copy_excluded": [
+    ".env",
+    "data",
+    ".venv"
+  ],
+  "product_and_scoring_source_unchanged": true,
+  "schemas_unchanged": 44,
+  "historical_e4_e5_artifacts_unchanged": true,
+  "e4_candidate_review_binding": "passed",
+  "freeze_and_protocol_checks": "passed_on_clean_c62cb62",
+  "ruff_changed_python_files": "passed",
+  "ai_self_audit_checks": 53,
+  "ai_self_audit_passed": true,
+  "independent_human_review": false,
+  "budget": {
+    "requests": 330,
+    "new_requests": 0,
+    "limit_micro_cny": 14000000,
+    "charged_micro_cny": 11606238,
+    "remaining_micro_cny": 2393762,
+    "pending_reserved": 0,
+    "cloud_bill_verified": false
+  },
+  "runtime_status": "not_started_budget_preflight",
+  "not_attempted_denominator": 48,
+  "valid_episodes": 0,
+  "runtime_failures": 0,
+  "judge_results": 0
+}
