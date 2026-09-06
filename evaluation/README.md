@@ -33,7 +33,7 @@ CaseSpec v2（控制面，含私有标注）
 和 8 来源的 AI 内容裁决、候选重建和最终回归。S06 机制修复与 E5 必需实验已完成：
 V2 固定 `40fddb8`，24 例判别力和 16×5 重复共 88 个有效评估，最低预设方法目标达标。
 真实浏览器流程及 AI 审计完成，具体漏检/波动和费用见 [E5 验收记录](../docs/E5验收工作记录.md)。
-正式未见测试与可信登记仍未完成；接续见 [完成交接](../docs/E5开发交接.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
+E6 新家族48输入、AI自审、正式冻结与可信登记已完成；原共享余额不足完整批次，真实正式运行尚未开始。接续见 [E6工作记录](../docs/E6验收工作记录.md)和 [新测试数据卡](datasets/decisionbench-v1-e6-test/README.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
 [原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
 
 ## 核心语义

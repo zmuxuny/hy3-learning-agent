@@ -10,7 +10,7 @@
 | 文件 | 作用 |
 | --- | --- |
 | `evaluation-protocol-release-1.0.json` | 固定活动制品链、Schema、规则、Judge、聚合、盲化、Evidence 和 formal 政策 |
-| `trusted-benchmark-registry-v1.json` | 生产可信 Benchmark 注册表；当前必须为空 |
+| `trusted-benchmark-registry-v1.json` | 生产可信 Benchmark 注册表；已登记 `decisionbench-v1-e6-test-release` |
 | `schema-lock-v1.json` | 历史与活动 Schema 的独立原始字节锁 |
 | `model-action-declaration-v2.json` | 14 类行动的模型可读规范词典 |
 | `source-bundles/*.json` | Runtime、Rules、Judge、Aggregate 的保守来源包摘要 |
@@ -31,8 +31,8 @@ Release 和 engineering Benchmark 绑定，同时拒绝历史 Schema/锁漂移�
 `--refresh-untrusted-candidate` 刷新尚未取得信任的来源绑定；该路径不允许更新历史 Schema 锁，
 且一旦出现任何可信注册项便先验失败。
 
-未来正式 Benchmark 必须经过案例/资源/隐私/数量/Split 审核，使用状态 `released` 的
-`benchmark-release-manifest-v1`，在单独审查提交中加入生产注册表。完成可信注册后，任何
+E6 的48个新测试输入已完成AI内容/资源/隐私/数量/Split审核，并使用状态 `released` 的
+`benchmark-release-manifest-v1` 随本地冻结审查提交加入生产注册表。该登记不是公开发布或能力结果；运行尚未开始，见 [E6记录](../../docs/E6验收工作记录.md)。完成可信注册后，任何
 协议或来源变更都必须创建新的 Protocol Release 与活动锁，不能更新 Release 1.0 或历史锁。
 测试注册表只能通过明确的
 test-only Python seam 注入，生产 CLI 不提供对应参数或环境变量。

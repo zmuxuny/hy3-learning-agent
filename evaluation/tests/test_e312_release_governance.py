@@ -122,10 +122,10 @@ def _assess_test(
     )
 
 
-def test_production_registry_is_empty_and_engineering_release_is_never_trusted() -> None:
+def test_production_registry_does_not_trust_engineering_release() -> None:
     registry = load_production_registry()
     assert registry["registry_version"] == "production-trusted-benchmark-registry-v1"
-    assert registry["entries"] == []
+    assert all(entry["benchmark_release_id"] != "decisionbench-v4-engineering-release" for entry in registry["entries"])
     suite = _load(DATASET / "manifest.json")
     release = _load(DATASET / "benchmark-release.json")
     assessment = assess_benchmark_release(
@@ -230,11 +230,12 @@ def test_arbitrary_one_case_real_primary_claim_cannot_create_formal_trust(
 def test_environment_cannot_replace_the_code_owned_production_registry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    original_registry = load_production_registry()
     injected = tmp_path / "untrusted-registry.json"
     injected.write_text('{"entries":[{"untrusted":true}]}', encoding="utf-8")
     monkeypatch.setenv("EVALUATION_TRUSTED_REGISTRY", str(injected))
     monkeypatch.setenv("BENCHMARK_RELEASE_REGISTRY", str(injected))
-    assert load_production_registry()["entries"] == []
+    assert load_production_registry() == original_registry
 
 
 def test_only_registered_exact_release_can_pass_trust_assessment(tmp_path: Path) -> None:

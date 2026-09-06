@@ -1,0 +1,377 @@
+{
+  "version": "e6-method-decision-v1",
+  "reviewer_role": "primary_ai_reviewer",
+  "independent_human_review": false,
+  "decision": "retain_e5_v2_baseline_with_documented_defects",
+  "method_changed": false,
+  "e5_experiment_commit": "40fddb8f777e16de9711863381a4e26f534e4529",
+  "current_product_base": "e6bd2de",
+  "prompt_version": "hy3-judge-prompt-v3-e5-2",
+  "judge_config_version": "hy3-judge-config-v3-budgeted-2",
+  "assessment_finding": "C05/C06均正确退回并定位核心失败，但复测建议只包含普通输入/SELECT，无法验证已指出的失败消失。D7现有锚点要求可复核下一步，五轮均全2构成稳定漏检，不因行动正确而撤销缺陷。",
+  "planning_finding": "D1/D2/D7五轮均1，遗漏被持续识别；波动全部来自D3/D5对同一澄清缺口的重复扣分范围。总分62.5–80跨70阈值；不归因于解析失败、Rule cap或语义裁决。",
+  "rationale": "现有最低预设目标达标且未发现证据丢失或错误结算。保留当前方法作为带已知局限的正式基线可执行；若主张反馈细粒度可靠性或分数提升，需要独立另版澄清D3/D5与D7后重新验证。本轮不更改锚点、Prompt、Rules、阈值或重复次数，不用预算不足为未经验证的改版授予资格。",
+  "reporting_policy": "未来正式结果保留原分数和每轨分母；AI错误归因单列，不能手改数值修复漏检；E5指标保持40fddb8身份。",
+  "rows": [
+    {
+      "case_id": "calibration-c01-p-mild",
+      "episode_id": "episode-e860f373725428b2ed55ed8e",
+      "episode_raw_sha256": "c5b22e968d941be0901f0aa49575e44ac9438335d8d88d65fd3241425ce1cce0",
+      "episode_sha256": "bc20ab5cb92a04ee27a1fc4a0a02af690f71a96eb92d54165a0d35acda265579",
+      "public_output": "请提供每周可投入的分钟数，以便确定任务数量。",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.user_visible_output",
+        "observable_trace.tool_invocations"
+      ],
+      "repeats": [
+        {
+          "repeat": 1,
+          "levels": [
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            1
+          ],
+          "raw_score": 80.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "52bf510cd692590be86d7834864a04a6520cdf880efd6095ae86c17952206bb9"
+        },
+        {
+          "repeat": 2,
+          "levels": [
+            1,
+            1,
+            2,
+            2,
+            1,
+            2,
+            1
+          ],
+          "raw_score": 72.5,
+          "conclusion": "pass",
+          "judge_result_sha256": "844d3ee0e257f098a7fe0fec108d9efe2ecd7a3f269ffe22d2f77e86fa40fb6f"
+        },
+        {
+          "repeat": 3,
+          "levels": [
+            1,
+            1,
+            1,
+            2,
+            1,
+            2,
+            1
+          ],
+          "raw_score": 62.5,
+          "conclusion": "fail",
+          "judge_result_sha256": "faf7cac8b11760ca589e000a92631bff5f73bc1b6af83123f5d37d3e802101f3"
+        },
+        {
+          "repeat": 4,
+          "levels": [
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            1
+          ],
+          "raw_score": 80.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "c30d656da2dd2314a9ccb807b8058374db2f94ad4301591ef68bcf6b1e736c85"
+        },
+        {
+          "repeat": 5,
+          "levels": [
+            1,
+            1,
+            2,
+            2,
+            1,
+            2,
+            1
+          ],
+          "raw_score": 72.5,
+          "conclusion": "pass",
+          "judge_result_sha256": "dd923513446a82433175bf5cf311ab60e5ed7615d5a69449113c57d85324cd96"
+        }
+      ],
+      "population_std": 6.442049363362563
+    },
+    {
+      "case_id": "calibration-c02-p-mild",
+      "episode_id": "episode-f02ae935dcde98d400092fcc",
+      "episode_raw_sha256": "4aa92e6c9f35baea306caf6471b3c04b630620d73717de1bd6bafde40b7ff811",
+      "episode_sha256": "955fe9f1930f9c774047da01a83f1cebb9348682fad44c77bf9bccd67ad8c323",
+      "public_output": "请提供实际截止日期，以便确定学习期限。",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.user_visible_output",
+        "observable_trace.tool_invocations"
+      ],
+      "repeats": [
+        {
+          "repeat": 1,
+          "levels": [
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            1
+          ],
+          "raw_score": 80.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "ad7dbf5cf1f948753241d2b344ed4302a2bd649be41add6972de059adfc95c4a"
+        },
+        {
+          "repeat": 2,
+          "levels": [
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            1
+          ],
+          "raw_score": 80.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "4dc4d1ec97ff387b0a434cf022bcee62b552eb93c519925303f4015bb9020c50"
+        },
+        {
+          "repeat": 3,
+          "levels": [
+            1,
+            1,
+            1,
+            2,
+            1,
+            2,
+            1
+          ],
+          "raw_score": 62.5,
+          "conclusion": "fail",
+          "judge_result_sha256": "862f7d2e45f291cc6091bc76ac2d4428df101820742fe7f1ab71dbb95fd8bb23"
+        },
+        {
+          "repeat": 4,
+          "levels": [
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            1
+          ],
+          "raw_score": 70.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "299627137d3913f4bc51fde3a0362a2c4c3cf48e25416637542981ef63e9ca6a"
+        },
+        {
+          "repeat": 5,
+          "levels": [
+            1,
+            1,
+            1,
+            2,
+            1,
+            2,
+            1
+          ],
+          "raw_score": 62.5,
+          "conclusion": "fail",
+          "judge_result_sha256": "60f43e8c766beeede1414ddaf2af573efeddc883aa5417fd8d1bc15a4025859b"
+        }
+      ],
+      "population_std": 7.842193570679061
+    },
+    {
+      "case_id": "calibration-c05-a-mild",
+      "episode_id": "episode-48a6cf4f85e6e279daf4888c",
+      "episode_raw_sha256": "dfd5d697c8a5c23abe86fdf81f760521d5dac0798db2a9ba71758aa878370552",
+      "episode_sha256": "b2c7089f3c8e862070953ca63e2c43875f6b65e3c690590c1a7d3ecff4fc20e0",
+      "public_output": "空输入测试明确失败；请补上边界处理，重放正常输入后再提交。",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.user_visible_output",
+        "observable_trace.tool_invocations"
+      ],
+      "repeats": [
+        {
+          "repeat": 1,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "f8c2d18e21c8c348a972f330be65a48fb9989dd0851dea9a6044619b847b1d53"
+        },
+        {
+          "repeat": 2,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "45e0933b67bd038048e53eca4dfb06b0574d0770cd5d5cb58e5828dd073bae54"
+        },
+        {
+          "repeat": 3,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "b0d02c8382adc633565c4a2d78ceb77465f589d7792ae1afc0094f419f52926e"
+        },
+        {
+          "repeat": 4,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "765b1dbcc4d3efc7dd438d9c76b746321ae1f4f154f30f405a14e5fbac308e34"
+        },
+        {
+          "repeat": 5,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "040bf373ad6217194fd15e23c5dd67b7af17d965bd7b21badb89e53c1b23dd01"
+        }
+      ],
+      "population_std": 0.0
+    },
+    {
+      "case_id": "calibration-c06-a-mild",
+      "episode_id": "episode-811564e6c875e329def5ad6c",
+      "episode_raw_sha256": "3887bb253d019c6b32af924197555631e556a5bb9da531d066749f570540d4ef",
+      "episode_sha256": "d551f230fb14d86c3ac971b33ca678d8ace61de57e54a8d5c14d4427dd4a304c",
+      "public_output": "NOT NULL 约束失败；请补齐约束，重放普通 SELECT 查询后再提交。",
+      "evidence_paths": [
+        "trigger.objective",
+        "result.user_visible_output",
+        "observable_trace.tool_invocations"
+      ],
+      "repeats": [
+        {
+          "repeat": 1,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "19a7f0d2cb0536331ea32826d68509d538b8507829090ecea19077e0266435b0"
+        },
+        {
+          "repeat": 2,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "59daeea0e01c2118327435565caae15d6d52c646b99c90f86c6d3cd71dd7f6c7"
+        },
+        {
+          "repeat": 3,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "a4f75b2b8c9cc60d7a5e2f936a00218fb1a372b1285b5628ec8891c0f53258f1"
+        },
+        {
+          "repeat": 4,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "ab63cb1dbf52f74ffd79260e23fc0261317cb7a6d7c820e38cbaa20bea2f0ff4"
+        },
+        {
+          "repeat": 5,
+          "levels": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "raw_score": 100.0,
+          "conclusion": "pass",
+          "judge_result_sha256": "f985e783225e1d0a78ae0336ebcb78fb2f0d010f6b5d1f23c40395368f08221b"
+        }
+      ],
+      "population_std": 0.0
+    }
+  ]
+}

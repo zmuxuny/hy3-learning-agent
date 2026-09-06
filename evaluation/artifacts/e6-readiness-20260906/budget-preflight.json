@@ -1,0 +1,21 @@
+{
+  "ledger_path": "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json",
+  "ledger_raw_sha256": "18bf439406ceee17967cba6f5dfd96e3f0deae99a256a7a671cf907b3245ad87",
+  "requests": 330,
+  "limit_micro_cny": 14000000,
+  "charged_micro_cny": 11606238,
+  "remaining_micro_cny": 2393762,
+  "price_basis": "existing_ledger_policy_no_new_price_claim",
+  "e5_judge_mean_micro_cny": 47022.48863636364,
+  "estimated_48_judges_micro_cny": 2257079.4545454546,
+  "agent_funding_after_estimated_judges_micro_cny": 136682.5454545454,
+  "estimate_is_guarantee": false,
+  "new_paid_calls": 0,
+  "policy": "preserve_balance_do_not_start_unfunded_full_batch",
+  "historical_48_primary_requests": 122,
+  "historical_48_primary_micro_cny": 2987262,
+  "estimated_complete_batch_micro_cny": 5244341.454545455,
+  "estimated_gap_micro_cny": 2850579.454545455,
+  "policy_origin": "Optional user preference asked; no response before offline preparation; proceed with stated preserve-balance default. No new authorization inferred.",
+  "formal_run_status": "not_started_budget_preflight"
+}

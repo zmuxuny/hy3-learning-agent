@@ -1,0 +1,446 @@
+{
+  "version": "e6-execution-status-v1",
+  "benchmark_release_sha256": "a254dea7195cc9991df54a11d2efe13a546225099bd71a95a5d353902c3e53b8",
+  "status": "not_started_budget_preflight",
+  "formal_capability_result": false,
+  "runtime_provider_attempts": 0,
+  "judge_provider_attempts": 0,
+  "valid_episodes": 0,
+  "runtime_failures": 0,
+  "judge_results": 0,
+  "not_attempted": 48,
+  "rows": [
+    {
+      "ordinal": 1,
+      "case_id": "formal-f01-a",
+      "case_spec_sha256": "486e5773f569883da690286aeb9ac31c0822164b1a753f10d282d0e4b693f79c",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 2,
+      "case_id": "formal-f01-i",
+      "case_spec_sha256": "b5db08b4ffe0c02f056eaee21f649769e0c9dc72bafbd9e3a796ddce967f535e",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 3,
+      "case_id": "formal-f01-p",
+      "case_spec_sha256": "0de71a10b95b225cace0908c97a81cd02b85016f7958d47e919ad9f16b47d319",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 4,
+      "case_id": "formal-f01-r",
+      "case_spec_sha256": "6bf8f0c0540a6a4575ae152cfcf996e66b97ed29ce6b8cbb44bbd0a67c1a030b",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 5,
+      "case_id": "formal-f02-a",
+      "case_spec_sha256": "bbe852a86e8e705c09f6bb038d4f5070c8959c3fb373ac83cc61f00122ef50c5",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 6,
+      "case_id": "formal-f02-i",
+      "case_spec_sha256": "84aa088a234d9753d3c2f00115ddc1384707ae2bb848ce0d86643f2f817ded70",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 7,
+      "case_id": "formal-f02-p",
+      "case_spec_sha256": "7225085903440c63871b255d3d4ba9bda3dbf33c466ddd854cdd14ac5bd3dc1b",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 8,
+      "case_id": "formal-f02-r",
+      "case_spec_sha256": "0f33b2a623488f1c0881fd36aedf4b033409557f312976dcbb19bc4b1b5f2979",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 9,
+      "case_id": "formal-f03-a",
+      "case_spec_sha256": "010571d0458b8e7357a4a1dda0c045569b6fed833236d030e36b8c3845eeb6a1",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 10,
+      "case_id": "formal-f03-i",
+      "case_spec_sha256": "16be99c211c5d2bd349431c2ea6d464220d9eb3b159c967715c8c04a82b16c35",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 11,
+      "case_id": "formal-f03-p",
+      "case_spec_sha256": "a16adeed1c39c8ce01793bc5d3503f46b0fcdead104741b966a4a2f98c036cd1",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 12,
+      "case_id": "formal-f03-r",
+      "case_spec_sha256": "263f4f62dae80e30219136073dbb7bcd4cab907c8deb0142b6abb6e54bd41b9c",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 13,
+      "case_id": "formal-f04-a",
+      "case_spec_sha256": "dfd24fd7f57d40429a7d9c3aa02b9111f166b3dddbbccd70ab612cafd7047125",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 14,
+      "case_id": "formal-f04-i",
+      "case_spec_sha256": "52768cbda4203448164cffa21cfff965742e8ec05d8ea9f966e728a6c9373d55",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 15,
+      "case_id": "formal-f04-p",
+      "case_spec_sha256": "87c99a3cf8ed209505d506c26093bc0c672e8be976a5e8242a40231381d17dcb",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 16,
+      "case_id": "formal-f04-r",
+      "case_spec_sha256": "0b62c7f9372feb2cf93dd30ce9400f9fbfddcc251e557a070ab7904a7d3a3777",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 17,
+      "case_id": "formal-f05-a",
+      "case_spec_sha256": "987842fd720a829237c5e1a1dd288aa72114c7b9a4ccdb8c51925f809916fcc8",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 18,
+      "case_id": "formal-f05-i",
+      "case_spec_sha256": "9712a83c1bfe7b622d1fc15b2844128ba90f3ee98cd739fa4558e9bf9d35937c",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 19,
+      "case_id": "formal-f05-p",
+      "case_spec_sha256": "a42122716b5e2fb21a703e4b72f0e2827f22e6cb13013b9cdc791aa0f4fa93a6",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 20,
+      "case_id": "formal-f05-r",
+      "case_spec_sha256": "bced3fa8f2b796bf32f85e21e6ab41704cd9df6f4126d35efad33cb63b1dbf34",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 21,
+      "case_id": "formal-f06-a",
+      "case_spec_sha256": "71cc68d46af47c667351456c2bddd148c3c27c9c6719da14a6549ba5072980b1",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 22,
+      "case_id": "formal-f06-i",
+      "case_spec_sha256": "35b7a214a14fe257b322882745d628d0bdf21f8246a4371ed2ede3cfd01c50e4",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 23,
+      "case_id": "formal-f06-p",
+      "case_spec_sha256": "2a1314f53b84b3bedf6c6ad37b0990b22b6ddb8899519929923304728def9133",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 24,
+      "case_id": "formal-f06-r",
+      "case_spec_sha256": "855fe56214125cef77777ae23c5251d7b9c6d493a071c82a41118fffbafb6850",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 25,
+      "case_id": "formal-f07-a",
+      "case_spec_sha256": "230a39947c9c93b3d5e7d149fe43e07b7590ecfaf4ed5122a37398c052dc3f80",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 26,
+      "case_id": "formal-f07-i",
+      "case_spec_sha256": "f6fb8b136feafe896c46b8f5e8c07c977946779e94be7cc9b33de64b94ad1cf9",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 27,
+      "case_id": "formal-f07-p",
+      "case_spec_sha256": "1f55cd9a4f80880bce972459f05e87b74a8e2e2ce89986ba63cab982bb338b6b",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 28,
+      "case_id": "formal-f07-r",
+      "case_spec_sha256": "952324d54aaeaaa564128eaaf8d6fc626e49b176a294e25248add6a0dc54e6db",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 29,
+      "case_id": "formal-f08-a",
+      "case_spec_sha256": "31b628e413a8efa84d7166d7a7d1cbf0e2028ca3b02b4b66062848d1ec514bf4",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 30,
+      "case_id": "formal-f08-i",
+      "case_spec_sha256": "b67d69fb2c27a014576c790408e8a1efc8a32b6de0c4b10ed11e3aed4792661b",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 31,
+      "case_id": "formal-f08-p",
+      "case_spec_sha256": "cfb3e7028cfacb2c89c4a91f2b8d75008d368c8de5308d5001b77a4808ebf954",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 32,
+      "case_id": "formal-f08-r",
+      "case_spec_sha256": "6cb97be8f1def1a501d70c6bcd9492687652496717d3f2323ee4fa5bcc9af5b9",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 33,
+      "case_id": "formal-f09-a",
+      "case_spec_sha256": "64b2e600a586f858f0913ede49a1c689f761db33bc78bf0c51f2244fbcef3c49",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 34,
+      "case_id": "formal-f09-i",
+      "case_spec_sha256": "d0299fdda4b3523d13b36b2d9c8f5a1a9f7ea9808a18b475e3bdd4d08d5699dc",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 35,
+      "case_id": "formal-f09-p",
+      "case_spec_sha256": "b5d579356ed5a63b4a2f0dfaed7b874910f27a5ec9fe8363dd08d01825df183e",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 36,
+      "case_id": "formal-f09-r",
+      "case_spec_sha256": "0a9dd02ead7b38d04328fbf5a723bba8eca8ffd7f7305eeb6cee40909b026aa6",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 37,
+      "case_id": "formal-f10-a",
+      "case_spec_sha256": "2b5392da0a02dfdb3a6567730670d416d83a686b68d631ac788e509a1a28e311",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 38,
+      "case_id": "formal-f10-i",
+      "case_spec_sha256": "4a53da2602f8863b4173c523e0eb47678d1404b4ab0574165459617d0e674ec2",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 39,
+      "case_id": "formal-f10-p",
+      "case_spec_sha256": "ccd9addbf1966305dc2ef07f8cf5bdb1c471ba5bedf15f0b0cc2607c30236d18",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 40,
+      "case_id": "formal-f10-r",
+      "case_spec_sha256": "4b64bb61d2b8250d94cdf4ce19876abe16811f5a52350e69759b8099d62fb8fc",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 41,
+      "case_id": "formal-f11-a",
+      "case_spec_sha256": "1b9a7190a8f6d960f0b4ac33aadf40cc0ea2800cd0254fc457ba01991ba9c409",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 42,
+      "case_id": "formal-f11-i",
+      "case_spec_sha256": "b9b5f2e2fdc54b52e0cb4577d0a024f3b349e20d2fd49318354c86d782be052f",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 43,
+      "case_id": "formal-f11-p",
+      "case_spec_sha256": "859f461035e6af05a9c0e8f6c768a5964b2dd12127524468b03f872bf8d27a8f",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 44,
+      "case_id": "formal-f11-r",
+      "case_spec_sha256": "0ce34cb209bfd6d183f568867f756f4c0a9b2e6d6e55c5415a47c9ce5d1b73ac",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 45,
+      "case_id": "formal-f12-a",
+      "case_spec_sha256": "695f9a242abe3477b663dcd9076272e59d9b7111aa1af6b39e5049a410ef8687",
+      "track": "assessment",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 46,
+      "case_id": "formal-f12-i",
+      "case_spec_sha256": "a8726380dcebd7c22d5340c5aebec475c61154992e64db899b40f2605c7fb4a7",
+      "track": "intervention",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 47,
+      "case_id": "formal-f12-p",
+      "case_spec_sha256": "80555abd4e455e72e0b376ffb205bd8f2b2d8aa57ba32bc92d41a45569ff5b5e",
+      "track": "planning",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    },
+    {
+      "ordinal": 48,
+      "case_id": "formal-f12-r",
+      "case_spec_sha256": "98b098052fcd736e36014daae66f5d731d77c03426d53ff89535bf9fb422d5da",
+      "track": "revision",
+      "runtime_status": "not_attempted_budget_preflight",
+      "judge_status": "not_attempted_no_episode",
+      "score": null
+    }
+  ]
+}
