@@ -11,8 +11,7 @@
   "self_audit_checks_passed": 580,
   "formal_capability_result": false,
   "required_method_revision_recorded": true,
-  "cleanup_completed": false,
-  "next_action": "Verify clean committed report snapshot, remove only this run external copies, then record final local closure. No further paid calls.",
+  "cleanup_completed": true,
   "preserve_paths": [
     "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json",
     "evaluation/artifacts/e5-acceptance-20260906",
@@ -26,5 +25,42 @@
     "original_sha256": "335339fe80fbfb83e1fbb13591cc2798837a775b3838041d4614ca27c40bca33",
     "browsing_sha256": "50e133e0addb7a9803e4911e2ff065ae78eb35d8d963b646ee63a108f898d96e",
     "rows_equal": true
-  }
+  },
+  "result_archive_commit": "7bfbb31ffe83381d3345c3bdd1fb25fc38e7491b",
+  "committed_snapshot_checks": {
+    "source_commit": "7bfbb31ffe83381d3345c3bdd1fb25fc38e7491b",
+    "worktree_clean": true,
+    "without_env_and_product_data": true,
+    "report_code_and_tests_exact_match_tested_archive": true,
+    "freeze_and_source_binding_read_only_rebuild_passed": true
+  },
+  "final_privacy_scan": {
+    "all_archive_members_exact_key_checked": 362,
+    "top_level_json_privacy_checked": true,
+    "credential_values_not_logged": true
+  },
+  "staging_findings": [
+    "The default CSV writer emits CRLF; only the browsing copy was normalized to LF and parsed rows verified equal.",
+    "Closure logs match the repository log ignore rule; explicitly stage these three known verification logs with force."
+  ],
+  "ledger_final_raw_sha256": "ce197264adea65dadcfb53a70c64cb8531e8a51499777671e26f60f266fb724c",
+  "removed_paths": [
+    "/tmp/learning-travel-e6-archive-rebuilt-20260908",
+    "/tmp/learning-travel-e6-archive-verify-20260908",
+    "/tmp/learning-travel-e6-contract-pytest-20260908",
+    "/tmp/learning-travel-e6-final-check-20260908",
+    "/tmp/learning-travel-e6-output-20260908",
+    "/tmp/learning-travel-e6-pytest-20260908",
+    "/tmp/learning-travel-e6-run-20260908",
+    "/tmp/learning-travel-e6-test-20260908"
+  ],
+  "preserved_paths_exist": {
+    "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json": true,
+    "evaluation/artifacts/e5-acceptance-20260906": true,
+    "evaluation/artifacts/e6-readiness-20260906": true,
+    "/root/.local/state/learning-travel/e5-browser-20260906": true
+  },
+  "original_sources_and_archives_unchanged_from_execution": true,
+  "ledger_unchanged_after_cleanup": true,
+  "closure_commit_scope": "This closure commit records completed cleanup and committed-snapshot checks; it does not alter frozen scoring inputs or raw evidence archive."
 }

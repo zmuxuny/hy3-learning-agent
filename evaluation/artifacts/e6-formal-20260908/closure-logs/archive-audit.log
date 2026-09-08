@@ -1,0 +1,1 @@
+{"reviewer_role": "primary_ai_reviewer", "independent_human_review": false, "scope": "Artifact integrity, fixed denominators, arithmetic, fee and isolation self-audit; not proof that all frozen rules measure the intended capability.", "machine_formal_capability_result": false, "method_revision_required": true, "checks_passed": 580, "checks_total": 580, "all_checks_passed": true}
