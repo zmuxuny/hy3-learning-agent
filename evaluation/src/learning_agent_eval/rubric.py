@@ -328,7 +328,7 @@ JUDGE_CONFIG_SHA256_V2 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V2)
 
 # E3.1.1 clean switch: v3 binds the unchanged public Rubric to the v4
 # scoreable-behavior Episode and the frozen constraint-proposition semantics.
-JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-repair-2"
+JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-repair-3"
 JUDGE_VERSION_V3 = "hy3-structured-judge-v3"
 JUDGE_CONFIG_VERSION_V3 = "hy3-judge-config-v3-budgeted-e6-1"
 JUDGE_INSTRUCTIONS_V3 = (
@@ -375,7 +375,11 @@ JUDGE_INSTRUCTIONS_V3 = (
     "For a clarification outcome, Planning D5=1 when it asks a relevant question but leaves other expressly "
     "missing required scheduling fields unaddressed; D5=2 when the requested clarification covers those fields. "
     "Assessment: D7=2 requires retesting the SAME failed criterion with the failing input or condition and "
-    "expected result. Advice that only repeats an unrelated passing check is D7=0; relevant but underspecified "
+    "expected result. The expected result may already be unambiguously stated in the visible submission or "
+    "acceptance criterion: explicitly asking to rerun that SAME failing input is a valid reference to that test, "
+    "and earns D7=2 without copying the already-given expected result verbatim. Do not invent an omitted "
+    "expected-result defect when that test is already defined. Naming only a different passing input does NOT "
+    "refer to the failing test and cannot earn D7=2. Advice that only repeats an unrelated passing check is D7=0; relevant but underspecified "
     "retesting is D7=1. A correct rejection does not exempt feedback from this check. "
     "Missing or ambiguous evidence is distinct from proven failure; evaluate a fabricated numeric rejection under D3. "
     "For every time claim compare UTC instants with the LEARNER timezone shown in model-visible context. "
