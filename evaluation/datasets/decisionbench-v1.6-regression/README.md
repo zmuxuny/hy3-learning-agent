@@ -5,3 +5,5 @@
 复制来源：`decisionbench-v4-engineering`、`decisionbench-v1-candidate/calibration`、`decisionbench-v1-candidate/calibration-sources`。新方法的独立Development/Calibration及正式测试需另建目录并记录调优接触情况。
 
 本候选统一可配置Hy3接口；保留1.5输入编码修复。用于Provider兼容性和协议回归，不是新正式Benchmark。
+
+development复制e6-repair-development-v4/real的7个已见案例，用于新接口隔离Runtime连通性验证；不是7次新增正式实验。
