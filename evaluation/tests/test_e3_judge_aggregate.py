@@ -72,7 +72,7 @@ from learning_agent_eval.rubric import (
     TRACK_ANCHOR_SHA256,
     TRACK_ANCHORS,
 )
-from learning_agent_eval.schemas import schema_documents
+from learning_agent_eval.schemas import ACTIVE_SCHEMA_RELATIVE_ROOT, schema_documents
 from learning_agent_eval.validator import validate_dataset
 from pydantic import ValidationError
 
@@ -206,7 +206,7 @@ def test_e3_schemas_are_strict_committed_and_drift_free() -> None:
     }
     assert names.issubset(generated)
     for name in names:
-        committed = _load(SCHEMA_ROOT / name)
+        committed = _load(PROJECT_ROOT / ACTIVE_SCHEMA_RELATIVE_ROOT / name)
         assert committed == generated[name]
         assert committed["additionalProperties"] is False
         for definition in committed.get("$defs", {}).values():

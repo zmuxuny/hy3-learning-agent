@@ -55,7 +55,13 @@ def test_rebuild_requires_existing_content_judgments(authoring, tmp_path):
     assert result["independent_human_review"] == "not_performed"
     for path in reviewed.rglob("*"):
         if path.is_file():
-            assert path.read_bytes() == (DATA / path.relative_to(reviewed)).read_bytes()
+            if path.name in {"manifest.json", "benchmark-release.json"}:
+                # New builds bind the active method; reviewed content remains exact.
+                from learning_agent_eval.release_governance import ACTIVE_PROTOCOL_RELEASE_ID
+                document = json.loads(path.read_text())
+                assert document["evaluation_protocol_release_id"] == ACTIVE_PROTOCOL_RELEASE_ID
+            else:
+                assert path.read_bytes() == (DATA / path.relative_to(reviewed)).read_bytes()
 
 
 @pytest.mark.parametrize(

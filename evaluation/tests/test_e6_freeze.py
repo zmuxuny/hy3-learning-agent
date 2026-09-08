@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from learning_agent_eval.canonical import canonical_json_bytes
 from learning_agent_eval.integrity import case_spec_digest
-from learning_agent_eval.release_governance import assess_benchmark_release
+from learning_agent_eval.release_governance import assess_benchmark_release, _assess_with_registry, load_protocol_release, load_production_registry
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "evaluation/scripts"
@@ -27,10 +27,16 @@ def checker(monkeypatch):
 
 
 def test_registered_e6_inputs_match_review_and_disjoint_lineage(checker):
-    result = checker.check()
-    assert result["release_registered"] is True
-    assert result["cases"] == 48
-    assert result["formal_capability_result"] is False
+    # This checker is frozen to the original E6 release; the active method must
+    # reject using that historical registration as current formal eligibility.
+    with pytest.raises(ValueError, match="release_binding_invalid"):
+        checker.check()
+    suite = json.loads((DATASET / "manifest.json").read_text())
+    release = json.loads((DATASET / "benchmark-release.json").read_text())
+    historical = _assess_with_registry(dataset_root=DATASET, suite=suite, release=release,
+        protocol=load_protocol_release("1.0"), registry=load_production_registry(), filtered=False)
+    assert historical.release_registered and historical.suite_complete
+    assert len(release["cases"]) == 48
 
 
 def test_review_cannot_cover_rehashed_changed_input(checker, tmp_path):
@@ -51,7 +57,8 @@ def test_filtered_registered_e6_batch_is_not_trusted():
     trust = assess_benchmark_release(
         dataset_root=DATASET, suite=suite, release=release, filtered=True
     )
-    assert trust.release_registered is True
+    assert trust.release_registered is False
+    assert "benchmark.protocol_mismatch" in trust.reason_codes
     assert trust.trusted_benchmark_run is False
     assert "benchmark.posthoc_filter" in trust.reason_codes
 

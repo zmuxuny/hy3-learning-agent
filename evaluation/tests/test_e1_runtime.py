@@ -371,7 +371,7 @@ def test_real_model_provider_url_must_be_credential_free_https(
         ("https://tokenhub.tencentmaas.com/v1", "not-hy3"),
     ],
 )
-def test_real_model_requires_allowlisted_hy3_attribution(
+def test_real_model_accepts_configured_https_provider_but_requires_hy3(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     base_url: str,
@@ -380,7 +380,11 @@ def test_real_model_requires_allowlisted_hy3_attribution(
     monkeypatch.setenv("OPENAI_API_KEY", "synthetic-caller-key")
     monkeypatch.setenv("OPENAI_API_BASE", base_url)
     monkeypatch.setenv("MODEL_NAME", model)
-    with pytest.raises(EvaluationIsolationError, match="Hy3 allowlist"):
+    if model == "hy3":
+        env = worker_environment(project_root=PROJECT_ROOT, worker_root=tmp_path, model_mode="real", allow_real_model=True)
+        assert env["OPENAI_API_BASE"] == base_url
+        return
+    with pytest.raises(EvaluationIsolationError, match="MODEL_NAME=hy3"):
         worker_environment(
             project_root=PROJECT_ROOT,
             worker_root=tmp_path,

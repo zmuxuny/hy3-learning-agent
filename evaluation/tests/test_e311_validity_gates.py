@@ -57,7 +57,7 @@ from learning_agent_eval.rules import (
     evaluate_rules_v3,
 )
 from learning_agent_eval.runtime_metadata import dependency_lock_sha256
-from learning_agent_eval.schemas import schema_documents
+from learning_agent_eval.schemas import ACTIVE_SCHEMA_RELATIVE_ROOT, schema_documents
 from learning_agent_eval.validator import validate_dataset, validate_episode
 from pydantic import ValidationError
 
@@ -159,7 +159,7 @@ def test_active_contract_schemas_are_strict_and_committed() -> None:
     generated = schema_documents()
     assert names <= set(generated)
     for name in names:
-        committed = _load(PROJECT_ROOT / "evaluation" / "schemas" / name)
+        committed = _load(PROJECT_ROOT / ACTIVE_SCHEMA_RELATIVE_ROOT / name)
         assert committed == generated[name]
         assert committed["additionalProperties"] is False
 
