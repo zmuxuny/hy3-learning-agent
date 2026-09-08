@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from copy import deepcopy
 from datetime import datetime, timezone
 from threading import Lock
 from typing import Any
@@ -109,6 +110,29 @@ class _CompletionsDecorator:
         self._delegate = delegate
 
     async def create(self, **request: Any) -> Any:
+        metadata = self._recorder._metadata_provider() if self._recorder._metadata_provider else None
+        action_transport = (self._recorder.action_tool_transport and getattr(metadata, "depth", 0) == 0
+                            and getattr(metadata, "call_purpose", "decision") == "decision")
+        if action_transport:
+            from .action_protocol import (
+                ACTION_CLASSES,
+                INSPECTION_TOOLS,
+                TOOL_ACTION_FIELD,
+            )
+
+            request = deepcopy(request)
+            request["stream"] = False
+            request.pop("stream_options", None)
+            for tool in request.get("tools", []):
+                function = tool.get("function", {})
+                if function.get("name") in INSPECTION_TOOLS and function.get("name") != "web_search":
+                    continue
+                schema = function["parameters"]
+                schema.setdefault("properties", {})[TOOL_ACTION_FIELD] = {
+                    "type": "array", "items": {"type": "string", "enum": list(ACTION_CLASSES)}, "minItems": 1,
+                    "description": "Declare YOUR intended action explicitly. This does not grant approval or claim execution succeeded.",
+                }
+                schema.setdefault("required", []).append(TOOL_ACTION_FIELD)
         if self._recorder.max_output_tokens is not None:
             extra_body = request.get("extra_body") or {}
             if any(key in extra_body for key in ("model", "n", "max_tokens", "max_completion_tokens")):
@@ -143,6 +167,20 @@ class _CompletionsDecorator:
         except (RecorderPrivacyError, AttributeError, IndexError, TypeError, ValueError):
             self._recorder._finish_projection_error(pending)
             raise
+        if action_transport:
+            # The public record above retains every original model argument.
+            # Remove only the protocol field before the unchanged product tool
+            # validator and Guard see the business request. Never add an action.
+            from .action_protocol import TOOL_ACTION_FIELD
+
+            for call in response.choices[0].message.tool_calls or []:
+                try:
+                    arguments = json.loads(call.function.arguments)
+                except (TypeError, json.JSONDecodeError):
+                    continue
+                if isinstance(arguments, dict) and TOOL_ACTION_FIELD in arguments:
+                    del arguments[TOOL_ACTION_FIELD]
+                    call.function.arguments = canonical_json(arguments)
         # Preserve the provider SDK's response identity. Runtime consumers may
         # rely on it, and OpenAI-compatible response models have a writable
         # instance dictionary even when their public schema forbids extras.
@@ -173,6 +211,7 @@ class EvaluationModelRecorder:
         max_output_tokens: int | None = None,
         budget: ModelBudget | None = None,
         budget_scope: str = "unspecified",
+        action_tool_transport: bool = False,
     ):
         if invocation_mode not in {"stub", "real"}:
             raise ValueError("invocation_mode must be stub or real")
@@ -186,6 +225,7 @@ class EvaluationModelRecorder:
         self.max_output_tokens = max_output_tokens
         self.budget = budget
         self.budget_scope = budget_scope
+        self.action_tool_transport = action_tool_transport
         if budget is not None and (type(max_output_tokens) is not int or not 1 <= max_output_tokens <= OUTPUT_LIMIT):
             raise ValueError("prepaid budget requires a priced output limit")
         if max_calls is not None and (type(max_calls) is not int or max_calls < 1):

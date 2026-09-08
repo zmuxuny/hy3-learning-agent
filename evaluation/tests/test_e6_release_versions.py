@@ -178,7 +178,7 @@ def test_stub_runtime_rules_judge_preserve_active_protocol_identity(tmp_path):
     assert judge["status"] == "complete"
 
 
-@pytest.mark.parametrize("version", ["1.0", "1.1"])
+@pytest.mark.parametrize("version", ["1.0", "1.1", "1.2"])
 def test_historical_protocol_assets_verify_without_active_source_rebinding(version):
     result = verify_protocol_asset_bytes(version)
     assert result["asset_bytes_verified"] is True

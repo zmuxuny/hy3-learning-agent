@@ -71,12 +71,12 @@ def inputs():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--version", choices=["v1", "v2"], default="v1")
+    parser.add_argument("--version", choices=["v1", "v2", "v3"], default="v1")
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError(args.output)
     cases, controlled, resource = inputs()
-    if args.version == "v2":
+    if args.version != "v1":
         for c in cases:
             if c["track"] == "assessment":
                 c["judge_criteria"]["allowed_action_classes"] = ["INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"]
@@ -87,7 +87,7 @@ def main():
             elif c["scenario_family_id"] == "dev-history":
                 c["judge_criteria"]["allowed_action_classes"] = ["REQUEST_USER_INPUT"]
                 c["judge_criteria"]["constraints"][0]["predicates"][0]["expected_value"] = "REQUEST_USER_INPUT"
-            c["private_annotations"]["adjudication_note"] += " v2: seen regression; correct composite abstention and missing-history input envelopes; preserve public input."
+            c["private_annotations"]["adjudication_note"] += f" {args.version}: seen regression; correct composite abstention and missing-history input envelopes; preserve public input."
             c["case_spec_sha256"] = case_spec_digest(c)
     args.output.mkdir(parents=True)
     snapshot = args.output / "resources.json"

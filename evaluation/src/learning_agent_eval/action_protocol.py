@@ -172,6 +172,7 @@ ALLOWED_ACTION_COMBINATIONS = (
 # Closed product read surface. No model-provided relevance flag can exempt a
 # write or a final answer. Empty-content inspection still remains in trajectory.
 INSPECTION_TOOLS = frozenset({
+    "memory_search",
     "profile_get", "plan_list", "plan_get", "planning_intake_get", "quiz_get",
     "submission_get", "submission_list", "resource_list", "learning_event_list",
     "study_state_get", "competency_get", "competency_graph_get", "evidence_list",
@@ -189,8 +190,13 @@ def inspection_only_response(text: str, tool_calls: Iterable[Mapping[str, Any]])
     )
 
 _SEMANTIC_DICTIONARY = canonical_json(ACTION_SEMANTICS)
+TOOL_ACTION_FIELD = "evaluation_action_classes"
 ACTION_DECLARATION_INSTRUCTION = (
-    "RESPONSE FORMAT REQUIREMENT: emit the action JSON frame in assistant content BEFORE tool calls as well as final answers. "
+    "When calling a write tool, fill its required evaluation_action_classes argument with your own intended "
+    "action names. This is an explicit declaration transport, never authorization; product approval still applies. "
+    "The same declaration may also appear in the content frame and must agree. Read tools need no declaration "
+    "when content is empty. Final text responses still require the content frame. "
+    "RESPONSE FORMAT REQUIREMENT: each write tool response declares actions in its required tool argument OR the content frame. "
     "Do not reserve the frame for the final answer. When inspecting before a decision, use empty content with read tools. "
     "For example a plan_proposal_create call accompanies "
     "<model-action-v2>{\"action_classes\":[\"PROPOSE_PLAN\"]}</model-action-v2>; "
@@ -199,7 +205,7 @@ ACTION_DECLARATION_INSTRUCTION = (
     "a ready intake update supporting a proposal accompanies PROPOSE_PLAN. "
     "A declaration records YOUR intent even if a tool will wait for approval; never claim the write succeeded before its result. "
     "Evaluation action protocol (model-action-declaration-v2): for every main "
-    "Agent decision response, put exactly one declaration at the first non-empty content: "
+    "Agent text-only decision response, put exactly one declaration at the first non-empty content: "
     '<model-action-v2>{"action_classes":["ACTION"]}</model-action-v2>. '
     "JSON whitespace and object-key order are insignificant. The only allowed "
     "field is action_classes; list intended actions in execution order. Single "
@@ -236,6 +242,8 @@ ACTION_DECLARATION_PROTOCOL_DOCUMENT = {
     "inspection_exception": {"assistant_content": "empty", "all_tools_in": sorted(INSPECTION_TOOLS),
                              "web_search_save_results": False, "trajectory_retained": True},
     "instruction": ACTION_DECLARATION_INSTRUCTION,
+    "tool_argument_transport": {"field": TOOL_ACTION_FIELD, "producer": "model_only", "strip_before_product_tool": True,
+                                "stream": False, "content_disagreement": "invalid", "missing": "retain_and_score_failure"},
 }
 ACTION_DECLARATION_PROTOCOL_SHA256 = sha256_digest(
     ACTION_DECLARATION_PROTOCOL_DOCUMENT
@@ -248,6 +256,7 @@ def evaluation_system_prompt(base_prompt: str) -> str:
     return (
         f"{ACTION_DECLARATION_INSTRUCTION}\n\n{base_prompt.rstrip()}\n\n"
         "每一轮都遵守行动声明格式，包括工具成功后的最终总结。声明不是一次性开场白。"
+        "写工具轮必须填写evaluation_action_classes参数，可用它代替同轮content帧；"
         "只读检查轮请保持content为空，不写检查导语；所有有文字的回复（包括最后一句总结）"
         "都必须以<model-action-v2>{\"action_classes\":[\"你实际选择的行动\"]}</model-action-v2>开头。"
         "最终总结仍声明本次已经执行或决定的行动，不把成功总结改成NO_OP，不再次执行工具。"
@@ -343,3 +352,26 @@ def parse_action_declaration(text: str) -> tuple[str, tuple[str, ...], str]:
         "\r\n"
     )
     return "valid", tuple(actions), public_text
+
+
+def parse_response_action_declaration(text: str, tool_calls: Iterable[Mapping[str, Any]]) -> tuple[str, tuple[str, ...], str]:
+    """Read explicit model JSON only; never derive an action from the tool name."""
+    status, actions, public_text = parse_action_declaration(text)
+    declarations = [call.get("canonical_arguments", {}).get(TOOL_ACTION_FIELD)
+                    for call in tool_calls if TOOL_ACTION_FIELD in call.get("canonical_arguments", {})]
+    if not declarations:
+        return status, actions, public_text
+    if status == "invalid":
+        return "invalid", (), text
+    merged: list[str] = []
+    for declared in declarations:
+        if not isinstance(declared, list) or not declared or any(not isinstance(a, str) or a not in ACTION_CLASSES for a in declared):
+            return "invalid", (), text
+        if len(set(declared)) != len(declared) or not _valid_combination(tuple(declared)):
+            return "invalid", (), text
+        for action in declared:
+            if action not in merged:
+                merged.append(action)
+    if not _valid_combination(tuple(merged)) or (status == "valid" and tuple(merged) != actions):
+        return "invalid", (), text
+    return "valid", tuple(merged), public_text

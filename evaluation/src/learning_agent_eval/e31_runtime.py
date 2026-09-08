@@ -9,7 +9,7 @@ from .action_protocol import (
     ACTION_DECLARATION_PROTOCOL_SHA256,
     ACTION_DECLARATION_PROTOCOL_VERSION,
     inspection_only_response,
-    parse_action_declaration,
+    parse_response_action_declaration,
 )
 from .canonical import sha256_digest
 from .eligibility import isolation_evidence_protocol_eligible
@@ -236,8 +236,8 @@ def build_model_calls_v4(
         applicable = (call["call_purpose"] == "decision" and call["status"] == "completed"
                       and not inspection_only_response(str(call["assistant_text"] or ""), record.get("function_calls", [])))
         if applicable:
-            declaration_status, action_classes, _ = parse_action_declaration(
-                str(call["assistant_text"] or "")
+            declaration_status, action_classes, _ = parse_response_action_declaration(
+                str(call["assistant_text"] or ""), record.get("function_calls", [])
             )
         else:
             declaration_status, action_classes = "not_applicable", ()

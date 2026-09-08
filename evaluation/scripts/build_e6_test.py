@@ -21,12 +21,12 @@ RESOURCE_VERSION = "e6-authored-resource-pack-v1"
 TRACKS = ("assessment", "intervention", "planning", "revision")
 
 
-def build_inputs():
-    design = json.loads(DESIGN.read_text())
+def build_inputs(*, design_path=DESIGN, resource_version=RESOURCE_VERSION, resource_prefix="e6", frozen_date="2026-09-06", composite_abstention=False):
+    design = json.loads(design_path.read_text())
     cases, pages, queries = [], [], []
     for family in design["families"]:
         fid = family["family_id"]
-        url = f"https://learning.example.test/e6/{fid}"
+        url = f"https://learning.example.test/{resource_prefix}/{fid}"
         query = f"本地教学材料 {fid}"
         pages.append(
             {
@@ -48,7 +48,7 @@ def build_inputs():
                 "resource_policy": "仅可访问冻结资源目录中的URL和完整查询，不访问实时互联网。",
                 "background": f"公开合成的{family['topic']}学习者；各轨是独立初态。",
             }
-            frozen = "2026-09-06T10:00:00+08:00"
+            frozen = f"{frozen_date}T10:00:00+08:00"
             if track == "planning":
                 note = entry["note"]
                 action = "REQUEST_USER_INPUT" if entry["unknown"] else "PROPOSE_PLAN"
@@ -121,7 +121,7 @@ def build_inputs():
                     quiet_end="08:00",
                 )
                 seed.update(entry["seed"])
-                frozen = f"2026-09-06T{entry['time']}+08:00"
+                frozen = f"{frozen_date}T{entry['time']}+08:00"
             else:
                 action, note = entry["action"], entry["note"]
                 seed["plan_version"] = entry["version"]
@@ -148,7 +148,7 @@ def build_inputs():
                 facts=facts,
                 frozen_time=frozen,
             )
-            case["runtime_setup"]["resource_snapshot_version"] = RESOURCE_VERSION
+            case["runtime_setup"]["resource_snapshot_version"] = resource_version
             case["tags"] = [
                 "author-created",
                 "synthetic-environment",
@@ -190,6 +190,10 @@ def build_inputs():
                     )
                 )
             if track == "assessment":
+                if composite_abstention and action in {"INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"}:
+                    criteria["allowed_action_classes"] = ["INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"]
+                    criteria["constraints"][0]["evidence_paths"] = ["result.action_classes"]
+                    criteria["constraints"][0]["predicates"] = [{"path": "result.action_classes", "operator": "contains", "expected_value": action}]
                 criteria["constraints"].append(
                     constraint(f"{case['case_id']}.criteria", entry["criteria"])
                 )
@@ -197,7 +201,7 @@ def build_inputs():
             cases.append(case)
     resource = {
         "schema_version": "e1-resource-snapshot-v1",
-        "snapshot_version": RESOURCE_VERSION,
+        "snapshot_version": resource_version,
         "provenance": "public_and_fully_synthetic",
         "queries": queries,
         "pages": pages,
@@ -206,8 +210,8 @@ def build_inputs():
     return cases, resource
 
 
-def reviewed_inputs(review_path):
-    cases, resource = build_inputs()
+def reviewed_inputs(review_path, **build_options):
+    cases, resource = build_inputs(**build_options)
     if review_path:
         review = json.loads(review_path.read_text())
         if review.get("review_sha256") != sha256_digest(
@@ -219,7 +223,7 @@ def reviewed_inputs(review_path):
             raise ValueError("review must cover exactly 48 inputs")
         if review["resource_sha256"] != resource["manifest_sha256"] or review[
             "design_sha256"
-        ] != sha256_digest(json.loads(DESIGN.read_text())):
+        ] != sha256_digest(json.loads(build_options.get("design_path", DESIGN).read_text())):
             raise ValueError("stale review design/resources")
         for case in cases:
             row = rows[case["case_id"]]
@@ -234,6 +238,8 @@ def reviewed_inputs(review_path):
                 reviewer_role="primary_ai_reviewer",
                 adjudication_note="Digest-bound AI self-review in evaluation/case-design/e6-content-review.json; same author/model/context, not independent human annotation. Inputs unused for model or evaluator tuning.",
             )
+            if build_options.get("design_path", DESIGN) != DESIGN:
+                case["private_annotations"]["adjudication_note"] = f"Digest-bound AI self-review in {review_path.relative_to(ROOT)}; same author/model/context, not independent human annotation. Inputs unused for model or evaluator tuning."
             case["case_spec_sha256"] = case_spec_digest(case)
     return cases, resource
 
@@ -242,8 +248,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--review-records", type=Path)
+    parser.add_argument("--design", type=Path, default=DESIGN)
+    parser.add_argument("--version", default=VERSION)
+    parser.add_argument("--resource-version", default=RESOURCE_VERSION)
+    parser.add_argument("--resource-prefix", default="e6")
+    parser.add_argument("--frozen-date", default="2026-09-06")
+    parser.add_argument("--composite-abstention", action="store_true")
     args = parser.parse_args()
-    cases, resource = reviewed_inputs(args.review_records)
+    cases, resource = reviewed_inputs(args.review_records, design_path=args.design, resource_version=args.resource_version, resource_prefix=args.resource_prefix, frozen_date=args.frozen_date, composite_abstention=args.composite_abstention)
     from tempfile import TemporaryDirectory
 
     with TemporaryDirectory(prefix="e6-resource-") as temporary:
@@ -253,7 +265,7 @@ def main():
             args.output,
             cases=cases,
             resource_snapshot=snapshot,
-            dataset_version=VERSION,
+            dataset_version=args.version,
         )
     print(
         f"e6_inputs_built cases={len(cases)} reviewed={bool(args.review_records)} trusted=false"

@@ -379,6 +379,7 @@ async def _execute_inner(
             max_output_tokens=OUTPUT_LIMIT if budget is not None else None,
             budget=budget,
             budget_scope=case["case_id"],
+            action_tool_transport=active,
         )
         progress.update(recorder=recorder, identities=identities, configured_model=app_config.settings.MODEL_NAME)
         stack.enter_context(model_clients.use_model_client_factory(lambda: recorder))
