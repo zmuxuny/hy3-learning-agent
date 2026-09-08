@@ -65,6 +65,19 @@ async def test_sqlite_enforces_declared_foreign_keys():
         assert int((await db.execute(text("PRAGMA foreign_keys"))).scalar_one()) == 1
 
 
+def test_core_tasks_need_evidence_but_optional_tasks_do_not():
+    plan = PlanCreate.model_validate({
+        "title": "边界练习", "goal": "实现FIFO", "expected_outcome": "断言输出",
+        "stages": [{"title": "练习", "tasks": [
+            {"title": "阅读", "is_core": False},
+            {"title": "实现", "is_core": True},
+        ]}],
+    })
+    assert plan_service.plan_completeness_issues(plan) == ["stage 1 task 2: core tasks require evidence_required=true"]
+    plan.stages[0].tasks[1].evidence_required = True
+    assert plan_service.plan_completeness_issues(plan) == []
+
+
 def test_formal_plan_completeness_rejects_empty_structure():
     issues = plan_service.plan_completeness_issues(PlanCreate(title="只有标题"))
     assert issues == [

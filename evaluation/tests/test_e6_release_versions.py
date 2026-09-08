@@ -1,4 +1,4 @@
-"""Protocol 1.1 governance regression; run in a repository-external copy."""
+"""Active protocol governance regression; run in a repository-external copy."""
 
 from __future__ import annotations
 
@@ -12,9 +12,11 @@ import pytest
 from learning_agent_eval.integrity import protocol_release_digest
 from learning_agent_eval.models import EvaluationProtocolReleaseV1
 from learning_agent_eval.release_governance import (
+    ACTIVE_PROTOCOL_VERSION,
     load_production_registry,
     load_protocol_release,
     protocol_release_reason_codes,
+    verify_protocol_asset_bytes,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -97,14 +99,18 @@ def test_old_registered_benchmark_cannot_be_rebound():
 
 def test_active_release_recomputes_with_new_schema_root():
     protocol = load_protocol_release()
-    assert protocol["protocol_release_id"] == "evaluation-protocol-release-1.1"
+    assert (
+        protocol["protocol_release_id"]
+        == f"evaluation-protocol-release-{ACTIVE_PROTOCOL_VERSION}"
+    )
     assert protocol_release_reason_codes(protocol) == ()
     assert all(
-        "/protocol-1.1/" in e["relative_path"] for e in protocol["artifact_schemas"]
+        f"/protocol-{ACTIVE_PROTOCOL_VERSION}/" in e["relative_path"]
+        for e in protocol["artifact_schemas"]
     )
 
 
-def test_stub_runtime_rules_judge_preserve_protocol_1_1_identity(tmp_path):
+def test_stub_runtime_rules_judge_preserve_active_protocol_identity(tmp_path):
     from learning_agent_eval.active_judge import (
         FixedResponseJudgeProviderV3,
         evaluate_active_judges,
@@ -114,7 +120,10 @@ def test_stub_runtime_rules_judge_preserve_protocol_1_1_identity(tmp_path):
     from learning_agent_eval.case_specs import episode_id_for_case
     from learning_agent_eval.validator import validate_dataset
 
-    dataset = ROOT / "evaluation/datasets/decisionbench-v1.1-regression/calibration"
+    dataset = (
+        ROOT
+        / f"evaluation/datasets/decisionbench-v{ACTIVE_PROTOCOL_VERSION}-regression/calibration"
+    )
     case = json.loads((dataset / "cases/case-0001.json").read_text())
     episode_id = episode_id_for_case(case)
     runtime, rules, judges = (
@@ -167,3 +176,12 @@ def test_stub_runtime_rules_judge_preserve_protocol_1_1_identity(tmp_path):
     } <= set(checked)
     judge = json.loads((judges / "judge-results" / f"{episode_id}.json").read_text())
     assert judge["status"] == "complete"
+
+
+@pytest.mark.parametrize("version", ["1.0", "1.1"])
+def test_historical_protocol_assets_verify_without_active_source_rebinding(version):
+    result = verify_protocol_asset_bytes(version)
+    assert result["asset_bytes_verified"] is True
+    assert result["protocol_release_id"] == f"evaluation-protocol-release-{version}"
+    assert result["execution_requires_recorded_commit"] is True
+    assert load_protocol_release()["protocol_version"] == ACTIVE_PROTOCOL_VERSION

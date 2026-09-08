@@ -71,7 +71,7 @@ ACTION_SEMANTICS: dict[str, dict[str, Any]] = {
         negative="Persist or claim adoption of the proposed plan.",
     ),
     "REQUEST_USER_INPUT": _meaning(
-        track="planning_or_intervention",
+        track="planning_intervention_or_revision",
         semantics="Ask the user for information required before a safe decision.",
         boundary="Use REQUEST_CLARIFICATION for ambiguity in assessment evidence.",
         positive="Ask for a missing deadline before proposing a schedule.",
@@ -245,7 +245,15 @@ ACTION_DECLARATION_PROTOCOL_SHA256 = sha256_digest(
 def evaluation_system_prompt(base_prompt: str) -> str:
     """Place the version-bound response format before production instructions."""
 
-    return f"{ACTION_DECLARATION_INSTRUCTION}\n\n{base_prompt.rstrip()}"
+    return (
+        f"{ACTION_DECLARATION_INSTRUCTION}\n\n{base_prompt.rstrip()}\n\n"
+        "每一轮都遵守行动声明格式，包括工具成功后的最终总结。声明不是一次性开场白。"
+        "只读检查轮请保持content为空，不写检查导语；所有有文字的回复（包括最后一句总结）"
+        "都必须以<model-action-v2>{\"action_classes\":[\"你实际选择的行动\"]}</model-action-v2>开头。"
+        "最终总结仍声明本次已经执行或决定的行动，不把成功总结改成NO_OP，不再次执行工具。"
+        "例如提醒发送成功后的总结仍声明INTERVENE_MESSAGE，补丁成功后的总结仍声明APPLY_REVERSIBLE_PATCH。"
+        "比较所需旧稿缺失时可声明REQUEST_USER_INPUT并索取旧稿，不能推断旧稿事实。"
+    )
 
 
 def _valid_combination(actions: tuple[str, ...]) -> bool:

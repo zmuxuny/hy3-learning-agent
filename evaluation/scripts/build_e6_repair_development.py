@@ -71,17 +71,31 @@ def inputs():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--version", choices=["v1", "v2"], default="v1")
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError(args.output)
     cases, controlled, resource = inputs()
+    if args.version == "v2":
+        for c in cases:
+            if c["track"] == "assessment":
+                c["judge_criteria"]["allowed_action_classes"] = ["INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"]
+                required = "REQUEST_CLARIFICATION" if c["scenario_family_id"] == "dev-ambiguous" else "INSUFFICIENT_EVIDENCE"
+                decision = c["judge_criteria"]["constraints"][0]
+                decision["evidence_paths"] = ["result.action_classes"]
+                decision["predicates"] = [{"path": "result.action_classes", "operator": "contains", "expected_value": required}]
+            elif c["scenario_family_id"] == "dev-history":
+                c["judge_criteria"]["allowed_action_classes"] = ["REQUEST_USER_INPUT"]
+                c["judge_criteria"]["constraints"][0]["predicates"][0]["expected_value"] = "REQUEST_USER_INPUT"
+            c["private_annotations"]["adjudication_note"] += " v2: seen regression; correct composite abstention and missing-history input envelopes; preserve public input."
+            c["case_spec_sha256"] = case_spec_digest(c)
     args.output.mkdir(parents=True)
     snapshot = args.output / "resources.json"
     snapshot.write_bytes(canonical_json_bytes(resource))
-    write_candidate_suite(args.output / "real", cases=cases, resource_snapshot=snapshot, dataset_version="e6-repair-development-real-v1")
-    write_candidate_suite(args.output / "controlled", cases=controlled, resource_snapshot=snapshot, dataset_version="e6-repair-development-controlled-v1")
+    write_candidate_suite(args.output / "real", cases=cases, resource_snapshot=snapshot, dataset_version=f"e6-repair-development-real-{args.version}")
+    write_candidate_suite(args.output / "controlled", cases=controlled, resource_snapshot=snapshot, dataset_version=f"e6-repair-development-controlled-{args.version}")
     (args.output / "design.json").write_bytes(canonical_json_bytes({
-        "version": "e6-repair-development-design-v1", "formal": False,
+        "version": f"e6-repair-development-design-{args.version}", "formal": False,
         "real_cases": [c["case_id"] for c in cases], "controlled_cases": [c["case_id"] for c in controlled],
         "expectations": {"dev-clock-correct": {"D1": 2, "D7": 2}, "dev-clock-wrong-clock": {"D1_max": 1, "D7_max": 1}},
         "controlled_repeats": 3, "policy": "Keep every result; all six paired-time Judgments must meet the stated positive/negative anchors.",

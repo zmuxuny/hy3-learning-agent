@@ -26,7 +26,7 @@ EVALUATOR_VERSION_V2 = "deterministic-rule-evaluator-v2"
 RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
 EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
-RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-repair-1"
+RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-repair-2"
 RULE_IMPLEMENTATION_SHA256_V3 = source_bundle_sha256("rules")
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
@@ -1935,8 +1935,9 @@ def _active_track_checks(
 ) -> list[dict[str, Any]]:
     """Apply write requirements only to decisions that require those writes.
 
-    The reviewed envelope authorizes abstention; captured effects independently
-    prove that it remained an abstention. A declaration alone cannot waive a gate.
+    The envelope separately scores whether the decision is allowed. Captured
+    effects prove whether it remained an abstention; an incorrect envelope must
+    not turn an ungraded submission into a fictitious committed verdict.
     """
 
     checks = [
@@ -2006,11 +2007,10 @@ def _active_track_checks(
         "planning": {"REQUEST_USER_INPUT"},
         "intervention": {"WAIT", "REQUEST_USER_INPUT", "PROPOSE_PLAN_ADJUSTMENT"},
         "assessment": {"INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"},
-        "revision": {"NO_OP", "PROPOSE_CHANGE", "REQUEST_APPROVAL"},
+        "revision": {"NO_OP", "PROPOSE_CHANGE", "REQUEST_APPROVAL", "REQUEST_USER_INPUT"},
     }[track]
     actions = set(episode["result"]["action_classes"])
     abstention = bool(actions) and actions <= non_writing
-    approved = actions <= set(reference["allowed_action_classes"])
     # Agent/session/audit rows may change even when learning state is untouched.
     product_types = {
         "plan", "stage", "task", "submission", "plan_proposal", "quiz",
@@ -2091,7 +2091,7 @@ def _active_track_checks(
                 evidence_path="observable_trace.tool_invocations", observed="in_app only", expected="external transport",
             )
             checks = [replacements.get(c["check_id"], c) for c in checks]
-    if abstention and approved and not returned_planning_draft:
+    if abstention and not returned_planning_draft:
         checks = [
             _conditional_not_applicable(
                 episode, check["check_id"], track, check["severity"],

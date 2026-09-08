@@ -30,6 +30,7 @@ from learning_agent_eval.models import (
 )
 from learning_agent_eval.release_governance import (
     ACTIVE_PROTOCOL_SCHEMA_VERSIONS,
+    ACTIVE_PROTOCOL_VERSION,
     assess_benchmark_release,
     assess_benchmark_release_for_testing,
     case_bindings,
@@ -50,7 +51,7 @@ from learning_agent_eval.source_bundles import (
 from learning_agent_eval.validator import validate_dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATASET = PROJECT_ROOT / "evaluation/datasets/decisionbench-v1.1-regression/engineering"
+DATASET = PROJECT_ROOT / f"evaluation/datasets/decisionbench-v{ACTIVE_PROTOCOL_VERSION}-regression/engineering"
 
 
 def _load(path: Path) -> dict[str, Any]:

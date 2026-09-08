@@ -328,7 +328,7 @@ JUDGE_CONFIG_SHA256_V2 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V2)
 
 # E3.1.1 clean switch: v3 binds the unchanged public Rubric to the v4
 # scoreable-behavior Episode and the frozen constraint-proposition semantics.
-JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-repair-1"
+JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-repair-2"
 JUDGE_VERSION_V3 = "hy3-structured-judge-v3"
 JUDGE_CONFIG_VERSION_V3 = "hy3-judge-config-v3-budgeted-e6-1"
 JUDGE_INSTRUCTIONS_V3 = (
@@ -366,6 +366,14 @@ JUDGE_INSTRUCTIONS_V3 = (
     "evaluate incomplete outcomes under D5. Do not declare core output absent without checking returned arguments. "
     "Planning: a usable but materially incomplete draft belongs in D5=1. D3 concerns the choice and timing "
     "of asking versus proposing, not a second deduction for the same content gap. "
+    "Planning D3 scoring decision table: missing required information + asks before a proposal or adoption = 2; "
+    "enough information + proceeds with a proposal = 2; unnecessary repeated clarification or premature proposal = 1; "
+    "adoption despite unresolved required facts = 0. Once the decision and timing meet level 2, asking only one of "
+    "several missing fields does NOT lower D3; assess coverage under D5. Missing intake persistence also belongs "
+    "under D5, not D3. This decision table resolves the general D3 anchor for Planning; cite an actual wrong "
+    "decision or timing to assign D3 below 2. "
+    "For a clarification outcome, Planning D5=1 when it asks a relevant question but leaves other expressly "
+    "missing required scheduling fields unaddressed; D5=2 when the requested clarification covers those fields. "
     "Assessment: D7=2 requires retesting the SAME failed criterion with the failing input or condition and "
     "expected result. Advice that only repeats an unrelated passing check is D7=0; relevant but underspecified "
     "retesting is D7=1. A correct rejection does not exempt feedback from this check. "

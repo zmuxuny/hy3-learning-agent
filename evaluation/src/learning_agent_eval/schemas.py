@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from .models import SCHEMA_MODELS
+from .release_governance import ACTIVE_PROTOCOL_VERSION
 
-ACTIVE_SCHEMA_RELATIVE_ROOT = "evaluation/schemas/protocol-1.1"
+ACTIVE_SCHEMA_RELATIVE_ROOT = f"evaluation/schemas/protocol-{ACTIVE_PROTOCOL_VERSION}"
 
 SCHEMA_FILENAMES = {
     "decision-episode-v1": "decision-episode-v1.schema.json",
@@ -65,6 +66,8 @@ def schema_documents() -> dict[str, dict[str, Any]]:
     }
     for filename, document in documents.items():
         document["$id"] = (
-            document["$id"].rsplit("/", 1)[0] + "/protocol-1.1/" + filename
+            document["$id"].rsplit("/", 1)[0]
+            + f"/protocol-{ACTIVE_PROTOCOL_VERSION}/"
+            + filename
         )
     return documents

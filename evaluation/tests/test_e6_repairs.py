@@ -79,6 +79,21 @@ def test_committed_assessment_still_checks_verdict_and_operation_alignment():
     assert checks(e, r)["assessment.score_threshold_verdict"]["status"] == "fail"
 
 
+def test_abstention_applicability_is_independent_of_the_case_envelope():
+    e, r = case("formal-f05-assessment")
+    e["result"]["action_classes"] = ["INSUFFICIENT_EVIDENCE", "REQUEST_CLARIFICATION"]
+    e["observable_trace"]["tool_invocations"] = []
+    e["observable_trace"]["operations"] = []
+    e["state_delta"]["changes"] = []
+    r["allowed_action_classes"] = ["ACCEPT"]
+    result = checks(e, r)
+    assert result["assessment.score_threshold_verdict"]["status"] == "not_applicable"
+    assert result["assessment.abstention_preserves_state"]["status"] == "pass"
+    submission = next(n for n in e["state_after"]["logical_entities"] if n["entity_type"] == "submission")
+    e["state_delta"]["changes"].append({"entity_ref": submission["logical_id"]})
+    assert checks(e, r)["assessment.abstention_preserves_state"]["status"] == "fail"
+
+
 def test_confirming_intake_is_not_a_request_for_user_input():
     assert _invocation_action({"tool_name": "planning.intake.update", "canonical_args": {"readiness": "ready", "open_questions": []}}) is None
     assert _invocation_action({"tool_name": "planning.intake.update", "canonical_args": {"open_questions": [{"question": "Available time?"}]}}) == "REQUEST_USER_INPUT"

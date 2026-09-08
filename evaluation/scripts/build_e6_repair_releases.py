@@ -1,8 +1,8 @@
-"""Build Protocol 1.1 candidates; freeze Benchmarks without rewriting history.
+"""Build active protocol candidates; freeze Benchmarks without rewriting history.
 
 Run build after source changes, bind each new dataset directory, then freeze only
 when calibration and independent test review are complete. Registration freezes
-all Protocol 1.1 bindings. A later method change needs another protocol identity.
+all bindings of that protocol identity. A later method change needs another protocol identity.
 """
 
 from __future__ import annotations
@@ -33,9 +33,11 @@ from learning_agent_eval.models import (
 from learning_agent_eval.release_governance import (
     ACTIVE_PROTOCOL_RELEASE_ID,
     ACTIVE_PROTOCOL_SCHEMA_VERSIONS,
+    ACTIVE_PROTOCOL_VERSION,
     PROTOCOL_RELEASE_PATH,
     SCHEMA_LOCK_PATH,
     SOURCE_BUNDLE_ROOT,
+    SUPPORTED_PROTOCOL_VERSIONS,
     case_bindings,
     compute_case_suite_sha256,
     load_production_registry,
@@ -43,6 +45,7 @@ from learning_agent_eval.release_governance import (
     mutation_lineage_sha256,
     protocol_release_reason_codes,
     resource_bindings,
+    verify_protocol_asset_bytes,
 )
 from learning_agent_eval.schemas import (
     ACTIVE_SCHEMA_RELATIVE_ROOT,
@@ -82,9 +85,11 @@ def build():
         for e in registry["entries"]
     ):
         check_active()
-        print("protocol_1.1_verified registered=true assets_unchanged=true")
+        print(
+            f"protocol_{ACTIVE_PROTOCOL_VERSION}_verified registered=true assets_unchanged=true"
+        )
         return
-    # All pre-1.1 files remain untouched, including the 1.0 action document.
+    # Every older protocol asset remains untouched.
     entries = []
     generated = schema_documents()
     for version, filename in sorted(SCHEMA_FILENAMES.items()):
@@ -105,7 +110,7 @@ def build():
         )
     lock = {
         "schema_version": "schema-lock-manifest-v1",
-        "lock_version": "evaluation-schema-lock-1.1",
+        "lock_version": f"evaluation-schema-lock-{ACTIVE_PROTOCOL_VERSION}",
         "entries": entries,
         "manifest_sha256": "0" * 64,
     }
@@ -117,13 +122,13 @@ def build():
     }
     for component, bundle in bundles.items():
         write(SOURCE_BUNDLE_ROOT / f"{component}.json", bundle)
-    action_path = "evaluation/releases/protocol-1.1/model-action-declaration-v2.json"
+    action_path = f"evaluation/releases/protocol-{ACTIVE_PROTOCOL_VERSION}/model-action-declaration-v2.json"
     write(PROJECT_ROOT / action_path, ACTION_DECLARATION_PROTOCOL_DOCUMENT)
     protocol = load(RELEASE_ROOT / "evaluation-protocol-release-1.0.json")
     protocol.update(
         {
             "protocol_release_id": ACTIVE_PROTOCOL_RELEASE_ID,
-            "protocol_version": "1.1",
+            "protocol_version": ACTIVE_PROTOCOL_VERSION,
             "schema_lock_version": lock["lock_version"],
             "schema_lock_sha256": lock["manifest_sha256"],
             "action_protocol_relative_path": action_path,
@@ -183,7 +188,9 @@ def build():
     )
     write(PROTOCOL_RELEASE_PATH, protocol)
     check_active()
-    print(f"protocol_1.1_built sha256={protocol['release_sha256']} registered=false")
+    print(
+        f"protocol_{ACTIVE_PROTOCOL_VERSION}_built sha256={protocol['release_sha256']} registered=false"
+    )
 
 
 def dataset_paths(dataset):
@@ -350,7 +357,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("build")
-    sub.add_parser("verify")
+    verification = sub.add_parser("verify")
+    verification.add_argument(
+        "--protocol-version",
+        choices=SUPPORTED_PROTOCOL_VERSIONS,
+        help="verify historical assets without switching the active runtime",
+    )
     candidate = sub.add_parser("bind")
     candidate.add_argument("--dataset", required=True)
     candidate.add_argument("--release-id", required=True)
@@ -361,9 +373,16 @@ def main():
     if args.command == "build":
         build()
     elif args.command == "verify":
-        check_active()
-        load_production_registry()
-        print("active_protocol_and_registry_verified")
+        if args.protocol_version is not None:
+            print(
+                json.dumps(
+                    verify_protocol_asset_bytes(args.protocol_version), sort_keys=True
+                )
+            )
+        else:
+            check_active()
+            load_production_registry()
+            print("active_protocol_and_registry_verified")
     elif args.command == "bind":
         bind(args.dataset, args.release_id, args.benchmark_version)
     else:
