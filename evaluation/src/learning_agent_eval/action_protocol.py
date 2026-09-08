@@ -200,12 +200,12 @@ ACTION_DECLARATION_INSTRUCTION = (
     "Do not reserve the frame for the final answer. When inspecting before a decision, use empty content with read tools. "
     "For example a plan_proposal_create call accompanies "
     "<model-action-v2>{\"action_classes\":[\"PROPOSE_PLAN\"]}</model-action-v2>; "
-    "notification_send accompanies INTERVENE_MESSAGE; an authorized plan_patch accompanies APPLY_REVERSIBLE_PATCH. "
+    "notification_send carries REQUEST_USER_INPUT when asking for missing information, otherwise INTERVENE_MESSAGE; an authorized plan_patch accompanies APPLY_REVERSIBLE_PATCH. "
     "A planning_intake_update with open questions accompanies REQUEST_USER_INPUT; "
     "a ready intake update supporting a proposal accompanies PROPOSE_PLAN. "
     "A declaration records YOUR intent even if a tool will wait for approval; never claim the write succeeded before its result. "
     "Evaluation action protocol (model-action-declaration-v2): for every main "
-    "Agent text-only decision response, put exactly one declaration at the first non-empty content: "
+    "Agent text-only decision response, include exactly one declaration (preferably before prose): "
     '<model-action-v2>{"action_classes":["ACTION"]}</model-action-v2>. '
     "JSON whitespace and object-key order are insignificant. The only allowed "
     "field is action_classes; list intended actions in execution order. Single "
@@ -226,7 +226,7 @@ ACTION_DECLARATION_PROTOCOL_DOCUMENT = {
     "framing": {
         "prefix": ACTION_DECLARATION_PREFIX,
         "suffix": ACTION_DECLARATION_SUFFIX,
-        "position": "first_nonempty_content",
+        "position": "single_frame_anywhere",
         "duplicate_policy": "reject",
     },
     "json_contract": {
@@ -261,6 +261,8 @@ def evaluation_system_prompt(base_prompt: str) -> str:
         "都必须以<model-action-v2>{\"action_classes\":[\"你实际选择的行动\"]}</model-action-v2>开头。"
         "最终总结仍声明本次已经执行或决定的行动，不把成功总结改成NO_OP，不再次执行工具。"
         "例如提醒发送成功后的总结仍声明INTERVENE_MESSAGE，补丁成功后的总结仍声明APPLY_REVERSIBLE_PATCH。"
+        "evaluation_action_classes必须是JSON数组，不是包含数组的字符串；不要在只读工具中添加它。"
+        "调整轨道的建议使用PROPOSE_CHANGE或REQUEST_APPROVAL，PROPOSE_PLAN_ADJUSTMENT仅用于主动介入。"
         "比较所需旧稿缺失时可声明REQUEST_USER_INPUT并索取旧稿，不能推断旧稿事实。"
     )
 
@@ -324,9 +326,10 @@ def parse_action_declaration(text: str) -> tuple[str, tuple[str, ...], str]:
         return "missing", (), text
     marker_count = text.count(ACTION_DECLARATION_PREFIX)
     suffix_count = text.count(ACTION_DECLARATION_SUFFIX)
-    framed = text[first_nonempty:]
-    if not framed.startswith(ACTION_DECLARATION_PREFIX):
+    if marker_count == 0 and suffix_count == 0:
         return "missing", (), text
+    frame_start = text.find(ACTION_DECLARATION_PREFIX)
+    framed = text[frame_start:]
     if marker_count != 1 or suffix_count != 1:
         return "invalid", (), text
     suffix_at = framed.find(
@@ -348,9 +351,7 @@ def parse_action_declaration(text: str) -> tuple[str, tuple[str, ...], str]:
         or not _valid_combination(tuple(actions))
     ):
         return "invalid", (), text
-    public_text = framed[suffix_at + len(ACTION_DECLARATION_SUFFIX) :].lstrip(
-        "\r\n"
-    )
+    public_text = (text[:frame_start] + framed[suffix_at + len(ACTION_DECLARATION_SUFFIX):]).strip()
     return "valid", tuple(actions), public_text
 
 

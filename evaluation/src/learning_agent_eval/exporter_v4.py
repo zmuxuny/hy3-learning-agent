@@ -35,7 +35,7 @@ from .normalizers import NormalizationError, normalize_rfc3339
 from .release_governance import ACTIVE_PROTOCOL_RELEASE_ID
 from .validator import resolve_evidence_path
 
-ACTION_MAPPING_VERSION_V2 = "runtime-action-mapping-v2-e6-repair-1"
+ACTION_MAPPING_VERSION_V2 = "runtime-action-mapping-v2-e6-final-1"
 TOOL_ACTION_MAPPING_V2 = {
     "plan.proposal.create": "PROPOSE_PLAN",
     "notification.send": "INTERVENE_MESSAGE",
@@ -67,7 +67,7 @@ ACTION_MAPPING_SHA256_V2 = sha256_digest(
         "declaration_protocol_sha256": ACTION_DECLARATION_PROTOCOL_SHA256,
         "tool_mapping": TOOL_ACTION_MAPPING_V2,
         "effect_types": ACTION_EFFECT_TYPES_V2,
-        "combination_semantics": "ordered_unique_union_of_declared_and_observed",
+        "combination_semantics": "last_valid_decision_plus_observed_tool_actions; historical_attempts_retained",
         "effect_entity_attribution": "tool_result_operation_and_business_state-v2",
         "unclassified_semantics": "scoreable_behavior_issue",
     }
@@ -260,6 +260,24 @@ def _effects_and_result(
     invocations = {item["invocation_id"]: item for item in trace["tool_invocations"]}
 
     decision_calls = [item for item in calls if item["decision_relevant"]]
+    # A later evidence-backed decision supersedes provisional read-round intent.
+    # Every actual tool action and every invalid/missing declaration stays visible.
+    latest = next((c for c in reversed(decision_calls)
+                   if c["call_purpose"] == "decision" and c["action_declaration_status"] == "valid"), None)
+    if latest is not None:
+        _append_unique(actions, latest["declared_action_classes"])
+    invocation_decisions = {
+        ref: c["declared_action_classes"] for c in decision_calls
+        if c["action_declaration_status"] == "valid" for ref in c["tool_call_refs"]
+    }
+
+    def observed_action(invocation):
+        # Notification is a delivery mechanism. The explicit linked declaration
+        # distinguishes an information request; delivery evidence is still checked.
+        if (invocation["tool_name"] == "notification.send"
+                and invocation_decisions.get(invocation["invocation_id"]) == ["REQUEST_USER_INPUT"]):
+            return "REQUEST_USER_INPUT"
+        return _invocation_action(invocation)
     for ordinal, call in enumerate(decision_calls, 1):
         declared = list(call["declared_action_classes"])
         declaration_status = call["action_declaration_status"]
@@ -268,11 +286,10 @@ def _effects_and_result(
                 issues.add("action.declaration_missing")
             elif declaration_status == "invalid":
                 issues.add("action.declaration_invalid")
-            _append_unique(actions, declared)
         tool_actions = [
             action
             for invocation_ref in call["tool_call_refs"]
-            if (action := _invocation_action(invocations[invocation_ref])) is not None
+            if (action := observed_action(invocations[invocation_ref])) is not None
         ]
         if (
             call["call_purpose"] == "decision"
@@ -298,7 +315,7 @@ def _effects_and_result(
         )
 
     for invocation in trace["tool_invocations"]:
-        action = _invocation_action(invocation)
+        action = observed_action(invocation)
         effect_status = _effect_status(invocation)
         if action is None and effect_status not in {"blocked", "deferred", "pending"}:
             continue

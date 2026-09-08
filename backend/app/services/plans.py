@@ -45,6 +45,12 @@ def plan_completeness_issues(data: PlanCreate) -> list[str]:
         if not stage.tasks:
             issues.append(f"stage {index} must contain at least one task")
         for task_index, task in enumerate(stage.tasks, start=1):
+            for field in ("due_at", "review_due_at"):
+                value = getattr(task, field)
+                if value is not None and data.deadline is not None and canonical_utc(value) > canonical_utc(data.deadline):
+                    issues.append(f"stage {index} task {task_index}: {field} exceeds plan deadline")
+            if task.due_at is not None and task.review_due_at is not None and canonical_utc(task.review_due_at) < canonical_utc(task.due_at):
+                issues.append(f"stage {index} task {task_index}: review precedes task due date")
             if task.is_core and not task.evidence_required:
                 issues.append(f"stage {index} task {task_index}: core tasks require evidence_required=true")
     return issues

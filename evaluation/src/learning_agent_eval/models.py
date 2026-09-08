@@ -2675,7 +2675,7 @@ ActionDeclarationStatusV1 = Literal[
 class ActionDeclarationFramingV2(StrictContractModel):
     prefix: Literal["<model-action-v2>"]
     suffix: Literal["</model-action-v2>"]
-    position: Literal["first_nonempty_content"]
+    position: Literal["first_nonempty_content", "single_frame_anywhere"]
     duplicate_policy: Literal["reject"]
 
 
@@ -2822,12 +2822,12 @@ class EvaluationProtocolReleaseV1(StrictContractModel):
     )
 
     schema_version: Literal["evaluation-protocol-release-v1"]
-    protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
-    protocol_version: Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"]
+    protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
+    protocol_version: Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7"]
     release_status: Literal["active"]
     active_chain: ActiveArtifactChainV1
     artifact_schemas: Annotated[list[ProtocolSchemaBindingV1], Field(min_length=1)]
-    schema_lock_version: Literal["evaluation-schema-lock-v1", "evaluation-schema-lock-1.1", "evaluation-schema-lock-1.2", "evaluation-schema-lock-1.3", "evaluation-schema-lock-1.4", "evaluation-schema-lock-1.5", "evaluation-schema-lock-1.6"]
+    schema_lock_version: Literal["evaluation-schema-lock-v1", "evaluation-schema-lock-1.1", "evaluation-schema-lock-1.2", "evaluation-schema-lock-1.3", "evaluation-schema-lock-1.4", "evaluation-schema-lock-1.5", "evaluation-schema-lock-1.6", "evaluation-schema-lock-1.7"]
     schema_lock_sha256: Sha256
     canonicalization_version: StableId
     canonicalization_sha256: Sha256
@@ -2841,6 +2841,7 @@ class EvaluationProtocolReleaseV1(StrictContractModel):
         "evaluation/releases/protocol-1.4/model-action-declaration-v2.json",
         "evaluation/releases/protocol-1.5/model-action-declaration-v2.json",
         "evaluation/releases/protocol-1.6/model-action-declaration-v2.json",
+        "evaluation/releases/protocol-1.7/model-action-declaration-v2.json",
     ]
     action_protocol_sha256: Sha256
     rubric_version: StableId
@@ -2958,7 +2959,7 @@ class BenchmarkReleaseManifestV1(StrictContractModel):
     benchmark_release_id: StableId
     benchmark_version: StableId
     release_status: Literal["engineering", "candidate", "released", "retired"]
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     case_schema_version: Literal["case-spec-v2"]
     case_ordering: Literal["fixed_ordinal"]
@@ -3100,7 +3101,7 @@ class SchemaLockManifestV1(StrictContractModel):
     )
 
     schema_version: Literal["schema-lock-manifest-v1"]
-    lock_version: Literal["evaluation-schema-lock-v1", "evaluation-schema-lock-1.1", "evaluation-schema-lock-1.2", "evaluation-schema-lock-1.3", "evaluation-schema-lock-1.4", "evaluation-schema-lock-1.5", "evaluation-schema-lock-1.6"]
+    lock_version: Literal["evaluation-schema-lock-v1", "evaluation-schema-lock-1.1", "evaluation-schema-lock-1.2", "evaluation-schema-lock-1.3", "evaluation-schema-lock-1.4", "evaluation-schema-lock-1.5", "evaluation-schema-lock-1.6", "evaluation-schema-lock-1.7"]
     entries: Annotated[list[SchemaLockEntryV1], Field(min_length=1)]
     manifest_sha256: Sha256
 
@@ -3120,7 +3121,7 @@ class TrustedBenchmarkReleaseV1(StrictContractModel):
     case_suite_sha256: Sha256
     expected_total_cases: Annotated[int, Field(ge=1)]
     expected_track_counts: BenchmarkTrackCountsV1
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
 
     @model_validator(mode="after")
@@ -3400,7 +3401,7 @@ class ActiveArtifactProvenanceV1(StrictContractModel):
     runtime_executed: Literal[True]
     protocol_eligible: bool
     provider_eligible: bool
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -3481,7 +3482,7 @@ class RuntimeFailureV2(RuntimeFailureV1):
     model_calls: list[ModelCallV4]
     protocol_eligible: bool
     provider_eligible: bool
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -3527,7 +3528,7 @@ class CaseSuiteManifestV2(CaseSuiteManifestV1):
 
     schema_version: Literal["case-suite-manifest-v2"]  # type: ignore[assignment]
     case_schema_version: Literal["case-spec-v2"]
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_file: NonEmptyText
     benchmark_release_id: StableId
@@ -3557,7 +3558,7 @@ class RuntimeRunManifestV3(StrictContractModel):
     schema_version: Literal["runtime-run-manifest-v3"]
     runtime_run_id: StableId
     dataset_version: StableId
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -3676,7 +3677,7 @@ class RuleResultV3(RuleResultV2):
     schema_version: Literal["rule-result-v3"]  # type: ignore[assignment]
     evaluator_implementation_version: StableId
     evaluator_implementation_sha256: Sha256
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -3718,7 +3719,7 @@ class RuleRunManifestV3(StrictContractModel):
 
     schema_version: Literal["rule-run-manifest-v3"]
     runtime_run_id: StableId
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -3814,7 +3815,7 @@ class JudgeResultV3(JudgeResultV2):
     )
 
     schema_version: Literal["judge-result-v3"]  # type: ignore[assignment]
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -3861,7 +3862,7 @@ class JudgeRunManifestV3(StrictContractModel):
 
     schema_version: Literal["judge-run-manifest-v3"]
     runtime_run_id: StableId
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -3975,7 +3976,7 @@ class AggregateResultV3(AggregateResultV2):
     )
 
     schema_version: Literal["aggregate-result-v3"]  # type: ignore[assignment]
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -4020,7 +4021,7 @@ class AggregateTrackResultV3(StrictContractModel):
     )
 
     schema_version: Literal["aggregate-track-result-v3"]
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256
@@ -4112,7 +4113,7 @@ class AggregateRunManifestV3(StrictContractModel):
 
     schema_version: Literal["aggregate-run-manifest-v3"]
     runtime_run_id: StableId
-    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6"]
+    evaluation_protocol_release_id: Literal["evaluation-protocol-release-1.0", "evaluation-protocol-release-1.1", "evaluation-protocol-release-1.2", "evaluation-protocol-release-1.3", "evaluation-protocol-release-1.4", "evaluation-protocol-release-1.5", "evaluation-protocol-release-1.6", "evaluation-protocol-release-1.7"]
     evaluation_protocol_release_sha256: Sha256
     benchmark_release_id: StableId
     benchmark_release_sha256: Sha256

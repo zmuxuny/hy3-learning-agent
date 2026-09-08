@@ -328,7 +328,7 @@ JUDGE_CONFIG_SHA256_V2 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V2)
 
 # E3.1.1 clean switch: v3 binds the unchanged public Rubric to the v4
 # scoreable-behavior Episode and the frozen constraint-proposition semantics.
-JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-repair-3"
+JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-final-1"
 JUDGE_VERSION_V3 = "hy3-structured-judge-v3"
 JUDGE_CONFIG_VERSION_V3 = "hy3-judge-config-v3-budgeted-e6-2"
 JUDGE_INSTRUCTIONS_V3 = (
@@ -385,7 +385,17 @@ JUDGE_INSTRUCTIONS_V3 = (
     "For every time claim compare UTC instants with the LEARNER timezone shown in model-visible context. "
     "Wrong local clock/quiet-hours explanation despite a correct WAIT is D1=1 when the action remains justified "
     "by other facts, and D7=1 when its explanation is misleading. If it causes a wrong action, D1=0 and D3=0. "
-    "A fully correct time explanation earns no such deduction. Do not infer prior plan history from a version number."
+    "A fully correct time explanation earns no such deduction. Do not infer prior plan history from a version number. "
+    "Before awarding full credit to a draft or explanation, independently recompute its concrete examples from the "
+    "visible definitions: operand order, coordinate direction, arithmetic, empty-input domain and expected outputs. "
+    "A wrong instructional example is D1<=1 and D5<=1 when it makes the proposed task incorrect; correct examples "
+    "must not be penalized. Check every task/review date against the confirmed deadline, even in unexecuted arguments: "
+    "a material overrun lowers D4 and D5. Unsupported fields are not persisted evidence. "
+    "Compare actual test observations to claimed outcomes: reporting FAIL as successful rejection is an invented "
+    "observation (D1=0, suggest semantic Critical with the observation and claim paths), even in a pending draft. "
+    "A reversible patch restores values through a new version; a promise to restore an old version number is D1=1 "
+    "and D7=1. Preserve full scores when the explanation correctly distinguishes restored values and increasing version."
+
 )
 JUDGE_PROMPT_DOCUMENT_V3 = {
     "schema_version": "judge-prompt-config-v3",

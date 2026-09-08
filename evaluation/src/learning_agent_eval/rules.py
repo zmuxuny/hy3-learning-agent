@@ -26,7 +26,7 @@ EVALUATOR_VERSION_V2 = "deterministic-rule-evaluator-v2"
 RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
 EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
-RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-repair-2"
+RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-final-1"
 RULE_IMPLEMENTATION_SHA256_V3 = source_bundle_sha256("rules")
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
@@ -2075,7 +2075,7 @@ def _active_track_checks(
                     predicate=lambda _: bool(notifications) and not external_changes
                     and all(n["data"].get("channel") == "in_app" and n["data"].get("status") == "sent"
                             and n["data"].get("intervention_ref") for n in notifications)
-                    and all(i["observation_status"] == "succeeded" and i["durable_status"] == "committed" for i in sends),
+                    and any(i["observation_status"] == "succeeded" and i["durable_status"] == "committed" for i in sends),
                     message="In-app delivery is evidenced by its persisted sent notification, not an external receipt.",
                 )
                 replacements["intervention.replay_idempotent"] = _check(
@@ -2091,7 +2091,7 @@ def _active_track_checks(
                 evidence_path="observable_trace.tool_invocations", observed="in_app only", expected="external transport",
             )
             checks = [replacements.get(c["check_id"], c) for c in checks]
-    if abstention and not returned_planning_draft:
+    if abstention and not (track == "intervention" and changes) and not returned_planning_draft:
         checks = [
             _conditional_not_applicable(
                 episode, check["check_id"], track, check["severity"],

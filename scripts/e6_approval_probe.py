@@ -38,7 +38,6 @@ def main():
         "DATABASE_URL": f"sqlite+aiosqlite:///{state}/data/learning_companion.db",
         "DEFAULT_OWNER_ID": case["runtime_setup"]["owner_id"], "DEFAULT_TIMEZONE": case["runtime_setup"]["timezone"],
         "ENABLE_SCHEDULER": "false", "ENABLE_EMAIL_REPLY_POLLING": "false",
-        "OPENAI_API_BASE": "https://tokenhub.tencentmaas.com/v1", "MODEL_NAME": "hy3",
         "MODEL_CONTEXT_WINDOW": "196608", "AGENT_OUTPUT_TOKEN_RESERVE": "16000",
         "AGENT_MAX_MODEL_CALLS": "8", "AGENT_MAX_TOOL_CALLS": "16", "AGENT_MODEL_RETRY_ATTEMPTS": "1",
         **{k: "" for k in ["SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM", "SMTP_TO", "IMAP_HOST", "IMAP_USERNAME", "IMAP_PASSWORD", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"]},
