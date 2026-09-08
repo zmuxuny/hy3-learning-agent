@@ -29,15 +29,15 @@ from .models import (
     RuntimeRunManifestV3,
 )
 from .release_governance import ACTIVE_PROTOCOL_RELEASE_ID
+from .provider_config import configured_endpoint
 from .runtime_metadata import (
     DEPENDENCY_LOCK_VERSION,
     ENDPOINT_POLICY_SHA256,
     ENDPOINT_POLICY_VERSION,
-    HY3_ENDPOINT_ID,
-    HY3_ENDPOINT_ORIGIN,
     HY3_MODEL,
     provider_attribution_reason_codes,
 )
+from .provider_config import configured_endpoint
 from .runtime_metadata import (
     dependency_lock_sha256 as current_dependency_lock_sha256,
 )
@@ -303,6 +303,7 @@ def build_stub_provider_attestation(
         "scope": scope,
         "invocation_mode": "stub",
         "provider_id": "none",
+        "api_base": None,
         "endpoint_policy_version": endpoint_policy_version,
         "endpoint_policy_sha256": endpoint_policy_sha256,
         "endpoint_id": None,
@@ -338,7 +339,9 @@ def build_real_provider_attestation(
     worktree_clean: bool,
     dependency_lock_verified: bool,
 ) -> dict[str, Any]:
-    """Build a recomputable audit attribution for the fixed Hy3 endpoint."""
+    """Build attribution for the actual configured service, never an inferred origin."""
+
+    endpoint = configured_endpoint()
 
     calls = []
     for record in records:
@@ -373,11 +376,12 @@ def build_real_provider_attestation(
         "schema_version": "provider-attestation-v1",
         "scope": scope,
         "invocation_mode": "real",
-        "provider_id": "tencent-tokenhub",
+        "provider_id": endpoint.provider_id,
+        "api_base": endpoint.api_base,
         "endpoint_policy_version": ENDPOINT_POLICY_VERSION,
         "endpoint_policy_sha256": ENDPOINT_POLICY_SHA256,
-        "endpoint_id": HY3_ENDPOINT_ID,
-        "endpoint_origin": HY3_ENDPOINT_ORIGIN,
+        "endpoint_id": endpoint.endpoint_id,
+        "endpoint_origin": endpoint.origin,
         "configured_model": HY3_MODEL,
         "calls": calls,
         "configuration_sha256": configuration_sha256,

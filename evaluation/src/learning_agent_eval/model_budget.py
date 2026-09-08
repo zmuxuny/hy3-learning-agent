@@ -6,14 +6,23 @@ import fcntl
 import json
 import os
 from contextlib import contextmanager
+from decimal import Decimal, ROUND_CEILING
 from pathlib import Path
 
-# CNY millionths, using the non-cached official prices checked on 2026-09-05.
+# Default micro-CNY per token (equivalently CNY per million tokens).
+# Real requests use ledger rates and freeze their pricing basis per reservation.
 INPUT_LIMIT = 196608
 OUTPUT_LIMIT = 16000
 INPUT_RATE = 1
 OUTPUT_RATE = 4
 RESERVATION = INPUT_LIMIT * INPUT_RATE + OUTPUT_LIMIT * OUTPUT_RATE
+
+
+def _charge(prompt, completion, input_rate, output_rate):
+    rates = [Decimal(str(value)) for value in (input_rate, output_rate)]
+    if any(not value.is_finite() or value < 0 for value in rates):
+        raise ValueError("budget rates must be finite and nonnegative")
+    return int((prompt * rates[0] + completion * rates[1]).to_integral_value(rounding=ROUND_CEILING))
 
 
 class ModelBudgetExceeded(RuntimeError):
@@ -49,11 +58,10 @@ class ModelBudget:
             fcntl.flock(handle, fcntl.LOCK_EX)
             document = json.load(handle)
             if (document["version"] != "hy3-prepaid-budget-v1"
-                    or document["input_rate"] != INPUT_RATE
-                    or document["output_rate"] != OUTPUT_RATE
                     or document["input_limit"] != INPUT_LIMIT
                     or document["output_limit"] != OUTPUT_LIMIT):
                 raise ValueError("unsupported budget pricing policy")
+            _charge(1, 1, document["input_rate"], document["output_rate"])
             yield document
             handle.seek(0)
             json.dump(document, handle, sort_keys=True)
@@ -68,8 +76,8 @@ class ModelBudget:
         if (type(input_limit) is not int or not 1 <= input_limit <= INPUT_LIMIT
                 or type(output_limit) is not int or not 1 <= output_limit <= OUTPUT_LIMIT):
             raise ValueError("request limits must fit the shared pricing envelope")
-        reservation = input_limit * INPUT_RATE + output_limit * OUTPUT_RATE
         with self._locked() as document:
+            reservation = _charge(input_limit, output_limit, document["input_rate"], document["output_rate"])
             charged = sum(item["charged_micro_cny"] for item in document["requests"])
             if document["blocked"] or charged + reservation > document["limit_micro_cny"]:
                 raise ModelBudgetExceeded("shared prepaid Hy3 budget exhausted")
@@ -79,6 +87,9 @@ class ModelBudget:
                 "charged_micro_cny": reservation, "status": "reserved",
                 "input_limit": input_limit, "output_limit": output_limit,
                 "token_usage": None,
+                "input_rate": document["input_rate"], "output_rate": document["output_rate"],
+                "pricing_basis": document.get("pricing_basis", "official-noncached-2026-09-05"),
+                "api_base": os.environ.get("OPENAI_API_BASE", "https://tokenhub.tencentmaas.com/v1"),
             })
         return ticket
 
@@ -102,7 +113,8 @@ class ModelBudget:
                 return
             item.update(
                 status="settled", token_usage=usage,
-                charged_micro_cny=prompt * INPUT_RATE + completion * OUTPUT_RATE,
+                charged_micro_cny=_charge(prompt, completion,
+                    item.get("input_rate", INPUT_RATE), item.get("output_rate", OUTPUT_RATE)),
             )
 
     def record_outcome(self, ticket: int, *, outcome: str, error_codes: tuple[str, ...] = ()) -> None:

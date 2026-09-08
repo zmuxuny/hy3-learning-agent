@@ -317,12 +317,14 @@ class JudgeInputLimitExceeded(ValueError):
 
 
 class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
-    """Active fixed Hy3 seam; attribution is audited by the v3 config digest."""
+    """Configured Hy3 service; request parameters retain the v3 config digest."""
 
     config_document = JUDGE_CONFIG_DOCUMENT_V3
 
     def __init__(self, *, budget_ledger: str | Path, scope: str = "semantic_judge") -> None:
         super().__init__()
+        from .provider_config import configured_endpoint
+        self.endpoint = configured_endpoint()
         from .model_budget import ModelBudget
 
         self.budget = ModelBudget(budget_ledger)
@@ -356,7 +358,7 @@ class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
         failure_category = http_status = None
         try:
             wire_request = urllib.request.Request(
-                HY3_COMPLETIONS_URL, data=wire,
+                self.endpoint.completions_url, data=wire,
                 headers={"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"},
                 method="POST",
             )

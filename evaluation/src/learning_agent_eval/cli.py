@@ -112,6 +112,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process status without raising on data errors."""
 
     arguments = _parser().parse_args(argv)
+    if ((arguments.command == "run-agent" and arguments.model_mode == "real")
+            or (arguments.command == "evaluate-judge" and arguments.judge_mode == "real")):
+        # Parent only: Workers receive a minimal environment and never read .env.
+        from dotenv import load_dotenv
+        from .runtime_metadata import PROJECT_ROOT
+        load_dotenv(PROJECT_ROOT / ".env", override=False)
     if arguments.command == "validate-dataset":
         report = validate_dataset(arguments.dataset)
         if not report.ok:

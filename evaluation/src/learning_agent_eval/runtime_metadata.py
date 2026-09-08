@@ -10,27 +10,22 @@ from pathlib import Path
 from typing import Any
 
 from .canonical import sha256_digest
+from .provider_config import ProviderEndpoint
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEPENDENCY_LOCK_VERSION = "evaluation-runtime-lock-v1"
 DEPENDENCY_LOCK_FILE = "evaluation/runtime-requirements.lock"
-ENDPOINT_POLICY_VERSION = "hy3-endpoint-policy-v1"
-HY3_ENDPOINT_ID = "tencent-tokenhub-primary"
+ENDPOINT_POLICY_VERSION = "hy3-configured-endpoint-policy-v2"
+HY3_ENDPOINT_ID = "tencent-tokenhub-primary"  # Historical default, not actual run attribution.
 HY3_ENDPOINT_ORIGIN = "https://tokenhub.tencentmaas.com"
 HY3_API_BASE = f"{HY3_ENDPOINT_ORIGIN}/v1"
 HY3_MODEL = "hy3"
-ENDPOINT_POLICY_SHA256 = sha256_digest(
-    {
-        "version": ENDPOINT_POLICY_VERSION,
-        "allowed_endpoints": [
-            {
-                "endpoint_id": HY3_ENDPOINT_ID,
-                "origin": HY3_ENDPOINT_ORIGIN,
-                "request_model": HY3_MODEL,
-            }
-        ],
-    }
-)
+ENDPOINT_POLICY_SHA256 = sha256_digest({
+    "version": ENDPOINT_POLICY_VERSION,
+    "transport": "openai-compatible-credential-free-https",
+    "configuration": "OPENAI_API_BASE; immutable api_base recorded per attestation",
+    "request_model": HY3_MODEL,
+})
 AGENT_RUNTIME_CONFIG_SHA256 = sha256_digest(
     {
         "scope": "agent_runtime",
@@ -104,12 +99,17 @@ def provider_attribution_reason_codes(
     except OSError:
         lock_digest = None
         reasons.add("provider.dependency_lock_missing")
+    try:
+        endpoint = ProviderEndpoint(attestation.get("api_base") or "")
+    except ValueError:
+        return ("provider.endpoint_configuration_invalid",)
     expected_fields = {
-        "provider_id": "tencent-tokenhub",
+        "api_base": endpoint.api_base,
+        "provider_id": endpoint.provider_id,
         "endpoint_policy_version": ENDPOINT_POLICY_VERSION,
         "endpoint_policy_sha256": ENDPOINT_POLICY_SHA256,
-        "endpoint_id": HY3_ENDPOINT_ID,
-        "endpoint_origin": HY3_ENDPOINT_ORIGIN,
+        "endpoint_id": endpoint.endpoint_id,
+        "endpoint_origin": endpoint.origin,
         "configured_model": HY3_MODEL,
         "dependency_lock_version": DEPENDENCY_LOCK_VERSION,
         "dependency_lock_sha256": lock_digest,

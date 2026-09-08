@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
-from .runtime_metadata import HY3_API_BASE, HY3_MODEL
+from .provider_config import configured_endpoint
 
 
 class EvaluationIsolationError(RuntimeError):
@@ -79,10 +79,12 @@ def worker_environment(
         if not key:
             raise EvaluationIsolationError("real model requires caller OPENAI_API_KEY")
         environment["OPENAI_API_KEY"] = key
-        environment["OPENAI_API_BASE"] = os.environ.get(
-            "OPENAI_API_BASE", HY3_API_BASE
-        )
-        environment["MODEL_NAME"] = os.environ.get("MODEL_NAME", HY3_MODEL)
+        try:
+            endpoint = configured_endpoint()
+        except ValueError as exc:
+            raise EvaluationIsolationError(str(exc)) from None
+        environment["OPENAI_API_BASE"] = endpoint.api_base
+        environment["MODEL_NAME"] = "hy3"
         environment["MODEL_TEMPERATURE"] = "0.9"
         environment["MODEL_REASONING_EFFORT"] = "high"
         environment["AGENT_MAX_STEPS"] = "8"
@@ -98,13 +100,6 @@ def worker_environment(
         or model_url.fragment
     ):
         raise EvaluationIsolationError("model provider URL must be credential-free HTTPS")
-    if model_mode == "real" and (
-        environment["OPENAI_API_BASE"].rstrip("/") != HY3_API_BASE
-        or environment["MODEL_NAME"] != HY3_MODEL
-    ):
-        raise EvaluationIsolationError(
-            "real model endpoint and model must match the Hy3 allowlist"
-        )
     return environment
 
 
