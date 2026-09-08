@@ -90,7 +90,7 @@ def proposal_call():
                 "expected_outcome": "可运行的 Java 项目",
                 "stages": [{
                     "title": "第一阶段",
-                    "tasks": [{"title": "完成环境搭建", "is_core": True}],
+                    "tasks": [{"title": "完成环境搭建", "is_core": True, "evidence_required": True, "description": "提交环境搭建日志"}],
                 }],
             },
             "rationale": "基于澄清结果拆分阶段",
