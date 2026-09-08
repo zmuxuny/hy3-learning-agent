@@ -25,8 +25,8 @@ def test_real_judge_reserves_before_transport_and_settles_invalid_output(tmp_pat
         row = json.loads(ledger.read_text())["requests"][-1]
         assert row["status"] == "reserved"
         body = json.loads(request.data)
-        assert body["max_tokens"] == row["output_limit"] == 8192
-        assert body["n"] == 1 and timeout == 120
+        assert body["max_tokens"] == row["output_limit"] == 12288
+        assert body["n"] == 1 and timeout == 180
         assert row["input_limit"] == len(request.data) + 2048
         requests.append(body)
         return BytesIO(json.dumps({
@@ -68,7 +68,7 @@ def test_judge_provider_failures_keep_reservation_or_actual_usage(tmp_path, monk
     if response and "usage" in response:
         assert row["charged_micro_cny"] == 180 and row["status"] == "settled"
     else:
-        assert row["charged_micro_cny"] > 8192 * 4
+        assert row["charged_micro_cny"] > 12288 * 4
         assert budget.summary()["unsettled"] == 1
 
 
