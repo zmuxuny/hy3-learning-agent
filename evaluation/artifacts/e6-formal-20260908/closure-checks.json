@@ -1,0 +1,30 @@
+{
+  "closure_version": "e6-formal-20260908-v1",
+  "reviewer_role": "primary_ai_reviewer",
+  "execution_source_commit": "b0b0d02ced10c3c6387a6541656a7b693571e312",
+  "archive_sha256": "fe35766959f28dc90b89195e8ac5f7a78a8737486281544c0b19cd0bd3b8bef7",
+  "archive_member_count": 362,
+  "archive_hashed_payload_files": 361,
+  "archive_exact_inventory_and_all_raw_sha_verified": true,
+  "report_rebuilt_from_extracted_archive_exact_bytes": true,
+  "self_audit_rebuilt_from_extracted_archive_exact_bytes": true,
+  "self_audit_checks_passed": 580,
+  "formal_capability_result": false,
+  "required_method_revision_recorded": true,
+  "cleanup_completed": false,
+  "next_action": "Verify clean committed report snapshot, remove only this run external copies, then record final local closure. No further paid calls.",
+  "preserve_paths": [
+    "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json",
+    "evaluation/artifacts/e5-acceptance-20260906",
+    "evaluation/artifacts/e6-readiness-20260906",
+    "/root/.local/state/learning-travel/e5-browser-20260906"
+  ],
+  "pushed": false,
+  "published": false,
+  "browsing_csv_normalization": {
+    "change": "CRLF to LF only; csv parsed rows equal; archived CSV bytes unchanged",
+    "original_sha256": "335339fe80fbfb83e1fbb13591cc2798837a775b3838041d4614ca27c40bca33",
+    "browsing_sha256": "50e133e0addb7a9803e4911e2ff065ae78eb35d8d963b646ee63a108f898d96e",
+    "rows_equal": true
+  }
+}

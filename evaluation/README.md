@@ -33,7 +33,7 @@ CaseSpec v2（控制面，含私有标注）
 和 8 来源的 AI 内容裁决、候选重建和最终回归。S06 机制修复与 E5 必需实验已完成：
 V2 固定 `40fddb8`，24 例判别力和 16×5 重复共 88 个有效评估，最低预设方法目标达标。
 真实浏览器流程及 AI 审计完成，具体漏检/波动和费用见 [E5 验收记录](../docs/E5验收工作记录.md)。
-E6 新家族48输入、AI自审、正式冻结与可信登记已完成；原共享余额不足完整批次，真实正式运行尚未开始。接续见 [E6工作记录](../docs/E6验收工作记录.md)和 [新测试数据卡](datasets/decisionbench-v1-e6-test/README.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
+E6 冻结批次已执行：48 Episode、46 个有效 Judge、2 个 judge_error，逐轨报告和 AI 自审已完成；formal_capability_result=false，正式能力验收未通过。方法适用性及 Judge 漏检需另版验证，E7–E8 仍待完成。 共享账本累计占用17.609982元，19元内剩余1.390018元。接续见 [E6工作记录](../docs/E6验收工作记录.md)和 [新测试数据卡](datasets/decisionbench-v1-e6-test/README.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
 [原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
 
 ## 核心语义
@@ -277,8 +277,8 @@ Release、完整 Case/终态库存、上游摘要、四轨结果和错误分类�
 或单 track 分区仍可为 true；`selection_mode=adhoc_filter` 会独立、永久地阻断
 `trusted_benchmark_run` 和 `formal_capability_result`，下游不能把两层状态混为一谈。
 
-当前 production registry 为 `entries=[]`；活动 engineering Benchmark Release 的状态为
-`engineering` 且未注册，所以即使制品结构通过，也始终 non-formal。RuntimeFailure、
+当前 production registry 已登记 `decisionbench-v1-e6-test-release`；活动 engineering Benchmark Release 仍为
+`engineering` 且未注册，所以工程制品即使结构通过，也始终 non-formal。RuntimeFailure、
 invalid_input、judge_error 保留审计但阻止能力结论，不按 0 分混入均值。
 
 Provider Attestation 是可审计归因，不是密码学证明。real 资格要求固定 TokenHub HTTPS
@@ -287,7 +287,9 @@ allowlist、请求模型 `hy3`、响应模型 `hy3`、Provider request ID、请�
 real 模式都必须传入同一个已有 `--budget-ledger`，每次调用（含结构修复）先预留、按完整
 usage 结算，未知费用保留预留。Judge 固定输入上界 196608、输出上限 8192、n=1，
 HTTP 不自动重试，最多一次结构修复；Agent 输出上限沿用 16000。E5 的全部真实调用和
-浏览器产品调用均计入原 14 元账本，结束占用 11.606238 元、剩余 2.393762 元。Agent 和
+浏览器产品调用均计入原 14 元账本，E5结束占用 11.606238 元。9月8日获准追加5元后，
+原账本累计上限19元；E6新增160请求，占用6.003744元，累计17.609982元、剩余1.390018元。
+其中本轮0.204028元为未知usage保留预留，尚未核对云账户实扣。Agent 和
 Judge 的 real 模式还分别要求 `--allow-real-model` / `--allow-real-judge`；Key 只从调用者
 环境读取，CLI 参数、Manifest、日志和错误均不保存 Key 或 endpoint。
 
@@ -307,9 +309,10 @@ v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并�
 不能证明远端服务的密码学身份；正式运行仍需要组织侧凭据、网络和运行审批。
 
 E4 已完成 48 Primary、24 Calibration 及 8 来源的 AI 内容裁决、绑定重建和最终回归；E5 必需实验已完成且最低方法目标达标。
-历史真实批次仍为 45 Episode + 3 Failure。当前输入为探索候选，复核记录不计作独立人类一致性；
-正式冻结和可信登记保留为 E5 方法稳定后、E6 前的交付，详见 [E4 验收记录](../docs/E4验收工作记录.md)。
-E5 的独立人类一致性/精确反事实/完整对抗安全扩展及 E6–E8 正式能力评测、版本回归、报告和评测 Demo 尚未完成。
+历史真实批次仍为 45 Episode + 3 Failure，候选保持探索身份，复核记录不计作独立人类一致性。
+E6 新测试已完成冻结登记及全批运行，保留46个有效Judge和2个失败；结果与方法归因见
+[E6验收记录](../docs/E6验收工作记录.md)。本批报告完成，正式能力资格未通过；E5的独立人类一致性、
+精确反事实、完整对抗安全扩展及E7版本比较、E8最终报告/评测Demo仍未完成。
 固定响应和 engineering 聚合不证明 Judge 标签正确或 Hy3 能力。已授权协议试跑只证明有限样例可执行，
 尚未统计完整 14 类真实遵循率；下一轮调用继续复用原预算，不能自动把探索记录升级为正式数据。发布治理细节见
 [`../docs/E3.1.2正式评测准入与版本治理.md`](../docs/E3.1.2正式评测准入与版本治理.md)，最终验收命令和精确结果

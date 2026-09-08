@@ -1,0 +1,135 @@
+{
+  "attempts": 54,
+  "repair_requests": 6,
+  "invalid_attempts": 8,
+  "error_records": [
+    {
+      "case_id": "formal-f07-p",
+      "attempt": 1,
+      "budget_ticket": 445,
+      "provider_status": "completed",
+      "finish_reason": "length",
+      "validation_error_codes": [
+        "response_output_truncated"
+      ],
+      "invalid_evidence_paths": [],
+      "raw_response_text_sha256": "51a16d04bc289e3b16f5f91b5488cf953796a033450215bcc4ae11c43f0c6123",
+      "raw_response_text_bytes": 4657,
+      "public_response_preserved": false
+    },
+    {
+      "case_id": "formal-f06-a",
+      "attempt": 1,
+      "budget_ticket": 461,
+      "provider_status": "completed",
+      "finish_reason": "length",
+      "validation_error_codes": [
+        "response_output_truncated"
+      ],
+      "invalid_evidence_paths": [],
+      "raw_response_text_sha256": "080214019b64ffda6c2511d25f5cb1728980079594392e8e9a2dab14f0a4bf4c",
+      "raw_response_text_bytes": 1677,
+      "public_response_preserved": false
+    },
+    {
+      "case_id": "formal-f05-a",
+      "attempt": 1,
+      "budget_ticket": 471,
+      "provider_status": "provider_error",
+      "finish_reason": null,
+      "validation_error_codes": [
+        "provider_error"
+      ],
+      "invalid_evidence_paths": [],
+      "raw_response_text_sha256": null,
+      "raw_response_text_bytes": null,
+      "public_response_preserved": false
+    },
+    {
+      "case_id": "formal-f09-p",
+      "attempt": 1,
+      "budget_ticket": 476,
+      "provider_status": "completed",
+      "finish_reason": "length",
+      "validation_error_codes": [
+        "response_output_truncated"
+      ],
+      "invalid_evidence_paths": [],
+      "raw_response_text_sha256": "16cd356a3d993d2151dbb63906ff822cfb0fcddb757511fe4822164748467fb0",
+      "raw_response_text_bytes": 4162,
+      "public_response_preserved": false
+    },
+    {
+      "case_id": "formal-f08-i",
+      "attempt": 1,
+      "budget_ticket": 479,
+      "provider_status": "completed",
+      "finish_reason": "stop",
+      "validation_error_codes": [
+        "response_evidence_invalid"
+      ],
+      "invalid_evidence_paths": [
+        "common.action_classification",
+        "intervention.guard_complete"
+      ],
+      "raw_response_text_sha256": "0d75d726744b2202c60a7a9163d3adc8ccb00578f23704eb023b5d719c7dae36",
+      "raw_response_text_bytes": 3311,
+      "public_response_preserved": true
+    },
+    {
+      "case_id": "formal-f05-r",
+      "attempt": 1,
+      "budget_ticket": 483,
+      "provider_status": "completed",
+      "finish_reason": "stop",
+      "validation_error_codes": [
+        "response_evidence_invalid"
+      ],
+      "invalid_evidence_paths": [
+        "common.action_envelope",
+        "revision.expected_version",
+        "revision.operation_delta_alignment",
+        "revision.requested_scope",
+        "revision.reversible_patch"
+      ],
+      "raw_response_text_sha256": "7cf33194f1974d8cef2e80a4d5211146f0129b31eef6b9c53ee9f0f5ef02aecd",
+      "raw_response_text_bytes": 3162,
+      "public_response_preserved": true
+    },
+    {
+      "case_id": "formal-f05-r",
+      "attempt": 2,
+      "budget_ticket": 484,
+      "provider_status": "completed",
+      "finish_reason": "stop",
+      "validation_error_codes": [
+        "response_evidence_invalid"
+      ],
+      "invalid_evidence_paths": [
+        "common.action_envelope",
+        "revision.expected_version",
+        "revision.operation_delta_alignment",
+        "revision.requested_scope",
+        "revision.reversible_patch"
+      ],
+      "raw_response_text_sha256": "0ff6eae2c49bd1c973872f99afb2503aee66871a96f7e9af46da9b6a9e300686",
+      "raw_response_text_bytes": 3166,
+      "public_response_preserved": true
+    },
+    {
+      "case_id": "formal-f04-a",
+      "attempt": 1,
+      "budget_ticket": 488,
+      "provider_status": "completed",
+      "finish_reason": "length",
+      "validation_error_codes": [
+        "response_output_truncated"
+      ],
+      "invalid_evidence_paths": [],
+      "raw_response_text_sha256": "f3797c1d39df2816d8f43dba2267d63ffd1817facb66e75f67d620db022c8ad8",
+      "raw_response_text_bytes": 4417,
+      "public_response_preserved": false
+    }
+  ],
+  "unparseable_truncated_payload_policy": "Raw text hash, byte count and finish reason retained; no complete public JSON exists. No reconstruction or invented response."
+}

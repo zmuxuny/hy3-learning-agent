@@ -1,0 +1,210 @@
+{
+  "validation_version": "e6-formal-batch-closure-v1",
+  "reviewer_role": "primary_ai_reviewer",
+  "independent_human_review": false,
+  "execution_source_commit": "b0b0d02ced10c3c6387a6541656a7b693571e312",
+  "formal_capability_result": false,
+  "capability_blockers": [
+    "capability.judge_error",
+    "capability.run_not_trusted"
+  ],
+  "method_revision_required": true,
+  "paid_stages": {
+    "runtime": {
+      "stage": "runtime",
+      "exit_code": 0,
+      "seconds": 1540.887,
+      "command": [
+        "python",
+        "-m",
+        "learning_agent_eval",
+        "run-agent",
+        "--dataset",
+        "evaluation/datasets/decisionbench-v1-e6-test",
+        "--manifest",
+        "evaluation/datasets/decisionbench-v1-e6-test/manifest.json",
+        "--output",
+        "/tmp/learning-travel-e6-output-20260908/runtime",
+        "--model-mode",
+        "real",
+        "--allow-real-model",
+        "--budget-ledger",
+        "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json"
+      ],
+      "source_commit": "b0b0d02ced10c3c6387a6541656a7b693571e312"
+    },
+    "judge": {
+      "stage": "judge",
+      "exit_code": 2,
+      "seconds": 2883.153,
+      "command": [
+        "python",
+        "-m",
+        "learning_agent_eval",
+        "evaluate-judge",
+        "--episodes",
+        "/tmp/learning-travel-e6-output-20260908/runtime",
+        "--rules",
+        "/tmp/learning-travel-e6-output-20260908/rules",
+        "--output",
+        "/tmp/learning-travel-e6-output-20260908/judge",
+        "--judge-mode",
+        "real",
+        "--allow-real-judge",
+        "--budget-ledger",
+        "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json"
+      ],
+      "source_commit": "b0b0d02ced10c3c6387a6541656a7b693571e312"
+    }
+  },
+  "offline_pipeline_stages": {
+    "rules": {
+      "stage": "rules",
+      "exit_code": 2,
+      "seconds": 15.05,
+      "command": [
+        "python",
+        "-m",
+        "learning_agent_eval",
+        "evaluate-rules",
+        "--input",
+        "/tmp/learning-travel-e6-output-20260908/runtime",
+        "--output",
+        "/tmp/learning-travel-e6-output-20260908/rules"
+      ],
+      "source_commit": "b0b0d02ced10c3c6387a6541656a7b693571e312"
+    },
+    "aggregate": {
+      "stage": "aggregate",
+      "exit_code": 2,
+      "seconds": 36.685,
+      "command": [
+        "python",
+        "-m",
+        "learning_agent_eval",
+        "aggregate-results",
+        "--episodes",
+        "/tmp/learning-travel-e6-output-20260908/runtime",
+        "--rules",
+        "/tmp/learning-travel-e6-output-20260908/rules",
+        "--judges",
+        "/tmp/learning-travel-e6-output-20260908/judge",
+        "--output",
+        "/tmp/learning-travel-e6-output-20260908/aggregate"
+      ],
+      "source_commit": "b0b0d02ced10c3c6387a6541656a7b693571e312"
+    },
+    "adjudicated": {
+      "stage": "adjudicated",
+      "exit_code": 2,
+      "seconds": 24.635,
+      "command": [
+        "python",
+        "-m",
+        "learning_agent_eval",
+        "aggregate-results",
+        "--episodes",
+        "/tmp/learning-travel-e6-output-20260908/runtime",
+        "--rules",
+        "/tmp/learning-travel-e6-output-20260908/rules",
+        "--judges",
+        "/tmp/learning-travel-e6-output-20260908/judge",
+        "--output",
+        "/tmp/learning-travel-e6-output-20260908/adjudicated",
+        "--semantic-reviews",
+        "/tmp/learning-travel-e6-output-20260908/semantic-reviews.json"
+      ],
+      "source_commit": "b0b0d02ced10c3c6387a6541656a7b693571e312"
+    }
+  },
+  "exit_code_interpretation": "2 from Rules/Aggregate denotes retained evaluation failures; Judge exit 2 retains 46 valid results and two errors. No filtering or replacement.",
+  "regressions": [
+    {
+      "tests": [
+        "evaluation/tests/test_e6_summary.py",
+        "evaluation/tests/test_e6_freeze.py"
+      ],
+      "passed": 9,
+      "seconds": 1.27,
+      "log": "logs/report-regression.log",
+      "provenance": "logs/report-regression.json"
+    },
+    {
+      "tests": [
+        "evaluation/tests/test_e5_budget_and_review.py",
+        "evaluation/tests/test_e312_release_governance.py"
+      ],
+      "passed": 27,
+      "seconds": 1.6,
+      "log": "logs/contract-regression.log"
+    }
+  ],
+  "test_scope": {
+    "disjoint_test_count": 36,
+    "outside_repository": true,
+    "snapshot": "b0b0d02 plus only new reporting script and test",
+    "production_or_scoring_source_changed": false,
+    "real_calls_in_regressions": 0,
+    "whole_product_suite_rerun": false
+  },
+  "report_source_sha256": {
+    "summarize_e6_run.py": "081f06f8690a628dc8666180b1fe97fcaaa25c09b945c03e21699e8c6154cbae",
+    "test_e6_summary.py": "c081444c1f5c6763d2c89d1fd21efd015df8b517c52fc6dc4210bf62617b1b38"
+  },
+  "actual_csv_tampering": {
+    "scope": "offline copies of actual E6 reviewed CSV, original unchanged",
+    "real_model_calls": 0,
+    "checks": {
+      "change_scored_value": {
+        "rejected": true,
+        "reason": "semantic_review_csv_mismatch"
+      },
+      "drop_judge_error_row": {
+        "rejected": true,
+        "reason": "semantic_review_csv_mismatch"
+      }
+    },
+    "all_checks_passed": true
+  },
+  "source_binding_check": {
+    "read_only": true,
+    "commands": [
+      "evaluation/scripts/check_e6_freeze.py",
+      "evaluation/scripts/build_e312_releases.py"
+    ],
+    "logs": [
+      "logs/freeze-check.json",
+      "logs/release-check.log"
+    ],
+    "freeze_checker_zero_paid_calls_scope": "Only this offline checker; actual batch requests are recorded separately."
+  },
+  "self_audit": {
+    "reviewer_role": "primary_ai_reviewer",
+    "independent_human_review": false,
+    "scope": "Artifact integrity, fixed denominators, arithmetic, fee and isolation self-audit; not proof that all frozen rules measure the intended capability.",
+    "machine_formal_capability_result": false,
+    "method_revision_required": true,
+    "checks_passed": 580,
+    "checks_total": 580,
+    "all_checks_passed": true
+  },
+  "privacy_and_preservation": {
+    "scope": "prospective evidence in external output directory, exact key checked in memory only",
+    "files_checked": 357,
+    "json_values_checked": 381,
+    "violations": [],
+    "checks": {
+      "source_releases_case_design_old_archives_unchanged": true,
+      "frozen_dataset_only_readme_changed": true,
+      "execution_clone_clean_b0b0d02": true,
+      "clone_without_env_or_product_data": true,
+      "ledger_final_bytes_unchanged": true,
+      "ledger_final_sha_expected": true,
+      "public_privacy_scan_passed": true
+    },
+    "all_checks_passed": true,
+    "real_model_calls": 0
+  },
+  "remaining_authorized_micro_cny": 1390018,
+  "cloud_account_bill_reconciled": false
+}

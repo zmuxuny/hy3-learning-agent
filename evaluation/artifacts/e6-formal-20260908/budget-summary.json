@@ -1,0 +1,23 @@
+{
+  "authorization_limit_micro_cny": 19000000,
+  "historical_request_count": 330,
+  "historical_occupied_micro_cny": 11606238,
+  "historical_requests_preserved": true,
+  "runtime_requests": 106,
+  "runtime_occupied_micro_cny": 2538239,
+  "judge_requests": 54,
+  "judge_occupied_micro_cny": 3465505,
+  "new_request_count": 160,
+  "new_occupied_micro_cny": 6003744,
+  "new_usage_settled_micro_cny": 5799716,
+  "new_unknown_usage_reserved_micro_cny": 204028,
+  "cumulative_requests": 490,
+  "cumulative_occupied_micro_cny": 17609982,
+  "remaining_authorized_micro_cny": 1390018,
+  "status_counts": {
+    "unknown_usage_reserved": 7,
+    "settled": 483
+  },
+  "raw_ledger_sha256": "ce197264adea65dadcfb53a70c64cb8531e8a51499777671e26f60f266fb724c",
+  "cloud_account_balance_not_reconciled": true
+}

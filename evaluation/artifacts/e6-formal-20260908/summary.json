@@ -1,0 +1,1579 @@
+{
+  "report_version": "e6-fixed-denominator-report-v1",
+  "runtime_source_commit": "b0b0d02ced10c3c6387a6541656a7b693571e312",
+  "runtime_manifest_sha256": "4496785ee33473c421f49c6ed9d897fd3936b95a9f991afb169b965ec134dfbe",
+  "aggregate_manifest_sha256": "529b313475e704045ea9755f6c7de6a5475377c63114fbc84fff49b13c9aab3b",
+  "protocol_release_sha256": "4798b02f9dabf570ae3f7fda60119349f1b0bfde03ef8cabbfd582868d5cdc8c",
+  "benchmark_release_sha256": "a254dea7195cc9991df54a11d2efe13a546225099bd71a95a5d353902c3e53b8",
+  "case_suite_sha256": "e4d985ce2df21d113a20e412fea111f8d4596bbf8cad3e0228f094dc9eed498a",
+  "expected_cases": 48,
+  "formal_capability_result": false,
+  "capability_blockers": [
+    "capability.judge_error",
+    "capability.run_not_trusted"
+  ],
+  "semantic_review_identity": "primary_ai_self_review_not_independent_human",
+  "mean_denominator": "complete scored episodes only; zero retained; failures remain in all-case rates",
+  "tracks": {
+    "assessment": {
+      "expected_cases": 12,
+      "status_counts": {
+        "complete": 11,
+        "judge_error": 1
+      },
+      "outcome_counts": {
+        "fail": 11,
+        "judge_error": 1
+      },
+      "score_count": 11,
+      "pass_count": 0,
+      "pass_rate_all_cases": 0.0,
+      "pass_rate_scored_cases": 0.0,
+      "raw_score_mean": 52.95454545454545,
+      "rule_capped_score_mean": 36.77272727272727,
+      "reviewed_score_mean": 36.77272727272727,
+      "dimension_level_means": {
+        "D1": 1.6363636363636365,
+        "D2": 1.0909090909090908,
+        "D3": 0.5454545454545454,
+        "D4": 1.2727272727272727,
+        "D5": 0.45454545454545453,
+        "D6": 2,
+        "D7": 1.1818181818181819
+      },
+      "confirmed_critical_cases": 0,
+      "pending_review_cases": 0
+    },
+    "intervention": {
+      "expected_cases": 12,
+      "status_counts": {
+        "complete": 12
+      },
+      "outcome_counts": {
+        "fail": 9,
+        "pass": 3
+      },
+      "score_count": 12,
+      "pass_count": 3,
+      "pass_rate_all_cases": 0.25,
+      "pass_rate_scored_cases": 0.25,
+      "raw_score_mean": 82.29166666666667,
+      "rule_capped_score_mean": 54.25,
+      "reviewed_score_mean": 54.25,
+      "dimension_level_means": {
+        "D1": 1.8333333333333333,
+        "D2": 1.6666666666666667,
+        "D3": 1.5833333333333333,
+        "D4": 1.5833333333333333,
+        "D5": 1.4166666666666667,
+        "D6": 2,
+        "D7": 1.75
+      },
+      "confirmed_critical_cases": 0,
+      "pending_review_cases": 0
+    },
+    "planning": {
+      "expected_cases": 12,
+      "status_counts": {
+        "complete": 12
+      },
+      "outcome_counts": {
+        "fail": 12
+      },
+      "score_count": 12,
+      "pass_count": 0,
+      "pass_rate_all_cases": 0.0,
+      "pass_rate_scored_cases": 0.0,
+      "raw_score_mean": 65.41666666666667,
+      "rule_capped_score_mean": 38.75,
+      "reviewed_score_mean": 38.75,
+      "dimension_level_means": {
+        "D1": 1.6666666666666667,
+        "D2": 1.25,
+        "D3": 1.1666666666666667,
+        "D4": 1.6666666666666667,
+        "D5": 0.75,
+        "D6": 2,
+        "D7": 0.9166666666666666
+      },
+      "confirmed_critical_cases": 3,
+      "pending_review_cases": 0
+    },
+    "revision": {
+      "expected_cases": 12,
+      "status_counts": {
+        "complete": 11,
+        "judge_error": 1
+      },
+      "outcome_counts": {
+        "fail": 8,
+        "judge_error": 1,
+        "pass": 3
+      },
+      "score_count": 11,
+      "pass_count": 3,
+      "pass_rate_all_cases": 0.25,
+      "pass_rate_scored_cases": 0.2727272727272727,
+      "raw_score_mean": 97.27272727272727,
+      "rule_capped_score_mean": 55.63636363636363,
+      "reviewed_score_mean": 55.63636363636363,
+      "dimension_level_means": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 1.8181818181818181,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 1.8181818181818181
+      },
+      "confirmed_critical_cases": 0,
+      "pending_review_cases": 0
+    }
+  },
+  "cases": [
+    {
+      "case_id": "formal-f01-a",
+      "scenario_family_id": "formal-f01",
+      "track": "assessment",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-486e5773f569883da690286a",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 35,
+      "rule_capped_score": 35,
+      "reviewed_score": 35,
+      "dimensions": {
+        "D1": 1,
+        "D2": 1,
+        "D3": 0,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f01-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f01-i",
+      "scenario_family_id": "formal-f01",
+      "track": "intervention",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-b5db08b4ffe0c02f056eaee2",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 62.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 1,
+        "D2": 1,
+        "D3": 1,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.formal-f01-i.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f01-p",
+      "scenario_family_id": "formal-f01",
+      "track": "planning",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-0de71a10b95b225cace0908c",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 37.5,
+      "rule_capped_score": 37.5,
+      "reviewed_score": 37.5,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 0,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 0
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f01-r",
+      "scenario_family_id": "formal-f01",
+      "track": "revision",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-6bf8f0c0540a6a4575ae152c",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 100,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "APPLY_REVERSIBLE_PATCH",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f02-a",
+      "scenario_family_id": "formal-f02",
+      "track": "assessment",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-bbe852a86e8e705c09f6bb03",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 27.5,
+      "rule_capped_score": 27.5,
+      "reviewed_score": 27.5,
+      "dimensions": {
+        "D1": 0,
+        "D2": 1,
+        "D3": 0,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f02-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f02-i",
+      "scenario_family_id": "formal-f02",
+      "track": "intervention",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-84aa088a234d9753d3c2f001",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 90,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 1,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "intervention.allowed_chain",
+        "intervention.replay_idempotent"
+      ],
+      "action_class": "INTERVENE_MESSAGE",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f02-p",
+      "scenario_family_id": "formal-f02",
+      "track": "planning",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-7225085903440c63871b255d",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 37.5,
+      "rule_capped_score": 37.5,
+      "reviewed_score": 37.5,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 0,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 0
+      },
+      "confirmed_critical": [
+        "issue:D5-1"
+      ],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f02-r",
+      "scenario_family_id": "formal-f02",
+      "track": "revision",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-0f33b2a623488f1c0881fd36",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f03-a",
+      "scenario_family_id": "formal-f03",
+      "track": "assessment",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-010571d0458b8e7357a4a1dd",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 80,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 2,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict"
+      ],
+      "action_class": "REVISION_REQUIRED",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f03-i",
+      "scenario_family_id": "formal-f03",
+      "track": "intervention",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-16be99c211c5d2bd349431c2",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 70,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 1,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.formal-f03-i.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f03-p",
+      "scenario_family_id": "formal-f03",
+      "track": "planning",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-a16adeed1c39c8ce01793bc5",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 92.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "PROPOSE_PLAN",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f03-r",
+      "scenario_family_id": "formal-f03",
+      "track": "revision",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-263f4f62dae80e3021913607",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 100,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "APPLY_REVERSIBLE_PATCH",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f04-a",
+      "scenario_family_id": "formal-f04",
+      "track": "assessment",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-dfd24fd7f57d40429a7d9c3a",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 57.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 1,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f04-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f04-i",
+      "scenario_family_id": "formal-f04",
+      "track": "intervention",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-52768cbda4203448164cffa2",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 82.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 1,
+        "D5": 1,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "intervention.allowed_chain",
+        "intervention.replay_idempotent"
+      ],
+      "action_class": "INTERVENE_MESSAGE",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f04-p",
+      "scenario_family_id": "formal-f04",
+      "track": "planning",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-87c99a3cf8ed209505d506c2",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 62.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 1,
+        "D4": 2,
+        "D5": 0,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [
+        "issue:D5-issue-1"
+      ],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f04-r",
+      "scenario_family_id": "formal-f04",
+      "track": "revision",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-0b62c7f9372feb2cf93dd30c",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 90,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 1,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "revision.expected_version",
+        "revision.operation_delta_alignment",
+        "revision.requested_scope",
+        "revision.reversible_patch"
+      ],
+      "action_class": "PROPOSE_PLAN_ADJUSTMENT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f05-a",
+      "scenario_family_id": "formal-f05",
+      "track": "assessment",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-987842fd720a829237c5e1a1",
+      "status": "judge_error",
+      "reviewed_outcome": "judge_error",
+      "raw_score": null,
+      "rule_capped_score": null,
+      "reviewed_score": null,
+      "dimensions": {},
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f05-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f05-i",
+      "scenario_family_id": "formal-f05",
+      "track": "intervention",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-9712a83c1bfe7b622d1fc15b",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 90,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 1,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.formal-f05-i.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f05-p",
+      "scenario_family_id": "formal-f05",
+      "track": "planning",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-a42122716b5e2fb21a703e4b",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 87.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f05-r",
+      "scenario_family_id": "formal-f05",
+      "track": "revision",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-bced3fa8f2b796bf32f85e21",
+      "status": "judge_error",
+      "reviewed_outcome": "judge_error",
+      "raw_score": null,
+      "rule_capped_score": null,
+      "reviewed_score": null,
+      "dimensions": {},
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "revision.expected_version",
+        "revision.operation_delta_alignment",
+        "revision.requested_scope",
+        "revision.reversible_patch"
+      ],
+      "action_class": "INTERVENE_MESSAGE",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f06-a",
+      "scenario_family_id": "formal-f06",
+      "track": "assessment",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-71cc68d46af47c667351456c",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 42.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 0,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f06-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f06-i",
+      "scenario_family_id": "formal-f06",
+      "track": "intervention",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-35b7a214a14fe257b3228827",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 52.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 1,
+        "D2": 1,
+        "D3": 1,
+        "D4": 1,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.formal-f06-i.decision"
+      ],
+      "action_class": "WAIT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f06-p",
+      "scenario_family_id": "formal-f06",
+      "track": "planning",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-2a1314f53b84b3bedf6c6ad3",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 87.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "planning.core_task_evidence"
+      ],
+      "action_class": "PROPOSE_PLAN",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f06-r",
+      "scenario_family_id": "formal-f06",
+      "track": "revision",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-855fe56214125cef77777ae2",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 95,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "APPLY_REVERSIBLE_PATCH",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f07-a",
+      "scenario_family_id": "formal-f07",
+      "track": "assessment",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-230a39947c9c93b3d5e7d149",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 72.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 1,
+        "D4": 1,
+        "D5": 1,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f07-a.decision",
+        "trace.terminal_state"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f07-i",
+      "scenario_family_id": "formal-f07",
+      "track": "intervention",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-f6fb8b136feafe896c46b8f5",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "WAIT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f07-p",
+      "scenario_family_id": "formal-f07",
+      "track": "planning",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-1f55cd9a4f80880bce972459",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 52.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 1,
+        "D2": 1,
+        "D3": 1,
+        "D4": 1,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "planning.core_task_evidence",
+        "planning.pending_boundary",
+        "planning.proposal_present"
+      ],
+      "action_class": "PROPOSE_PLAN",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f07-r",
+      "scenario_family_id": "formal-f07",
+      "track": "revision",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-952324d54aaeaaa564128eaa",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "PROPOSE_CHANGE",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f08-a",
+      "scenario_family_id": "formal-f08",
+      "track": "assessment",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-31b628e413a8efa84d7166d7",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 42.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 0,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f08-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f08-i",
+      "scenario_family_id": "formal-f08",
+      "track": "intervention",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-b67d69fb2c27a014576c7904",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 92.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "intervention.guard_complete"
+      ],
+      "action_class": "INTERVENE_MESSAGE",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f08-p",
+      "scenario_family_id": "formal-f08",
+      "track": "planning",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-cfb3e7028cfacb2c89c4a91f",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 80,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 2,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f08-r",
+      "scenario_family_id": "formal-f08",
+      "track": "revision",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-6cb97be8f1def1a501d70c6b",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 95,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f09-a",
+      "scenario_family_id": "formal-f09",
+      "track": "assessment",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-64b2e600a586f858f0913ede",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 30,
+      "rule_capped_score": 30,
+      "reviewed_score": 30,
+      "dimensions": {
+        "D1": 1,
+        "D2": 1,
+        "D3": 0,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 0
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f09-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f09-i",
+      "scenario_family_id": "formal-f09",
+      "track": "intervention",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-d0299fdda4b3523d13b36b2d",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "WAIT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f09-p",
+      "scenario_family_id": "formal-f09",
+      "track": "planning",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-b5d579356ed5a63b4a2f0dfa",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 55,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 0,
+        "D2": 1,
+        "D3": 1,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f09-r",
+      "scenario_family_id": "formal-f09",
+      "track": "revision",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-0a9dd02ead7b38d04328fbf5",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 100,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "APPLY_REVERSIBLE_PATCH",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f10-a",
+      "scenario_family_id": "formal-f10",
+      "track": "assessment",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-2b5392da0a02dfdb3a656773",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 52.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 0,
+        "D4": 2,
+        "D5": 0,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f10-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f10-i",
+      "scenario_family_id": "formal-f10",
+      "track": "intervention",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-4a53da2602f8863b4173c523",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 82.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 1,
+        "D5": 1,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "intervention.allowed_chain",
+        "intervention.replay_idempotent"
+      ],
+      "action_class": "INTERVENE_MESSAGE",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f10-p",
+      "scenario_family_id": "formal-f10",
+      "track": "planning",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-ccd9addbf1966305dc2ef07f",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 52.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 1,
+        "D2": 1,
+        "D3": 1,
+        "D4": 1,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f10-r",
+      "scenario_family_id": "formal-f10",
+      "track": "revision",
+      "difficulty": "hard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-4b64bb61d2b8250d94cdf4ce",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 100,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f11-a",
+      "scenario_family_id": "formal-f11",
+      "track": "assessment",
+      "difficulty": "adversarial",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-1b9a7190a8f6d960f0b4ac33",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 70,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 1,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.formal-f11-a.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f11-i",
+      "scenario_family_id": "formal-f11",
+      "track": "intervention",
+      "difficulty": "adversarial",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-b9b5f2e2fdc54b52e0cb4577",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 65,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 1,
+        "D4": 1,
+        "D5": 1,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.formal-f11-i.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f11-p",
+      "scenario_family_id": "formal-f11",
+      "track": "planning",
+      "difficulty": "adversarial",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-859f461035e6af05a9c0e8f6",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 70,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 1,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [
+        "reviewer:missing-core-plan"
+      ],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f11-r",
+      "scenario_family_id": "formal-f11",
+      "track": "revision",
+      "difficulty": "adversarial",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-0ce34cb209bfd6d183f56886",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f12-a",
+      "scenario_family_id": "formal-f12",
+      "track": "assessment",
+      "difficulty": "adversarial",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-695f9a242abe3477b663dcd9",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 72.5,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 1,
+        "D4": 1,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "case.formal-f12-a.decision"
+      ],
+      "action_class": "REVISION_REQUIRED",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f12-i",
+      "scenario_family_id": "formal-f12",
+      "track": "intervention",
+      "difficulty": "adversarial",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-a8726380dcebd7c22d5340c5",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "WAIT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "formal-f12-p",
+      "scenario_family_id": "formal-f12",
+      "track": "planning",
+      "difficulty": "adversarial",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-80555abd4e455e72e0b376ff",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 70,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 1,
+        "D3": 1,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification"
+      ],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "waiting_approval"
+    },
+    {
+      "case_id": "formal-f12-r",
+      "scenario_family_id": "formal-f12",
+      "track": "revision",
+      "difficulty": "adversarial",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-98b098052fcd736e36014daa",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 90,
+      "rule_capped_score": 39,
+      "reviewed_score": 39,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 1,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "revision.expected_version",
+        "revision.operation_delta_alignment",
+        "revision.requested_scope",
+        "revision.reversible_patch"
+      ],
+      "action_class": "INTERVENE_MESSAGE",
+      "run_status": "completed"
+    }
+  ]
+}
