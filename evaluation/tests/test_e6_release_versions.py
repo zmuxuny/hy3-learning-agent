@@ -178,10 +178,23 @@ def test_stub_runtime_rules_judge_preserve_active_protocol_identity(tmp_path):
     assert judge["status"] == "complete"
 
 
-@pytest.mark.parametrize("version", ["1.0", "1.1", "1.2", "1.3"])
+@pytest.mark.parametrize("version", ["1.0", "1.1", "1.2", "1.3", "1.4"])
 def test_historical_protocol_assets_verify_without_active_source_rebinding(version):
     result = verify_protocol_asset_bytes(version)
     assert result["asset_bytes_verified"] is True
     assert result["protocol_release_id"] == f"evaluation-protocol-release-{version}"
     assert result["execution_requires_recorded_commit"] is True
-    assert load_protocol_release()["protocol_version"] == ACTIVE_PROTOCOL_VERSION
+    assert version != ACTIVE_PROTOCOL_VERSION
+
+
+def test_candidate_identity_available_before_asset_build():
+    """New identity is valid before build; historical bytes remain authoritative."""
+    protocol = load_protocol_release("1.4")
+    protocol["protocol_release_id"] = f"evaluation-protocol-release-{ACTIVE_PROTOCOL_VERSION}"
+    protocol["protocol_version"] = ACTIVE_PROTOCOL_VERSION
+    protocol["schema_lock_version"] = f"evaluation-schema-lock-{ACTIVE_PROTOCOL_VERSION}"
+    protocol["action_protocol_relative_path"] = (
+        f"evaluation/releases/protocol-{ACTIVE_PROTOCOL_VERSION}/model-action-declaration-v2.json"
+    )
+    protocol["release_sha256"] = protocol_release_digest(protocol)
+    assert EvaluationProtocolReleaseV1.model_validate(protocol).protocol_version == ACTIVE_PROTOCOL_VERSION

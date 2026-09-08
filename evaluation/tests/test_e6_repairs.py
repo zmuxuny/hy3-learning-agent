@@ -147,5 +147,7 @@ def test_judge_schema_only_offers_actual_episode_paths():
     for definition in schema["$defs"].values():
         paths = definition.get("properties", {}).get("evidence_paths")
         if paths:
-            assert "common.action_envelope" not in paths["items"]["enum"]
-            assert "observable_trace.model_calls[0].returned_tool_calls" in paths["items"]["enum"]
+            assert paths["items"] == {"$ref": "#/$defs/EpisodeEvidencePath"}
+            offered = schema["$defs"]["EpisodeEvidencePath"]["enum"]
+            assert "common.action_envelope" not in offered
+            assert "observable_trace.model_calls[0].returned_tool_calls" in offered

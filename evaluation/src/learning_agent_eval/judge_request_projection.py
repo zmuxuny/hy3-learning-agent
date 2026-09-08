@@ -11,7 +11,7 @@ def pack_shared_values(document):
 
     def count(value):
         encoded = canonical_json(value)
-        if len(encoded.encode("utf-8")) >= 512:
+        if len(encoded.encode("utf-8")) >= 256:
             counts[encoded] += 1
         if isinstance(value, dict):
             for child in value.values():

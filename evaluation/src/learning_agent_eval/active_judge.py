@@ -312,6 +312,10 @@ class OpenAICompatibleHy3JudgeProviderV2:
         )
 
 
+class JudgeInputLimitExceeded(ValueError):
+    """A locally rejected request; no reservation or Provider call occurred."""
+
+
 class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
     """Active fixed Hy3 seam; attribution is audited by the v3 config digest."""
 
@@ -340,7 +344,7 @@ class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
         wire = canonical_json_bytes(body)
         input_bound = len(wire) + 2048
         if input_bound > INPUT_LIMIT:
-            raise ValueError("judge_input_limit_exceeded")
+            raise JudgeInputLimitExceeded("judge_input_limit_exceeded")
         self.calls += 1
         ticket = self.budget.reserve(
             scope=self.scope, call_id=request.get("_budget_call_id", f"judge-call:{self.calls:04d}"),
@@ -465,11 +469,12 @@ def build_provider_request_v3(
             }
         )
     output_schema = JudgeResponsePayloadV1.model_json_schema(mode="validation")
+    output_schema["$defs"]["EpisodeEvidencePath"] = {"type": "string", "enum": catalog}
     def constrain_paths(node):
         if isinstance(node, dict):
             for key, value in node.items():
                 if key == "evidence_paths" and isinstance(value, dict):
-                    value["items"] = {"type": "string", "enum": catalog}
+                    value["items"] = {"$ref": "#/$defs/EpisodeEvidencePath"}
                 else:
                     constrain_paths(value)
         elif isinstance(node, list):
@@ -1264,6 +1269,10 @@ def _evaluate_one_v3(
                 error_codes = ("judge_budget_exhausted",)
                 _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, None, error_codes)
                 break
+            except JudgeInputLimitExceeded:
+                error_codes = ("judge_input_limit_exceeded",)
+                _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, None, error_codes)
+                break
             except ValueError:
                 error_codes = ("judge_request_rejected",)
                 _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, None, error_codes)
@@ -1311,7 +1320,7 @@ def _evaluate_one_v3(
             error_code = (
                 "judge_provider_error"
                 if error_codes == ("provider_error",)
-                else error_codes[0] if error_codes in {("judge_budget_exhausted",), ("judge_request_rejected",)}
+                else error_codes[0] if error_codes in {("judge_budget_exhausted",), ("judge_request_rejected",), ("judge_input_limit_exceeded",)}
                 else "judge_response_invalid"
             )
         else:
