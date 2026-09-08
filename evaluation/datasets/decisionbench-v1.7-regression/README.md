@@ -1,9 +1,5 @@
-# Protocol 1.6 已见回归输入
+# Protocol 1.7 已见回归输入
 
-此目录复制 E3 engineering、E5 的24个Calibration受控输出和8个源Case，仅为新版方法的已见回归输入。Case与资源保留原内容；各Suite和Benchmark单独绑定Protocol 1.6。不能将本目录当作新版未见正式测试。
+保留E3工程输入、E5的24个Calibration受控输出及8个来源Case，另含已见Development7例。Case和资源内容来自1.6回归目录，各Suite/Benchmark重新绑定Protocol 1.7；不属于未见正式测试，不继承旧版本方法资格。
 
-复制来源：`decisionbench-v4-engineering`、`decisionbench-v1-candidate/calibration`、`decisionbench-v1-candidate/calibration-sources`。新方法的独立Development/Calibration及正式测试需另建目录并记录调优接触情况。
-
-本候选统一可配置Hy3接口；保留1.5输入编码修复。用于Provider兼容性和协议回归，不是新正式Benchmark。
-
-development复制e6-repair-development-v4/real的7个已见案例，用于新接口隔离Runtime连通性验证；不是7次新增正式实验。
+1.7验证行动/规划修复与Judge事实锚点；1.8恢复原模型返回参数的盲化可见性及完整草案阅读副本；1.9补充草案日期规则和Judge公开事实核验。每版实际运行范围、预设分母、全部失败及费用见[最终工作记录](../../../docs/E6最终修复与验收记录.md)。未运行的版本/分区不记为实验成功。
