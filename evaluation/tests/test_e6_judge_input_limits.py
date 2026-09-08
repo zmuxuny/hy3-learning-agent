@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from jsonschema import Draft202012Validator
 from learning_agent_eval.active_judge import (
     JudgeInputLimitExceeded,
     OpenAICompatibleHy3JudgeProviderV3,
@@ -35,10 +34,13 @@ def test_shared_schema_preserves_exact_legal_evidence_path_set():
     request = build_provider_request_v3(BlindJudgeInputV3(judge_id='test', document={'episode': episode}, sha256='a' * 64))
     schema = request['response_format']['json_schema']['schema']
     offered = json.loads(request['messages'][1]['content'])['evidence_path_catalog']
-    validator = Draft202012Validator({'$defs': schema['$defs'], '$ref': '#/$defs/EpisodeEvidencePath'})
-    assert schema['$defs']['EpisodeEvidencePath']['enum'] == offered
-    assert all(validator.is_valid(path) for path in offered)
-    assert all(not validator.is_valid(path) for path in ['common.action_envelope', 'state_before', 'observable_trace.fake'])
+    assert schema['$defs']['EpisodeEvidencePath'] == {'type': 'string', 'enum': offered}
+    assert set(offered) == {'result.action_class', 'observable_trace.model_calls[0].assistant_text',
+                            'observable_trace.model_calls[0].returned_tool_calls'}
+    for definition in schema['$defs'].values():
+        paths = definition.get('properties', {}).get('evidence_paths')
+        if paths:
+            assert paths['items'] == {'$ref': '#/$defs/EpisodeEvidencePath'}
     assert unpack_shared_values(json.loads(request['messages'][1]['content'])) == {'episode': episode}
 
 
