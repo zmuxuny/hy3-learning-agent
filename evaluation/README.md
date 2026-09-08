@@ -1,7 +1,7 @@
 # Learning Agent Evaluation
 
 `evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。当前活动协议为
-**Evaluation Protocol Release 1.5（仅离线验证的未登记候选）**。最近已登记并运行的正式批次是
+**Evaluation Protocol Release 1.6（可配置Hy3接口的未登记候选）**。最近已登记并运行的正式批次是
 Protocol1.4 / `decisionbench-v1.4-e6-test-release`，必须用冻结源码`1f1f35f`复现旧批次。
 Protocol 1.0 的旧 E6 Release 与结果原字节保留；1.1–1.3 为本轮另版开发验证，
 不把它们的已见样本称为正式测试。`DecisionEpisode v4` 仍是活动 Episode Schema，
@@ -36,9 +36,23 @@ V2 固定 `40fddb8`，24 例判别力和 16×5 重复共 88 个有效评估，�
 真实浏览器流程及 AI 审计完成，具体漏检/波动和费用见 [E5 验收记录](../docs/E5验收工作记录.md)。
 E6首批48/46/2保留；修复轮完成多版方法验证、新G家族冻结登记及48 Episode/33有效Judge/15失败，formal=false。
 1.5候选修复完整请求编码和输入超限分类，仓外45 passed、79请求证据等价，仅离线，真实复测0次。
-当前余额0.216953元，已停止付费；版本、费用和剩余问题见[新版档案](artifacts/e6-repair-20260908/README.md)及
+当时余额0.216953元，已停止该轮付费；接口切换后新授权约50元已登记，当前候选1.6完成45项回归和单例真实链路验证，详见[接口档案](artifacts/e6-provider-20260908/README.md)。历史版本、费用和剩余问题见[新版档案](artifacts/e6-repair-20260908/README.md)及
 [新版工作记录](../docs/E6新版修复与验证记录.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
 [原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
+
+## API与计费配置
+
+产品、评测Agent和Judge使用同一组 `OPENAI_API_BASE`、`OPENAI_API_KEY`、`MODEL_NAME=hy3`。
+真实评测CLI在父进程读取项目 `.env`（显式环境变量优先）；Worker只接收最小环境，不读或复制 `.env`。
+直接调用Python库时由调用者传入环境配置。接口需使用无内嵌凭据的HTTPS地址；网络隔离仅放行本次配置的模型主机。
+Judge按完整base路径追加 `/chat/completions`，不再固定腾讯地址。评测结果记录实际 `api_base`、origin及服务类别；
+第三方记作 `openai-compatible`，不冒充腾讯官方。离线复核使用制品中的接口记录，不依赖复核机器当前配置。
+
+费用使用唯一账本的 `input_rate` / `output_rate`（元/百万token，数值等于微元/token，支持小数）；
+每次预留冻结费率、计价依据和接口，结算不受后来费率修改影响，未知usage仍保留预留。
+用户已授权新接口约50元可用等价额度。站点公开倍率已留档，实际人民币单价未确认，当前以旧官方1/4费率作等价估算，
+不声称是新站实际扣款；账本 `pricing_basis` 标明这一口径。额度已登记一次，后续直接读取账本，不再加50元。
+接口修改无需重新设计Rubric；本轮1.6记录实际实现变化，旧1.0–1.5制品和既有正式批次保持原字节。
 
 ## 核心语义
 
@@ -83,7 +97,7 @@ E6首批48/46/2保留；修复轮完成多版方法验证、新G家族冻结登�
 | `rule-result-v3` / `rule-run-manifest-v3` | v4 确定性规则、源码 bundle 摘要与 Hard Gate |
 | `judge-result-v3` / `judge-run-manifest-v3` | 盲化结构化 Judge、一次修复与 formal 继承 |
 | `aggregate-result-v3` / Track/Manifest v3 | 纯确定性 Rule-first 聚合与源码摘要 |
-| `evaluation-protocol-release-v1` | 当前候选 Protocol1.5 及历史版本分别绑定组件 |
+| `evaluation-protocol-release-v1` | 当前候选 Protocol1.6 及历史版本分别绑定组件 |
 | `benchmark-release-manifest-v1` | 固定 Benchmark Case/资源/partition/协议摘要 |
 | `trusted-benchmark-registry-v1` | 仓库固定的生产信任根；旧E6与新版E6分项登记 |
 | `source-bundle-manifest-v1` | 四个活动执行组件的保守来源包摘要 |
@@ -114,15 +128,15 @@ JSON/SHA-256 和自摘要。独立 Schema Lock 覆盖全部生成 Schema；即�
 `legacy_execution_disabled`。包级公共 API 只暴露当前 `run_active_runtime`、
 `evaluate_active_rules`、`evaluate_active_judges` 与 `aggregate_active_results`。
 
-当前 `decisionbench-v1.5-regression/engineering` 将旧v4工程Case原内容重新绑定到1.5，
+当前 `decisionbench-v1.6-regression/engineering` 将旧v4工程Case原内容重新绑定到1.5，
 包含故意的错误动作和Provider Failure，预期保留失败终态及非零退出码；不作为模型能力实验。
 以下命令在干净仓外副本和项目锁定依赖中执行，输出使用临时目录。旧v4绑定只供其历史源码执行：
 
 ```bash
 E31_ROOT="$(mktemp -d)"
 .venv/bin/python -m learning_agent_eval run-agent \
-  --dataset evaluation/datasets/decisionbench-v1.5-regression/engineering \
-  --manifest evaluation/datasets/decisionbench-v1.5-regression/engineering/manifest.json \
+  --dataset evaluation/datasets/decisionbench-v1.6-regression/engineering \
+  --manifest evaluation/datasets/decisionbench-v1.6-regression/engineering/manifest.json \
   --output "$E31_ROOT/runtime"
 .venv/bin/python -m learning_agent_eval validate-dataset \
   --dataset "$E31_ROOT/runtime"

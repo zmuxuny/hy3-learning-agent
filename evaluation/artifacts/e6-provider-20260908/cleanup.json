@@ -1,0 +1,10 @@
+{
+  "removed_owned_temp_root": "/tmp/learning-provider-_obi7pa1",
+  "removed_marker": "/tmp/learning-provider-current",
+  "archived_file_digests_reverified": 21,
+  "temporary_copies_and_test_databases_removed": true,
+  "live_provider_probe_session": "completed exit0",
+  "product_env_permission": "0o600",
+  "env_tracked": false,
+  "remaining_budget_cny_equivalent": 49.894519
+}

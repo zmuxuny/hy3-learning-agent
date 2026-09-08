@@ -1,0 +1,28 @@
+{
+  "schema": "public-file-digests-v1",
+  "archive": "provider-evidence.tar.gz",
+  "archive_sha256": "b0a863133939997e17dd82f424465f769f02e819905432f9a623e1cb9accdb72",
+  "files": {
+    "budget-before.json": "c1e42e0ab9a111a0513aa3b60a410b662f119673e2d3d992249dfebc97e06587",
+    "budget-after-authorization.json": "0feffa485a9fe171dc597874d437777a819211f71bfcd314b3c14957d6cd12a9",
+    "budget-authorization.json": "8fe19fd70c041dc0d5ddfeb60203e3f22996d5c794e54bb31cc5c811170cf254",
+    "budget-after.json": "2b99726de901c5fcf850f9a4c8e592bf34fb315ab436f295f79a9dbcd4aa21d4",
+    "provider-public-pricing.json": "ed1bc8e9a45548141e7e7a0bdcc4e693a794a992cda75e82864b32c7d21e108d",
+    "regression-initial.log": "52057499713bd08e290767cd15129d30923360125968f65718fcf0246d0c0416",
+    "regression-fixed.log": "0d73824a0160eb71473d4c7071c0824dfea6bf3b1792dcdd1b4be415e9932795",
+    "probe_provider.py": "72c096baf74cc77b5c54871831f143030a5c7b5c21a557013e042545e097ed13",
+    "launch_probe.py": "914ed37b222d3c18c11c150be0fcfb54aba9f03db052ad2506bdeda4183db90e",
+    "probe-execution.log": "72857d894a8967a00d3ce4872801a4844e5c31a52f43cddd56ab74bb8d693a8f",
+    "probe-tool_call.json": "3a02a15511c449fddfd41044cd733c134bc2f0aa2caab931a5a2a2bac2130f63",
+    "probe-stream.json": "e1a2b39d65b47d90a9dfd4b9e58deddaee535c1cdcaee203d0affdc088b22d27",
+    "smoke-execution.json": "de8c962d21c62c6a5f84add67d4e3bc229a426762277a8e64a0f9768d931bb41",
+    "smoke/judge/judge-results/episode-b2e0bdcec73eb21b9dcfdeb3.json": "7e39233a2246747a3b39dcafd7077636b4a57f42d1f288da76ec1c41194c63fb",
+    "smoke/judge/run-manifest.json": "947ea73a943b9ab32a61e89ee150d22a031a64f20b6a420068f0494db59c88f0",
+    "smoke/judge-attempts.jsonl": "9a85a09ba7b75628db65f4cd50952b976dcb5848ebd07306b91d61149263636c",
+    "smoke/rules/rule-manifest.json": "70a5b154294af1ad0982cb6f974f1e1dfd02abf279cf641dab0d37d523987055",
+    "smoke/rules/rules/episode-b2e0bdcec73eb21b9dcfdeb3.json": "ce221662969176822c5e5dd219be26181cfc0659ecd72a718d41c85c225808d5",
+    "smoke/runtime/episodes/episode-b2e0bdcec73eb21b9dcfdeb3.json": "48dd731a29484d1ea1fa627d60e64e1a3c4451b920202dfc786c0c9399e5e466",
+    "smoke/runtime/judge-references/episode-b2e0bdcec73eb21b9dcfdeb3.json": "2196362f0a7c066543d6af2bf0b122646f37f43e6a89312e3e234e5626788afc",
+    "smoke/runtime/run-manifest.json": "1a478ea0a50f1a3bb70a08f58dd66256185592bd7a8b149d48edc90507a5d746"
+  }
+}

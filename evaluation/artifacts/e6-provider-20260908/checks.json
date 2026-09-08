@@ -1,0 +1,43 @@
+{
+  "reviewer": "primary_ai_developer_and_reviewer",
+  "source_commit": "de8f35cf8e3e5fdb29a0a1d8a9dcbe93425d129c",
+  "protocol": "1.6",
+  "protocol_release_sha256": "0170e41b9015a4a2802ea811be432b27d9f2693569e4b6872df489c9d0251fa4",
+  "active_protocol_and_registry_verify": "passed",
+  "regression_initial": {
+    "passed": 36,
+    "failed": 9
+  },
+  "regression_final": {
+    "passed": 45,
+    "failed": 0
+  },
+  "compatibility": {
+    "forced_tool_probe": "APITimeoutError; 90s; no retry",
+    "stream_probe": "passed",
+    "runtime_episodes": 1,
+    "runtime_failures": 0,
+    "runtime_model_calls": 2,
+    "committed_notification_tool_calls": 1,
+    "judge_valid": 1,
+    "judge_failures": 0,
+    "judge_repairs": 0,
+    "formal": false
+  },
+  "budget": {
+    "history_requests_preserved": 907,
+    "new_requests": 5,
+    "total_requests": 912,
+    "new_occupied_cny": 0.105481,
+    "occupied_cny": 34.49851,
+    "limit_cny": 84.393029,
+    "remaining_cny": 49.894519,
+    "new_unknown_usage_reserved_cny": 0.01065,
+    "account_bill_verified": false,
+    "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified"
+  },
+  "archive_files_roundtrip_verified": 21,
+  "old_artifact_release_schema_files_unchanged": 463,
+  "actual_key_absent_from_archived_files": true,
+  "ai_review": "One in_app notification is committed; declaration/effect agree; local 15:10 matches frozen07:10UTC+8; Judge paths cite actual visible evidence. Engineering compatibility case only; not an E6 completion or method-validity claim."
+}
