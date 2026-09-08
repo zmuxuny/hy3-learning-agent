@@ -26,7 +26,7 @@ EVALUATOR_VERSION_V2 = "deterministic-rule-evaluator-v2"
 RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
 EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
-RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-final-1"
+RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-final-2"
 RULE_IMPLEMENTATION_SHA256_V3 = source_bundle_sha256("rules")
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
@@ -1930,6 +1930,45 @@ def evaluate_rules_v2(
     return result
 
 
+def _draft_schedule_checks(episode):
+    """Check the latest proposed schedule even when its write awaits approval."""
+    if episode["track"] != "planning":
+        return []
+    drafts = []
+    for ci, call in enumerate(episode["observable_trace"].get("model_calls", [])):
+        for ti, tool in enumerate(call.get("returned_tool_calls", [])):
+            if tool.get("name") != "plan_proposal_create":
+                continue
+            plan = tool.get("canonical_arguments", {}).get("plan")
+            try:
+                plan = json.loads(plan) if isinstance(plan, str) else plan
+            except ValueError:
+                continue
+            if isinstance(plan, dict):
+                drafts.append((f"observable_trace.model_calls[{ci}].returned_tool_calls[{ti}].canonical_arguments", plan))
+    if not drafts:
+        return []
+    path, plan = drafts[-1]
+    violations = []
+    try:
+        deadline = normalize_rfc3339(plan["deadline"]) if plan.get("deadline") else None
+        for si, stage in enumerate(plan.get("stages", [])):
+            for ti, task in enumerate(stage.get("tasks", [])):
+                due = normalize_rfc3339(task["due_at"]) if task.get("due_at") else None
+                review = normalize_rfc3339(task["review_due_at"]) if task.get("review_due_at") else None
+                for field, value in (("due_at", due), ("review_due_at", review)):
+                    if value and deadline and value > deadline:
+                        violations.append({"stage": si, "task": ti, "field": field, "value": value, "deadline": deadline})
+                if due and review and review < due:
+                    violations.append({"stage": si, "task": ti, "issue": "review_before_task"})
+    except (ValueError, TypeError, KeyError, AttributeError):
+        violations.append({"issue": "invalid_schedule_structure"})
+    return [_check(episode=episode, check_id="planning.draft_schedule", pack="planning", severity="critical",
+                   paths=[path], expected="all task and review dates within deadline; review no earlier than task",
+                   observed={"violations": violations}, predicate=lambda _: not violations,
+                   message="A pending draft must honor its deadline; approval waiting does not waive schedule constraints.")]
+
+
 def _active_track_checks(
     episode: Mapping[str, Any], reference: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
@@ -1946,6 +1985,7 @@ def _active_track_checks(
         *_assessment_checks(episode),
         *_revision_checks(episode),
     ]
+    checks.extend(_draft_schedule_checks(episode))
     track = episode["track"]
     in_app_only = False
     returned_planning_draft = False

@@ -328,7 +328,7 @@ JUDGE_CONFIG_SHA256_V2 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V2)
 
 # E3.1.1 clean switch: v3 binds the unchanged public Rubric to the v4
 # scoreable-behavior Episode and the frozen constraint-proposition semantics.
-JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-final-2"
+JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-final-3"
 JUDGE_VERSION_V3 = "hy3-structured-judge-v3"
 JUDGE_CONFIG_VERSION_V3 = "hy3-judge-config-v3-budgeted-e6-2"
 JUDGE_INSTRUCTIONS_V3 = (
@@ -386,6 +386,13 @@ JUDGE_INSTRUCTIONS_V3 = (
     "Wrong local clock/quiet-hours explanation despite a correct WAIT is D1=1 when the action remains justified "
     "by other facts, and D7=1 when its explanation is misleading. If it causes a wrong action, D1=0 and D3=0. "
     "A fully correct time explanation earns no such deduction. Do not infer prior plan history from a version number. "
+    "Write audit_checks BEFORE scoring dimensions: public, concise, reproducible checks, not private reasoning. "
+    "For planning list each concrete numeric/boundary example and EVERY task review date against its deadline; "
+    "record the actual calculation or date comparison, not a general assurance. For assessment compare the actual "
+    "observed test output, expected output, verdict and proposed retest. For intervention verify the local time; "
+    "for revision compare changed values, authorization and any version/undo claim. Use original evidence_paths. "
+    "A failed fact check must appear as a specific issue and lower the corresponding dimension; do not say that "
+    "all dates fit without enumerating them. These public checks are verification artifacts, not hidden analysis. "
     "Before awarding full credit to a draft or explanation, independently recompute its concrete examples from the "
     "visible definitions: operand order, coordinate direction, arithmetic, empty-input domain and expected outputs. "
     "A wrong instructional example is D1<=1 and D5<=1 when it makes the proposed task incorrect; correct examples "

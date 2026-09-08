@@ -59,3 +59,13 @@ def test_active_blinding_keeps_pending_raw_draft_and_decodes_reading_copy():
     aid = draft_reading_aid({'observable_trace': projected})
     assert aid[0]['draft_plan']['deadline'] == '2026-09-20'
     assert aid[0]['evidence_path'] == 'observable_trace.model_calls[0].returned_tool_calls'
+
+
+def test_draft_deadline_gate_checks_actual_review_and_keeps_correct_boundary():
+    from learning_agent_eval.rules import _draft_schedule_checks
+    plan={'deadline':'2026-09-20T00:00:00Z','stages':[{'tasks':[{'due_at':'2026-09-19T00:00:00Z','review_due_at':'2026-09-21T00:00:00Z'}]}]}
+    e={'track':'planning','observable_trace':{'model_calls':[{'returned_tool_calls':[{'name':'plan_proposal_create','canonical_arguments':{'plan':plan}}]}]}}
+    c=_draft_schedule_checks(e)[0]
+    assert c['status']=='fail' and c['severity']=='critical'
+    plan['stages'][0]['tasks'][0]['review_due_at']='2026-09-20T00:00:00Z'
+    assert _draft_schedule_checks(e)[0]['status']=='pass'

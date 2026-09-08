@@ -481,6 +481,8 @@ def build_provider_request_v3(
             }
         )
     output_schema = JudgeResponsePayloadV1.model_json_schema(mode="validation")
+    output_schema["required"] = ["audit_checks", *output_schema["required"]]
+    output_schema["properties"]["audit_checks"]["minItems"] = 1
     output_schema["$defs"]["EpisodeEvidencePath"] = {"type": "string", "enum": catalog}
     def constrain_paths(node):
         if isinstance(node, dict):
