@@ -549,6 +549,7 @@ def _effects_and_action(
         {
             *(_changed_refs(delta, "intervention", before, after)),
             *(_changed_refs(delta, "notification", before, after)),
+            *(_changed_refs(delta, "chat_message", before, after)),
             *(_changed_refs(delta, "outbox_action", before, after)),
             *(_changed_refs(delta, "outbox_receipt", before, after)),
         }
@@ -560,6 +561,13 @@ def _effects_and_action(
         for reference in intervention_refs:
             entity = entities[reference]
             invocation_ref = entity["data"].get("invocation_ref")
+            if invocation_ref is None and entity["entity_type"] == "chat_message":
+                linked = [row["data"].get("invocation_ref") for row in entities.values()
+                          if row["entity_type"] == "intervention"
+                          and row["data"].get("canonical_message_ref") == reference]
+                if len(linked) != 1 or linked[0] is None:
+                    raise ExportError("export.canonical_message_invocation_unattributed")
+                invocation_ref = linked[0]
             if invocation_ref is None and entity["entity_type"] == "outbox_receipt":
                 action = entities.get(entity["data"].get("outbox_action_ref"))
                 invocation_ref = action["data"].get("invocation_ref") if action else None
