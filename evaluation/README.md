@@ -33,7 +33,7 @@ CaseSpec v2（控制面，含私有标注）
 和 8 来源的 AI 内容裁决、候选重建和最终回归。S06 机制修复与 E5 必需实验已完成：
 V2 固定 `40fddb8`，24 例判别力和 16×5 重复共 88 个有效评估，最低预设方法目标达标。
 真实浏览器流程及 AI 审计完成，具体漏检/波动和费用见 [E5 验收记录](../docs/E5验收工作记录.md)。
-E6 冻结批次已执行：48 Episode、46 个有效 Judge、2 个 judge_error，逐轨报告和 AI 自审已完成；formal_capability_result=false，正式能力验收未通过。方法适用性及 Judge 漏检需另版验证，E7–E8 仍待完成。 共享账本累计占用17.609982元，19元内剩余1.390018元。接续见 [E6工作记录](../docs/E6验收工作记录.md)和 [新测试数据卡](datasets/decisionbench-v1-e6-test/README.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
+E6 冻结批次已执行：48 Episode、46 个有效 Judge、2 个 judge_error，逐轨报告和 AI 自审已完成；formal_capability_result=false，正式能力验收未通过。方法适用性及 Judge 漏检需另版验证，E7–E8 仍待完成。 用户最新明确当前可用17元，原账本已更正累计上限为34.609982元、历史占用17.609982元；已授权按[修复交接](../docs/E6修复开发交接.md)继续修复与另版验证。接续见 [E6工作记录](../docs/E6验收工作记录.md)和 [新测试数据卡](datasets/decisionbench-v1-e6-test/README.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
 [原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
 
 ## 核心语义
@@ -288,7 +288,7 @@ real 模式都必须传入同一个已有 `--budget-ledger`，每次调用（含
 usage 结算，未知费用保留预留。Judge 固定输入上界 196608、输出上限 8192、n=1，
 HTTP 不自动重试，最多一次结构修复；Agent 输出上限沿用 16000。E5 的全部真实调用和
 浏览器产品调用均计入原 14 元账本，E5结束占用 11.606238 元。9月8日获准追加5元后，
-原账本累计上限19元；E6新增160请求，占用6.003744元，累计17.609982元、剩余1.390018元。
+首批按累计上限19元执行（当前已按用户澄清更正为34.609982元、可用17元）；E6新增160请求，占用6.003744元，累计17.609982元、剩余1.390018元。
 其中本轮0.204028元为未知usage保留预留，尚未核对云账户实扣。Agent 和
 Judge 的 real 模式还分别要求 `--allow-real-model` / `--allow-real-judge`；Key 只从调用者
 环境读取，CLI 参数、Manifest、日志和错误均不保存 Key 或 endpoint。

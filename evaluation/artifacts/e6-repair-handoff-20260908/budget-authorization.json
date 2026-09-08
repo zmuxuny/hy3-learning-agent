@@ -1,0 +1,22 @@
+{
+  "authorization_id": "e6-repair-remaining-17-cny-20260908",
+  "date": "2026-09-08",
+  "kind": "user_remaining_budget_clarification",
+  "authorization_basis": "用户：发现得问题得去修啊，然后我说的额度是当前还有多少，当前还有17块钱，做好交接，给我提示词，我让下一个codex去做。",
+  "interpretation": "17 CNY currently available for subsequent repair and validation; not a cumulative lifetime cap and not an instruction to reset history. Supersedes the assistant earlier 19 CNY cumulative-limit interpretation.",
+  "old_limit_micro_cny": 19000000,
+  "new_limit_micro_cny": 34609982,
+  "added_micro_cny": 15609982,
+  "occupied_micro_cny_at_authorization": 17609982,
+  "remaining_micro_cny_at_authorization": 17000000,
+  "requests_preserved": 490,
+  "prior_ledger_raw_sha256": "ce197264adea65dadcfb53a70c64cb8531e8a51499777671e26f60f266fb724c",
+  "cloud_balance_independently_verified": false,
+  "reapply_or_top_up_on_resume": false,
+  "ledger_path": "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json",
+  "after_ledger_raw_sha256": "d9afe8bbaa323c2c5d50053e927b223fc14758d72627462a31d9ee7ef863387d",
+  "before_snapshot": "../e6-formal-20260908/budget-final.json",
+  "after_snapshot": "budget-after-correction.json",
+  "real_calls_during_handoff": 0,
+  "historical_unknown_usage_reservations_preserved": true
+}

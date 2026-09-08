@@ -1,0 +1,23 @@
+{
+  "reviewer_role": "primary_ai_self_review",
+  "product_tests_run": false,
+  "reason": "Handoff documentation and authorized ledger metadata only; production/scoring code unchanged.",
+  "real_model_calls": 0,
+  "local_markdown_targets_checked": 156,
+  "checks": {
+    "raw_snapshot_equals_live_ledger": true,
+    "raw_sha_matches_authorization": true,
+    "all_490_historical_requests_equal": true,
+    "remaining_exactly_17_cny": true,
+    "authorization_added_once": true,
+    "original_metadata_except_limit_and_adjustments_equal": true,
+    "no_active_reservations": true,
+    "old_e5_e6_archives_and_frozen_code_unchanged": true,
+    "all_local_document_targets_exist": true
+  },
+  "all_checks_passed": true,
+  "files": {
+    "budget-after-correction.json": "d9afe8bbaa323c2c5d50053e927b223fc14758d72627462a31d9ee7ef863387d",
+    "budget-authorization.json": "f471c4dee9d28a09b4d5f88f0768cde834f787729a8cdaacc9a6d17ea616fd57"
+  }
+}
