@@ -35,3 +35,49 @@ def test_unknown_message_does_not_fall_back_to_equal_notification_id():
     registry, _ = registry_with_messages(2, 1)
     with pytest.raises(NormalizationError, match="identity.unregistered_reference"):
         normalize_reference_fields({"canonical_message_id": 1}, registry)
+
+
+@pytest.mark.asyncio
+async def test_snapshot_collects_only_intervention_canonical_chat_message(tmp_path, monkeypatch):
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    database = runtime / "messages.sqlite3"
+    monkeypatch.setenv("EVALUATION_MODE", "1")
+    monkeypatch.setenv("RUNTIME_STATE_ROOT", str(runtime))
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
+    from app.db.database import Base
+    from app.models import Owner, UserProfile, Session, AgentRun, ChatMessage, Intervention
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from learning_agent_eval.snapshots import collect_state_snapshot
+
+    engine = create_async_engine(f"sqlite+aiosqlite:///{database}")
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    async with factory() as db:
+        db.add(Owner(id="local", display_name="Synthetic", timezone="Asia/Shanghai"))
+        db.add(UserProfile(owner_id="local"))
+        db.add(Session(id="conversation", owner_id="local", title="Synthetic"))
+        db.add(AgentRun(id="probe", owner_id="local", session_id="conversation", trigger="user_message",
+                        objective="Ask for a time budget", status="completed", phase="terminal"))
+        await db.flush()
+        db.add_all([
+            ChatMessage(id=1, session_id="conversation", role="user", content="Ordinary chat must not be exported.", content_hash="b" * 64),
+            ChatMessage(id=2, session_id="conversation", run_id="probe", role="assistant", content="Please confirm minutes.", content_hash="a" * 64),
+        ])
+        await db.flush()
+        db.add(Intervention(id="intervention", owner_id="local", session_id="conversation", source_run_id="probe",
+                            canonical_message_id=2, title="Question", body="Please confirm minutes.", content_digest="a" * 64,
+                            state="legacy_unverified"))
+        await db.commit()
+    fixture = {"episode_id": "probe", "owner_id": "local", "run_id": "probe", "state_before": {
+        "logical_entities": [], "context": {"public_summary": "Synthetic", "source_refs": [], "context_sha256": "0" * 64}}}
+    registry = StableIdentityRegistry("probe")
+    capture = await collect_state_snapshot(factory, fixture, registry=registry,
+        captured_at="2026-09-09T02:00:00Z", resource_version="synthetic-v1", resource_digest="0" * 64, phase="after")
+    messages = [e for e in capture.document["logical_entities"] if e["entity_type"] == "chat_message"]
+    interventions = [e for e in capture.document["logical_entities"] if e["entity_type"] == "intervention"]
+    assert len(messages) == 1 and messages[0]["data"]["content"] == "Please confirm minutes."
+    assert interventions[0]["data"]["canonical_message_ref"] == messages[0]["logical_id"]
+    assert normalize_reference_fields({"canonical_message_id": 2}, registry)["canonical_message_ref"] == messages[0]["logical_id"]
+    await engine.dispose()
