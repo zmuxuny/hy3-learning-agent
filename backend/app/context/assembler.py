@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as SyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import PROJECT_ROOT, settings
+from app.core.learner_time import learner_clock
 from app.core.redaction import redact_data, redact_text
 from app.core.time import canonical_utc, coerce_legacy_utc, utc_now
 from app.db.uow import commit as commit_uow, flush as flush_uow
@@ -1108,7 +1109,13 @@ class ContextAssembler:
             prompt_tools = openai_tools() if prompt_tools is None else prompt_tools
         prefix = prompt_prefix if prompt_prefix is not None else f"Objective: {objective}\n\n"
         budget_inputs = envelope_inputs(system_prompt=prompt_system, tools=prompt_tools)
-        base_lines = ["# Agent Context", f"Generated: {canonical_utc(generated_at)}"]
+        clock = await learner_clock(self.db, owner_id)
+        base_lines = [
+            "# Agent Context", f"Generated: {canonical_utc(generated_at)}",
+            f"Learner timezone: {clock['timezone']}",
+            f"Current local time: {clock['now_local']}",
+            "Quiet hours and learner date/time requests use this local timezone; Z timestamps are UTC.",
+        ]
         retained_ids: set[str] = set()
         dropped_reason: dict[str, str] = {}
 

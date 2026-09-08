@@ -154,9 +154,11 @@ class InvocationClaimLostError(RuntimeError):
 
 async def profile_get(ctx: ToolContext, _: EmptyArgs) -> dict:
     from app.models import UserProfile
+    from app.core.learner_time import learner_clock
 
     profile = await ctx.db.get(UserProfile, ctx.owner_id)
     return {
+        **await learner_clock(ctx.db, ctx.owner_id),
         "agent_style": profile.agent_style,
         "preferences": profile.preferences,
         "quiet_hours": profile.quiet_hours,

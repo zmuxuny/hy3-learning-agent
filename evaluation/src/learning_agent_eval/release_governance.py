@@ -28,10 +28,12 @@ from .source_bundles import SOURCE_COMPONENTS, build_source_bundle
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 RELEASE_ROOT = PROJECT_ROOT / "evaluation" / "releases"
-PROTOCOL_RELEASE_PATH = RELEASE_ROOT / "evaluation-protocol-release-1.0.json"
+ACTIVE_PROTOCOL_VERSION = "1.1"
+ACTIVE_PROTOCOL_RELEASE_ID = "evaluation-protocol-release-1.1"
+PROTOCOL_RELEASE_PATH = RELEASE_ROOT / "evaluation-protocol-release-1.1.json"
 PRODUCTION_REGISTRY_PATH = RELEASE_ROOT / "trusted-benchmark-registry-v1.json"
-SCHEMA_LOCK_PATH = RELEASE_ROOT / "schema-lock-v1.json"
-SOURCE_BUNDLE_ROOT = RELEASE_ROOT / "source-bundles"
+SCHEMA_LOCK_PATH = RELEASE_ROOT / "schema-lock-1.1.json"
+SOURCE_BUNDLE_ROOT = RELEASE_ROOT / "source-bundles" / "1.1"
 CANONICALIZATION_VERSION = "canonical-json-v1"
 CANONICALIZATION_DOCUMENT = {
     "version": CANONICALIZATION_VERSION,
@@ -250,7 +252,7 @@ def schema_lock_reason_codes(
 ) -> tuple[str, ...]:
     """Verify every locked Schema against repository bytes and the registry."""
 
-    from .schemas import SCHEMA_FILENAMES
+    from .schemas import ACTIVE_SCHEMA_RELATIVE_ROOT, SCHEMA_FILENAMES
 
     reasons: set[str] = set()
     entries = lock.get("entries")
@@ -271,7 +273,7 @@ def schema_lock_reason_codes(
         observed_versions.add(version)
         observed_paths.add(relative)
         expected_filename = SCHEMA_FILENAMES.get(version)
-        if relative != f"evaluation/schemas/{expected_filename}":
+        if relative != f"{ACTIVE_SCHEMA_RELATIVE_ROOT}/{expected_filename}":
             reasons.add("schema_lock.path_mismatch")
             continue
         try:
@@ -290,7 +292,7 @@ def schema_lock_reason_codes(
     if observed_versions != expected_versions or len(entries) != len(expected_versions):
         reasons.add("schema_lock.inventory_mismatch")
     expected_paths = {
-        f"evaluation/schemas/{filename}" for filename in SCHEMA_FILENAMES.values()
+        f"{ACTIVE_SCHEMA_RELATIVE_ROOT}/{filename}" for filename in SCHEMA_FILENAMES.values()
     }
     if observed_paths != expected_paths:
         reasons.add("schema_lock.inventory_mismatch")
@@ -333,9 +335,9 @@ def protocol_release_reason_codes(
         "manifest_sha256"
     ):
         reasons.add("protocol.schema_lock_mismatch")
-    from .schemas import SCHEMA_FILENAMES
+    from .schemas import ACTIVE_SCHEMA_RELATIVE_ROOT, SCHEMA_FILENAMES
 
-    schema_root = project_root / "evaluation" / "schemas"
+    schema_root = project_root / ACTIVE_SCHEMA_RELATIVE_ROOT
     schema_bindings = protocol.get("artifact_schemas", [])
     observed_schema_versions = [
         item.get("schema_version")
@@ -361,7 +363,7 @@ def protocol_release_reason_codes(
         if (
             expected_filename is None
             or binding["relative_path"]
-            != f"evaluation/schemas/{expected_filename}"
+            != f"{ACTIVE_SCHEMA_RELATIVE_ROOT}/{expected_filename}"
             or not str(binding["relative_path"]).startswith(
                 schema_root.relative_to(project_root).as_posix() + "/"
             )

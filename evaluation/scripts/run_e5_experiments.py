@@ -40,10 +40,11 @@ def write(path, document):
     Path(path).write_text(json.dumps(document, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
 
 
-def prepare(output: Path, runtime: Path, rules: Path):
+def prepare(output: Path, runtime: Path, rules: Path, *, dataset: Path | None = None, experiment_version: str = "e5-calibration-v2"):
     if (output / "design.json").exists():
         raise ValueError("design already exists")
-    cases = [read(path) for path in sorted((ROOT / "evaluation/datasets/decisionbench-v1-candidate/calibration/cases").glob("*.json"))]
+    dataset = dataset or ROOT / "evaluation/datasets/decisionbench-v1-candidate/calibration"
+    cases = [read(path) for path in sorted((dataset / "cases").glob("*.json"))]
     labels = []
     for case in cases:
         episode_id = episode_id_for_case(case)
@@ -59,7 +60,7 @@ def prepare(output: Path, runtime: Path, rules: Path):
     repeat_ids = [item["episode_id"] for item in labels if item["label"] in {"good", "mild"}]
     assert len(repeat_ids) == 16
     document = {
-        "experiment_version": "e5-calibration-v2", "source_commit": current_git_commit(),
+        "experiment_version": experiment_version, "source_commit": current_git_commit(),
         "runtime_path": os.path.relpath(runtime, output),
         "config": JUDGE_CONFIG_DOCUMENT_V3, "prompt_sha256": JUDGE_PROMPT_SHA256_V3,
         "runtime_manifest_sha256": read(runtime / "run-manifest.json")["manifest_sha256"],
@@ -211,9 +212,11 @@ def main():
     parser.add_argument("--runtime", type=Path)
     parser.add_argument("--rules", type=Path)
     parser.add_argument("--budget-ledger", type=Path)
+    parser.add_argument("--dataset", type=Path)
+    parser.add_argument("--experiment-version", default="e5-calibration-v2")
     args = parser.parse_args()
     if args.action == "prepare":
-        prepare(args.output, args.runtime, args.rules)
+        prepare(args.output, args.runtime, args.rules, dataset=args.dataset, experiment_version=args.experiment_version)
     elif args.action == "summarize":
         summarize(args.output)
     else:

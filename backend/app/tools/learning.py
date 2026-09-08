@@ -86,9 +86,9 @@ class SubmissionListArgs(BaseModel):
 
 class SubmissionCheckArgs(BaseModel):
     submission_id: int
-    score: float = Field(ge=0, le=100)
+    score: float = Field(ge=0, le=100, description="Score for a supported verdict only. Missing or ambiguous evidence requires clarification without calling this write tool; do not encode uncertainty as zero.")
     feedback: str = Field(min_length=1, max_length=10000)
-    checks: list[dict[str, Any]] = Field(default_factory=list)
+    checks: list[dict[str, Any]] = Field(default_factory=list, description="Observed criterion checks with passed boolean and evidence. Feedback must specify how to retest each failing boundary and its expected result.")
     pass_threshold: float = Field(default=70, ge=0, le=100)
 
 

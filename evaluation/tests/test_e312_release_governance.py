@@ -42,7 +42,7 @@ from learning_agent_eval.release_governance import (
     resource_bindings,
     schema_lock_reason_codes,
 )
-from learning_agent_eval.schemas import SCHEMA_FILENAMES, schema_documents
+from learning_agent_eval.schemas import ACTIVE_SCHEMA_RELATIVE_ROOT, SCHEMA_FILENAMES, schema_documents
 from learning_agent_eval.source_bundles import (
     SOURCE_COMPONENTS,
     build_source_bundle,
@@ -50,7 +50,7 @@ from learning_agent_eval.source_bundles import (
 from learning_agent_eval.validator import validate_dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATASET = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v4-engineering"
+DATASET = PROJECT_ROOT / "evaluation/datasets/decisionbench-v1.1-regression/engineering"
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -349,8 +349,8 @@ def test_protocol_release_schema_lock_and_source_bundles_recompute() -> None:
     lock = load_schema_lock()
     assert schema_lock_reason_codes(lock) == ()
     assert {item["relative_path"] for item in lock["entries"]} == {
-        f"evaluation/schemas/{path.name}"
-        for path in (PROJECT_ROOT / "evaluation" / "schemas").glob("*.schema.json")
+        f"{ACTIVE_SCHEMA_RELATIVE_ROOT}/{path.name}"
+        for path in (PROJECT_ROOT / ACTIVE_SCHEMA_RELATIVE_ROOT).glob("*.schema.json")
     }
     statuses = {item["schema_version"]: item["status"] for item in lock["entries"]}
     assert {

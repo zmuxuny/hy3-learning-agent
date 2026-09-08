@@ -32,16 +32,17 @@ from .integrity import (
 )
 from .models import DecisionEpisodeV4
 from .normalizers import NormalizationError, normalize_rfc3339
+from .release_governance import ACTIVE_PROTOCOL_RELEASE_ID
 from .validator import resolve_evidence_path
 
-ACTION_MAPPING_VERSION_V2 = "runtime-action-mapping-v2"
+ACTION_MAPPING_VERSION_V2 = "runtime-action-mapping-v2-e6-repair-1"
 TOOL_ACTION_MAPPING_V2 = {
     "plan.proposal.create": "PROPOSE_PLAN",
-    "planning.intake.update": "REQUEST_USER_INPUT",
     "notification.send": "INTERVENE_MESSAGE",
     "quiz.create": "INTERVENE_QUIZ_OR_REVIEW",
     "review.schedule": "INTERVENE_QUIZ_OR_REVIEW",
     "plan.patch": "APPLY_REVERSIBLE_PATCH",
+    "task.patch": "APPLY_REVERSIBLE_PATCH",
 }
 ACTION_EFFECT_TYPES_V2 = {
     "PROPOSE_PLAN": "plan_proposal",
@@ -143,6 +144,11 @@ def _link_model_calls(
 
 def _invocation_action(invocation: Mapping[str, Any]) -> str | None:
     tool_name = str(invocation["tool_name"])
+    if tool_name == "planning.intake.update":
+        args = invocation.get("canonical_args", {})
+        # Recording confirmed facts is intermediate planning state, not a request
+        # to the learner. Only actual open questions represent REQUEST_USER_INPUT.
+        return "REQUEST_USER_INPUT" if args.get("open_questions") else None
     if tool_name == "submission.check":
         status = invocation.get("result", {}).get("status")
         if status == "accepted":
@@ -648,7 +654,7 @@ def build_decision_episode_v4(
             "runtime_executed": True,
             "protocol_eligible": protocol_eligible,
             "provider_eligible": provider_eligible,
-            "evaluation_protocol_release_id": "evaluation-protocol-release-1.0",
+            "evaluation_protocol_release_id": ACTIVE_PROTOCOL_RELEASE_ID,
             "evaluation_protocol_release_sha256": evaluation_protocol_release_sha256,
             "benchmark_release_id": benchmark_release_id,
             "benchmark_release_sha256": benchmark_release_sha256,

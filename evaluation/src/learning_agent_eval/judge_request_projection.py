@@ -68,6 +68,7 @@ def evidence_catalog(episode):
     trace = episode["observable_trace"]
     for i, _ in enumerate(trace["model_calls"]):
         paths.extend([f"observable_trace.model_calls[{i}].assistant_text",
+                      f"observable_trace.model_calls[{i}].returned_tool_calls",
                       f"observable_trace.model_calls[{i}].visible_context.messages"])
     for i, _ in enumerate(trace["tool_invocations"]):
         paths.extend([f"observable_trace.tool_invocations[{i}].canonical_args",

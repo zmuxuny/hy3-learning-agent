@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import shutil
+import socket
 import tempfile
 import urllib.error
 import urllib.request
@@ -103,6 +104,22 @@ class JudgeProviderReplyV2:
     status: Literal["completed", "provider_error", "framework_error"]
     finish_reason: str | None = None
     budget_ticket: int | None = None
+    failure_category: str | None = None
+    http_status: int | None = None
+
+
+def _safe_provider_failure(exc: Exception) -> tuple[str, int | None]:
+    """Categorize known failures without exporting arbitrary messages or URLs."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return "http_error", exc.code
+    cause = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+    if isinstance(cause, (TimeoutError, socket.timeout)):
+        return "transport_timeout", None
+    if isinstance(exc, (urllib.error.URLError, OSError)):
+        return "transport_error", None
+    if isinstance(exc, (UnicodeError, ValueError, KeyError, IndexError, TypeError)):
+        return "response_envelope_invalid", None
+    return "provider_error_unclassified", None
 
 
 class JudgeProviderV2(Protocol):
@@ -332,6 +349,7 @@ class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
         usage = None
         content = response_model = request_id = finish_reason = None
         status = "provider_error"
+        failure_category = http_status = None
         try:
             wire_request = urllib.request.Request(
                 HY3_COMPLETIONS_URL, data=wire,
@@ -339,7 +357,7 @@ class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
                 method="POST",
             )
             # urllib has no automatic request retries. Each repair re-enters here.
-            with urllib.request.urlopen(wire_request, timeout=120) as response:
+            with urllib.request.urlopen(wire_request, timeout=self.config_document["timeout_seconds"]) as response:
                 envelope = json.loads(response.read().decode("utf-8"))
             if not isinstance(envelope, dict):
                 raise TypeError("provider_envelope_invalid")
@@ -351,8 +369,8 @@ class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
             response_model, request_id = str(envelope["model"]), str(envelope["id"])
             finish_reason = choice.get("finish_reason")
             status = "completed"
-        except (OSError, UnicodeError, ValueError, KeyError, IndexError, TypeError):
-            pass
+        except (OSError, UnicodeError, ValueError, KeyError, IndexError, TypeError) as exc:
+            failure_category, http_status = _safe_provider_failure(exc)
         finally:
             self.budget.settle(ticket, usage)
             self.budget.record_outcome(ticket, outcome="complete" if status == "completed" else "provider_error")
@@ -361,6 +379,7 @@ class OpenAICompatibleHy3JudgeProviderV3(OpenAICompatibleHy3JudgeProviderV2):
             provider_request_id=request_id, requested_at=requested_at,
             responded_at=utc_timestamp(datetime.now(timezone.utc)), status=status,
             finish_reason=finish_reason, budget_ticket=ticket,
+            failure_category=failure_category, http_status=http_status,
         )
 
 
@@ -422,11 +441,12 @@ def build_provider_request_v3(
 ) -> dict[str, Any]:
     """Build an ephemeral active request; expanded prompt text is never published."""
 
+    catalog = evidence_catalog(blind_input.document["episode"])
     messages: list[dict[str, str]] = [
         {"role": "system", "content": JUDGE_INSTRUCTIONS_V3},
         {"role": "user", "content": canonical_json({
             **pack_shared_values(blind_input.document),
-            "evidence_path_catalog": evidence_catalog(blind_input.document["episode"]),
+            "evidence_path_catalog": catalog,
         })},
     ]
     if repair_error_codes:
@@ -444,6 +464,18 @@ def build_provider_request_v3(
                 ),
             }
         )
+    output_schema = JudgeResponsePayloadV1.model_json_schema(mode="validation")
+    def constrain_paths(node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "evidence_paths" and isinstance(value, dict):
+                    value["items"] = {"type": "string", "enum": catalog}
+                else:
+                    constrain_paths(value)
+        elif isinstance(node, list):
+            for value in node:
+                constrain_paths(value)
+    constrain_paths(output_schema)
     return {
         "schema_version": "judge-provider-request-v3",
         "messages": messages,
@@ -452,7 +484,7 @@ def build_provider_request_v3(
             "json_schema": {
                 "name": "judge_response_payload_v1",
                 "strict": True,
-                "schema": JudgeResponsePayloadV1.model_json_schema(mode="validation"),
+                "schema": output_schema,
             },
         },
     }
@@ -1236,8 +1268,16 @@ def _evaluate_one_v3(
                 error_codes = ("judge_request_rejected",)
                 _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, None, error_codes)
                 break
-            except Exception:  # noqa: BLE001 - raw provider exceptions are discarded
+            except Exception as exc:  # noqa: BLE001 - only safe categories escape
                 error_codes = ("provider_error",)
+                category, http_status = _safe_provider_failure(exc)
+                failed_reply = JudgeProviderReplyV2(
+                    content=None, request_model=HY3_MODEL, response_model=None,
+                    provider_request_id=None, requested_at=utc_timestamp(datetime.now(timezone.utc)),
+                    responded_at=None, status="provider_error",
+                    failure_category=category, http_status=http_status,
+                )
+                _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, failed_reply, error_codes)
                 break
             replies.append(reply)
             if reply.status != "completed":
@@ -1359,7 +1399,8 @@ def _record_judge_attempt(path, episode, blind_input, attempt, reply, errors, in
     except (TypeError, ValueError):
         malformed = True
         content = None
-    withheld = malformed or bool(privacy_issues(content, file="judge-attempt"))
+    privacy_withheld = bool(privacy_issues(content, file="judge-attempt"))
+    withheld = malformed or privacy_withheld
     row = {
         "record_version": "judge-attempt-evidence-v1", "episode_id": episode["episode_id"],
         "episode_sha256": episode["provenance"]["episode_sha256"], "blind_input_sha256": blind_input.sha256,
@@ -1368,9 +1409,11 @@ def _record_judge_attempt(path, episode, blind_input, attempt, reply, errors, in
         "budget_ticket": None if reply is None else reply.budget_ticket,
         "finish_reason": None if reply is None else reply.finish_reason,
         "provider_status": None if reply is None else reply.status,
+        "provider_failure_category": None if reply is None else reply.failure_category,
+        "http_status": None if reply is None else reply.http_status,
         "validation_error_codes": list(errors), "invalid_evidence_paths": [] if withheld else list(invalid_paths),
         "public_response": None if withheld else content,
-        "response_withheld_for_privacy": withheld, "public_response_sha256": sha256_digest(content),
+        "response_withheld_for_privacy": privacy_withheld, "public_response_sha256": sha256_digest(content),
         "response_projection_status": "unparseable_json" if malformed else "privacy_withheld" if withheld else "public",
         "raw_response_text_sha256": None if raw_text is None else hashlib.sha256(raw_text.encode("utf-8")).hexdigest(),
         "raw_response_text_bytes": None if raw_text is None else len(raw_text.encode("utf-8")),

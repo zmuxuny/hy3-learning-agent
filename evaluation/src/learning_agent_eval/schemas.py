@@ -6,6 +6,8 @@ from typing import Any
 
 from .models import SCHEMA_MODELS
 
+ACTIVE_SCHEMA_RELATIVE_ROOT = "evaluation/schemas/protocol-1.1"
+
 SCHEMA_FILENAMES = {
     "decision-episode-v1": "decision-episode-v1.schema.json",
     "decision-episode-v2": "decision-episode-v2.schema.json",
@@ -57,7 +59,12 @@ SCHEMA_FILENAMES = {
 def schema_documents() -> dict[str, dict[str, Any]]:
     """Return each committed contract Schema keyed by its stable file name."""
 
-    return {
+    documents = {
         SCHEMA_FILENAMES[version]: model.model_json_schema(mode="validation")
         for version, model in SCHEMA_MODELS.items()
     }
+    for filename, document in documents.items():
+        document["$id"] = (
+            document["$id"].rsplit("/", 1)[0] + "/protocol-1.1/" + filename
+        )
+    return documents

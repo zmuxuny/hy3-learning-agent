@@ -28,6 +28,7 @@ from .models import (
     RuntimeRunManifestV2,
     RuntimeRunManifestV3,
 )
+from .release_governance import ACTIVE_PROTOCOL_RELEASE_ID
 from .runtime_metadata import (
     DEPENDENCY_LOCK_VERSION,
     ENDPOINT_POLICY_SHA256,
@@ -479,7 +480,7 @@ def build_runtime_failure_v2(
             and isolation_evidence_protocol_eligible(isolation_evidence)
         ),
         "provider_eligible": provider_attestation["attribution_status"] == "eligible",
-        "evaluation_protocol_release_id": "evaluation-protocol-release-1.0",
+        "evaluation_protocol_release_id": ACTIVE_PROTOCOL_RELEASE_ID,
         "evaluation_protocol_release_sha256": evaluation_protocol_release_sha256,
         "benchmark_release_id": benchmark_release_id,
         "benchmark_release_sha256": benchmark_release_sha256,
@@ -601,7 +602,7 @@ def build_runtime_manifest_v3(
         "schema_version": "runtime-run-manifest-v3",
         "runtime_run_id": runtime_run_id,
         "dataset_version": dataset_version,
-        "evaluation_protocol_release_id": "evaluation-protocol-release-1.0",
+        "evaluation_protocol_release_id": ACTIVE_PROTOCOL_RELEASE_ID,
         "evaluation_protocol_release_sha256": evaluation_protocol_release_sha256,
         "benchmark_release_id": benchmark_release_id,
         "benchmark_release_sha256": benchmark_release_sha256,

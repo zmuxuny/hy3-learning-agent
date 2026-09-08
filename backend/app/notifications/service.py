@@ -5,6 +5,7 @@ from email.message import EmailMessage
 from zoneinfo import ZoneInfo
 
 from app.core.config import settings
+from app.core.learner_time import learner_timezone
 from app.core.time import utc_now
 from app.db.uow import flush as flush_uow
 from app.models import (
@@ -358,7 +359,7 @@ class NotificationService:
             return True, "user initiated"
 
         profile = await self.db.get(UserProfile, owner_id)
-        timezone_name = settings.DEFAULT_TIMEZONE
+        timezone_name = await learner_timezone(self.db, owner_id)
         now_local = utc_now().astimezone(ZoneInfo(timezone_name))
         quiet_hours = profile.quiet_hours if profile else {"start": "23:00", "end": "08:00"}
         if _within_quiet_hours(now_local.time(), quiet_hours):
@@ -428,7 +429,7 @@ class NotificationService:
             next_eligible_at = next_quiet_hours_end(
                 utc_now(),
                 quiet_hours,
-                timezone_name=settings.DEFAULT_TIMEZONE,
+                timezone_name=await learner_timezone(self.db, owner_id),
             )
             outcome = "deferred_quiet_hours"
         if run is not None:

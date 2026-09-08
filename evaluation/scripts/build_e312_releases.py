@@ -406,38 +406,29 @@ def _release_is_committed() -> bool:
 
 
 def _verify_committed_release() -> int:
-    """Verify Release 1.0 after publication without rewriting any asset."""
+    """Verify historical release bytes; reproduce execution at its old commit."""
 
-    protocol = load_protocol_release()
-    lock = load_schema_lock()
-    if protocol_release_reason_codes(protocol):
-        raise RuntimeError("committed_protocol_release_drift")
-    if schema_lock_reason_codes(lock):
-        raise RuntimeError("committed_schema_lock_drift")
-    generated = schema_documents()
-    for filename, expected in generated.items():
-        if _load(SCHEMA_ROOT / filename) != expected:
-            raise RuntimeError(f"committed_schema_model_drift:{filename}")
-    for component in SOURCE_COMPONENTS:
-        committed = _load(RELEASE_ROOT / "source-bundles" / f"{component}.json")
-        if committed != build_source_bundle(component):
-            raise RuntimeError(f"committed_source_bundle_drift:{component}")
-    if _load(RELEASE_ROOT / "model-action-declaration-v2.json") != (
-        ACTION_DECLARATION_PROTOCOL_DOCUMENT
-    ):
-        raise RuntimeError("committed_action_protocol_drift")
-    suite = CaseSuiteManifestV2.model_validate(_load(SUITE_PATH)).model_dump(mode="json")
-    benchmark = load_benchmark_release(DATASET_ROOT, suite)
-    assessment = assess_benchmark_release(
-        dataset_root=DATASET_ROOT,
-        suite=suite,
-        release=benchmark,
-        filtered=False,
-    )
-    if not assessment.protocol_match or not assessment.suite_complete:
-        raise RuntimeError("committed_engineering_benchmark_drift")
-    load_production_registry()
-    print("e312_release_assets_verified immutable_release=1.0")
+    protocol = EvaluationProtocolReleaseV1.model_validate(
+        _load(RELEASE_ROOT / "evaluation-protocol-release-1.0.json")
+    ).model_dump(mode="json")
+    if protocol["release_sha256"] != protocol_release_digest(protocol):
+        raise RuntimeError("historical_protocol_digest_mismatch")
+    lock = _load(RELEASE_ROOT / "schema-lock-v1.json")
+    if lock["manifest_sha256"] != schema_lock_digest(lock):
+        raise RuntimeError("historical_schema_lock_digest_mismatch")
+    if protocol["schema_lock_sha256"] != lock["manifest_sha256"]:
+        raise RuntimeError("historical_schema_lock_binding_mismatch")
+    for entry in lock["entries"]:
+        if hashlib.sha256((PROJECT_ROOT / entry["relative_path"]).read_bytes()).hexdigest() != entry["raw_sha256"]:
+            raise RuntimeError("historical_schema_bytes_changed")
+    for binding in protocol["source_bundles"]:
+        document = _load(RELEASE_ROOT / "source-bundles" / f"{binding['component']}.json")
+        if document["bundle_sha256"] != source_bundle_digest(document) or document["bundle_sha256"] != binding["bundle_sha256"]:
+            raise RuntimeError("historical_source_bundle_binding_mismatch")
+    action = _load(PROJECT_ROOT / protocol["action_protocol_relative_path"])
+    if sha256_digest(action) != protocol["action_protocol_sha256"]:
+        raise RuntimeError("historical_action_protocol_binding_mismatch")
+    print("e312_release_assets_verified immutable_release=1.0 execution_requires_historical_commit=true")
     return 0
 
 
@@ -473,9 +464,9 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
-    if _release_is_committed() and not args.refresh_untrusted_candidate:
+    if (RELEASE_ROOT / "evaluation-protocol-release-1.0.json").exists() and not args.refresh_untrusted_candidate:
         return _verify_committed_release()
-    if _release_is_committed():
+    if (RELEASE_ROOT / "evaluation-protocol-release-1.0.json").exists():
         return _refresh_untrusted_candidate()
     schemas, lock = _schema_assets()
     bundles = _source_assets()

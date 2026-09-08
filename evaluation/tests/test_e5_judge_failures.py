@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def judge_inputs(tmp_path_factory):
     """One isolated scripted Episode supplies the real Judge artifact contracts."""
     root = tmp_path_factory.mktemp("e5-judge-failure-inputs")
-    dataset = ROOT / "evaluation/datasets/decisionbench-v1-candidate/calibration"
+    dataset = ROOT / "evaluation/datasets/decisionbench-v1.1-regression/calibration"
     case = json.loads((dataset / "cases/case-0001.json").read_text())
     episode_id = episode_id_for_case(case)
     runtime, rules = root / "runtime", root / "rules"
@@ -66,7 +66,7 @@ def _evaluate(tmp_path, monkeypatch, inputs, envelopes):
         assert row["status"] == "reserved"
         assert row["ticket"] == len(requests) + 1
         assert row["input_limit"] == len(request.data) + 2048
-        assert timeout == 120
+        assert timeout == 180
         assert len(requests) < len(envelopes), "unexpected unbudgeted repair"
         requests.append(json.loads(request.data))
         return BytesIO(json.dumps(envelopes[len(requests) - 1]).encode())
@@ -109,7 +109,7 @@ def test_non_object_provider_response_keeps_attempt_and_unknown_usage_reservatio
     assert attempts[0]["validation_error_codes"] == ["provider_error"]
     assert billing[0]["outcome"] == "provider_error"
     assert billing[0]["status"] == "unknown_usage_reserved"
-    assert billing[0]["charged_micro_cny"] == billing[0]["input_limit"] + 8192 * 4
+    assert billing[0]["charged_micro_cny"] == billing[0]["input_limit"] + 12288 * 4
     assert budget["requests"] == budget["unsettled"] == 1
 
 
@@ -150,7 +150,7 @@ def test_unparseable_public_content_keeps_digest_and_allows_paid_repair_publicat
     assert summary.repair_attempted_episode_ids == (judge_inputs["episode_id"],)
     first = attempts[0]
     assert first["validation_error_codes"] == [error]
-    assert first["public_response"] is None and first["response_withheld_for_privacy"]
+    assert first["public_response"] is None and not first["response_withheld_for_privacy"]
     assert first["response_projection_status"] == "unparseable_json"
     assert first["raw_response_text_sha256"] == hashlib.sha256(rejected.encode()).hexdigest()
     assert first["raw_response_text_bytes"] == len(rejected.encode())

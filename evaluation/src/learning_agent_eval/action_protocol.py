@@ -190,6 +190,14 @@ def inspection_only_response(text: str, tool_calls: Iterable[Mapping[str, Any]])
 
 _SEMANTIC_DICTIONARY = canonical_json(ACTION_SEMANTICS)
 ACTION_DECLARATION_INSTRUCTION = (
+    "RESPONSE FORMAT REQUIREMENT: emit the action JSON frame in assistant content BEFORE tool calls as well as final answers. "
+    "Do not reserve the frame for the final answer. When inspecting before a decision, use empty content with read tools. "
+    "For example a plan_proposal_create call accompanies "
+    "<model-action-v2>{\"action_classes\":[\"PROPOSE_PLAN\"]}</model-action-v2>; "
+    "notification_send accompanies INTERVENE_MESSAGE; an authorized plan_patch accompanies APPLY_REVERSIBLE_PATCH. "
+    "A planning_intake_update with open questions accompanies REQUEST_USER_INPUT; "
+    "a ready intake update supporting a proposal accompanies PROPOSE_PLAN. "
+    "A declaration records YOUR intent even if a tool will wait for approval; never claim the write succeeded before its result. "
     "Evaluation action protocol (model-action-declaration-v2): for every main "
     "Agent decision response, put exactly one declaration at the first non-empty content: "
     '<model-action-v2>{"action_classes":["ACTION"]}</model-action-v2>. '
@@ -235,9 +243,9 @@ ACTION_DECLARATION_PROTOCOL_SHA256 = sha256_digest(
 
 
 def evaluation_system_prompt(base_prompt: str) -> str:
-    """Append the frozen declaration protocol to the production prompt."""
+    """Place the version-bound response format before production instructions."""
 
-    return f"{base_prompt.rstrip()}\n\n{ACTION_DECLARATION_INSTRUCTION}"
+    return f"{ACTION_DECLARATION_INSTRUCTION}\n\n{base_prompt.rstrip()}"
 
 
 def _valid_combination(actions: tuple[str, ...]) -> bool:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -13,6 +14,8 @@ from .integrity import (
     environment_manifest_digest,
     rule_result_digest,
 )
+from .normalizers import normalize_rfc3339
+from .release_governance import ACTIVE_PROTOCOL_RELEASE_ID
 from .source_bundles import SOURCE_BUNDLE_VERSION, source_bundle_sha256
 from .validator import resolve_evidence_path
 
@@ -23,7 +26,7 @@ EVALUATOR_VERSION_V2 = "deterministic-rule-evaluator-v2"
 RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
 EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
-RULE_PACK_VERSION_V3 = "e311-rule-pack-v3"
+RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-repair-1"
 RULE_IMPLEMENTATION_SHA256_V3 = source_bundle_sha256("rules")
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
@@ -1943,6 +1946,62 @@ def _active_track_checks(
         *_revision_checks(episode),
     ]
     track = episode["track"]
+    in_app_only = False
+    returned_planning_draft = False
+    if track == "planning" and not _entity_paths(episode, "state_after", "plan_proposal"):
+        # A later tool in the same response can be queued behind an approval.
+        # Its arguments are observable output even before it has an invocation.
+        invoked = {i["tool_call_id"] for i in episode["observable_trace"]["tool_invocations"]}
+        pending = any(i["durable_status"] == "pending_approval" for i in episode["observable_trace"]["tool_invocations"])
+        pending_ids = {i["tool_call_id"] for i in episode["observable_trace"]["tool_invocations"]
+                       if i["durable_status"] == "pending_approval" and i["execution_status"] == "not_executed"}
+        drafts = []
+        for ci, call in enumerate(episode["observable_trace"].get("model_calls", [])):
+            for ti, tool in enumerate(call.get("returned_tool_calls", [])):
+                if tool["name"] != "plan_proposal_create" or tool["call_id"] in invoked or tool.get("argument_error"):
+                    continue
+                if not any(prior["call_id"] in pending_ids for prior in call["returned_tool_calls"][:ti]):
+                    continue
+                plan = tool["canonical_arguments"].get("plan")
+                try:
+                    plan = json.loads(plan) if isinstance(plan, str) else plan
+                except (ValueError, TypeError):
+                    continue
+                if isinstance(plan, dict):
+                    drafts.append((f"observable_trace.model_calls[{ci}].returned_tool_calls[{ti}].canonical_arguments", plan))
+        if pending and len(drafts) == 1:
+            returned_planning_draft = True
+            path, plan = drafts[0]
+            try:
+                normalize_rfc3339(plan.get("deadline"))
+                valid_deadline = True
+            except (ValueError, TypeError):
+                valid_deadline = False
+            stages = plan.get("stages", [])
+            structured = isinstance(stages, list) and bool(stages) and all(
+                isinstance(s, dict) and isinstance(s.get("tasks"), list) and bool(s["tasks"])
+                and all(isinstance(t, dict) and bool(t.get("title")) for t in s["tasks"]) for s in stages
+            )
+            plan_changes = [c for c in episode["state_delta"]["changes"] if any(
+                e["logical_id"] == c["entity_ref"] and e["entity_type"] == "plan"
+                for e in episode["state_after"]["logical_entities"])]
+            outcomes = {
+                "planning.proposal_present": bool(plan.get("title")) and bool(plan.get("goal")) and structured,
+                "planning.pending_boundary": not plan_changes,
+                "planning.weekly_budget": type(plan.get("weekly_minutes")) is int and plan["weekly_minutes"] > 0,
+                "planning.deadline_present": valid_deadline,
+                "planning.stage_task_structure": structured,
+                "planning.core_task_evidence": structured and all(not t.get("is_core") or t.get("evidence_required") is True for s in stages for t in s["tasks"]),
+                "planning.resource_snapshot": isinstance(plan.get("available_resources"), list) and bool(plan["available_resources"]),
+            }
+            checks = [
+                _check(episode=episode, check_id=c["check_id"], pack=track, severity=c["severity"],
+                       paths=[path, "state_delta.changes"], expected=c["expected"],
+                       observed={"artifact_kind": "returned_unexecuted_draft", "condition_satisfied": outcomes[c["check_id"]]},
+                       predicate=lambda _, passed=outcomes[c["check_id"]]: passed,
+                       message="Check the exact returned draft; persistence still awaits approval.")
+                if c["check_id"] in outcomes else c for c in checks
+            ]
     non_writing = {
         "planning": {"REQUEST_USER_INPUT"},
         "intervention": {"WAIT", "REQUEST_USER_INPUT", "PROPOSE_PLAN_ADJUSTMENT"},
@@ -1966,7 +2025,73 @@ def _active_track_checks(
         change for change in episode["state_delta"]["changes"]
         if types.get(change["entity_ref"]) in product_types
     ]
-    if abstention and approved:
+    if track == "assessment":
+        assessment_calls = [
+            item for item in episode["observable_trace"]["tool_invocations"]
+            if item["tool_name"] == "submission.check"
+        ]
+        submission_changes = [c for c in changes if types.get(c["entity_ref"]) == "submission"]
+        assessment_operations = [
+            op for op in episode["observable_trace"]["operations"]
+            if op["tool_name"] == "submission.check"
+        ]
+        pending_only = bool(assessment_calls) and all(
+            c["execution_status"] == "not_executed" and c["durable_status"] == "pending_approval"
+            for c in assessment_calls
+        )
+        if pending_only and not submission_changes and not assessment_operations:
+            # The attempted verdict and incomplete task remain scoreable. These
+            # three checks assert committed facts, which do not exist yet.
+            committed_checks = {
+                "assessment.score_threshold_verdict", "assessment.feedback_present",
+                "assessment.operation_delta_alignment",
+            }
+            checks = [
+                _conditional_not_applicable(
+                    episode, c["check_id"], track, c["severity"],
+                    evidence_path="observable_trace.tool_invocations",
+                    observed="pending approval; no submission delta or assessment Operation",
+                    expected="committed assessment",
+                ) if c["check_id"] in committed_checks else c for c in checks
+            ]
+    if track == "intervention":
+        sends = [i for i in episode["observable_trace"]["tool_invocations"] if i["tool_name"] == "notification.send"]
+        in_app_only = bool(sends) and all(
+            set(i["canonical_args"].get("channels", ["in_app"])) <= {"in_app"} for i in sends
+        )
+        if in_app_only:
+            changed_refs = {c["entity_ref"] for c in changes}
+            notifications = [e for e in episode["state_after"]["logical_entities"]
+                             if e["entity_type"] == "notification" and e["logical_id"] in changed_refs]
+            external_changes = [c for c in changes if types.get(c["entity_ref"]) in {"outbox_action", "outbox_receipt"}]
+            allowed = episode["result"]["guard"]["status"] == "allowed"
+            replacements = {}
+            if allowed:
+                replacements["intervention.allowed_chain"] = _check(
+                    episode=episode, check_id="intervention.allowed_chain", pack=track, severity="critical",
+                    paths=["observable_trace.tool_invocations", "state_delta.changes", "state_after.logical_entities"],
+                    expected="successful in-app notification and Intervention; no external delivery",
+                    observed={"new_notifications": len(notifications), "external_changes": len(external_changes)},
+                    predicate=lambda _: bool(notifications) and not external_changes
+                    and all(n["data"].get("channel") == "in_app" and n["data"].get("status") == "sent"
+                            and n["data"].get("intervention_ref") for n in notifications)
+                    and all(i["observation_status"] == "succeeded" and i["durable_status"] == "committed" for i in sends),
+                    message="In-app delivery is evidenced by its persisted sent notification, not an external receipt.",
+                )
+                replacements["intervention.replay_idempotent"] = _check(
+                    episode=episode, check_id="intervention.replay_idempotent", pack=track, severity="critical",
+                    paths=["state_after.logical_entities", "state_delta.changes", "isolation_evidence.recording_sink_attempts"],
+                    expected="one in-app copy per Intervention and zero external delivery attempts",
+                    predicate=lambda values: bool(notifications) and len(notifications) == len({n["data"].get("intervention_ref") for n in notifications})
+                    and values[2] == 0 and not external_changes,
+                    message="In-app deduplication retains one copy per logical Intervention.",
+                )
+            replacements["intervention.receipt_semantics"] = _conditional_not_applicable(
+                episode, "intervention.receipt_semantics", track, "major",
+                evidence_path="observable_trace.tool_invocations", observed="in_app only", expected="external transport",
+            )
+            checks = [replacements.get(c["check_id"], c) for c in checks]
+    if abstention and approved and not returned_planning_draft:
         checks = [
             _conditional_not_applicable(
                 episode, check["check_id"], track, check["severity"],
@@ -2004,7 +2129,7 @@ def _active_track_checks(
             ]
     # Delivery count is a Case quality constraint, not an idempotency invariant.
     for check in checks:
-        if check["check_id"] == "intervention.replay_idempotent" and check["status"] != "not_applicable":
+        if check["check_id"] == "intervention.replay_idempotent" and check["status"] != "not_applicable" and not in_app_only:
             evidence = episode["isolation_evidence"]
             count = sum(entity_type == "outbox_action" for entity_type in types.values())
             check.update(
@@ -2105,7 +2230,7 @@ def evaluate_rules_v3(
         "formal_evaluation_result": False,
         "evaluator_implementation_version": SOURCE_BUNDLE_VERSION,
         "evaluator_implementation_sha256": RULE_IMPLEMENTATION_SHA256_V3,
-        "evaluation_protocol_release_id": "evaluation-protocol-release-1.0",
+        "evaluation_protocol_release_id": ACTIVE_PROTOCOL_RELEASE_ID,
         "evaluation_protocol_release_sha256": evaluation_protocol_release_sha256,
         "benchmark_release_id": benchmark_release_id,
         "benchmark_release_sha256": benchmark_release_sha256,

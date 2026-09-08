@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.envfile import clear_env_keys, update_env_file
 from app.core.config import settings
+from app.core.learner_time import learner_timezone
 from app.core.redaction import redact_text
 from app.db.database import get_db
 from app.db.uow import DatabaseBusyError, commit as commit_uow
@@ -193,7 +194,7 @@ async def read_settings(db: AsyncSession = Depends(get_db)):
         ),
         "vapid_public_key": settings.VAPID_PUBLIC_KEY,
         "notification_cooldown_minutes": _notification_cooldown(profile),
-        "timezone": settings.DEFAULT_TIMEZONE,
+        "timezone": await learner_timezone(db, settings.DEFAULT_OWNER_ID),
     }
 
 

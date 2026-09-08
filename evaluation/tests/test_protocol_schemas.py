@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from learning_agent_eval.models import SCHEMA_DIALECT
-from learning_agent_eval.schemas import schema_documents
+from learning_agent_eval.schemas import ACTIVE_SCHEMA_RELATIVE_ROOT, schema_documents
 from learning_agent_eval.validator import validate_dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -62,7 +62,7 @@ def test_committed_json_schemas_match_source_models() -> None:
         "trusted-benchmark-registry-v1.schema.json",
     }
     for filename, expected in generated.items():
-        committed = json.loads((SCHEMA_ROOT / filename).read_text(encoding="utf-8"))
+        committed = json.loads((PROJECT_ROOT / ACTIVE_SCHEMA_RELATIVE_ROOT / filename).read_text(encoding="utf-8"))
         assert committed == expected
         assert committed["$schema"] == SCHEMA_DIALECT
         assert committed["additionalProperties"] is False

@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_semantic_pending_and_confirmed_complete_active_pipeline(tmp_path):
-    dataset = ROOT / "evaluation/datasets/decisionbench-v1-candidate/calibration"
+    dataset = ROOT / "evaluation/datasets/decisionbench-v1.1-regression/calibration"
     case = json.loads((dataset / "cases/case-0001.json").read_text())
     episode_id = episode_id_for_case(case)
     runtime, rules, judges = (tmp_path / name for name in ["runtime", "rules", "judges"])
