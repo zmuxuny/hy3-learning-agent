@@ -1,0 +1,10 @@
+{
+  "checked_date": "2026-09-08",
+  "source_url": "https://cloud.tencent.com/document/product/1823/130055",
+  "source_updated": "2026-09-04 09:28:30",
+  "model": "Hy3",
+  "input_cny_per_million_tokens": 1,
+  "output_cny_per_million_tokens": 4,
+  "cached_input_cny_per_million_tokens": 0.25,
+  "ledger_policy": "same noncached conservative 1/4 pricing; no pricing source change"
+}

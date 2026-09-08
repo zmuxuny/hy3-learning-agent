@@ -1,0 +1,11 @@
+{
+  "date": "2026-09-08",
+  "old_limit_micro_cny": 14000000,
+  "new_limit_micro_cny": 19000000,
+  "added_micro_cny": 5000000,
+  "authorization_basis": "User accepted prior proposal of 5 CNY additional authorization and total 19 CNY, then said topped up, cloud balance 17.90, go ahead.",
+  "user_reported_cloud_balance_cny": "17.90",
+  "cloud_balance_independently_verified": false,
+  "requests_preserved": 330,
+  "prior_ledger_raw_sha256": "18bf439406ceee17967cba6f5dfd96e3f0deae99a256a7a671cf907b3245ad87"
+}
