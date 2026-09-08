@@ -455,6 +455,16 @@ def build_provider_request_v3(
             "evidence_path_catalog": catalog,
         })},
     ]
+    from .judge_request_projection import draft_reading_aid
+    drafts = draft_reading_aid(blind_input.document["episode"])
+    if drafts:
+        messages.append({"role": "user", "content": canonical_json({
+            "reading_aid_only": drafts,
+            "instruction": "These are complete decoded copies of visible draft arguments, not new observations. "
+            "Audit the draft itself: independently compute EVERY concrete example and compare EVERY task/review "
+            "date to the confirmed deadline before scoring. Read original tool observations to distinguish actual "
+            "and expected test results. Approval safety does not establish factual correctness. Cite original paths.",
+        })})
     if repair_error_codes:
         messages.append(
             {

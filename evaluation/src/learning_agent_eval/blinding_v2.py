@@ -128,13 +128,14 @@ def _state_projection(state: Mapping[str, Any], *, salt: str) -> dict[str, Any]:
     return _sanitize(projected, salt=salt)
 
 
-def _trace_projection(trace: Mapping[str, Any], *, salt: str) -> dict[str, Any]:
+def _trace_projection(trace: Mapping[str, Any], *, salt: str, retain_returned: bool = False) -> dict[str, Any]:
     projected = deepcopy(dict(trace))
     for call in projected.get("model_calls", []):
         call.pop("request_model", None)
         call.pop("request_config", None)
         call.pop("token_usage", None)
-        call.pop("returned_tool_calls", None)
+        if not retain_returned:
+            call.pop("returned_tool_calls", None)
     return _sanitize(projected, salt=salt)
 
 
@@ -160,7 +161,7 @@ def _delta_projection(episode: Mapping[str, Any], *, salt: str) -> dict[str, Any
     return _sanitize(projected, salt=salt)
 
 
-def _episode_projection(episode: Mapping[str, Any], *, salt: str) -> dict[str, Any]:
+def _episode_projection(episode: Mapping[str, Any], *, salt: str, retain_returned: bool = False) -> dict[str, Any]:
     environment = episode["environment"]
     projection = {
         "schema_version": episode["schema_version"],
@@ -181,7 +182,7 @@ def _episode_projection(episode: Mapping[str, Any], *, salt: str) -> dict[str, A
             },
             salt=salt,
         ),
-        "observable_trace": _trace_projection(episode["observable_trace"], salt=salt),
+        "observable_trace": _trace_projection(episode["observable_trace"], salt=salt, retain_returned=retain_returned),
         "result": _sanitize(episode["result"], salt=salt),
         "completeness": _sanitize(episode["completeness"], salt=salt),
         "isolation_evidence": _sanitize(episode["isolation_evidence"], salt=salt),
@@ -352,7 +353,7 @@ def build_blind_judge_input_v3(
         }
     )
     judge_id = f"judge-{salt[:20].translate(_OPAQUE_TRANSLATION)}"
-    episode_projection = _episode_projection(episode, salt=salt)
+    episode_projection = _episode_projection(episode, salt=salt, retain_returned=True)
     for constraint in reference["constraints"]:
         for path in constraint["evidence_paths"]:
             original_found = resolve_evidence_path(episode, path)[0]

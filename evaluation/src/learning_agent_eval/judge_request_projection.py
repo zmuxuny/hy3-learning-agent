@@ -75,3 +75,26 @@ def evidence_catalog(episode):
                       f"observable_trace.tool_invocations[{i}].result"])
     paths.extend(f"observable_trace.guard_decisions[{i}]" for i, _ in enumerate(trace["guard_decisions"]))
     return [path for path in paths if resolve_evidence_path(episode, path)[0]]
+
+
+def draft_reading_aid(episode):
+    """Expose complete draft objects for reading, without removing source evidence.
+
+    Product tool arguments may encode a plan as JSON text. Decode only that
+    transport for this redundant view and cite its original, visible path.
+    """
+    import json
+
+    drafts = []
+    for index, call in enumerate(episode["observable_trace"]["model_calls"]):
+        for tool in call.get("returned_tool_calls", []):
+            plan = tool.get("canonical_arguments", {}).get("plan")
+            if isinstance(plan, str):
+                try:
+                    plan = json.loads(plan)
+                except ValueError:
+                    continue
+            if isinstance(plan, dict):
+                drafts.append({"evidence_path": f"observable_trace.model_calls[{index}].returned_tool_calls",
+                               "draft_plan": plan})
+    return drafts

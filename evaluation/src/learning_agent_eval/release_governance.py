@@ -28,8 +28,8 @@ from .source_bundles import SOURCE_COMPONENTS, build_source_bundle
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 RELEASE_ROOT = PROJECT_ROOT / "evaluation" / "releases"
-SUPPORTED_PROTOCOL_VERSIONS = ("1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7")
-ACTIVE_PROTOCOL_VERSION = "1.7"
+SUPPORTED_PROTOCOL_VERSIONS = ("1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8")
+ACTIVE_PROTOCOL_VERSION = "1.8"
 ACTIVE_PROTOCOL_RELEASE_ID = f"evaluation-protocol-release-{ACTIVE_PROTOCOL_VERSION}"
 PROTOCOL_RELEASE_PATH = RELEASE_ROOT / f"{ACTIVE_PROTOCOL_RELEASE_ID}.json"
 PRODUCTION_REGISTRY_PATH = RELEASE_ROOT / "trusted-benchmark-registry-v1.json"
@@ -48,7 +48,7 @@ CANONICALIZATION_DOCUMENT = {
     "array_order": "significant",
 }
 CANONICALIZATION_SHA256 = sha256_digest(CANONICALIZATION_DOCUMENT)
-BLINDING_POLICY_VERSION = "judge-path-blinding-v2"
+BLINDING_POLICY_VERSION = "judge-path-blinding-v3-returned-actions"
 BLINDING_POLICY_SHA256 = sha256_digest(
     {
         "version": BLINDING_POLICY_VERSION,

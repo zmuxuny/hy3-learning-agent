@@ -47,3 +47,15 @@ def test_plan_dates_reject_review_over_deadline_and_before_task():
     assert any('precedes' in i for i in plan_completeness_issues(PlanCreate.model_validate(data)))
     data['stages'][0]['tasks'][0]['review_due_at']='2026-09-20T00:00:00Z'
     assert not plan_completeness_issues(PlanCreate.model_validate(data))
+
+
+def test_active_blinding_keeps_pending_raw_draft_and_decodes_reading_copy():
+    from learning_agent_eval.blinding_v2 import _trace_projection
+    from learning_agent_eval.judge_request_projection import draft_reading_aid
+    trace = {'model_calls': [{'request_model': 'hidden', 'returned_tool_calls': [{'name': 'plan_proposal_create', 'canonical_arguments': {'plan': '{"title":"draft","stages":[],"deadline":"2026-09-20"}'}}]}]}
+    projected = _trace_projection(trace, salt='test', retain_returned=True)
+    assert 'request_model' not in projected['model_calls'][0]
+    assert projected['model_calls'][0]['returned_tool_calls'] == trace['model_calls'][0]['returned_tool_calls']
+    aid = draft_reading_aid({'observable_trace': projected})
+    assert aid[0]['draft_plan']['deadline'] == '2026-09-20'
+    assert aid[0]['evidence_path'] == 'observable_trace.model_calls[0].returned_tool_calls'

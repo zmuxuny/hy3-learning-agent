@@ -328,7 +328,7 @@ JUDGE_CONFIG_SHA256_V2 = sha256_digest(JUDGE_CONFIG_DOCUMENT_V2)
 
 # E3.1.1 clean switch: v3 binds the unchanged public Rubric to the v4
 # scoreable-behavior Episode and the frozen constraint-proposition semantics.
-JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-final-1"
+JUDGE_PROMPT_VERSION_V3 = "hy3-judge-prompt-v3-e6-final-2"
 JUDGE_VERSION_V3 = "hy3-structured-judge-v3"
 JUDGE_CONFIG_VERSION_V3 = "hy3-judge-config-v3-budgeted-e6-2"
 JUDGE_INSTRUCTIONS_V3 = (
