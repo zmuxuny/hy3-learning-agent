@@ -102,3 +102,18 @@ def test_canonical_message_delta_keeps_run_causality_without_undo_operation():
     message["entity_type"] = "plan"
     message["logical_id"] = "plan:probe"
     assert build_state_delta(before, after)["error_codes"] == ["delta.operation_unattributed.plan"]
+
+
+def test_message_effect_requires_the_actual_intervention_invocation_link():
+    from learning_agent_eval.exporter_v4 import _invocation_entity_refs
+    invocation = {"invocation_id": "tool_invocation:one", "operation_refs": [], "tool_name": "notification.send"}
+    after = {"logical_entities": [
+        {"logical_id": "chat_message:one", "entity_type": "chat_message", "data": {"run_ref": "run:one"}},
+        {"logical_id": "chat_message:unrelated", "entity_type": "chat_message", "data": {"run_ref": "run:one"}},
+        {"logical_id": "intervention:one", "entity_type": "intervention", "data": {
+            "canonical_message_ref": "chat_message:one", "invocation_ref": "tool_invocation:one"}},
+    ]}
+    delta = {"changes": [{"entity_ref": row["logical_id"], "operation_refs": []} for row in after["logical_entities"]]}
+    assert _invocation_entity_refs(invocation, state_after=after, state_delta=delta, operations={}) == ["chat_message:one", "intervention:one"]
+    invocation["invocation_id"] = "tool_invocation:other"
+    assert _invocation_entity_refs(invocation, state_after=after, state_delta=delta, operations={}) == []

@@ -35,7 +35,7 @@ from .normalizers import NormalizationError, normalize_rfc3339
 from .release_governance import ACTIVE_PROTOCOL_RELEASE_ID
 from .validator import resolve_evidence_path
 
-ACTION_MAPPING_VERSION_V2 = "runtime-action-mapping-v2-e6-final-1"
+ACTION_MAPPING_VERSION_V2 = "runtime-action-mapping-v2-e6-final-2"
 TOOL_ACTION_MAPPING_V2 = {
     "plan.proposal.create": "PROPOSE_PLAN",
     "notification.send": "INTERVENE_MESSAGE",
@@ -197,9 +197,16 @@ def _invocation_entity_refs(
         entity = entities.get(change["entity_ref"])
         data = entity.get("data", {}) if entity else {}
         entity_type = entity.get("entity_type") if entity else None
+        canonical_message_link = entity_type == "chat_message" and any(
+            row["entity_type"] == "intervention"
+            and row["data"].get("canonical_message_ref") == change["entity_ref"]
+            and row["data"].get("invocation_ref") == invocation["invocation_id"]
+            for row in entities.values()
+        )
         if (
             operation_refs.intersection(change["operation_refs"])
             or data.get("invocation_ref") == invocation["invocation_id"]
+            or canonical_message_link
         ) and entity_type not in INFRASTRUCTURE_ENTITY_TYPES_V2:
             refs.add(change["entity_ref"])
     if invocation["tool_name"] == "submission.check":
