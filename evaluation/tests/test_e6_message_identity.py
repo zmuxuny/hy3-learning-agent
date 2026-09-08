@@ -8,7 +8,7 @@ from learning_agent_eval.snapshots import _data, _register_identities, normalize
 
 
 def registry_with_messages(message_id=2, notification_id=1):
-    registry = StableIdentityRegistry("message-identity-probe")
+    registry = StableIdentityRegistry(episode_id="message-identity-probe")
     rows = {
         "session": [SimpleNamespace(id="session", title="public synthetic", created_at="2026-09-09T02:00:00Z")],
         "chat_message": [SimpleNamespace(id=message_id, session_id="session", run_id=None,
@@ -43,6 +43,8 @@ async def test_snapshot_collects_only_intervention_canonical_chat_message(tmp_pa
     runtime.mkdir()
     database = runtime / "messages.sqlite3"
     monkeypatch.setenv("EVALUATION_MODE", "1")
+    monkeypatch.setenv("ENABLE_SCHEDULER", "false")
+    monkeypatch.setenv("ENABLE_EMAIL_REPLY_POLLING", "false")
     monkeypatch.setenv("RUNTIME_STATE_ROOT", str(runtime))
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
     from app.db.database import Base
@@ -72,7 +74,7 @@ async def test_snapshot_collects_only_intervention_canonical_chat_message(tmp_pa
         await db.commit()
     fixture = {"episode_id": "probe", "owner_id": "local", "run_id": "probe", "state_before": {
         "logical_entities": [], "context": {"public_summary": "Synthetic", "source_refs": [], "context_sha256": "0" * 64}}}
-    registry = StableIdentityRegistry("probe")
+    registry = StableIdentityRegistry(episode_id="probe")
     capture = await collect_state_snapshot(factory, fixture, registry=registry,
         captured_at="2026-09-09T02:00:00Z", resource_version="synthetic-v1", resource_digest="0" * 64, phase="after")
     messages = [e for e in capture.document["logical_entities"] if e["entity_type"] == "chat_message"]
