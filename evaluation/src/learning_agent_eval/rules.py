@@ -26,7 +26,7 @@ EVALUATOR_VERSION_V2 = "deterministic-rule-evaluator-v2"
 RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
 EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
-RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-final-2"
+RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-final-3"
 RULE_IMPLEMENTATION_SHA256_V3 = source_bundle_sha256("rules")
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
@@ -614,7 +614,7 @@ def _intervention_checks(episode: Mapping[str, Any]) -> list[dict[str, Any]]:
         entity.get("entity_type")
         for entity in episode.get("state_after", {}).get("logical_entities", [])
     }
-    notification_chain = {"intervention", "notification", "outbox_action", "outbox_receipt"}
+    notification_chain = {"chat_message", "intervention", "notification", "outbox_action", "outbox_receipt"}
     entity_types = {
         entity.get("logical_id"): entity.get("entity_type")
         for root in ("state_before", "state_after")
@@ -2054,7 +2054,7 @@ def _active_track_checks(
     # Agent/session/audit rows may change even when learning state is untouched.
     product_types = {
         "plan", "stage", "task", "submission", "plan_proposal", "quiz",
-        "review", "intervention", "notification", "outbox_action", "outbox_receipt",
+        "review", "chat_message", "intervention", "notification", "outbox_action", "outbox_receipt",
     }
     types = {
         entity["logical_id"]: entity["entity_type"]

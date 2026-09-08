@@ -17,7 +17,7 @@ from .normalizers import (
     normalize_rfc3339,
 )
 
-COLLECTOR_VERSION = "e2-snapshot-collector-v1"
+COLLECTOR_VERSION = "e2-snapshot-collector-v2-message-identity"
 
 # This is both documentation and the closed public surface of the collector.
 # ORM ``__dict__`` and unlisted columns are never inspected or serialized.
@@ -77,6 +77,7 @@ FIELD_ALLOWLISTS: dict[str, tuple[str, ...]] = {
         "created_at",
         "updated_at",
     ),
+    "chat_message": ("session_ref", "run_ref", "role", "content", "content_hash", "version", "created_at"),
     "context_snapshot": (
         "plan_ref",
         "session_ref",
@@ -312,6 +313,7 @@ FIELD_ALLOWLISTS: dict[str, tuple[str, ...]] = {
         "created_at",
     ),
     "intervention": (
+        "canonical_message_ref",
         "decision_ref",
         "run_ref",
         "invocation_ref",
@@ -407,7 +409,7 @@ _REFERENCE_TYPES = {
     "quiz_id": "quiz",
     "review_id": "review",
     "snapshot_id": "context_snapshot",
-    "canonical_message_id": "notification",
+    "canonical_message_id": "chat_message",
     "reply_to_intervention_id": "intervention",
     "approval_id": "run_approval",
 }
@@ -519,7 +521,12 @@ async def _load_rows(
             db, models.OutboxAction, models.OutboxAction.owner_id == owner_id
         )
         outbox_ids = [row.id for row in outbox]
+        interventions = await _rows(db, models.Intervention, models.Intervention.owner_id == owner_id)
+        # Canonical conversation messages are distinct from delivery copies.
+        # Capture only messages linked by this owner's interventions, not chat history.
+        message_ids = [row.canonical_message_id for row in interventions if row.canonical_message_id is not None]
         return {
+            "chat_message": await _rows(db, models.ChatMessage, models.ChatMessage.id.in_(message_ids)) if message_ids else [],
             "learner": owners,
             "profiles": profiles,
             "session": sessions,
@@ -585,9 +592,7 @@ async def _load_rows(
                 models.ProactiveDecision,
                 models.ProactiveDecision.owner_id == owner_id,
             ),
-            "intervention": await _rows(
-                db, models.Intervention, models.Intervention.owner_id == owner_id
-            ),
+            "intervention": interventions,
             "notification": await _rows(
                 db, models.Notification, models.Notification.owner_id == owner_id
             ),
@@ -660,6 +665,14 @@ def _semantic_key(
             "parent_run_ref": registry.resolve("agent_run", row.parent_run_id),
             "trigger": row.trigger,
             "objective": row.objective,
+            "created_at": row.created_at,
+        }
+    if entity_type == "chat_message":
+        return {
+            "session_ref": registry.resolve("session", row.session_id),
+            "run_ref": registry.resolve("agent_run", row.run_id),
+            "role": row.role,
+            "content_hash": row.content_hash,
             "created_at": row.created_at,
         }
     if entity_type == "stage":
@@ -1137,6 +1150,12 @@ def _data(
             ),
             "created_plan_ref": _ref(registry, "plan", row.created_plan_id),
         }
+    elif entity_type == "chat_message":
+        raw = {
+            "session_ref": _ref(registry, "session", row.session_id),
+            "run_ref": _ref(registry, "agent_run", row.run_id),
+            **values("role", "content", "content_hash", "version", "created_at"),
+        }
     elif entity_type == "context_snapshot":
         raw = {
             "plan_ref": _ref(registry, "plan", row.plan_id),
@@ -1427,6 +1446,7 @@ def _data(
         }
     elif entity_type == "intervention":
         raw = {
+            "canonical_message_ref": _ref(registry, "chat_message", row.canonical_message_id),
             "decision_ref": _ref(
                 registry, "proactive_decision", row.proactive_decision_id
             ),
