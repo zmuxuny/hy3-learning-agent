@@ -10,6 +10,9 @@ from typing import Any
 from .canonical import canonical_json_bytes, sha256_digest
 
 _NO_OPERATION_ENTITY_TYPES = {
+    # Canonical messages, like notification deliveries, have no reversible Operation.
+    # Their run and entity sources remain explicit in every delta entry.
+    "chat_message",
     "session",
     "agent_run",
     "context_snapshot",

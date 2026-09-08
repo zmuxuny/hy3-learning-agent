@@ -83,3 +83,22 @@ async def test_snapshot_collects_only_intervention_canonical_chat_message(tmp_pa
     assert interventions[0]["data"]["canonical_message_ref"] == messages[0]["logical_id"]
     assert normalize_reference_fields({"canonical_message_id": 2}, registry)["canonical_message_ref"] == messages[0]["logical_id"]
     await engine.dispose()
+
+
+def test_canonical_message_delta_keeps_run_causality_without_undo_operation():
+    from learning_agent_eval.deltas import build_state_delta
+    message = {"logical_id": "chat_message:probe:001", "entity_type": "chat_message",
+               "source": "runtime", "scope_ref": "learner:probe", "data": {
+                   "run_ref": "agent_run:probe:001", "content": "Confirm minutes."}}
+    before = {"capture_status": "complete", "logical_entities": [], "snapshot_sha256": "a" * 64}
+    after = {"capture_status": "complete", "logical_entities": [message], "snapshot_sha256": "b" * 64}
+    delta = build_state_delta(before, after)
+    assert delta["capture_status"] == "complete" and delta["error_codes"] == []
+    change = delta["changes"][0]
+    assert change["operation_alignment"] == "not_applicable"
+    assert change["after"]["value"]["content"] == "Confirm minutes."
+    assert {"source_type": "runtime", "ref": "agent_run:probe:001"} in change["source_refs"]
+    # An unrelated plan write still needs a matching reversible operation.
+    message["entity_type"] = "plan"
+    message["logical_id"] = "plan:probe"
+    assert build_state_delta(before, after)["error_codes"] == ["delta.operation_unattributed.plan"]

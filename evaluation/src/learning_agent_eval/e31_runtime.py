@@ -37,7 +37,6 @@ from .runtime_metadata import (
     HY3_MODEL,
     provider_attribution_reason_codes,
 )
-from .provider_config import configured_endpoint
 from .runtime_metadata import (
     dependency_lock_sha256 as current_dependency_lock_sha256,
 )
