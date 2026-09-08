@@ -1,0 +1,43 @@
+{
+  "version": "e6-repair-method-readiness-v1",
+  "implementation_commit": "c25da4406f94f1f168ebf99c7912f3a55e6ecc7e",
+  "decision": "end_method_tuning_before_new_G_families",
+  "ai_disclosure": "开发、内容复核与审计由AI执行；非独立人类验收",
+  "calibration_v1": {
+    "valid": 88,
+    "strict_order": 7,
+    "families": 8,
+    "conclusion_consistency": 0.9625,
+    "mean_population_sd": 1.904512099
+  },
+  "calibration_v2": {
+    "valid": 88,
+    "strict_order": 8,
+    "families": 8,
+    "conclusion_consistency": 0.9875,
+    "mean_population_sd": 0.838603194
+  },
+  "development_v3": {
+    "real_episodes": 7,
+    "rules_without_gate": 7,
+    "valid_judges": 7
+  },
+  "final_v4_differential": {
+    "assessment_valid": 20,
+    "assessment_target_met": 20,
+    "timezone_valid": 6,
+    "timezone_target_met": 6
+  },
+  "limitations": [
+    "最终版没有再次执行完整88；采用v2全量及v3/v4适用差分验证",
+    "Planning Good D5仍有小幅波动",
+    "所有方法材料均已见，formal=false",
+    "新G家族仅经输入内容审查，不曾调用待测Agent或Judge"
+  ],
+  "evidence_files": {
+    "dev-v3-ai-audit.json": "840e8d1f3cf8dc7bbb595902195c4f236071c66a4b5849c410f610421bf72992",
+    "method-v4-focused-ai-audit.json": "600a39c2b12345a6116989455181878aa8c7def2eb56040796a1ef5ae80f4323",
+    "version-comparison.json": "87912c8c170b0123a0c9defb2cc2feeaea76a48fb491cd528d9af6c6d37d7446",
+    "budget-before-formal-summary.json": "81f03040e95462f1421e8e6e3952ec39702927950e51a226759b1572adc5228f"
+  }
+}
