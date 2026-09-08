@@ -1,0 +1,12 @@
+{
+  "local_links_checked": 164,
+  "missing": [],
+  "closure_checks_link_pending_owned_cleanup": false,
+  "final_report_counts": {
+    "pass": 23,
+    "fail": 18,
+    "unscored": 7,
+    "denominator": 48
+  },
+  "closure_checks_link_verified": true
+}

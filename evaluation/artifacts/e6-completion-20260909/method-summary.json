@@ -1,0 +1,197 @@
+{
+  "created_at": "2026-09-08T19:27:28.353513+00:00",
+  "method_protocol": "1.13",
+  "reviewer_role": "primary_ai_reviewer",
+  "independent": false,
+  "scope": "1.9 repeated-method statistics retained separately; 1.10 fixed8 diagnosis, 1.11 real7 Development, 1.13 unchanged Judge/Rules and full engineering plus canonical-effect differential. Do not relabel previous real calls as 1.13 calls.",
+  "calibration": {
+    "planned": 8,
+    "complete": 8,
+    "pairs": [
+      {
+        "family": "calibration-c01",
+        "good": 100.0,
+        "mild": 72.5,
+        "good_gt_mild": true
+      },
+      {
+        "family": "calibration-c03",
+        "good": 100.0,
+        "mild": 87.5,
+        "good_gt_mild": true
+      },
+      {
+        "family": "calibration-c05",
+        "good": 100.0,
+        "mild": 95.0,
+        "good_gt_mild": true
+      },
+      {
+        "family": "calibration-c07",
+        "good": 95.0,
+        "mild": 87.5,
+        "good_gt_mild": true
+      }
+    ],
+    "anchor_matches": 7,
+    "anchors": 8,
+    "rows": [
+      {
+        "case_id": "calibration-c03-i-mild",
+        "group": "calibration-c03",
+        "label": "mild",
+        "raw_score": 87.5,
+        "levels": {
+          "D1": 1,
+          "D2": 2,
+          "D3": 2,
+          "D4": 2,
+          "D5": 2,
+          "D6": 2,
+          "D7": 1
+        },
+        "anchor_matched": true,
+        "judge_result_sha256": "f8c64283e39cbacfe1e710264af1028aef4bd003fff67f50ba95ae8716bd7ea4"
+      },
+      {
+        "case_id": "calibration-c01-p-good",
+        "group": "calibration-c01",
+        "label": "good",
+        "raw_score": 100.0,
+        "levels": {
+          "D1": 2,
+          "D2": 2,
+          "D3": 2,
+          "D4": 2,
+          "D5": 2,
+          "D6": 2,
+          "D7": 2
+        },
+        "anchor_matched": true,
+        "judge_result_sha256": "171a9017f0a05ae7c3390fdfd79aa60c1a76761e2a8afdf0a8b7ed80b7b22df9"
+      },
+      {
+        "case_id": "calibration-c05-a-mild",
+        "group": "calibration-c05",
+        "label": "mild",
+        "raw_score": 95.0,
+        "levels": {
+          "D1": 2,
+          "D2": 2,
+          "D3": 2,
+          "D4": 2,
+          "D5": 2,
+          "D6": 2,
+          "D7": 1
+        },
+        "anchor_matched": true,
+        "judge_result_sha256": "142da277d58d52ad49f48ee746ce6964f37bdcab5bd7e7210eda6fd43076f211"
+      },
+      {
+        "case_id": "calibration-c03-i-good",
+        "group": "calibration-c03",
+        "label": "good",
+        "raw_score": 100.0,
+        "levels": {
+          "D1": 2,
+          "D2": 2,
+          "D3": 2,
+          "D4": 2,
+          "D5": 2,
+          "D6": 2,
+          "D7": 2
+        },
+        "anchor_matched": true,
+        "judge_result_sha256": "373b690e6e6cc4c6902a3e0da6a61950fa2ee301bc03d69b2910f81b9297c298"
+      },
+      {
+        "case_id": "calibration-c07-r-mild",
+        "group": "calibration-c07",
+        "label": "mild",
+        "raw_score": 87.5,
+        "levels": {
+          "D1": 1,
+          "D2": 2,
+          "D3": 2,
+          "D4": 2,
+          "D5": 2,
+          "D6": 2,
+          "D7": 1
+        },
+        "anchor_matched": true,
+        "judge_result_sha256": "9885c85b8316adb35ed0c0422b31935cfaeec873652cd389314de80b0a47294c"
+      },
+      {
+        "case_id": "calibration-c05-a-good",
+        "group": "calibration-c05",
+        "label": "good",
+        "raw_score": 100.0,
+        "levels": {
+          "D1": 2,
+          "D2": 2,
+          "D3": 2,
+          "D4": 2,
+          "D5": 2,
+          "D6": 2,
+          "D7": 2
+        },
+        "anchor_matched": true,
+        "judge_result_sha256": "4e12f480079d5777d55d61eb2a513dda1687b721f1ab960785c67c972c9ab635"
+      },
+      {
+        "case_id": "calibration-c07-r-good",
+        "group": "calibration-c07",
+        "label": "good",
+        "raw_score": 95.0,
+        "levels": {
+          "D1": 2,
+          "D2": 2,
+          "D3": 2,
+          "D4": 2,
+          "D5": 2,
+          "D6": 2,
+          "D7": 1
+        },
+        "anchor_matched": false,
+        "judge_result_sha256": "9bfb010ac84b2ea6506d35770d00dd22f8df519e7570676e3cbd1e73fca22953"
+      },
+      {
+        "case_id": "calibration-c01-p-mild",
+        "group": "calibration-c01",
+        "label": "mild",
+        "raw_score": 72.5,
+        "levels": {
+          "D1": 1,
+          "D2": 1,
+          "D3": 2,
+          "D4": 2,
+          "D5": 1,
+          "D6": 2,
+          "D7": 1
+        },
+        "anchor_matched": true,
+        "judge_result_sha256": "4995cd536909fae02428173d4a9781cd1145346808222473d5c93aac9482ff62"
+      }
+    ],
+    "limitation": "C07 Revision Good D7=1 is an over-penalty; original result retained. No independent stability replication claimed."
+  },
+  "development": {
+    "planned": 7,
+    "runtime_episodes": 7,
+    "runtime_failures": 0,
+    "judge_statuses": {
+      "complete": 7
+    },
+    "reviewed_case_notes": {
+      "dev-afternoon-i": "Actual 1 canonical message plus 1 delivery; final declaration missing remains; original unclassified-message Gate corrected only in cross-version replay. Reminder 0x1FF=511 correct, alternatives asked rather than asserted.",
+      "dev-quiet-i": "UTC15:30=local23:30; legitimate WAIT no notification.",
+      "dev-ambiguous-a": "1.2km=1200m correct, units not known; asks both, no score; first read missing declaration retained.",
+      "dev-missing-a": "No source or runs, requests specific boundary material, no score or writes.",
+      "dev-history-r": "Current120/v4/zero stages correctly read, old draft missing, no mutation; final declaration missing.",
+      "dev-patch-r": "Only110→85/v2→3, one correct forward/inverse operation; no false version rollback promise.",
+      "dev-ring-planning-p": "Full draft180min: week90/90; size0/3 and modulo3 correctly use count rather than one-empty-slot; all due/review≤09-22; seven tasks allowed by this Development prompt; core evidence clear; pending no Proposal/Plan; first read missing declaration retained."
+    }
+  },
+  "mechanism_source": "1da6c8fa589b7b6b8bd9e09bc8c74175270a5b79",
+  "decision": "Proceed to brand-new frozen48 after this decision is committed. No more method tuning from H results; framework identity chain is covered. Capability failures retained honestly."
+}

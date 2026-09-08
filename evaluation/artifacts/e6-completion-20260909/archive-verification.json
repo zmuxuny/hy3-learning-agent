@@ -1,0 +1,9 @@
+{
+  "members": 6766,
+  "nested_members": 17621,
+  "source_manifests_verified": 9,
+  "all_outer_hashes_verified": true,
+  "configured_key_absent": true,
+  "no_database_or_env_members": true,
+  "reviewer_role": "primary_ai_reviewer"
+}

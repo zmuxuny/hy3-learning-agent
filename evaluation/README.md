@@ -1,12 +1,6 @@
 # Learning Agent Evaluation
 
-`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。当前活动协议为
-**Evaluation Protocol Release 1.6（可配置Hy3接口的未登记候选）**。最近已登记并运行的正式批次是
-Protocol1.4 / `decisionbench-v1.4-e6-test-release`，必须用冻结源码`1f1f35f`复现旧批次。
-Protocol 1.0 的旧 E6 Release 与结果原字节保留；1.1–1.3 为本轮另版开发验证，
-不把它们的已见样本称为正式测试。`DecisionEpisode v4` 仍是活动 Episode Schema，
-Schema、方法协议和 Benchmark 各自独立版本化。完整过程见
-[E6新版修复与验证记录](../docs/E6新版修复与验证记录.md)。
+`evaluation/` 是第三阶段的隔离评测控制平面。当前活动协议为 **Evaluation Protocol Release 1.13**，最终测试为 `decisionbench-v1.13-e6-final-test`，源码固定 `35e77cf`。E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。E7/E8未开展。 见[E6最终记录](../docs/E6最终修复与验收记录.md)与[完整档案](artifacts/e6-completion-20260909/README.md)。DecisionEpisode v4、方法协议与Benchmark分别版本化。
 
 当前活动链路是：
 
@@ -34,11 +28,7 @@ CaseSpec v2（控制面，含私有标注）
 和 8 来源的 AI 内容裁决、候选重建和最终回归。S06 机制修复与 E5 必需实验已完成：
 V2 固定 `40fddb8`，24 例判别力和 16×5 重复共 88 个有效评估，最低预设方法目标达标。
 真实浏览器流程及 AI 审计完成，具体漏检/波动和费用见 [E5 验收记录](../docs/E5验收工作记录.md)。
-E6首批48/46/2保留；修复轮完成多版方法验证、新G家族冻结登记及48 Episode/33有效Judge/15失败，formal=false。
-1.5候选修复完整请求编码和输入超限分类，仓外45 passed、79请求证据等价，仅离线，真实复测0次。
-当时余额0.216953元，已停止该轮付费；接口切换后新授权约50元已登记，当前候选1.6完成45项回归和单例真实链路验证，详见[接口档案](artifacts/e6-provider-20260908/README.md)。历史版本、费用和剩余问题见[新版档案](artifacts/e6-repair-20260908/README.md)及
-[新版工作记录](../docs/E6新版修复与验证记录.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
-[原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
+E6各批次按原版本保留，F/G/H现均已见；最终I48在方法决定后新建并冻结。旧8项大输入已真实复测有效，旧79份完整请求往返等价、0超限。最终I批47份完整请求另测，I10-A上界201992超过196608，保留本地失败；另有5个Judge接口错误。1.13仓外65项回归通过；Calibration重复统计和跨版方法继承分别报告，不称独立复现。
 
 ## API与计费配置
 
@@ -52,7 +42,7 @@ Judge按完整base路径追加 `/chat/completions`，不再固定腾讯地址。
 每次预留冻结费率、计价依据和接口，结算不受后来费率修改影响，未知usage仍保留预留。
 用户已授权新接口约50元可用等价额度。站点公开倍率已留档，实际人民币单价未确认，当前以旧官方1/4费率作等价估算，
 不声称是新站实际扣款；账本 `pricing_basis` 标明这一口径。额度已登记一次，后续直接读取账本，不再加50元。
-接口修改无需重新设计Rubric；本轮1.6记录实际实现变化，旧1.0–1.5制品和既有正式批次保持原字节。
+接口修改无需重新设计Rubric；1.6记录接口切换，1.7–1.13记录后续修复；历史制品和既有正式批次均保留。
 
 ## 核心语义
 
@@ -69,7 +59,7 @@ Judge按完整base路径追加 `/chat/completions`，不再固定腾讯地址。
   `run_id/parent_run_id/parent_call_id/depth/call_purpose`。主 Agent、子 Agent和汇总调用
   都可重建；并发调用在开始时原子保留 ordinal，标题和记忆压缩等辅助调用明确标成
   非决策调用。
-- `model-action-declaration-v2` 以严格首个非空 JSON 帧或模型原生工具参数数组
+- `model-action-declaration-v2` 以唯一合法 JSON 帧（允许前导解释）或模型原生工具参数数组
   `evaluation_action_classes` 记录14类动作；主决策调用非流式，原始参数完整记录后
   仅剥离该协议字段交给生产工具。两种声明冲突或缺失仍失败，不自动补造。协议固定
   每类行动的轨道、语义、字段、边界、正反例与组合政策。工具和状态只
@@ -97,7 +87,7 @@ Judge按完整base路径追加 `/chat/completions`，不再固定腾讯地址。
 | `rule-result-v3` / `rule-run-manifest-v3` | v4 确定性规则、源码 bundle 摘要与 Hard Gate |
 | `judge-result-v3` / `judge-run-manifest-v3` | 盲化结构化 Judge、一次修复与 formal 继承 |
 | `aggregate-result-v3` / Track/Manifest v3 | 纯确定性 Rule-first 聚合与源码摘要 |
-| `evaluation-protocol-release-v1` | 当前候选 Protocol1.6 及历史版本分别绑定组件 |
+| `evaluation-protocol-release-v1` | 活动 Protocol1.13 及历史版本分别绑定组件 |
 | `benchmark-release-manifest-v1` | 固定 Benchmark Case/资源/partition/协议摘要 |
 | `trusted-benchmark-registry-v1` | 仓库固定的生产信任根；旧E6与新版E6分项登记 |
 | `source-bundle-manifest-v1` | 四个活动执行组件的保守来源包摘要 |
@@ -128,15 +118,15 @@ JSON/SHA-256 和自摘要。独立 Schema Lock 覆盖全部生成 Schema；即�
 `legacy_execution_disabled`。包级公共 API 只暴露当前 `run_active_runtime`、
 `evaluate_active_rules`、`evaluate_active_judges` 与 `aggregate_active_results`。
 
-当前 `decisionbench-v1.6-regression/engineering` 将旧v4工程Case原内容重新绑定到1.5，
+当前 `decisionbench-v1.13-regression/engineering` 将旧v4工程Case原内容重新绑定到1.13，
 包含故意的错误动作和Provider Failure，预期保留失败终态及非零退出码；不作为模型能力实验。
 以下命令在干净仓外副本和项目锁定依赖中执行，输出使用临时目录。旧v4绑定只供其历史源码执行：
 
 ```bash
 E31_ROOT="$(mktemp -d)"
 .venv/bin/python -m learning_agent_eval run-agent \
-  --dataset evaluation/datasets/decisionbench-v1.6-regression/engineering \
-  --manifest evaluation/datasets/decisionbench-v1.6-regression/engineering/manifest.json \
+  --dataset evaluation/datasets/decisionbench-v1.13-regression/engineering \
+  --manifest evaluation/datasets/decisionbench-v1.13-regression/engineering/manifest.json \
   --output "$E31_ROOT/runtime"
 .venv/bin/python -m learning_agent_eval validate-dataset \
   --dataset "$E31_ROOT/runtime"
@@ -191,6 +181,8 @@ Judge 盲化投影、Judge 展开 Prompt、Provider 原始响应/异常、API Ke
 Worker/staging 目录、私有推理和通知路由材料不发布。
 
 ## Snapshot、轨迹与身份
+
+Protocol1.13单独收集Intervention实际引用的chat_message，canonical_message_ref与notification投递身份分离；消息通过实际Intervention和invocation归入同一次效果，不按run_id泛化。最终决策以最后有效主回复和实际效果分类，全部历史声明/尝试仍保留；Judge完整读取returned_tool_calls及其草案，公开证据不截断。
 
 Collector 只读取闭合的实体/字段 allowlist。CaseSpec 用公开业务字段声明
 `identity_bindings`；注册器以语义字段匹配实际数据库对象，不能按排序位置把声明 ID
@@ -331,8 +323,7 @@ v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并�
 
 E4 已完成 48 Primary、24 Calibration 及 8 来源的 AI 内容裁决、绑定重建和最终回归；E5 必需实验已完成且最低方法目标达标。
 历史真实批次仍为 45 Episode + 3 Failure，候选保持探索身份，复核记录不计作独立人类一致性。
-E6首批与新版G测试均完成冻结登记及全批运行，分别保留46/2和33/15有效Judge/失败，formal=false；
-修复/验证和完整分母见[新版档案](artifacts/e6-repair-20260908/README.md)。1.5仅离线候选，G现在已见。
+E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。E7/E8未开展。 版本和完整分母见[最终档案](artifacts/e6-completion-20260909/README.md)。
 原人工审核由主AI执行并计入完成；扩展AI对齐统计、精确反事实、完整对抗安全扩展及E7/E8按实际进度记录，不等待真人。
 固定响应和 engineering 聚合不证明 Judge 标签正确或 Hy3 能力。已授权协议试跑只证明有限样例可执行，
 尚未统计完整 14 类真实遵循率；下一轮调用继续复用原预算，不能自动把探索记录升级为正式数据。发布治理细节见

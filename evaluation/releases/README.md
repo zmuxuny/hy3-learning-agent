@@ -1,3 +1,9 @@
+# 当前Release入口（2026-09-09）
+
+活动协议为Evaluation Protocol Release 1.13；最终I48 Benchmark为decisionbench-e6-final-test-release-1.13，固定源码35e77cf。E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。E7/E8未开展。 见[最终档案](../artifacts/e6-completion-20260909/README.md)。登记仅为本地可信基准登记，没有推送或公开发布。
+
+以下完整保留原Protocol1.0登记说明及当时运行前状态，均为历史。
+
 # Evaluation Release Assets
 
 本目录是 Evaluation Protocol Release 1.0 的仓库固定信任根，不是可由 CLI 指定的配置目录。

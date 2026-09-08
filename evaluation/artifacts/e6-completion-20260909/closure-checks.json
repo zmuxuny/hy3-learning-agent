@@ -1,0 +1,27 @@
+{
+  "completed_at": "2026-09-08T21:09:17.843178+00:00",
+  "reviewer_role": "primary_ai_reviewer",
+  "owned_temporary_root": "/tmp/e6-completion-hzk5jxfc",
+  "temporary_root_removed": true,
+  "isolated_checkouts_removed": [
+    "formal-copy",
+    "formal113-copy",
+    "run-v110",
+    "run-v111",
+    "run-v113",
+    "run-v17",
+    "run-v18",
+    "run-v19",
+    "test-copy",
+    "test-final"
+  ],
+  "temporary_database_files_removed": 28,
+  "owned_live_processes_before_cleanup": [],
+  "archive_hash_rechecked_before_cleanup": true,
+  "real_env_and_user_data_preserved": true,
+  "E6_execution_and_ai_review_complete": true,
+  "E7_E8_started": false,
+  "pushed": false,
+  "published": false,
+  "local_commit_evidence": "git log -- evaluation/artifacts/e6-completion-20260909/closure-checks.json"
+}
