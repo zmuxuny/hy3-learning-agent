@@ -1,11 +1,12 @@
 # Learning Agent Evaluation
 
-`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。E3.1.2 用
-**Evaluation Protocol Release 1.0** 固定唯一活动链、来源和 formal 政策；
-`DecisionEpisode v4` 是活动 Episode，v1/v2/v3 及其旧 Rules/Judge/聚合只保留为
-engineering-only 历史回归，不再公开执行。生产可信 Benchmark 注册表当前为空，因此
-任何现有数据都不能取得 formal 资格。`DecisionBench v1` 仍只是未来 Benchmark 发布名，
-不能与 Episode Schema 或 Protocol Release 版本混淆。
+`evaluation/` 是腾讯犀牛鸟第三阶段的隔离评测控制平面。当前活动协议为
+**Evaluation Protocol Release 1.5（仅离线验证的未登记候选）**。最近已登记并运行的正式批次是
+Protocol1.4 / `decisionbench-v1.4-e6-test-release`，必须用冻结源码`1f1f35f`复现旧批次。
+Protocol 1.0 的旧 E6 Release 与结果原字节保留；1.1–1.3 为本轮另版开发验证，
+不把它们的已见样本称为正式测试。`DecisionEpisode v4` 仍是活动 Episode Schema，
+Schema、方法协议和 Benchmark 各自独立版本化。完整过程见
+[E6新版修复与验证记录](../docs/E6新版修复与验证记录.md)。
 
 当前活动链路是：
 
@@ -33,7 +34,10 @@ CaseSpec v2（控制面，含私有标注）
 和 8 来源的 AI 内容裁决、候选重建和最终回归。S06 机制修复与 E5 必需实验已完成：
 V2 固定 `40fddb8`，24 例判别力和 16×5 重复共 88 个有效评估，最低预设方法目标达标。
 真实浏览器流程及 AI 审计完成，具体漏检/波动和费用见 [E5 验收记录](../docs/E5验收工作记录.md)。
-E6 冻结批次已执行：48 Episode、46 个有效 Judge、2 个 judge_error，逐轨报告和 AI 自审已完成；formal_capability_result=false，正式能力验收未通过。方法适用性及 Judge 漏检需另版验证，E7–E8 仍待完成。 用户最新明确当前可用17元，原账本已更正累计上限为34.609982元、历史占用17.609982元；已授权按[修复交接](../docs/E6修复开发交接.md)继续修复与另版验证。接续见 [E6工作记录](../docs/E6验收工作记录.md)和 [新测试数据卡](datasets/decisionbench-v1-e6-test/README.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
+E6首批48/46/2保留；修复轮完成多版方法验证、新G家族冻结登记及48 Episode/33有效Judge/15失败，formal=false。
+1.5候选修复完整请求编码和输入超限分类，仓外45 passed、79请求证据等价，仅离线，真实复测0次。
+当前余额0.216953元，已停止付费；版本、费用和剩余问题见[新版档案](artifacts/e6-repair-20260908/README.md)及
+[新版工作记录](../docs/E6新版修复与验证记录.md)。另见 [候选数据卡](datasets/decisionbench-v1-candidate/DATASET_CARD.md)、
 [原始运行记录](artifacts/e4-candidate-20260905/README.md)及 [方案复核](../docs/E4候选数据收口与方案复核.md)。
 
 ## 核心语义
@@ -51,7 +55,9 @@ E6 冻结批次已执行：48 Episode、46 个有效 Judge、2 个 judge_error�
   `run_id/parent_run_id/parent_call_id/depth/call_purpose`。主 Agent、子 Agent和汇总调用
   都可重建；并发调用在开始时原子保留 ordinal，标题和记忆压缩等辅助调用明确标成
   非决策调用。
-- `model-action-declaration-v2` 以严格首个非空 JSON 帧记录模型声明的 14 类动作，并固定
+- `model-action-declaration-v2` 以严格首个非空 JSON 帧或模型原生工具参数数组
+  `evaluation_action_classes` 记录14类动作；主决策调用非流式，原始参数完整记录后
+  仅剥离该协议字段交给生产工具。两种声明冲突或缺失仍失败，不自动补造。协议固定
   每类行动的轨道、语义、字段、边界、正反例与组合政策。工具和状态只
   校验实际效果，不用关键词、track 或 Case ID 猜测意图；跨轨、组合、缺失声明和无法归类
   状态仍形成可评分 Episode，由 Rules 失败关闭。
@@ -77,16 +83,16 @@ E6 冻结批次已执行：48 Episode、46 个有效 Judge、2 个 judge_error�
 | `rule-result-v3` / `rule-run-manifest-v3` | v4 确定性规则、源码 bundle 摘要与 Hard Gate |
 | `judge-result-v3` / `judge-run-manifest-v3` | 盲化结构化 Judge、一次修复与 formal 继承 |
 | `aggregate-result-v3` / Track/Manifest v3 | 纯确定性 Rule-first 聚合与源码摘要 |
-| `evaluation-protocol-release-v1` | 对外 Evaluation Protocol Release 1.0 与活动组件绑定 |
+| `evaluation-protocol-release-v1` | 当前候选 Protocol1.5 及历史版本分别绑定组件 |
 | `benchmark-release-manifest-v1` | 固定 Benchmark Case/资源/partition/协议摘要 |
-| `trusted-benchmark-registry-v1` | 仓库固定的生产信任根；当前注册项为 0 |
+| `trusted-benchmark-registry-v1` | 仓库固定的生产信任根；旧E6与新版E6分项登记 |
 | `source-bundle-manifest-v1` | 四个活动执行组件的保守来源包摘要 |
 | `schema-lock-manifest-v1` | 全部历史与活动 Schema 的独立原始字节锁 |
 
 所有契约使用 strict Pydantic、`extra=forbid`、JSON Schema 2020-12、唯一 canonical
 JSON/SHA-256 和自摘要。独立 Schema Lock 覆盖全部生成 Schema；即使模型和生成文件同步
-修改，历史锁仍会失败。Release 1.0 当前为未注册 candidate，活动绑定可按受限流程刷新，
-每批记录其具体摘要与 Git commit；旧输出不能被改写为新身份。历史 23 个 Schema 字节不变。
+修改，历史锁仍会失败。已登记协议禁止原地刷新。另版开发使用新的协议身份和复制绑定的数据集，
+每批记录具体摘要与 Git commit；旧输出不能改写为新身份。所有历史 Schema 字节保留。
 
 ## 安装与命令
 
@@ -108,17 +114,15 @@ JSON/SHA-256 和自摘要。独立 Schema Lock 覆盖全部生成 Schema；即�
 `legacy_execution_disabled`。包级公共 API 只暴露当前 `run_active_runtime`、
 `evaluate_active_rules`、`evaluate_active_judges` 与 `aggregate_active_results`。
 
-活动 v4 engineering suite 包含四轨正例、错误/跨轨/组合/协议失败动作、Guard 阻断、
-Quiz/Review 写入、并发双子 Agent 和一个故意的 Provider Failure。完整批次预期
-`run-agent`/`evaluate-rules`/
-`aggregate-results` 分别因 Failure、Critical Fail、Fail outcome 返回 `2/2/3`；这不是
-控制平面异常：
+当前 `decisionbench-v1.5-regression/engineering` 将旧v4工程Case原内容重新绑定到1.5，
+包含故意的错误动作和Provider Failure，预期保留失败终态及非零退出码；不作为模型能力实验。
+以下命令在干净仓外副本和项目锁定依赖中执行，输出使用临时目录。旧v4绑定只供其历史源码执行：
 
 ```bash
 E31_ROOT="$(mktemp -d)"
 .venv/bin/python -m learning_agent_eval run-agent \
-  --dataset evaluation/datasets/decisionbench-v4-engineering \
-  --manifest evaluation/datasets/decisionbench-v4-engineering/manifest.json \
+  --dataset evaluation/datasets/decisionbench-v1.5-regression/engineering \
+  --manifest evaluation/datasets/decisionbench-v1.5-regression/engineering/manifest.json \
   --output "$E31_ROOT/runtime"
 .venv/bin/python -m learning_agent_eval validate-dataset \
   --dataset "$E31_ROOT/runtime"
@@ -277,7 +281,8 @@ Release、完整 Case/终态库存、上游摘要、四轨结果和错误分类�
 或单 track 分区仍可为 true；`selection_mode=adhoc_filter` 会独立、永久地阻断
 `trusted_benchmark_run` 和 `formal_capability_result`，下游不能把两层状态混为一谈。
 
-当前 production registry 已登记 `decisionbench-v1-e6-test-release`；活动 engineering Benchmark Release 仍为
+当前 production registry 已分别登记 `decisionbench-v1-e6-test-release` 和
+`decisionbench-v1.4-e6-test-release`；活动 engineering Benchmark Release 仍为
 `engineering` 且未注册，所以工程制品即使结构通过，也始终 non-formal。RuntimeFailure、
 invalid_input、judge_error 保留审计但阻止能力结论，不按 0 分混入均值。
 
@@ -285,11 +290,13 @@ Provider Attestation 是可审计归因，不是密码学证明。real 资格要
 allowlist、请求模型 `hy3`、响应模型 `hy3`、Provider request ID、请求/响应时间、安全
 配置摘要、当前 Git commit、干净工作树和匹配的 `evaluation-runtime-lock-v1`。Agent/Judge
 real 模式都必须传入同一个已有 `--budget-ledger`，每次调用（含结构修复）先预留、按完整
-usage 结算，未知费用保留预留。Judge 固定输入上界 196608、输出上限 8192、n=1，
-HTTP 不自动重试，最多一次结构修复；Agent 输出上限沿用 16000。E5 的全部真实调用和
-浏览器产品调用均计入原 14 元账本，E5结束占用 11.606238 元。9月8日获准追加5元后，
-首批按累计上限19元执行（当前已按用户澄清更正为34.609982元、可用17元）；E6新增160请求，占用6.003744元，累计17.609982元、剩余1.390018元。
-其中本轮0.204028元为未知usage保留预留，尚未核对云账户实扣。Agent 和
+usage 结算，未知费用保留预留。当前 Judge 固定输入上界196608、输出上限12288、n=1、HTTP timeout180秒，
+HTTP不自动重试，最多一次结构修复；Agent输出上限沿用16000。证据路径限定在
+本次实际可见Episode路径；公开失败仅记录安全类别和HTTP状态，未知usage保留预留。E5 的全部真实调用和
+浏览器产品调用均计入唯一共享账本，E5结束占用11.606238元；首批E6结束占用17.609982元。
+用户明确授权当时可用17元，累计上限一次更正为34.609982元；本次修复与另版实验新增417请求、16.783047元，
+最终907请求/34.393029元，剩余0.216953元。历史7条未知usage预留1.767676元保留，未核对云实扣，
+不得重复加17或重置账本。Agent 和
 Judge 的 real 模式还分别要求 `--allow-real-model` / `--allow-real-judge`；Key 只从调用者
 环境读取，CLI 参数、Manifest、日志和错误均不保存 Key 或 endpoint。
 
@@ -310,9 +317,9 @@ v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并�
 
 E4 已完成 48 Primary、24 Calibration 及 8 来源的 AI 内容裁决、绑定重建和最终回归；E5 必需实验已完成且最低方法目标达标。
 历史真实批次仍为 45 Episode + 3 Failure，候选保持探索身份，复核记录不计作独立人类一致性。
-E6 新测试已完成冻结登记及全批运行，保留46个有效Judge和2个失败；结果与方法归因见
-[E6验收记录](../docs/E6验收工作记录.md)。本批报告完成，正式能力资格未通过；E5的独立人类一致性、
-精确反事实、完整对抗安全扩展及E7版本比较、E8最终报告/评测Demo仍未完成。
+E6首批与新版G测试均完成冻结登记及全批运行，分别保留46/2和33/15有效Judge/失败，formal=false；
+修复/验证和完整分母见[新版档案](artifacts/e6-repair-20260908/README.md)。1.5仅离线候选，G现在已见。
+独立人类一致性、精确反事实、完整对抗安全扩展及E7/E8仍未完成。
 固定响应和 engineering 聚合不证明 Judge 标签正确或 Hy3 能力。已授权协议试跑只证明有限样例可执行，
 尚未统计完整 14 类真实遵循率；下一轮调用继续复用原预算，不能自动把探索记录升级为正式数据。发布治理细节见
 [`../docs/E3.1.2正式评测准入与版本治理.md`](../docs/E3.1.2正式评测准入与版本治理.md)，最终验收命令和精确结果

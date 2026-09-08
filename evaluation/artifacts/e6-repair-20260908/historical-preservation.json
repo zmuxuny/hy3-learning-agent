@@ -1,0 +1,20 @@
+{
+  "reviewer_role": "primary_ai_reviewer",
+  "checks": [
+    {
+      "scope": "all_previous_artifacts",
+      "baseline_commit": "c83c0ef",
+      "files": 115,
+      "all_git_blob_bytes_identical": true
+    },
+    {
+      "scope": "all_frozen_1_0_through_1_4_release_assets",
+      "baseline_commit": "1f1f35f",
+      "files": 37,
+      "all_git_blob_bytes_identical": true
+    }
+  ],
+  "current_source_commit": "3d20c8bb227cd8f2c37a966e64a3b8df061c3d51",
+  "old_e6_archive_sha256": "fe35766959f28dc90b89195e8ac5f7a78a8737486281544c0b19cd0bd3b8bef7",
+  "final_ledger_sha256": "c1e42e0ab9a111a0513aa3b60a410b662f119673e2d3d992249dfebc97e06587"
+}

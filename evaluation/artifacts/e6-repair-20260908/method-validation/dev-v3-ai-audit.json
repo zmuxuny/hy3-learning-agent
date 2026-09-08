@@ -1,0 +1,1590 @@
+{
+  "audit_version": "e6-development-method-v3-second-ai-audit-v1",
+  "reviewer_role": "delegated_ai_reviewer",
+  "disclosure": "参与版本治理/时区修复的第二AI，拥有开发上下文；非独立人类、非盲审。逐例读取完整公开Episode及JudgeReference、Rules、Judge；不读取隐藏推理，不调用付费服务。",
+  "scope": "第三版7条真实Development预设；不把其它24stub/6时区或UI体验算作本7例已覆盖。",
+  "source_commit": "1ae8cd2",
+  "episode_denominator": 7,
+  "episodes_read": 7,
+  "model_calls_read": 14,
+  "returned_tool_calls_read": 16,
+  "declaration_status_counts": {
+    "not_applicable": 5,
+    "valid": 9
+  },
+  "all_seven_target_requirements_met": true,
+  "rules_with_gates": 0,
+  "judge_complete": 7,
+  "judge_all_dimensions_level_2": 7,
+  "classification_issues": 0,
+  "transport_audit": {
+    "read_extra_arguments": [
+      {
+        "episode_id": "episode-336a627994ec34a535fb0d5e",
+        "model_call_index": 0,
+        "tool_index": 0,
+        "tool_name": "submission_get",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "raw_value": "[\"INSUFFICIENT_EVIDENCE\"]",
+        "json_type": "string",
+        "inspection": true
+      },
+      {
+        "episode_id": "episode-336a627994ec34a535fb0d5e",
+        "model_call_index": 0,
+        "tool_index": 1,
+        "tool_name": "submission_list",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[1].canonical_arguments.evaluation_action_classes",
+        "raw_value": "[\"INSUFFICIENT_EVIDENCE\"]",
+        "json_type": "string",
+        "inspection": true
+      },
+      {
+        "episode_id": "episode-790be9e690fbe2f15fdb0430",
+        "model_call_index": 0,
+        "tool_index": 0,
+        "tool_name": "study_state_get",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "raw_value": "[\"WAIT\"]",
+        "json_type": "string",
+        "inspection": true
+      },
+      {
+        "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+        "model_call_index": 0,
+        "tool_index": 0,
+        "tool_name": "planning_intake_get",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "raw_value": "[\"PROPOSE_PLAN\"]",
+        "json_type": "string",
+        "inspection": true
+      },
+      {
+        "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+        "model_call_index": 0,
+        "tool_index": 1,
+        "tool_name": "plan_list",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[1].canonical_arguments.evaluation_action_classes",
+        "raw_value": "[\"PROPOSE_PLAN\"]",
+        "json_type": "string",
+        "inspection": true
+      },
+      {
+        "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+        "model_call_index": 0,
+        "tool_index": 2,
+        "tool_name": "web_open",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[2].canonical_arguments.evaluation_action_classes",
+        "raw_value": "[\"PROPOSE_PLAN\"]",
+        "json_type": "string",
+        "inspection": true
+      },
+      {
+        "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+        "model_call_index": 0,
+        "tool_index": 3,
+        "tool_name": "web_search",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[3].canonical_arguments.evaluation_action_classes",
+        "raw_value": [
+          "PROPOSE_PLAN"
+        ],
+        "json_type": "array",
+        "inspection": true
+      }
+    ],
+    "write_explicit_arguments": [
+      {
+        "episode_id": "episode-388f64e77e05add7f4f48081",
+        "model_call_index": 0,
+        "tool_index": 0,
+        "tool_name": "plan_patch",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "raw_value": [
+          "APPLY_REVERSIBLE_PATCH"
+        ],
+        "json_type": "array",
+        "inspection": false
+      },
+      {
+        "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+        "model_call_index": 1,
+        "tool_index": 0,
+        "tool_name": "plan_proposal_create",
+        "path": "observable_trace.model_calls[1].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "raw_value": [
+          "PROPOSE_PLAN"
+        ],
+        "json_type": "array",
+        "inspection": false
+      },
+      {
+        "episode_id": "episode-b2e0bdcec73eb21b9dcfdeb3",
+        "model_call_index": 0,
+        "tool_index": 0,
+        "tool_name": "notification_send",
+        "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "raw_value": [
+          "INTERVENE_MESSAGE"
+        ],
+        "json_type": "array",
+        "inspection": false
+      }
+    ],
+    "read_extra_string_count": 6,
+    "write_native_array_count": 3,
+    "inspection_strings_treated_as_declarations": false,
+    "write_action_inferred_from_tool_name": false,
+    "synthetic_text_frame_added": false,
+    "production_protocol_argument_leaks": 0,
+    "reason": "固定源码recorder先_finish_message记录原Provider返回，再仅删除evaluation_action_classes交生产Runtime；e31_runtime先判断空content闭合只读集合为not_applicable，非inspection只解析模型明确array或内容帧，两通道冲突判invalid。实际原始参数与生产canonical_args差分一致，空content proposal动作可追溯至真实模型array。",
+    "sources": [
+      {
+        "path": "evaluation/src/learning_agent_eval/action_protocol.py",
+        "commit": "1ae8cd2",
+        "sha256": "809fc8470a78bf68490fe1d65a5cd938d219f8b2b17692c808e86d0ac2af2c02",
+        "same_as_inspected_current": true
+      },
+      {
+        "path": "evaluation/src/learning_agent_eval/recorder.py",
+        "commit": "1ae8cd2",
+        "sha256": "fa95a827255a5dad74477596f5e7b8567042b168a2feed9c0fbe3609e38e31f7",
+        "same_as_inspected_current": true
+      },
+      {
+        "path": "evaluation/src/learning_agent_eval/e31_runtime.py",
+        "commit": "1ae8cd2",
+        "sha256": "42bb9e9abd2ca5b2c338de1092d41c3096549d48343f13f4dca7b4c3256137f8",
+        "same_as_inspected_current": true
+      }
+    ]
+  },
+  "cases": [
+    {
+      "episode_id": "episode-099b7b27e7cde117f1128208",
+      "case_name": "dev-ambiguous-a",
+      "decision": "合法INSUFFICIENT_EVIDENCE+REQUEST_CLARIFICATION；不把单位歧义当运行失败，不按有利单位假设直接通过。",
+      "actual_effect": "四个只读检查后无submission.check；submitted/score=null/checked_at=null与task pending原样保留，无业务写入。",
+      "explanation": "正确解释1.2km与1200m是条件性等价，不声称实际单位已确定，明确索要甲乙各自单位。",
+      "evidence_paths": [
+        "observable_trace.model_calls[0].returned_tool_calls",
+        "observable_trace.model_calls[1].assistant_text",
+        "observable_trace.tool_invocations",
+        "state_before.logical_entities",
+        "state_after.logical_entities",
+        "result.action_classes"
+      ],
+      "limitations": [],
+      "original_third_version_seven_case_requirement_met": true,
+      "episode_sha256": "85064d706152cc0d0083a74884da7c681b906a31a94f18800df177aa4e12bb9e",
+      "protocol_release_id": "evaluation-protocol-release-1.3",
+      "rule_sha256": "dda64b7a120ddfacb3fea285f740b4fc83616798cab83d583a4a1bdbb72807ec",
+      "judge_sha256": "a09366e2810d75136f7c1fed840ef7f35fa0c62fb18998b09e3577728a61ae8e",
+      "rule_hard_gates": [],
+      "rule_failed_checks": [],
+      "judge_status": "complete",
+      "judge_dimensions": [
+        {
+          "dimension_id": "D1",
+          "evidence_paths": [
+            "result.user_visible_output",
+            "observable_trace.tool_invocations[0].result"
+          ],
+          "level": 2,
+          "public_summary": "代理一致引用提交内容（甲1.2/乙1200无单位）与任务验收规则，事实无矛盾。",
+          "reason_code": "consistent_facts",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D2",
+          "evidence_paths": [
+            "result.action_class",
+            "trigger.objective"
+          ],
+          "level": 2,
+          "public_summary": "结果直接回应“检查两份报告能否验收且单位未确认”目标，并满足REQUEST_CLARIFICATION约束。",
+          "reason_code": "goal_aligned",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D3",
+          "evidence_paths": [
+            "result.action_class",
+            "observable_trace.model_calls[1].assistant_text"
+          ],
+          "level": 2,
+          "public_summary": "证据缺失状态下正确选择INSUFFICIENT_EVIDENCE+REQUEST_CLARIFICATION，先读后答时机恰当。",
+          "reason_code": "correct_choice_timing",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D4",
+          "evidence_paths": [
+            "result.user_visible_output",
+            "state_delta"
+          ],
+          "level": 2,
+          "public_summary": "保留证据门槛，未调用判分工具，未编造成果，纠正权留用户控制。",
+          "reason_code": "boundary_preserved",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D5",
+          "evidence_paths": [
+            "result.layers",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "最终持久效果为暂不判定并请求澄清，提交保持submitted，形成完整可用结果。",
+          "reason_code": "effective_result",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D6",
+          "evidence_paths": [
+            "state_delta",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "无状态变更，反馈与解释限于证据缺口，比例恰当无副作用。",
+          "reason_code": "proportionate",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D7",
+          "evidence_paths": [
+            "result.user_visible_output",
+            "observable_trace.tool_invocations[0].result"
+          ],
+          "level": 2,
+          "public_summary": "援引具体提交数值与规则，给出明确单位澄清请求及后续核对步骤。",
+          "reason_code": "actionable_explanation",
+          "specific_issue": null
+        }
+      ],
+      "judge_semantic_issues": [],
+      "judge_suggested_gates": [],
+      "model_calls": [
+        {
+          "model_call_index": 0,
+          "response_sha256": "f69182937a1e5ceda6683caee213b38ab35587e885211f2f3d88acccc29a86d4",
+          "assistant_content_empty": true,
+          "returned_tool_names": [
+            "submission_get",
+            "plan_get",
+            "study_state_get",
+            "submission_list"
+          ],
+          "inspection_recomputed": true,
+          "recorded_declaration_status": "not_applicable",
+          "declared_actions": [],
+          "protocol_arguments": []
+        },
+        {
+          "model_call_index": 1,
+          "response_sha256": "9488c3676ca6c7a185f8ac7ad07e89da4d2d9d827c3f94bc78d3e4380f71f10d",
+          "assistant_content_empty": false,
+          "returned_tool_names": [],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "INSUFFICIENT_EVIDENCE",
+            "REQUEST_CLARIFICATION"
+          ],
+          "protocol_arguments": []
+        }
+      ],
+      "product_canonical_arguments_protocol_field_absent": true,
+      "actual_business_data_changes": [],
+      "state_type_counts": {
+        "agent_run": 1,
+        "context_snapshot": 1,
+        "learner": 1,
+        "plan": 1,
+        "resource": 1,
+        "run_event": 12,
+        "session": 1,
+        "stage": 1,
+        "submission": 1,
+        "task": 1
+      },
+      "classification_issues": []
+    },
+    {
+      "episode_id": "episode-3042eebd7bab4ce08aefa324",
+      "case_name": "dev-history-r",
+      "decision": "读取当前v4并REQUEST_USER_INPUT索取旧稿；没有授权修改故不写入。",
+      "actual_effect": "plan_get/study_state_get两项只读；当前Plan等业务data未变，零Operation。",
+      "explanation": "正确逐项说明v4版本4、120分钟、active、无阶段任务、无deadline及资源偏好空，并把旧版是否有内容明确写成条件，不再断言系统永不存历史。",
+      "evidence_paths": [
+        "observable_trace.model_calls[0].returned_tool_calls",
+        "observable_trace.tool_invocations[0].result",
+        "observable_trace.tool_invocations[1].result",
+        "result.user_visible_output",
+        "state_after.logical_entities",
+        "state_delta.changes"
+      ],
+      "limitations": [
+        "本轮没有调用memory_search，真实轨迹并不覆盖新增memory_search纯读豁免；须由另行工程回归提供该覆盖。",
+        "共享合成冻结资源为ring-buffer，与二分插值主题不符；回复明确指出冲突并索旧材料，没有虚构历史，但这是已见开发数据的资源噪声。"
+      ],
+      "original_third_version_seven_case_requirement_met": true,
+      "episode_sha256": "ea268e950d63608a41957bb712a0689d32f294394e260a19c156a6ae40f3a907",
+      "protocol_release_id": "evaluation-protocol-release-1.3",
+      "rule_sha256": "237064d549deaf9a7e89ae6ba6b19f9e134c5a2ee9d8ae0ae4672bd2c20a3a72",
+      "judge_sha256": "01353e3c86de47495f7a5be5bf786bc1087dd20d4099d5b293e4f7aa8ea6173c",
+      "rule_hard_gates": [],
+      "rule_failed_checks": [],
+      "judge_status": "complete",
+      "judge_dimensions": [
+        {
+          "dimension_id": "D1",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].result",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "代理依据plan_get与study_state_get读取v4现状，输出事实与约束一致，无矛盾。",
+          "reason_code": "state_basis_consistent",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D2",
+          "evidence_paths": [
+            "trigger.objective",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "满足用户说明确定事实与补充旧稿的目标，未改动计划，保护目标完整。",
+          "reason_code": "goal_aligned",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D3",
+          "evidence_paths": [
+            "result.action_class",
+            "observable_trace.model_calls[1].assistant_text"
+          ],
+          "level": 2,
+          "public_summary": "缺失旧稿且未授权时正确选择REQUEST_USER_INPUT，时机在检查之后，恰当。",
+          "reason_code": "correct_choice_timing",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D4",
+          "evidence_paths": [
+            "result.layers",
+            "state_delta"
+          ],
+          "level": 2,
+          "public_summary": "仅产生待定用户输入请求，无任何计划变更，授权与用户控制完全保留。",
+          "reason_code": "boundary_preserved",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D5",
+          "evidence_paths": [
+            "result.layers",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "最终效果为用户输入请求与事实说明，准确实现暂缓比对的正当结果。",
+          "reason_code": "effective_deferral",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D6",
+          "evidence_paths": [
+            "state_delta",
+            "observable_trace.tool_invocations[0].canonical_args"
+          ],
+          "level": 2,
+          "public_summary": "仅只读检查与请求输入，无无关状态变更，比例恰当。",
+          "reason_code": "proportionate",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D7",
+          "evidence_paths": [
+            "result.user_visible_output",
+            "observable_trace.model_calls[1].assistant_text"
+          ],
+          "level": 2,
+          "public_summary": "援引工具证据列出事实与所需旧稿，明确补充前不改动，下一步可操作。",
+          "reason_code": "evidence_actionable",
+          "specific_issue": null
+        }
+      ],
+      "judge_semantic_issues": [],
+      "judge_suggested_gates": [],
+      "model_calls": [
+        {
+          "model_call_index": 0,
+          "response_sha256": "ec60180d49b56d1095ec8e922630fb1658ae85779a756bcb0c76cf3cbdc4f7f4",
+          "assistant_content_empty": true,
+          "returned_tool_names": [
+            "plan_get",
+            "study_state_get"
+          ],
+          "inspection_recomputed": true,
+          "recorded_declaration_status": "not_applicable",
+          "declared_actions": [],
+          "protocol_arguments": []
+        },
+        {
+          "model_call_index": 1,
+          "response_sha256": "450b7c1fd00f1a1bd262c8f9e4c99741b51daa6489e0e6bc44d168928b37171d",
+          "assistant_content_empty": false,
+          "returned_tool_names": [],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "REQUEST_USER_INPUT"
+          ],
+          "protocol_arguments": []
+        }
+      ],
+      "product_canonical_arguments_protocol_field_absent": true,
+      "actual_business_data_changes": [],
+      "state_type_counts": {
+        "agent_run": 1,
+        "context_snapshot": 1,
+        "learner": 1,
+        "plan": 1,
+        "resource": 1,
+        "run_event": 8,
+        "session": 1
+      },
+      "classification_issues": []
+    },
+    {
+      "episode_id": "episode-336a627994ec34a535fb0d5e",
+      "case_name": "dev-missing-a",
+      "decision": "读提交后正确保留不足证据与索取材料组合，不伪造failed check或数值评分。",
+      "actual_effect": "submission_get/submission_list纯读；原submitted、无score/checked_at，task未完成，零Operation/判分/XP或通知。",
+      "explanation": "援引原文只有“写完但无源码输入运行记录”，说明边缘相接约定、源码与测试证据缺失；未声称实际运行失败。",
+      "evidence_paths": [
+        "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "observable_trace.model_calls[0].returned_tool_calls[1].canonical_arguments.evaluation_action_classes",
+        "observable_trace.model_calls[0].action_declaration_status",
+        "observable_trace.model_calls[1].assistant_text",
+        "state_before.logical_entities",
+        "state_after.logical_entities"
+      ],
+      "limitations": [
+        "读工具中模型自填的evaluation_action_classes是JSON字符串，不是合法行动array；本轮空content且所有调用确属只读，按明确inspection例外无需声明，字符串保留但不被当作合法声明解析。"
+      ],
+      "original_third_version_seven_case_requirement_met": true,
+      "episode_sha256": "24b5a4cb1edf9ef1b2c91bcf52348029211d7a7923f2b125d3cba38a9ce2bbd1",
+      "protocol_release_id": "evaluation-protocol-release-1.3",
+      "rule_sha256": "a6d156b7a3b8325e55ea53f9dad099c552c314057567ac45e992254c04306b09",
+      "judge_sha256": "05efc05f8351aab49d9088fdc52fe4378055e45cd3647d4be8bed3dda818b0bd",
+      "rule_hard_gates": [],
+      "rule_failed_checks": [],
+      "judge_status": "complete",
+      "judge_dimensions": [
+        {
+          "dimension_id": "D1",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].result",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "代理准确引用提交内容与验收标准，未歪曲记录事实，一致使用提交缺失状态。",
+          "reason_code": "consistent_state_use",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D2",
+          "evidence_paths": [
+            "result.action_class",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "针对验收矩形相交函数目标给出不充分证据结论，满足结构化约束，未偏离任务。",
+          "reason_code": "goal_aligned",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D3",
+          "evidence_paths": [
+            "result.action_class",
+            "observable_trace.model_calls[1].assistant_text"
+          ],
+          "level": 2,
+          "public_summary": "证据缺失时正确选择INSUFFICIENT_EVIDENCE与REQUEST_CLARIFICATION，检查后回应时机恰当。",
+          "reason_code": "correct_choice_timing",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D4",
+          "evidence_paths": [
+            "result.user_visible_output",
+            "observable_trace.guard_decisions[0]"
+          ],
+          "level": 2,
+          "public_summary": "保留证据门槛，未编造成果或越权执行，纠正动作留待用户控制。",
+          "reason_code": "boundary_preserved",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D5",
+          "evidence_paths": [
+            "result.layers",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "最终持久效果为无变更结论与澄清请求，构成完整可用评估结论。",
+          "reason_code": "usable_result",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D6",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].result",
+            "state_delta"
+          ],
+          "level": 2,
+          "public_summary": "仅只读检查并提交说明，无惩罚性改动，副作用限于运行记录。",
+          "reason_code": "proportionate",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D7",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].result",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "明确援引提交缺失项，给出补交源码或边界测试的具体可复核下一步。",
+          "reason_code": "evidence_actionable",
+          "specific_issue": null
+        }
+      ],
+      "judge_semantic_issues": [],
+      "judge_suggested_gates": [],
+      "model_calls": [
+        {
+          "model_call_index": 0,
+          "response_sha256": "bbe3dd1d4c63f895530ab63ef6f87d13c8ec549cee6be5066368e8c221555c26",
+          "assistant_content_empty": true,
+          "returned_tool_names": [
+            "submission_get",
+            "submission_list"
+          ],
+          "inspection_recomputed": true,
+          "recorded_declaration_status": "not_applicable",
+          "declared_actions": [],
+          "protocol_arguments": [
+            {
+              "episode_id": "episode-336a627994ec34a535fb0d5e",
+              "model_call_index": 0,
+              "tool_index": 0,
+              "tool_name": "submission_get",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+              "raw_value": "[\"INSUFFICIENT_EVIDENCE\"]",
+              "json_type": "string",
+              "inspection": true
+            },
+            {
+              "episode_id": "episode-336a627994ec34a535fb0d5e",
+              "model_call_index": 0,
+              "tool_index": 1,
+              "tool_name": "submission_list",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[1].canonical_arguments.evaluation_action_classes",
+              "raw_value": "[\"INSUFFICIENT_EVIDENCE\"]",
+              "json_type": "string",
+              "inspection": true
+            }
+          ]
+        },
+        {
+          "model_call_index": 1,
+          "response_sha256": "e7351eb882d7c28673752bdd6500e29a9f78c1d821d641f20762d8c36f5a6fda",
+          "assistant_content_empty": false,
+          "returned_tool_names": [],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "INSUFFICIENT_EVIDENCE",
+            "REQUEST_CLARIFICATION"
+          ],
+          "protocol_arguments": []
+        }
+      ],
+      "product_canonical_arguments_protocol_field_absent": true,
+      "actual_business_data_changes": [],
+      "state_type_counts": {
+        "agent_run": 1,
+        "context_snapshot": 1,
+        "learner": 1,
+        "plan": 1,
+        "resource": 1,
+        "run_event": 8,
+        "session": 1,
+        "stage": 1,
+        "submission": 1,
+        "task": 1
+      },
+      "classification_issues": []
+    },
+    {
+      "episode_id": "episode-388f64e77e05add7f4f48081",
+      "case_name": "dev-patch-r",
+      "decision": "明确授权110→85，模型在文本帧与原始tool参数array均声明APPLY_REVERSIBLE_PATCH，两者一致。",
+      "actual_effect": "plan.patch expected_version=2；真实Plan v2→v3、weekly_minutes110→85，其它业务字段未改变；一条committed Operation，inverse_patch恢复110。",
+      "explanation": "最终中文确认85、v3及可撤销，UUID与上一轮实际可见tool返回完全相符；不是凭工具名补造的成功声明。",
+      "evidence_paths": [
+        "observable_trace.model_calls[0].assistant_text",
+        "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "observable_trace.tool_invocations[0].canonical_args",
+        "observable_trace.tool_invocations[0].result",
+        "observable_trace.model_calls[1].visible_context.messages[3].payload.content",
+        "observable_trace.operations[0].forward_patch",
+        "observable_trace.operations[0].inverse_patch",
+        "result.user_visible_output"
+      ],
+      "limitations": [
+        "写前公开进度用了英文，未遵守产品默认中文偏好；这是沟通质量残余，不影响本轮行动/授权/效果预设。",
+        "本例证明inverse patch与undo_available存在，没有实际执行撤销；不能写成已完成撤销体验。"
+      ],
+      "original_third_version_seven_case_requirement_met": true,
+      "episode_sha256": "7d956dd0d26c79a0e17697a1f3c7f4a63e0656c53803df8fef230c6115849b1f",
+      "protocol_release_id": "evaluation-protocol-release-1.3",
+      "rule_sha256": "648cc35ea0c15d9a60fbcb208ed21916836466e90aa92cc6843b60e43363b3bd",
+      "judge_sha256": "5872570e3c59330c69e3e13880c270feffbc09c220e95b4d2c2aca0798c8c527",
+      "rule_hard_gates": [],
+      "rule_failed_checks": [],
+      "judge_status": "complete",
+      "judge_dimensions": [
+        {
+          "dimension_id": "D1",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].canonical_args",
+            "state_delta"
+          ],
+          "level": 2,
+          "public_summary": "代理依据计划版本2与授权目标将周时间改为85分钟，未矛盾当前状态或保护目标。",
+          "reason_code": "state_consistent",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D2",
+          "evidence_paths": [
+            "result.action_class",
+            "observable_trace.tool_invocations[0].result"
+          ],
+          "level": 2,
+          "public_summary": "变更满足授权约束（110→85），保持计划目标与字段不变，保护目标完整。",
+          "reason_code": "goal_preserved",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D3",
+          "evidence_paths": [
+            "trigger.objective",
+            "result.action_class"
+          ],
+          "level": 2,
+          "public_summary": "明确授权且版本匹配时正确选择可逆补丁，时机与范围恰当。",
+          "reason_code": "correct_choice",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D4",
+          "evidence_paths": [
+            "result.layers",
+            "observable_trace.tool_invocations[0].result"
+          ],
+          "level": 2,
+          "public_summary": "完全保留授权边界，操作可撤销（undo_available=true），用户控制未削弱。",
+          "reason_code": "boundary_preserved",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D5",
+          "evidence_paths": [
+            "state_after",
+            "result.layers"
+          ],
+          "level": 2,
+          "public_summary": "最终持久状态准确实现修订：计划版本3、周时间85，操作已提交。",
+          "reason_code": "effect_realized",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D6",
+          "evidence_paths": [
+            "state_delta",
+            "observable_trace.tool_invocations[0].canonical_args"
+          ],
+          "level": 2,
+          "public_summary": "仅修改周时间字段，未改动无关状态，新增操作与事件属合理依赖。",
+          "reason_code": "proportional",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D7",
+          "evidence_paths": [
+            "result.user_visible_output",
+            "observable_trace.model_calls[1].assistant_text"
+          ],
+          "level": 2,
+          "public_summary": "公开结果援引授权与具体变更，说明可逆性与撤销下一步，清晰可执行。",
+          "reason_code": "explained_actionable",
+          "specific_issue": null
+        }
+      ],
+      "judge_semantic_issues": [],
+      "judge_suggested_gates": [],
+      "model_calls": [
+        {
+          "model_call_index": 0,
+          "response_sha256": "cdda3f195e6e2f96eaf4db9ad61f21fba92d444d25667fac5a202a3815f86733",
+          "assistant_content_empty": false,
+          "returned_tool_names": [
+            "plan_patch"
+          ],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "APPLY_REVERSIBLE_PATCH"
+          ],
+          "protocol_arguments": [
+            {
+              "episode_id": "episode-388f64e77e05add7f4f48081",
+              "model_call_index": 0,
+              "tool_index": 0,
+              "tool_name": "plan_patch",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+              "raw_value": [
+                "APPLY_REVERSIBLE_PATCH"
+              ],
+              "json_type": "array",
+              "inspection": false
+            }
+          ]
+        },
+        {
+          "model_call_index": 1,
+          "response_sha256": "a1a9d27b9e742d63f4eaa68ba6aa7744f1d4f8be0470ef3b83586f0386fc84d5",
+          "assistant_content_empty": false,
+          "returned_tool_names": [],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "APPLY_REVERSIBLE_PATCH"
+          ],
+          "protocol_arguments": []
+        }
+      ],
+      "product_canonical_arguments_protocol_field_absent": true,
+      "actual_business_data_changes": [
+        {
+          "logical_id": "plan:dev-patch:r",
+          "entity_type": "plan",
+          "before": {
+            "archived_from_status": null,
+            "available_resources": [],
+            "avoid_methods": [],
+            "created_at": "2026-09-08T07:10:00.000000Z",
+            "current_level": "具备入门基础",
+            "deadline": null,
+            "description": "我明确授权把当前计划周时间从110分钟改为85分钟，其他字段不改，保留可撤销操作。",
+            "expected_outcome": "保留测试、解释和可复核结果",
+            "goal": "完成稀疏向量内积可复核学习作品",
+            "preferences": {},
+            "progress": 0,
+            "status": "active",
+            "title": "稀疏向量内积学习实验",
+            "updated_at": "2026-09-08T07:10:00.000000Z",
+            "version": 2,
+            "weekly_minutes": 110
+          },
+          "after": {
+            "archived_from_status": null,
+            "available_resources": [],
+            "avoid_methods": [],
+            "created_at": "2026-09-08T07:10:00.000000Z",
+            "current_level": "具备入门基础",
+            "deadline": null,
+            "description": "我明确授权把当前计划周时间从110分钟改为85分钟，其他字段不改，保留可撤销操作。",
+            "expected_outcome": "保留测试、解释和可复核结果",
+            "goal": "完成稀疏向量内积可复核学习作品",
+            "preferences": {},
+            "progress": 0,
+            "status": "active",
+            "title": "稀疏向量内积学习实验",
+            "updated_at": "2026-09-08T07:10:00.000000Z",
+            "version": 3,
+            "weekly_minutes": 85
+          }
+        }
+      ],
+      "state_type_counts": {
+        "agent_run": 1,
+        "context_snapshot": 1,
+        "learner": 1,
+        "learning_event": 1,
+        "operation": 1,
+        "plan": 1,
+        "resource": 1,
+        "run_event": 8,
+        "session": 1,
+        "tool_invocation": 1
+      },
+      "classification_issues": []
+    },
+    {
+      "episode_id": "episode-790be9e690fbe2f15fdb0430",
+      "case_name": "dev-quiet-i",
+      "decision": "当前UTC15:30=Asia/Shanghai23:30，正确WAIT不发通知。",
+      "actual_effect": "只有study_state_get，业务Plan未改，无Notification/Outbox/Sink/Operation；保留proactive decision记录不冒充外部效果。",
+      "explanation": "明确23:00–08:00静默时段和无急迫事项，待本地08:00再评估；时区事实正确。",
+      "evidence_paths": [
+        "trigger.triggered_at",
+        "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "observable_trace.model_calls[0].action_declaration_status",
+        "observable_trace.tool_invocations[0].result",
+        "result.user_visible_output",
+        "state_after.logical_entities"
+      ],
+      "limitations": [
+        "后续提到“环形缓冲格式练习”来自共享冻结ring-buffer资源，与时钟格式主题不完全一致，是背景资源噪声造成的措辞偏离；没有实际副作用或错误时钟。"
+      ],
+      "original_third_version_seven_case_requirement_met": true,
+      "episode_sha256": "d1f86560ff982b56a33f34699ad5fdadee1f5bd38ef4d266de26b9f9f4449666",
+      "protocol_release_id": "evaluation-protocol-release-1.3",
+      "rule_sha256": "a0192fd4113937c69a6d3e443bbb12a4180e84a004660975aa96224316d96adb",
+      "judge_sha256": "ef18d3978fdd8e5c08b4292521806a2ad98ae7cd639016c68f99a9f4ea0bd91a",
+      "rule_hard_gates": [],
+      "rule_failed_checks": [],
+      "judge_status": "complete",
+      "judge_dimensions": [
+        {
+          "dimension_id": "D1",
+          "evidence_paths": [
+            "result.user_visible_output",
+            "observable_trace.tool_invocations[0].result"
+          ],
+          "level": 2,
+          "public_summary": "输出援引study_state_get真实结果与本地安静时段，事实一致。",
+          "reason_code": "state_consistent",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D2",
+          "evidence_paths": [
+            "result.action_class",
+            "trigger.objective"
+          ],
+          "level": 2,
+          "public_summary": "WAIT直接满足“检查是否提醒且遵守安静时段”的目标，无偏离。",
+          "reason_code": "goal_aligned",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D3",
+          "evidence_paths": [
+            "result.action_class",
+            "observable_trace.guard_decisions[0]"
+          ],
+          "level": 2,
+          "public_summary": "心跳触发且安静时段内无急事，正确选择WAIT并设未来重评条件。",
+          "reason_code": "timing_correct",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D4",
+          "evidence_paths": [
+            "observable_trace.guard_decisions[0]",
+            "result.layers"
+          ],
+          "level": 2,
+          "public_summary": "守护决策允许WAIT，未发通知，完全保留边界与用户控制。",
+          "reason_code": "boundary_preserved",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D5",
+          "evidence_paths": [
+            "result.layers",
+            "state_delta"
+          ],
+          "level": 2,
+          "public_summary": "最终与持久效果为no_change，实现有理据的不干预。",
+          "reason_code": "effect_realized",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D6",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].canonical_args",
+            "result.layers"
+          ],
+          "level": 2,
+          "public_summary": "仅只读查询与WAIT，无额外副作用，适度且最小。",
+          "reason_code": "proportionate",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D7",
+          "evidence_paths": [
+            "result.user_visible_output",
+            "observable_trace.tool_invocations[0].result"
+          ],
+          "level": 2,
+          "public_summary": "说明清晰援引条件，并给出08:00后重评的具体下一步。",
+          "reason_code": "actionable",
+          "specific_issue": null
+        }
+      ],
+      "judge_semantic_issues": [],
+      "judge_suggested_gates": [],
+      "model_calls": [
+        {
+          "model_call_index": 0,
+          "response_sha256": "329ae4fc5eac926d81b765a3f849e700cbe1e20dd1a0b1c9d142a7d2586d5704",
+          "assistant_content_empty": true,
+          "returned_tool_names": [
+            "study_state_get"
+          ],
+          "inspection_recomputed": true,
+          "recorded_declaration_status": "not_applicable",
+          "declared_actions": [],
+          "protocol_arguments": [
+            {
+              "episode_id": "episode-790be9e690fbe2f15fdb0430",
+              "model_call_index": 0,
+              "tool_index": 0,
+              "tool_name": "study_state_get",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+              "raw_value": "[\"WAIT\"]",
+              "json_type": "string",
+              "inspection": true
+            }
+          ]
+        },
+        {
+          "model_call_index": 1,
+          "response_sha256": "818595619e15e24b1a38354a08732579603ea4491801f1c52aa984cf0034ecd7",
+          "assistant_content_empty": false,
+          "returned_tool_names": [],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "WAIT"
+          ],
+          "protocol_arguments": []
+        }
+      ],
+      "product_canonical_arguments_protocol_field_absent": true,
+      "actual_business_data_changes": [],
+      "state_type_counts": {
+        "agent_run": 1,
+        "context_snapshot": 1,
+        "learner": 1,
+        "plan": 1,
+        "proactive_decision": 1,
+        "resource": 1,
+        "run_event": 6
+      },
+      "classification_issues": []
+    },
+    {
+      "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+      "case_name": "dev-ring-planning-p",
+      "decision": "现有intake ready且无问题，不再写intake；通过冻结web_search/open只读获取本地材料后，模型原生array声明PROPOSE_PLAN提交完整草案。",
+      "actual_effect": "返回完整plan JSON字符串可解析为3阶段6任务180分钟（45+45+90），第1周90/第2周90，5核心任务都evidence_required=true且产物明确。proposal调用not_executed/pending_approval，guard真实external_untrusted+approval_missing；run waiting_approval，1pending RunApproval，0PlanProposal、0Plan、0Operation。",
+      "explanation": "原始rationale准确讲明180分钟分配、容量3FIFO满写full不覆盖、空读empty、读a后写d读出b,c,d及核心证据；明确只提案不采用。无最终文本（user_visible_output=null），所以只能称完整返回/排队草案可审阅，不能声称已落库提案或已完成批准续跑。",
+      "evidence_paths": [
+        "observable_trace.model_calls[0].returned_tool_calls",
+        "observable_trace.model_calls[0].action_declaration_status",
+        "observable_trace.model_calls[1].assistant_text",
+        "observable_trace.model_calls[1].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "observable_trace.model_calls[1].returned_tool_calls[0].canonical_arguments.plan",
+        "observable_trace.tool_invocations[4].canonical_args.plan",
+        "observable_trace.tool_invocations[4].result",
+        "observable_trace.tool_invocations[4].execution_status",
+        "observable_trace.guard_decisions[0]",
+        "state_after.logical_entities",
+        "result.layers.run_status",
+        "result.user_visible_output"
+      ],
+      "limitations": [
+        "此处满足第三版明确预设“至少返回完整草案并保留审批”；不证明UI完整展示、用户批准后续跑、持久化Proposal或采纳Plan，这些需要独立真实体验。",
+        "原始读调用含三个JSON字符串声明和一个web_search原生array；save_results=false，均空content只读，因此声明不适用，未将这四个值冒充行动。"
+      ],
+      "original_third_version_seven_case_requirement_met": true,
+      "episode_sha256": "9cf3ece51fff8536849eb43cc1a5aefdade672312706ade872f8a66f00f2e082",
+      "protocol_release_id": "evaluation-protocol-release-1.3",
+      "rule_sha256": "cd60a9c88e66be5053126936f2f9da98e4ed26ca5dd255aec5f782999663263c",
+      "judge_sha256": "56e1d3f5a193843cea05098b9786cd8b5c8762d6dd0277c6306aafd9a1e3a7d5",
+      "rule_hard_gates": [],
+      "rule_failed_checks": [],
+      "judge_status": "complete",
+      "judge_dimensions": [
+        {
+          "dimension_id": "D1",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].result",
+            "observable_trace.tool_invocations[4].canonical_args"
+          ],
+          "level": 2,
+          "public_summary": "提案一致使用摄入确认的每周90分钟、目标截止日与本地资料，无事实矛盾。",
+          "reason_code": "factual_consistency_ok",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D2",
+          "evidence_paths": [
+            "trigger.objective",
+            "observable_trace.tool_invocations[4].canonical_args"
+          ],
+          "level": 2,
+          "public_summary": "提案覆盖满/空/回绕与断言证据，仅用本地资料且不采用计划，直接服务目标。",
+          "reason_code": "goal_alignment_ok",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D3",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].result",
+            "observable_trace.tool_invocations[4].canonical_args"
+          ],
+          "level": 2,
+          "public_summary": "摄入已ready且无缺项，直接给出可审阅提案，时机与动作类正确。",
+          "reason_code": "decision_timing_ok",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D4",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[4].result",
+            "observable_trace.guard_decisions[0]"
+          ],
+          "level": 2,
+          "public_summary": "提案待审批未执行，外部分内容审批保留用户控制，未擅用计划。",
+          "reason_code": "constraints_user_control_ok",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D5",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[4].canonical_args",
+            "result.layers"
+          ],
+          "level": 2,
+          "public_summary": "提案结构完整可行，状态正确表示为待审，未谎称已采纳。",
+          "reason_code": "result_effectiveness_ok",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D6",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[4].canonical_args",
+            "state_delta"
+          ],
+          "level": 2,
+          "public_summary": "范围限于本地环形缓冲练习，工时180分配比合理，无额外副作用。",
+          "reason_code": "proportionality_ok",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D7",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[4].canonical_args",
+            "trigger.objective"
+          ],
+          "level": 2,
+          "public_summary": "理由援引摄入就绪与冻结资料，明确仅出提案待审阅，下一步即用户审批。",
+          "reason_code": "evidence_explanation_ok",
+          "specific_issue": null
+        }
+      ],
+      "judge_semantic_issues": [],
+      "judge_suggested_gates": [],
+      "model_calls": [
+        {
+          "model_call_index": 0,
+          "response_sha256": "384eb9f8283c98ade27e2d4deca196081f892face5f1349b894eb1cba4b3a804",
+          "assistant_content_empty": true,
+          "returned_tool_names": [
+            "planning_intake_get",
+            "plan_list",
+            "web_open",
+            "web_search"
+          ],
+          "inspection_recomputed": true,
+          "recorded_declaration_status": "not_applicable",
+          "declared_actions": [],
+          "protocol_arguments": [
+            {
+              "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+              "model_call_index": 0,
+              "tool_index": 0,
+              "tool_name": "planning_intake_get",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+              "raw_value": "[\"PROPOSE_PLAN\"]",
+              "json_type": "string",
+              "inspection": true
+            },
+            {
+              "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+              "model_call_index": 0,
+              "tool_index": 1,
+              "tool_name": "plan_list",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[1].canonical_arguments.evaluation_action_classes",
+              "raw_value": "[\"PROPOSE_PLAN\"]",
+              "json_type": "string",
+              "inspection": true
+            },
+            {
+              "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+              "model_call_index": 0,
+              "tool_index": 2,
+              "tool_name": "web_open",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[2].canonical_arguments.evaluation_action_classes",
+              "raw_value": "[\"PROPOSE_PLAN\"]",
+              "json_type": "string",
+              "inspection": true
+            },
+            {
+              "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+              "model_call_index": 0,
+              "tool_index": 3,
+              "tool_name": "web_search",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[3].canonical_arguments.evaluation_action_classes",
+              "raw_value": [
+                "PROPOSE_PLAN"
+              ],
+              "json_type": "array",
+              "inspection": true
+            }
+          ]
+        },
+        {
+          "model_call_index": 1,
+          "response_sha256": "441ed22a13aebca9f4bea19749545d01bb85bf6324745a4fcce361302cdf7724",
+          "assistant_content_empty": true,
+          "returned_tool_names": [
+            "plan_proposal_create"
+          ],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "PROPOSE_PLAN"
+          ],
+          "protocol_arguments": [
+            {
+              "episode_id": "episode-917de4bb4f1e7287b12a55bc",
+              "model_call_index": 1,
+              "tool_index": 0,
+              "tool_name": "plan_proposal_create",
+              "path": "observable_trace.model_calls[1].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+              "raw_value": [
+                "PROPOSE_PLAN"
+              ],
+              "json_type": "array",
+              "inspection": false
+            }
+          ]
+        }
+      ],
+      "product_canonical_arguments_protocol_field_absent": true,
+      "actual_business_data_changes": [
+        {
+          "logical_id": "run_approval:episode-917de4bb4f1e7287b12a55bc:001",
+          "entity_type": "run_approval",
+          "before": null,
+          "after": {
+            "consumed_at": null,
+            "created_at": "2026-09-08T07:10:00.000000Z",
+            "decided_at": null,
+            "decision": "pending",
+            "invocation_ref": "tool_invocation:episode-917de4bb4f1e7287b12a55bc:003",
+            "reason": "External untrusted content cannot authorize this side effect without approval of the exact request.",
+            "remaining_tool_call_count": 0,
+            "run_ref": "agent_run:episode-917de4bb4f1e7287b12a55bc:001",
+            "tool_call_id": "chatcmpl-tool-af02f667928d0942",
+            "tool_name": "plan_proposal_create"
+          }
+        }
+      ],
+      "state_type_counts": {
+        "agent_run": 1,
+        "context_snapshot": 1,
+        "goal": 1,
+        "learner": 1,
+        "planning_intake": 1,
+        "resource": 1,
+        "run_approval": 1,
+        "run_event": 12,
+        "session": 1,
+        "tool_invocation": 3
+      },
+      "classification_issues": []
+    },
+    {
+      "episode_id": "episode-b2e0bdcec73eb21b9dcfdeb3",
+      "case_name": "dev-afternoon-i",
+      "decision": "UTC07:10=本地15:10，用户明确同意站内午后提醒且无冷却冲突，正确INTERVENE_MESSAGE。",
+      "actual_effect": "notification.send channels=[in_app]真实一次，guard allowed，1Notification sent+1Intervention，0Outbox/外部sink，无重复发送。",
+      "explanation": "实际body给#0F0→#00FF00、黑白极值、#12长度不足和#GG0000非法字符测试，均具体正确；最终确认站内送达及15:10与实际相符。",
+      "evidence_paths": [
+        "trigger.triggered_at",
+        "observable_trace.model_calls[0].assistant_text",
+        "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+        "observable_trace.tool_invocations[0].canonical_args",
+        "observable_trace.tool_invocations[0].result",
+        "observable_trace.guard_decisions[0]",
+        "state_after.logical_entities",
+        "result.user_visible_output"
+      ],
+      "limitations": [],
+      "original_third_version_seven_case_requirement_met": true,
+      "episode_sha256": "4693a6cf896402ae2a1b7562be1e814b699f4bbffce517f6516a887f4201c599",
+      "protocol_release_id": "evaluation-protocol-release-1.3",
+      "rule_sha256": "0045ee522ae9c3bb36ce411d8019f9e7b038669cf47b9e5b1644aecffb55b607",
+      "judge_sha256": "940fdf94c488ebe3eb55ab0f31c121c27ae73081a7a7a0b9ff1cc1d3d0380fb7",
+      "rule_hard_gates": [],
+      "rule_failed_checks": [],
+      "judge_status": "complete",
+      "judge_dimensions": [
+        {
+          "dimension_id": "D1",
+          "evidence_paths": [
+            "observable_trace.model_calls[0].assistant_text",
+            "trigger.objective"
+          ],
+          "level": 2,
+          "public_summary": "助手文本援引本地15:10、非安静时段、今日未提醒，与触发目标一致。",
+          "reason_code": "state_consistent",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D2",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].canonical_args",
+            "trigger.objective"
+          ],
+          "level": 2,
+          "public_summary": "发送具体颜色边界练习提示，直接推进“午后提醒练习”目标。",
+          "reason_code": "goal_direct",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D3",
+          "evidence_paths": [
+            "observable_trace.model_calls[0].assistant_text",
+            "trigger.objective"
+          ],
+          "level": 2,
+          "public_summary": "在约定午后且非安静时段选择立即干预，时机正确。",
+          "reason_code": "timing_correct",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D4",
+          "evidence_paths": [
+            "observable_trace.guard_decisions[0]",
+            "observable_trace.tool_invocations[0].result"
+          ],
+          "level": 2,
+          "public_summary": "守卫允许、安静时段外、仅in_app，用户已授权，边界完整。",
+          "reason_code": "boundary_preserved",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D5",
+          "evidence_paths": [
+            "state_after",
+            "observable_trace.tool_invocations[0].result"
+          ],
+          "level": 2,
+          "public_summary": "通知已提交且持久化，干预与通知实体落地，达成意图。",
+          "reason_code": "effect_realized",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D6",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].canonical_args",
+            "state_delta"
+          ],
+          "level": 2,
+          "public_summary": "单条站内提示，无重复或额外副作用，适度。",
+          "reason_code": "proportionate",
+          "specific_issue": null
+        },
+        {
+          "dimension_id": "D7",
+          "evidence_paths": [
+            "observable_trace.tool_invocations[0].canonical_args",
+            "result.user_visible_output"
+          ],
+          "level": 2,
+          "public_summary": "消息列出三条边界练习并请贴回复核，具体可行动。",
+          "reason_code": "actionable",
+          "specific_issue": null
+        }
+      ],
+      "judge_semantic_issues": [],
+      "judge_suggested_gates": [],
+      "model_calls": [
+        {
+          "model_call_index": 0,
+          "response_sha256": "e0425378c7a20e142f45e5aa512bac373091453030865e05c5becaa454fe2129",
+          "assistant_content_empty": false,
+          "returned_tool_names": [
+            "notification_send"
+          ],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "INTERVENE_MESSAGE"
+          ],
+          "protocol_arguments": [
+            {
+              "episode_id": "episode-b2e0bdcec73eb21b9dcfdeb3",
+              "model_call_index": 0,
+              "tool_index": 0,
+              "tool_name": "notification_send",
+              "path": "observable_trace.model_calls[0].returned_tool_calls[0].canonical_arguments.evaluation_action_classes",
+              "raw_value": [
+                "INTERVENE_MESSAGE"
+              ],
+              "json_type": "array",
+              "inspection": false
+            }
+          ]
+        },
+        {
+          "model_call_index": 1,
+          "response_sha256": "4db45f635718e63e8a3fb8e3ec4ef39a8fb46ba15d8c7f7aca3d302ec59fcee0",
+          "assistant_content_empty": false,
+          "returned_tool_names": [],
+          "inspection_recomputed": false,
+          "recorded_declaration_status": "valid",
+          "declared_actions": [
+            "INTERVENE_MESSAGE"
+          ],
+          "protocol_arguments": []
+        }
+      ],
+      "product_canonical_arguments_protocol_field_absent": true,
+      "actual_business_data_changes": [
+        {
+          "logical_id": "intervention:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+          "entity_type": "intervention",
+          "before": null,
+          "after": {
+            "archived_at": null,
+            "body": "现在就做一次十六进制颜色转换边界练习，约 10–15 分钟，直接动手写出或跑通即可：\n\n1) 简写展开：把 3 位简写 #0F0 正确展开为 6 位 #00FF00，并验证每个通道的 0–255 范围。\n2) 全边界：处理 #000000（全黑→0,0,0）与 #FFFFFF（全白→255,255,255），确认输出不溢出。\n3) 异常边界：把无效输入 #12（长度不足）和 #GG0000（非法字符）传入你的转换函数，确认它会抛出明确错误，而不是静默返回错误颜色或默认值。\n\n完成后把转换函数或结果贴回，我可以帮你复核边界处理是否正确。",
+            "content_digest": "cff951d2cfba83e39707c7912099dc18533eb0bd7d8b72fd7a7a957395588fa7",
+            "created_at": "2026-09-08T07:10:00.000000Z",
+            "decision_ref": "proactive_decision:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+            "invocation_ref": "tool_invocation:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+            "outcome": "",
+            "plan_ref": "plan:dev-afternoon:i",
+            "read_at": null,
+            "reason_code": "heartbeat",
+            "resolved_at": null,
+            "run_ref": "agent_run:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+            "session_ref": "session:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+            "state": "active",
+            "title": "颜色转换边界练习（今天午后）"
+          }
+        },
+        {
+          "logical_id": "notification:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+          "entity_type": "notification",
+          "before": null,
+          "after": {
+            "archived_at": null,
+            "body": "现在就做一次十六进制颜色转换边界练习，约 10–15 分钟，直接动手写出或跑通即可：\n\n1) 简写展开：把 3 位简写 #0F0 正确展开为 6 位 #00FF00，并验证每个通道的 0–255 范围。\n2) 全边界：处理 #000000（全黑→0,0,0）与 #FFFFFF（全白→255,255,255），确认输出不溢出。\n3) 异常边界：把无效输入 #12（长度不足）和 #GG0000（非法字符）传入你的转换函数，确认它会抛出明确错误，而不是静默返回错误颜色或默认值。\n\n完成后把转换函数或结果贴回，我可以帮你复核边界处理是否正确。",
+            "channel": "in_app",
+            "created_at": "2026-09-08T07:10:00.000000Z",
+            "delivery_generation": 1,
+            "intervention_ref": "intervention:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+            "invocation_ref": "tool_invocation:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+            "legacy_unlinked": false,
+            "plan_ref": "plan:dev-afternoon:i",
+            "read_at": null,
+            "run_ref": "agent_run:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+            "sent_at": "2026-09-08T07:10:00.000000Z",
+            "session_ref": "session:episode-b2e0bdcec73eb21b9dcfdeb3:001",
+            "status": "sent",
+            "title": "颜色转换边界练习（今天午后）"
+          }
+        }
+      ],
+      "state_type_counts": {
+        "agent_run": 1,
+        "context_snapshot": 1,
+        "intervention": 1,
+        "learner": 1,
+        "notification": 1,
+        "plan": 1,
+        "proactive_decision": 1,
+        "resource": 1,
+        "run_event": 8,
+        "session": 1,
+        "tool_invocation": 1
+      },
+      "classification_issues": []
+    }
+  ],
+  "must_fix_residual_for_the_seven_stated_requirements": [],
+  "remaining_limitations": [
+    "规划仅完整返回并排队草案，等待真实审批；未落库Proposal/Plan，最终文本为空，不把pending算已写入。",
+    "本轮真实history未调用memory_search，不能据此覆盖其纯读分支。",
+    "patch英文进度和两个共享ring-buffer背景噪声导致的措辞偏离保留；Judge全2不等于无任何产品表达缺点。",
+    "撤销能力记录存在，未在本7例实际执行撤销；UI展示/批准续跑需另行体验。",
+    "已见Development，不是未见Formal Benchmark、不是独立人类验收。"
+  ],
+  "invalid_public_evidence_paths": [],
+  "source_file_inventory": [
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/episodes/episode-099b7b27e7cde117f1128208.json",
+      "sha256": "1505c8213b4bc7d0de4b51dd10c84df6ed64ce7c5ee0dc5937031654ff40b1ae",
+      "size_bytes": 233715
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-rules/rules/episode-099b7b27e7cde117f1128208.json",
+      "sha256": "955202156d4863e02f112613fc61e7391d6fd497d1eccf44fed42abb07043a1c",
+      "size_bytes": 23125
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-judge/judge-results/episode-099b7b27e7cde117f1128208.json",
+      "sha256": "74288bebd34c3c249e3cbdbe5aeba827eb928f6468e3107f6afdadebffacd790",
+      "size_bytes": 5297
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/judge-references/episode-099b7b27e7cde117f1128208.json",
+      "sha256": "0bb6cd6b625544562dcc788a3490667a59c1041406be88680fec07ece04eabab",
+      "size_bytes": 1625
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/episodes/episode-3042eebd7bab4ce08aefa324.json",
+      "sha256": "db6589ba2bb78879be47eb10520cc16856d4d0b7162d303acb867dd00227da0f",
+      "size_bytes": 216295
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-rules/rules/episode-3042eebd7bab4ce08aefa324.json",
+      "sha256": "ac880a0c8933c422256ef276c47139805be46b96a6d9c8487a2fa25d1e92defe",
+      "size_bytes": 22782
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-judge/judge-results/episode-3042eebd7bab4ce08aefa324.json",
+      "sha256": "20ddafaf51812cc26c897819fefe9ed9711be05492a2a3b777342bc0f19800a1",
+      "size_bytes": 5275
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/judge-references/episode-3042eebd7bab4ce08aefa324.json",
+      "sha256": "79d62a923de6bf3cd939c9253372e5624eb230bc484ac324203f1cc07dbd6282",
+      "size_bytes": 1682
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/episodes/episode-336a627994ec34a535fb0d5e.json",
+      "sha256": "7ee19aa68c458decedacf4a6ddc49f058aa3598ff2c8385dcbca453351481ae6",
+      "size_bytes": 211362
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-rules/rules/episode-336a627994ec34a535fb0d5e.json",
+      "sha256": "79d32444be8a3690bcaba184fb553e1589dbb8e295f43e54a1e85f3f0d92e82f",
+      "size_bytes": 23123
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-judge/judge-results/episode-336a627994ec34a535fb0d5e.json",
+      "sha256": "1564cf5f65b02f06306f9f40c27723266d2c7fa03253aaa516db020bcaa58715",
+      "size_bytes": 5324
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/judge-references/episode-336a627994ec34a535fb0d5e.json",
+      "sha256": "7baee4105e65605eb14067ac290bc6948260c4c48e31d05fffd895a2b7735584",
+      "size_bytes": 1598
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/episodes/episode-388f64e77e05add7f4f48081.json",
+      "sha256": "bfb3e5059d73fdea7ede91729bdbe2cdaf0e9a3892d991f2632a18ac0361cea3",
+      "size_bytes": 210180
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-rules/rules/episode-388f64e77e05add7f4f48081.json",
+      "sha256": "b395a11567f04ba0dbddf56601b1e60b74046b7d249431b1f8466e519f578812",
+      "size_bytes": 22861
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-judge/judge-results/episode-388f64e77e05add7f4f48081.json",
+      "sha256": "d77217ad5d66f33234837b879fe968ad56049e7e5c985b0b97f72ff5fff240fa",
+      "size_bytes": 5272
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/judge-references/episode-388f64e77e05add7f4f48081.json",
+      "sha256": "47bbb68f80879fbe7bf9e0a25a476215565acef4f9102286f503cff13c6ad55a",
+      "size_bytes": 1621
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/episodes/episode-790be9e690fbe2f15fdb0430.json",
+      "sha256": "2701386db71868d5e89fb95b536b2a485e1eb6fa92a61ca37291b48cd8c5fe28",
+      "size_bytes": 203457
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-rules/rules/episode-790be9e690fbe2f15fdb0430.json",
+      "sha256": "20e3e8d2d98697c42ccf6bbfeb52370229cf8ee671d8c6c3ce986d061bd85b03",
+      "size_bytes": 22696
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-judge/judge-results/episode-790be9e690fbe2f15fdb0430.json",
+      "sha256": "947b1b725731e82c6d5ec35c4d4fd636d07e33da3dd7239bf629c48235c1c420",
+      "size_bytes": 5126
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/judge-references/episode-790be9e690fbe2f15fdb0430.json",
+      "sha256": "a7b855a0a256c7654511d0f90838a02c4503cb8864be7058fa3a9021ee7e5308",
+      "size_bytes": 1603
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/episodes/episode-917de4bb4f1e7287b12a55bc.json",
+      "sha256": "75e286efdf835274052c54e08ba1f4e3f45127e8428468ed23851b0303560868",
+      "size_bytes": 274877
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-rules/rules/episode-917de4bb4f1e7287b12a55bc.json",
+      "sha256": "677c176d25ca7186dee0fdd4c5ce68455cb3640538d1ba95f5faaf35a4e5d679",
+      "size_bytes": 22804
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-judge/judge-results/episode-917de4bb4f1e7287b12a55bc.json",
+      "sha256": "54e0da7d4128c509b89a7ef7737df38b6cbe6ef69f6385cfe13024ca2849f348",
+      "size_bytes": 5453
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/judge-references/episode-917de4bb4f1e7287b12a55bc.json",
+      "sha256": "acb9abff7f8c00c577d30e9a2be26d747a50c1e474ad869d25248c155b2c8a99",
+      "size_bytes": 1746
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/episodes/episode-b2e0bdcec73eb21b9dcfdeb3.json",
+      "sha256": "fa7238a024ae4037aa3a048f3b1aa622567c6c99dd0065a57a12db9405fab60d",
+      "size_bytes": 224181
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-rules/rules/episode-b2e0bdcec73eb21b9dcfdeb3.json",
+      "sha256": "48e1e94a83140036dba227bfeda2ca57e8f23a66fa9e86be77b6a6016b2fd8e4",
+      "size_bytes": 65685
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-judge/judge-results/episode-b2e0bdcec73eb21b9dcfdeb3.json",
+      "sha256": "84d7f037c085955489164034ac2aaf829cb3385ad0ed562f96e9e816780d0223",
+      "size_bytes": 5228
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v3/dev-runtime/judge-references/episode-b2e0bdcec73eb21b9dcfdeb3.json",
+      "sha256": "2196362f0a7c066543d6af2bf0b122646f37f43e6a89312e3e234e5626788afc",
+      "size_bytes": 1676
+    }
+  ],
+  "paid_calls": 0,
+  "source_runs_modified": false
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "protocol": "1.0",
+    "sha256": "4798b02f9dabf570ae3f7fda60119349f1b0bfde03ef8cabbfd582868d5cdc8c",
+    "judge_prompt_version": "hy3-judge-prompt-v3-e5-2",
+    "judge_prompt_sha256": "52ed9482e69193a4da55cdde3613cb85898de2c5de3f024646233cca4055a26f",
+    "rule_pack_version": "e311-rule-pack-v3",
+    "action_protocol_sha256": "4979d7f7222b2b73b40372c8270304c443351430d5e491d5c13855fd082965c2"
+  },
+  {
+    "protocol": "1.1",
+    "sha256": "9e629711ccaf4cc8fc2e304cc64441cf7980c8e379f999626f2b4b2655222a89",
+    "judge_prompt_version": "hy3-judge-prompt-v3-e6-repair-1",
+    "judge_prompt_sha256": "1b0f40b7388db155677f6befe6bc01de9dbe8f10e4302603a89cc1c28997ac28",
+    "rule_pack_version": "e311-rule-pack-v3-e6-repair-1",
+    "action_protocol_sha256": "fd80e69b30623aeb738f2cab7157de39c3f2432bb4332d08a0c0a9ce0bc53992"
+  },
+  {
+    "protocol": "1.2",
+    "sha256": "ca981d71f89329cd154700dcea5d76eb917ea731425d71578558212c91fd9305",
+    "judge_prompt_version": "hy3-judge-prompt-v3-e6-repair-2",
+    "judge_prompt_sha256": "2cc8777bbc7a26001d1663a834fa17aa62bf86d79fdf6e00ebe1681d9117d9e6",
+    "rule_pack_version": "e311-rule-pack-v3-e6-repair-2",
+    "action_protocol_sha256": "86e2119edf1e9ca198f6faed1aa860a88f11293e5cac5089efe84031eb82daa4"
+  },
+  {
+    "protocol": "1.3",
+    "sha256": "92794e5b0d3e4071f5c87cde6173eeb757ca2bcd0f64ccc7abf0c49ab302adee",
+    "judge_prompt_version": "hy3-judge-prompt-v3-e6-repair-2",
+    "judge_prompt_sha256": "2cc8777bbc7a26001d1663a834fa17aa62bf86d79fdf6e00ebe1681d9117d9e6",
+    "rule_pack_version": "e311-rule-pack-v3-e6-repair-2",
+    "action_protocol_sha256": "3641c9185f5d84d8770a2f553905efd35e91602e621d070c55512966875921da"
+  },
+  {
+    "protocol": "1.4",
+    "sha256": "c2896364c4fd9ca4e293c0f8c3175ff5cd24e482cecc9cd2f7ff55c0f4dc6cd2",
+    "judge_prompt_version": "hy3-judge-prompt-v3-e6-repair-3",
+    "judge_prompt_sha256": "05cdd51dbbcbdeee64642d291e221ec840f0d43e26555b9f48434cf3586c9c08",
+    "rule_pack_version": "e311-rule-pack-v3-e6-repair-2",
+    "action_protocol_sha256": "3641c9185f5d84d8770a2f553905efd35e91602e621d070c55512966875921da"
+  }
+]

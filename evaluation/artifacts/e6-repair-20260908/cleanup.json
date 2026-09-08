@@ -1,0 +1,38 @@
+{
+  "schema": "e6-repair-cleanup-v1",
+  "reviewer_role": "primary_ai_reviewer",
+  "archive_sha256": "27715a34d8802027a502aaa590b538a00fd6fc875becb1c5715c25650b8c4f87",
+  "preconditions": {
+    "archive_verified_files": 4904,
+    "frozen_report_reproduced": true,
+    "active_task_processes": [],
+    "ledger_sha256": "c1e42e0ab9a111a0513aa3b60a410b662f119673e2d3d992249dfebc97e06587"
+  },
+  "removed": [
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l",
+      "type": "directory",
+      "temporary_database_count": 3,
+      "ownership": "exclusive task root"
+    },
+    {
+      "path": "/tmp/pytest-of-root/pytest-33",
+      "type": "directory",
+      "temporary_database_count": 0,
+      "ownership": "candidate3d20c8b recorded runtime manifests and45-test execution"
+    },
+    {
+      "path": "/tmp/learning-e6-repair-current",
+      "type": "marker"
+    }
+  ],
+  "other_pytest_directories_untouched": [
+    "/tmp/pytest-of-root/pytest-31",
+    "/tmp/pytest-of-root/pytest-32"
+  ],
+  "paid_calls": 0,
+  "created_at": "2026-09-08T10:00:34.225916+00:00",
+  "all_owned_paths_absent": true,
+  "remaining_runtime_worker_directories": [],
+  "ledger_unchanged": true
+}

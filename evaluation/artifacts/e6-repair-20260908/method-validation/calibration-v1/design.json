@@ -1,0 +1,267 @@
+{
+  "cases": [
+    {
+      "case_id": "calibration-c01-p-good",
+      "episode_id": "episode-231f78f2e1be1f6eb8430715",
+      "episode_sha256": "0d672721c2a4ffe76e05d16efbcfc3c2e87f785223d09f554a1f2553f2651bce",
+      "group": "calibration-c01-p",
+      "label": "good",
+      "rule_sha256": "db49f718ba10a4d0f7ac221063322c4a20492b96305f5c64d0c40d1a67d8ab61",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c01-p-mild",
+      "episode_id": "episode-e860f373725428b2ed55ed8e",
+      "episode_sha256": "422f3c8d1be6b0b59741e96563bf1fdaf7758eb565e45869058e413e46e9aba9",
+      "group": "calibration-c01-p",
+      "label": "mild",
+      "rule_sha256": "fe97b2afb2c766ec167dc8f2e64a196cb8b038aab10ea427f1a794d92146a3a0",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c01-p-severe",
+      "episode_id": "episode-8ae3dd759111a940bae4fb14",
+      "episode_sha256": "921e40ae525e45842f7342bb6c295d1ea2cc75d3ccc530a649df2b40107f04e1",
+      "group": "calibration-c01-p",
+      "label": "severe",
+      "rule_sha256": "7e4a30282e9245898281e285a9c86f4665c03eb5b9f7a38843846dbdbbec0b8f",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c02-p-good",
+      "episode_id": "episode-b97b23f3e3e7fdfc12275704",
+      "episode_sha256": "0aa0ff8fc4cabb14a9e7770c53bb14eabd6cc4bb6a33f8a6ccdd0b131447fdb5",
+      "group": "calibration-c02-p",
+      "label": "good",
+      "rule_sha256": "2837a5822e661e11549ba2cb574c62ffaa83c9b6a0ceae303d22bc05ad478797",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c02-p-mild",
+      "episode_id": "episode-f02ae935dcde98d400092fcc",
+      "episode_sha256": "99f0ca6fab35b7d500037580de818df2d7d5012aa4cfb667a2dfda0f18108a84",
+      "group": "calibration-c02-p",
+      "label": "mild",
+      "rule_sha256": "818fcbf2da0c0f917a6692c1930936553540f10b9218910a0c0caff3aeeec2be",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c02-p-severe",
+      "episode_id": "episode-a0e249edfba330ed63c9224d",
+      "episode_sha256": "8e57a4660d9dfb2f0c71cc29d3b4e7e77704912d438e010790fca9a300e06693",
+      "group": "calibration-c02-p",
+      "label": "severe",
+      "rule_sha256": "f0675bb385b791b825e7d5d03d8d60da5ffc66809531e7a0f2750cbec3f9ae67",
+      "track": "planning"
+    },
+    {
+      "case_id": "calibration-c03-i-good",
+      "episode_id": "episode-4fa64e978c5d6566955c0372",
+      "episode_sha256": "68faf70b57df6642a122c20fc042e8eecef1fb0b4c5103fc9d57466badafcd11",
+      "group": "calibration-c03-i",
+      "label": "good",
+      "rule_sha256": "0ec3fcd398a0c1d2610c75e8d32b887ad277fda729c8aa2a18a56437f5825209",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c03-i-mild",
+      "episode_id": "episode-11e4eadf17b89bee4e18d6e3",
+      "episode_sha256": "8bd19049b8867345fc8da41a7f9dc43e96710d51e1878713d0517787081acaab",
+      "group": "calibration-c03-i",
+      "label": "mild",
+      "rule_sha256": "c5a8b2005b6cd2aa34d3a38da2b1b9df5e2f55e1297b224fcc9668c007d3018c",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c03-i-severe",
+      "episode_id": "episode-23bdaf24fe72b1dc5c95b6cb",
+      "episode_sha256": "d37e5320c44e89b4d6395f806196b23c95621bc14fea175b349ea0050c3a1191",
+      "group": "calibration-c03-i",
+      "label": "severe",
+      "rule_sha256": "a886a11072565b72d519d1fb2efb334251cf9d56e691d5a6ec1970e27babc30f",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c04-i-good",
+      "episode_id": "episode-3a3feba25ed942cda7769cfe",
+      "episode_sha256": "f597b71a8b7cdf2ee44ab433d80e4f1c58a9c1a0c6206916d7af86020d8fcdb4",
+      "group": "calibration-c04-i",
+      "label": "good",
+      "rule_sha256": "c960b417a08bb6ec84293c93a29d08e0d1e9d221e769c70b39b0476a3e807237",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c04-i-mild",
+      "episode_id": "episode-84d0d9013aa13958a3b2a754",
+      "episode_sha256": "b1f7fe3971e10ff3edee54f15be25c4ad70ddd1bbf4c75d7ea346eeecc3900e9",
+      "group": "calibration-c04-i",
+      "label": "mild",
+      "rule_sha256": "70f25596e3fe7795f04e2e6cfce49c73b391fa6ceff2a2ae97f86d2b8e464ccd",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c04-i-severe",
+      "episode_id": "episode-ddad97925482d27d9525bb60",
+      "episode_sha256": "87122641587584c38c0d8295380b0d9e0179e5b5323ef921f2bc643d89f258c6",
+      "group": "calibration-c04-i",
+      "label": "severe",
+      "rule_sha256": "54992dab53ce5f7cbaacfa9003d1a823872fd18cc3a16313d0d3449ba4ec977f",
+      "track": "intervention"
+    },
+    {
+      "case_id": "calibration-c05-a-good",
+      "episode_id": "episode-b789b890d299968d6871ec12",
+      "episode_sha256": "14e89e8f903201f45124043621ca74da63e7a666532abf40015c82c857c4c427",
+      "group": "calibration-c05-a",
+      "label": "good",
+      "rule_sha256": "3982c36d8cdb4ec250f32983481d9495dc16f42e77674fd5dd08bd9106225101",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c05-a-mild",
+      "episode_id": "episode-48a6cf4f85e6e279daf4888c",
+      "episode_sha256": "ba184512023c82fae0f35c52bded279ae0cde6d94677c3bc6478b6ff3e6245a1",
+      "group": "calibration-c05-a",
+      "label": "mild",
+      "rule_sha256": "0d569086e8ee11446689ec92556bcfd77d45fbd761a36d480243707ea20fb0db",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c05-a-severe",
+      "episode_id": "episode-5c4758b5ff1f54bf597ab9ed",
+      "episode_sha256": "db5fb6bb457201ba3e1f2f727b522ac6064a134b8fadd1640195ae01731ef243",
+      "group": "calibration-c05-a",
+      "label": "severe",
+      "rule_sha256": "78487f877ea4ae1f15d0d4e3080c154d2d139ef789d9c995c0b9794de53920d6",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c06-a-good",
+      "episode_id": "episode-17dd0f809f01c2058e5147d2",
+      "episode_sha256": "a581abcec760bcc6920ceb805fa12040f64300143b08e33010873eef08520c3a",
+      "group": "calibration-c06-a",
+      "label": "good",
+      "rule_sha256": "1ee7e8fce70aa3dd77c086d6ab437b324ff2d6871335a900c734dfd98e5fc236",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c06-a-mild",
+      "episode_id": "episode-811564e6c875e329def5ad6c",
+      "episode_sha256": "238285c71144f6aae360c427e5b971763007a8513ec13c024ce4277a0923f5ea",
+      "group": "calibration-c06-a",
+      "label": "mild",
+      "rule_sha256": "56481416b5bd0c555430aa7f8fd3d15ab519c8a4d41f2596ff5457f6ceafc381",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c06-a-severe",
+      "episode_id": "episode-c1769c08c68c63f96ff93cb4",
+      "episode_sha256": "f46ff98147e8736ccbf5e26767950ffbb2c42b467e9ab144cbdb3d84bfa6aee0",
+      "group": "calibration-c06-a",
+      "label": "severe",
+      "rule_sha256": "5d540fa1bd2ff8ba1636a31c9dcac97ebd814b2d21c4f3cd5dcfcc67b0f822f1",
+      "track": "assessment"
+    },
+    {
+      "case_id": "calibration-c07-r-good",
+      "episode_id": "episode-da2ec345a605db8c069c02ff",
+      "episode_sha256": "0574cac3041d0784a97a87211047b377bbbfef6a0b0d6d9db2e318c0398bc0d5",
+      "group": "calibration-c07-r",
+      "label": "good",
+      "rule_sha256": "77cc218b1715a04cec963ece0355081a31f0fd072cf836bb6334ebc0d22ae594",
+      "track": "revision"
+    },
+    {
+      "case_id": "calibration-c07-r-mild",
+      "episode_id": "episode-525877c35c593effdd69777e",
+      "episode_sha256": "6b2bd9f83cd6db40a9e6400ccc9d70a4f24ce75e288d3e89acc66debfcb2b346",
+      "group": "calibration-c07-r",
+      "label": "mild",
+      "rule_sha256": "ddff9c4445c3f958b4849b3aae4c385fa21c6bc5e21beac88314c5cf1828c249",
+      "track": "revision"
+    },
+    {
+      "case_id": "calibration-c07-r-severe",
+      "episode_id": "episode-fb8832b03c62655a87e8f47f",
+      "episode_sha256": "d230c0ee7f206c667cbb22eb5f8198696d950be6b8e3d0cad362dc5d58389469",
+      "group": "calibration-c07-r",
+      "label": "severe",
+      "rule_sha256": "0236449419c5f6d800db30c18cb2331bd2b8499228294cea1bf5ec11ed21d6ee",
+      "track": "revision"
+    },
+    {
+      "case_id": "calibration-c08-r-good",
+      "episode_id": "episode-1e424876fab420a92bf4ec3c",
+      "episode_sha256": "6d54d40a68bb57fa967c1d0ca72e503e0d9208e5be78f777c4a2727316a54305",
+      "group": "calibration-c08-r",
+      "label": "good",
+      "rule_sha256": "2e21e47cc7aed7ef67069b738b5b7ab1c1296badc1c63cc1cddafb717618143e",
+      "track": "revision"
+    },
+    {
+      "case_id": "calibration-c08-r-mild",
+      "episode_id": "episode-84d905ed19016768e5785600",
+      "episode_sha256": "882e41a41a37a6d7fe584585f7a8d7b4be44ad0e7fa630dd78de7a2e8e853902",
+      "group": "calibration-c08-r",
+      "label": "mild",
+      "rule_sha256": "820f11cd62cfeecdb097fef1799d05cf7f21d8a5242879c23d36cc6cadad8f57",
+      "track": "revision"
+    },
+    {
+      "case_id": "calibration-c08-r-severe",
+      "episode_id": "episode-685b356b1a31cc99777ac106",
+      "episode_sha256": "d90715db28b069c412848adb3fd168c5f6162ad514ca1abe5f7bd94dcceee93d",
+      "group": "calibration-c08-r",
+      "label": "severe",
+      "rule_sha256": "bed0e98557aa836d8d036b4451c38cf0523c072fb9fb40c31e3d266db9b185d2",
+      "track": "revision"
+    }
+  ],
+  "concurrent_tracks": 2,
+  "config": {
+    "evidence_output_policy": "episode-path-enum-v1",
+    "input_estimator": "request-utf8-bytes-plus-2048-v1",
+    "input_token_limit": 196608,
+    "judge_config_version": "hy3-judge-config-v3-budgeted-e6-1",
+    "max_tokens": 12288,
+    "model": "hy3",
+    "n": 1,
+    "provider_failure_policy": "safe-category-http-status-v1-no-transport-retry",
+    "reasoning_effort": "high",
+    "repair_limit": 1,
+    "schema_version": "judge-provider-config-v3",
+    "temperature": 0.0,
+    "timeout_seconds": 180,
+    "transport_retries": 0,
+    "wire_protocol": "openai-compatible-structured-output-v1"
+  },
+  "design_sha256": "53c927b1876361e77c2300135161de01a821aed23f1469a8f23283e24a39f020",
+  "experiment_version": "e6-repair-method-1-calibration",
+  "formal": false,
+  "metric_policy": "docs/E5验收工作记录.md:实验预设",
+  "planned_evaluations": 88,
+  "prompt_sha256": "1b0f40b7388db155677f6befe6bc01de9dbe8f10e4302603a89cc1c28997ac28",
+  "repeat_ids": [
+    "episode-231f78f2e1be1f6eb8430715",
+    "episode-e860f373725428b2ed55ed8e",
+    "episode-b97b23f3e3e7fdfc12275704",
+    "episode-f02ae935dcde98d400092fcc",
+    "episode-4fa64e978c5d6566955c0372",
+    "episode-11e4eadf17b89bee4e18d6e3",
+    "episode-3a3feba25ed942cda7769cfe",
+    "episode-84d0d9013aa13958a3b2a754",
+    "episode-b789b890d299968d6871ec12",
+    "episode-48a6cf4f85e6e279daf4888c",
+    "episode-17dd0f809f01c2058e5147d2",
+    "episode-811564e6c875e329def5ad6c",
+    "episode-da2ec345a605db8c069c02ff",
+    "episode-525877c35c593effdd69777e",
+    "episode-1e424876fab420a92bf4ec3c",
+    "episode-84d905ed19016768e5785600"
+  ],
+  "repeats": 5,
+  "rule_manifest_sha256": "957498cf932a14061d597fc065904ee91c1d0f66ad79f6f0d1d02f53dcb49b2b",
+  "runtime_manifest_sha256": "edc6a7c530cdae27bb4c87e0d2288f707298a01f2ea1d500906016c62597a437",
+  "runtime_path": "../runtime",
+  "source_commit": "267127d43da1ade45497f476af7a79e1a5670071"
+}

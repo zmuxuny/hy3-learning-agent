@@ -1,0 +1,163 @@
+{
+  "schema": "e6-repair-final-validation-v1",
+  "created_at": "2026-09-08T09:59:25.654254+00:00",
+  "reviewer_role": "primary_ai_reviewer",
+  "scope": "Artifact integrity, frozen-version report reproducibility, denominators, budget and specific regression evidence. Not independent human review or capability success.",
+  "checks": [
+    {
+      "check": "archive_manifest_all_files",
+      "passed": true,
+      "details": {
+        "count": 4904
+      }
+    },
+    {
+      "check": "frozen_1_4_archive_report_reproduction_summary.json",
+      "passed": true,
+      "details": {
+        "sha256": "8fe5faad6f779465bf7d2e4563f521b0b224836e7da41019caaa2b9f1180c10d"
+      }
+    },
+    {
+      "check": "frozen_1_4_archive_report_reproduction_cases.csv",
+      "passed": true,
+      "details": {
+        "sha256": "83626743ad5cf0d2a45d2e1a9a754c9175747685fc502327a25d4256bcabd9e7"
+      }
+    },
+    {
+      "check": "preformal_method_decision_binding_dev-v3-ai-audit.json",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "preformal_method_decision_binding_method-v4-focused-ai-audit.json",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "preformal_method_decision_binding_version-comparison.json",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "preformal_method_decision_binding_budget-before-formal-summary.json",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "formal_false_and_original_blockers",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "case_denominators",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "all_outcomes_preserved",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "null_scores_preserved",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "actual_judge_attempt_denominator",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "ledger_matches_final_snapshot",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "all_417_paid_calls_mapped",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "budget_history_authorization_preserved",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "actual_budget_limit_and_remaining",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "79_lossless_candidate_requests",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "candidate_real_runs_not_claimed",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "next_corrected_request_reservation_unaffordable",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "candidate_external_regression",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "candidate_protocol_registry_readonly_verify",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "public_artifacts_privacy_review",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "content_audit_paths_and_sources",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "historical_artifacts_and_releases_unchanged",
+      "passed": true,
+      "details": [
+        {
+          "scope": "all_previous_artifacts",
+          "baseline_commit": "c83c0ef",
+          "files": 115,
+          "all_git_blob_bytes_identical": true
+        },
+        {
+          "scope": "all_frozen_1_0_through_1_4_release_assets",
+          "baseline_commit": "1f1f35f",
+          "files": 37,
+          "all_git_blob_bytes_identical": true
+        }
+      ]
+    }
+  ],
+  "checks_passed": 24,
+  "checks_failed": 0,
+  "archive": {
+    "archive_sha256": "27715a34d8802027a502aaa590b538a00fd6fc875becb1c5715c25650b8c4f87",
+    "archive_size_bytes": 16735758,
+    "evidence_manifest_sha256": "0699964a6189b0ae4b5188a2fd8f84c47bd819855886ee66ae727522a05c8af0",
+    "files_verified": 4904,
+    "all_identical": true,
+    "original_inventory_verified": 4416,
+    "reviewed_synthetic_fixture_matches": 35,
+    "unresolved_sensitive_findings": 0
+  },
+  "formal_capability_result": false,
+  "candidate_v5_real_validation_completed": false,
+  "paid_calls_in_this_verification": 0,
+  "cleanup_receipt": "cleanup.json"
+}

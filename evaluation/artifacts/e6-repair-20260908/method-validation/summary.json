@@ -1,0 +1,45 @@
+{
+  "version": "e6-repair-evidence-index-v1",
+  "formal": false,
+  "historical_baselines": {
+    "E5": "40fddb8",
+    "E6_first": "b0b0d02"
+  },
+  "calibration_versions": {
+    "1": {
+      "complete_evaluations": 88,
+      "planned_evaluations": 88,
+      "terminal_judge_errors": 0,
+      "not_attempted_evaluations": 0,
+      "mean_conclusion_agreement": 0.9625,
+      "mean_score_std_population": 1.9045120990817175,
+      "pending_semantic_reviews": 0,
+      "strict_order": {
+        "numerator": 7,
+        "rate": 0.875
+      },
+      "good_gt_severe": {
+        "numerator": 8,
+        "rate": 1.0
+      }
+    },
+    "2": {
+      "complete_evaluations": 88,
+      "planned_evaluations": 88,
+      "terminal_judge_errors": 0,
+      "not_attempted_evaluations": 0,
+      "mean_conclusion_agreement": 0.9875,
+      "mean_score_std_population": 0.8386031940267085,
+      "pending_semantic_reviews": 0,
+      "strict_order": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "good_gt_severe": {
+        "numerator": 8,
+        "rate": 1.0
+      }
+    }
+  },
+  "validation_scope": "v2 full 88; v3 7 actual Agent/Judge +24 stub Rules; v4 Assessment20 + timezone6. Never represented as final v4 full88."
+}

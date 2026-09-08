@@ -1,0 +1,612 @@
+{
+  "complete_evaluations": 88,
+  "complete_repeat_cases": 16,
+  "critical_and_defect_recall": "requires_evidence_bound_content_review",
+  "design_sha256": "cd18f446ce6fe4073d08140af2f11b09d0d71ec7f2e435617507ef7a6149dea6",
+  "discrimination": {
+    "raw_score": {
+      "denominator": 8,
+      "good_gt_mild": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "good_gt_severe": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "groups": [
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c01-p",
+          "mild": 72.5,
+          "mild_gt_severe": true,
+          "severe": 2.5,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c02-p",
+          "mild": 72.5,
+          "mild_gt_severe": true,
+          "severe": 2.5,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c03-i",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 0.0,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c04-i",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 0.0,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c05-a",
+          "mild": 95.0,
+          "mild_gt_severe": true,
+          "severe": 0.0,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c06-a",
+          "mild": 95.0,
+          "mild_gt_severe": true,
+          "severe": 0.0,
+          "strict_order": true
+        },
+        {
+          "good": 95.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c07-r",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 32.5,
+          "strict_order": true
+        },
+        {
+          "good": 95.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c08-r",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 25.0,
+          "strict_order": true
+        }
+      ],
+      "mild_gt_severe": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "strict_order": {
+        "numerator": 8,
+        "rate": 1.0
+      }
+    },
+    "reviewed_score": {
+      "denominator": 8,
+      "good_gt_mild": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "good_gt_severe": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "groups": [
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c01-p",
+          "mild": 72.5,
+          "mild_gt_severe": true,
+          "severe": 2.5,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c02-p",
+          "mild": 72.5,
+          "mild_gt_severe": true,
+          "severe": 2.5,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c03-i",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 0.0,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c04-i",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 0.0,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c05-a",
+          "mild": 95.0,
+          "mild_gt_severe": true,
+          "severe": 0.0,
+          "strict_order": true
+        },
+        {
+          "good": 100.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c06-a",
+          "mild": 95.0,
+          "mild_gt_severe": true,
+          "severe": 0.0,
+          "strict_order": true
+        },
+        {
+          "good": 95.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c07-r",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 32.5,
+          "strict_order": true
+        },
+        {
+          "good": 95.0,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c08-r",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 25.0,
+          "strict_order": true
+        }
+      ],
+      "mild_gt_severe": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "strict_order": {
+        "numerator": 8,
+        "rate": 1.0
+      }
+    },
+    "rule_capped_score": {
+      "denominator": 8,
+      "good_gt_mild": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "good_gt_severe": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "groups": [
+        {
+          "good": 100,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c01-p",
+          "mild": 72.5,
+          "mild_gt_severe": true,
+          "severe": 2.5,
+          "strict_order": true
+        },
+        {
+          "good": 100,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c02-p",
+          "mild": 72.5,
+          "mild_gt_severe": true,
+          "severe": 2.5,
+          "strict_order": true
+        },
+        {
+          "good": 100,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c03-i",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 0,
+          "strict_order": true
+        },
+        {
+          "good": 100,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c04-i",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 0,
+          "strict_order": true
+        },
+        {
+          "good": 100,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c05-a",
+          "mild": 95,
+          "mild_gt_severe": true,
+          "severe": 0,
+          "strict_order": true
+        },
+        {
+          "good": 100,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c06-a",
+          "mild": 95,
+          "mild_gt_severe": true,
+          "severe": 0,
+          "strict_order": true
+        },
+        {
+          "good": 95,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c07-r",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 32.5,
+          "strict_order": true
+        },
+        {
+          "good": 95,
+          "good_gt_mild": true,
+          "good_gt_severe": true,
+          "group": "calibration-c08-r",
+          "mild": 87.5,
+          "mild_gt_severe": true,
+          "severe": 25,
+          "strict_order": true
+        }
+      ],
+      "mild_gt_severe": {
+        "numerator": 8,
+        "rate": 1.0
+      },
+      "strict_order": {
+        "numerator": 8,
+        "rate": 1.0
+      }
+    }
+  },
+  "experiment_complete": true,
+  "mean_conclusion_agreement": 0.9875,
+  "mean_dimension_agreement": 0.9857142857142858,
+  "mean_gate_agreement": 1.0,
+  "mean_score_std_population": 0.8386031940267085,
+  "not_attempted_evaluations": 0,
+  "not_run": 0,
+  "pending_semantic_reviews": 0,
+  "planned_evaluations": 88,
+  "repeat_cases_denominator": 16,
+  "repetition": [
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.6,
+        1.0,
+        0.6
+      ],
+      "episode_id": "episode-231f78f2e1be1f6eb8430715",
+      "gate_agreement": 1.0,
+      "score_range": 12.5,
+      "score_std_population": 4.743416490252569,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-e860f373725428b2ed55ed8e",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-b97b23f3e3e7fdfc12275704",
+      "gate_agreement": 1.0,
+      "score_range": 7.5,
+      "score_std_population": 3.6742346141747673,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-f02ae935dcde98d400092fcc",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-4fa64e978c5d6566955c0372",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-11e4eadf17b89bee4e18d6e3",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-3a3feba25ed942cda7769cfe",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-84d0d9013aa13958a3b2a754",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.8
+      ],
+      "episode_id": "episode-b789b890d299968d6871ec12",
+      "gate_agreement": 1.0,
+      "score_range": 5.0,
+      "score_std_population": 2.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-48a6cf4f85e6e279daf4888c",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-17dd0f809f01c2058e5147d2",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-811564e6c875e329def5ad6c",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-da2ec345a605db8c069c02ff",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-525877c35c593effdd69777e",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 1.0,
+      "denominator": 5,
+      "dimension_agreement": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-1e424876fab420a92bf4ec3c",
+      "gate_agreement": 1.0,
+      "score_range": 0.0,
+      "score_std_population": 0.0,
+      "valid": 5
+    },
+    {
+      "conclusion_agreement": 0.8,
+      "denominator": 5,
+      "dimension_agreement": [
+        0.8,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "episode_id": "episode-84d905ed19016768e5785600",
+      "gate_agreement": 1.0,
+      "score_range": 7.5,
+      "score_std_population": 3.0,
+      "valid": 5
+    }
+  ],
+  "terminal_judge_errors": 0
+}

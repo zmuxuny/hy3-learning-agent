@@ -1,0 +1,17 @@
+{
+  "command": [
+    "python",
+    "evaluation/scripts/summarize_e6_run.py",
+    "--dataset",
+    "/tmp/learning-e6-repair-hoxki28l/archive-extracted/frozen-inputs/evaluation/datasets/decisionbench-v1.4-e6-test",
+    "--run",
+    "/tmp/learning-e6-repair-hoxki28l/archive-extracted/formal",
+    "--output",
+    "/tmp/learning-e6-repair-hoxki28l/report-from-archive"
+  ],
+  "source_commit": "1f1f35f04aff5c2c83f69a1ceb98b4d80d7f3fd6",
+  "cwd": "/tmp/learning-e6-repair-hoxki28l/formal-copy",
+  "paid_enabled": false,
+  "seconds": 9.827,
+  "exit_code": 0
+}

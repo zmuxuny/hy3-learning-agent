@@ -1,0 +1,865 @@
+{
+  "schema_version": "e6-judge-input-failure-analysis-v1",
+  "reviewer": "second AI involved in development; not independent human blind auditor",
+  "frozen_source": "1f1f35f",
+  "original_protocol": "1.4",
+  "paid_calls": 0,
+  "network_attempts": 0,
+  "ledger_accesses": 0,
+  "frozen_source_or_result_mutations": false,
+  "finding": "Local conservative input limit rejection before budget reservation or provider HTTP; not timeout, not budget exhaustion, not provider failure.",
+  "exact_exception": {
+    "type": "ValueError",
+    "message": "judge_input_limit_exceeded",
+    "frozen_origin": "evaluation/src/learning_agent_eval/active_judge.py:341",
+    "frozen_catch": "evaluation/src/learning_agent_eval/active_judge.py:1267",
+    "catch_maps_to": "judge_request_rejected",
+    "lost_diagnostic": "Catch discards ValueError text, so original attempt lacks safe local size-limit subtype; offline exact frozen reconstruction resolves it.",
+    "before_budget_reserve": true,
+    "before_provider_calls_increment": true
+  },
+  "limit": {
+    "input_limit": 196608,
+    "output_limit": 12288,
+    "input_bound_formula": "len(canonical_json_bytes(actual_HTTP_body)) + 2048",
+    "unit": "UTF-8 bytes conservatively treated as token upper bound; not actual tokenizer token count",
+    "output_tokens_not_added_to_input_bound": true,
+    "request_body_fields": [
+      "model",
+      "messages",
+      "temperature",
+      "reasoning_effort",
+      "response_format",
+      "max_tokens",
+      "n"
+    ],
+    "budget_call_id_not_sent": true
+  },
+  "formal_denominator": {
+    "episodes": 48,
+    "offline_input_limit_rejections": 8,
+    "actual_rejected_attempts_seen_at_analysis": 8,
+    "unobserved_or_later_attempts": "Offline predicted rejection is not invented original failure; original attempt field remains null if not yet run.",
+    "never_replace_original_judge_results": true
+  },
+  "rejected_cases": [
+    {
+      "scope": "formal",
+      "case_key": "formal-g11-planning",
+      "episode_id": "episode-1b27c3b647e0f68687931c63",
+      "episode_bytes": 280625,
+      "source_files": [
+        {
+          "path": "formal/runtime/episodes/episode-1b27c3b647e0f68687931c63.json",
+          "sha256": "f14772e062c362a6598010922ed73541d68b74f7f999be32b9c43313983fa9cc"
+        },
+        {
+          "path": "formal/rules/rules/episode-1b27c3b647e0f68687931c63.json",
+          "sha256": "11fa4d30f331879a4da9f34e2acb840bf9b5cf3f201ea4da22eea86247b6f58e"
+        },
+        {
+          "path": "formal/runtime/judge-references/episode-1b27c3b647e0f68687931c63.json",
+          "sha256": "9ac6f1834bc6bc486e9d98f6c3ca17f76755e44866133878b858bf700a572ec8"
+        }
+      ],
+      "blind_input_sha256": "94cd4986671ea17a4b5c1a2a4d6415c91f08a6711304020b8dcf8cfb9bf71741",
+      "attempt_blind_sha_matches": true,
+      "attempt_validation_codes": [
+        "judge_request_rejected"
+      ],
+      "blind_document_bytes": 275122,
+      "packed_document_bytes": 167307,
+      "packing_lossless_roundtrip": true,
+      "wire_bytes": 195998,
+      "wire_sha256": "bee8033c87970dca4a81381d2d2a637d6422779594c81e2a1ee5baa325fd7b28",
+      "input_bound": 198046,
+      "input_limit": 196608,
+      "exceeds_by": 1438,
+      "actual_offline_exception": {
+        "type": "ValueError",
+        "message": "judge_input_limit_exceeded",
+        "budget_reserve_reached": false,
+        "provider_calls_counter": 0
+      },
+      "max_output_tokens": 12288,
+      "catalog_paths": 20,
+      "catalog_json_bytes": 793,
+      "schema_enum_copies": 3,
+      "enum_node_locations": [
+        "$.json_schema.schema.$defs.JudgeDimensionV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+      ],
+      "schema_bytes": 5401,
+      "messages_bytes": 190484,
+      "system_content_utf8_bytes": 4955,
+      "user_content_utf8_bytes": 168125,
+      "blind_sections_bytes": {
+        "schema_version": 22,
+        "judge_id": 28,
+        "track": 10,
+        "episode": 257897,
+        "authoritative_rule_facts": 11165,
+        "judge_reference": 1797,
+        "rubric": 4095
+      },
+      "episode_sections_bytes": {
+        "schema_version": 21,
+        "track": 10,
+        "trigger": 552,
+        "state_after": 33776,
+        "state_delta": 34927,
+        "environment": 1795,
+        "observable_trace": 184222,
+        "result": 1453,
+        "completeness": 389,
+        "isolation_evidence": 600
+      },
+      "shared_enum_candidate": {
+        "wire_bytes": 194471,
+        "input_bound": 196519,
+        "saved_bytes": 1527,
+        "passes_input_limit": true,
+        "same_path_set": true,
+        "network_validation": false
+      },
+      "latest_original_attempt": {
+        "record_sha256": "2033fb1abbfc150bf77d5b22fb6a3abd031154ce6e0158411e9a451eb0abfc37",
+        "blind_input_sha256": "94cd4986671ea17a4b5c1a2a4d6415c91f08a6711304020b8dcf8cfb9bf71741",
+        "provider_attempted": false,
+        "budget_ticket": null,
+        "validation_error_codes": [
+          "judge_request_rejected"
+        ]
+      }
+    },
+    {
+      "scope": "formal",
+      "case_key": "formal-g06-planning",
+      "episode_id": "episode-1e14d58935f2e0fab437c573",
+      "episode_bytes": 289308,
+      "source_files": [
+        {
+          "path": "formal/runtime/episodes/episode-1e14d58935f2e0fab437c573.json",
+          "sha256": "80be6de356182df57e423f8b7b54b7e6f6491c208dfc3b0319e86ed134b156f5"
+        },
+        {
+          "path": "formal/rules/rules/episode-1e14d58935f2e0fab437c573.json",
+          "sha256": "014783abe46207f251fecbbc3e8e55d45ae77746b11808a219d82c4e79becb6f"
+        },
+        {
+          "path": "formal/runtime/judge-references/episode-1e14d58935f2e0fab437c573.json",
+          "sha256": "131a3e7f752276931acf00ab6740c4fa3a53f9060a203e4441f5752e1bc0e84f"
+        }
+      ],
+      "blind_input_sha256": "b3d6630652370b39d3fea64e176a747089851173e42ac2bcbd94f98146c8db5b",
+      "attempt_blind_sha_matches": true,
+      "attempt_validation_codes": [
+        "judge_request_rejected"
+      ],
+      "blind_document_bytes": 282744,
+      "packed_document_bytes": 169943,
+      "packing_lossless_roundtrip": true,
+      "wire_bytes": 198779,
+      "wire_sha256": "79b07e76d4e30b27046dcf1efd9e987f19a9f07f87c6152287e5777c71a42a01",
+      "input_bound": 200827,
+      "input_limit": 196608,
+      "exceeds_by": 4219,
+      "actual_offline_exception": {
+        "type": "ValueError",
+        "message": "judge_input_limit_exceeded",
+        "budget_reserve_reached": false,
+        "provider_calls_counter": 0
+      },
+      "max_output_tokens": 12288,
+      "catalog_paths": 20,
+      "catalog_json_bytes": 793,
+      "schema_enum_copies": 3,
+      "enum_node_locations": [
+        "$.json_schema.schema.$defs.JudgeDimensionV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+      ],
+      "schema_bytes": 5401,
+      "messages_bytes": 193265,
+      "system_content_utf8_bytes": 4955,
+      "user_content_utf8_bytes": 170761,
+      "blind_sections_bytes": {
+        "schema_version": 22,
+        "judge_id": 28,
+        "track": 10,
+        "episode": 265519,
+        "authoritative_rule_facts": 11165,
+        "judge_reference": 1797,
+        "rubric": 4095
+      },
+      "episode_sections_bytes": {
+        "schema_version": 21,
+        "track": 10,
+        "trigger": 552,
+        "state_after": 36285,
+        "state_delta": 37436,
+        "environment": 1795,
+        "observable_trace": 186826,
+        "result": 1453,
+        "completeness": 389,
+        "isolation_evidence": 600
+      },
+      "shared_enum_candidate": {
+        "wire_bytes": 197252,
+        "input_bound": 199300,
+        "saved_bytes": 1527,
+        "passes_input_limit": false,
+        "same_path_set": true,
+        "network_validation": false
+      },
+      "latest_original_attempt": {
+        "record_sha256": "326055d080d9d7ddeb5a757807d14f11d25a2deb95c6ee4c5812c5f11896779d",
+        "blind_input_sha256": "b3d6630652370b39d3fea64e176a747089851173e42ac2bcbd94f98146c8db5b",
+        "provider_attempted": false,
+        "budget_ticket": null,
+        "validation_error_codes": [
+          "judge_request_rejected"
+        ]
+      }
+    },
+    {
+      "scope": "formal",
+      "case_key": "formal-g09-planning",
+      "episode_id": "episode-3c372db3978d30c5cdd6e0a2",
+      "episode_bytes": 276561,
+      "source_files": [
+        {
+          "path": "formal/runtime/episodes/episode-3c372db3978d30c5cdd6e0a2.json",
+          "sha256": "c78e203dfe83d91c1a2a5da6b2c8d19c49f011af93dc5c1171471c8d8d08f71b"
+        },
+        {
+          "path": "formal/rules/rules/episode-3c372db3978d30c5cdd6e0a2.json",
+          "sha256": "c062628060f4cf59230cba749373d7a790c5750ada0600842c5de921185dbe82"
+        },
+        {
+          "path": "formal/runtime/judge-references/episode-3c372db3978d30c5cdd6e0a2.json",
+          "sha256": "8f046df77226ca3614a63e7a4d508fdfc202693da7dc413ef57ac1f30115c73a"
+        }
+      ],
+      "blind_input_sha256": "e55c17640723d73a66ea68407c7fb04ada4aba7200661595c48b46ab1770b7e8",
+      "attempt_blind_sha_matches": true,
+      "attempt_validation_codes": [
+        "judge_request_rejected"
+      ],
+      "blind_document_bytes": 271586,
+      "packed_document_bytes": 165854,
+      "packing_lossless_roundtrip": true,
+      "wire_bytes": 194586,
+      "wire_sha256": "cd51b7dbfc31e19f1eae81c0affdf1fd3c4b1564ef2ab1f9cc833c86d1d09da9",
+      "input_bound": 196634,
+      "input_limit": 196608,
+      "exceeds_by": 26,
+      "actual_offline_exception": {
+        "type": "ValueError",
+        "message": "judge_input_limit_exceeded",
+        "budget_reserve_reached": false,
+        "provider_calls_counter": 0
+      },
+      "max_output_tokens": 12288,
+      "catalog_paths": 20,
+      "catalog_json_bytes": 793,
+      "schema_enum_copies": 3,
+      "enum_node_locations": [
+        "$.json_schema.schema.$defs.JudgeDimensionV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+      ],
+      "schema_bytes": 5401,
+      "messages_bytes": 189072,
+      "system_content_utf8_bytes": 4955,
+      "user_content_utf8_bytes": 166672,
+      "blind_sections_bytes": {
+        "schema_version": 22,
+        "judge_id": 28,
+        "track": 10,
+        "episode": 254365,
+        "authoritative_rule_facts": 11165,
+        "judge_reference": 1793,
+        "rubric": 4095
+      },
+      "episode_sections_bytes": {
+        "schema_version": 21,
+        "track": 10,
+        "trigger": 548,
+        "state_after": 32606,
+        "state_delta": 33803,
+        "environment": 1795,
+        "observable_trace": 182988,
+        "result": 1453,
+        "completeness": 389,
+        "isolation_evidence": 600
+      },
+      "shared_enum_candidate": {
+        "wire_bytes": 193059,
+        "input_bound": 195107,
+        "saved_bytes": 1527,
+        "passes_input_limit": true,
+        "same_path_set": true,
+        "network_validation": false
+      },
+      "latest_original_attempt": {
+        "record_sha256": "68caec76a996f021ea854d2257eb60c7af1ec0ce746a87d0692de490acb1234b",
+        "blind_input_sha256": "e55c17640723d73a66ea68407c7fb04ada4aba7200661595c48b46ab1770b7e8",
+        "provider_attempted": false,
+        "budget_ticket": null,
+        "validation_error_codes": [
+          "judge_request_rejected"
+        ]
+      }
+    },
+    {
+      "scope": "formal",
+      "case_key": "formal-g12-planning",
+      "episode_id": "episode-4b6a572a65cc1f07eb3ef0ab",
+      "episode_bytes": 362094,
+      "source_files": [
+        {
+          "path": "formal/runtime/episodes/episode-4b6a572a65cc1f07eb3ef0ab.json",
+          "sha256": "84ace020dd0ebf08eaa6e8006363767987a7ad8caf18acb3d94054143fd9967b"
+        },
+        {
+          "path": "formal/rules/rules/episode-4b6a572a65cc1f07eb3ef0ab.json",
+          "sha256": "ad0b6f7884c70e0754f4238cfdebe7ebf688acd80ad37dc214e68ffb1554bcac"
+        },
+        {
+          "path": "formal/runtime/judge-references/episode-4b6a572a65cc1f07eb3ef0ab.json",
+          "sha256": "8b9b7565b25f74c3c51eb39532a6b60d18317eb3f2319baf027c3d8cb3b96072"
+        }
+      ],
+      "blind_input_sha256": "c3301fdde82bbd9896ad287a04690e51fda478520241a2b083f0ed050c8d99b7",
+      "attempt_blind_sha_matches": true,
+      "attempt_validation_codes": [
+        "judge_request_rejected"
+      ],
+      "blind_document_bytes": 356552,
+      "packed_document_bytes": 169970,
+      "packing_lossless_roundtrip": true,
+      "wire_bytes": 199376,
+      "wire_sha256": "512aa543de45b75820ccf5fd8cbb60944563ac4ed0495a9b4236b902e77be52f",
+      "input_bound": 201424,
+      "input_limit": 196608,
+      "exceeds_by": 4816,
+      "actual_offline_exception": {
+        "type": "ValueError",
+        "message": "judge_input_limit_exceeded",
+        "budget_reserve_reached": false,
+        "provider_calls_counter": 0
+      },
+      "max_output_tokens": 12288,
+      "catalog_paths": 22,
+      "catalog_json_bytes": 901,
+      "schema_enum_copies": 3,
+      "enum_node_locations": [
+        "$.json_schema.schema.$defs.JudgeDimensionV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+      ],
+      "schema_bytes": 5725,
+      "messages_bytes": 193538,
+      "system_content_utf8_bytes": 4955,
+      "user_content_utf8_bytes": 170896,
+      "blind_sections_bytes": {
+        "schema_version": 22,
+        "judge_id": 28,
+        "track": 10,
+        "episode": 339334,
+        "authoritative_rule_facts": 11165,
+        "judge_reference": 1790,
+        "rubric": 4095
+      },
+      "episode_sections_bytes": {
+        "schema_version": 21,
+        "track": 10,
+        "trigger": 545,
+        "state_after": 33478,
+        "state_delta": 35067,
+        "environment": 1795,
+        "observable_trace": 265591,
+        "result": 1686,
+        "completeness": 389,
+        "isolation_evidence": 600
+      },
+      "shared_enum_candidate": {
+        "wire_bytes": 197633,
+        "input_bound": 199681,
+        "saved_bytes": 1743,
+        "passes_input_limit": false,
+        "same_path_set": true,
+        "network_validation": false
+      },
+      "latest_original_attempt": {
+        "record_sha256": "e29fc56f0a5d5302a82bab592c5ff6d0cd6e3a9a71ce86e38c03cd1a144e07f8",
+        "blind_input_sha256": "c3301fdde82bbd9896ad287a04690e51fda478520241a2b083f0ed050c8d99b7",
+        "provider_attempted": false,
+        "budget_ticket": null,
+        "validation_error_codes": [
+          "judge_request_rejected"
+        ]
+      }
+    },
+    {
+      "scope": "formal",
+      "case_key": "formal-g09-assessment",
+      "episode_id": "episode-587b519c4ce81989ec8c6466",
+      "episode_bytes": 265431,
+      "source_files": [
+        {
+          "path": "formal/runtime/episodes/episode-587b519c4ce81989ec8c6466.json",
+          "sha256": "246e8e514fc1fcaec748cee268a3169f05c48da5902ef351c0a892b5f590e609"
+        },
+        {
+          "path": "formal/rules/rules/episode-587b519c4ce81989ec8c6466.json",
+          "sha256": "a50fef86ec78d1d0454663ad24297dbf8173ab33c54665022823db78a49dbbb4"
+        },
+        {
+          "path": "formal/runtime/judge-references/episode-587b519c4ce81989ec8c6466.json",
+          "sha256": "44f20f130364957dcf7b22407dd65c32bc7fe2f9410d1fdc24af838a42956df4"
+        }
+      ],
+      "blind_input_sha256": "e74ed2a78f27f473b92d5b465a927f3625fc8feb643559beffdc9826a44ae55f",
+      "attempt_blind_sha_matches": true,
+      "attempt_validation_codes": [
+        "judge_request_rejected"
+      ],
+      "blind_document_bytes": 264115,
+      "packed_document_bytes": 165301,
+      "packing_lossless_roundtrip": true,
+      "wire_bytes": 194758,
+      "wire_sha256": "e6b97eb8478e09d2dcf1360ee17a2066421ce172a8c4b0e17aaca47cf6fc1209",
+      "input_bound": 196806,
+      "input_limit": 196608,
+      "exceeds_by": 198,
+      "actual_offline_exception": {
+        "type": "ValueError",
+        "message": "judge_input_limit_exceeded",
+        "budget_reserve_reached": false,
+        "provider_calls_counter": 0
+      },
+      "max_output_tokens": 12288,
+      "catalog_paths": 22,
+      "catalog_json_bytes": 893,
+      "schema_enum_copies": 3,
+      "enum_node_locations": [
+        "$.json_schema.schema.$defs.JudgeDimensionV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+      ],
+      "schema_bytes": 5701,
+      "messages_bytes": 188944,
+      "system_content_utf8_bytes": 4955,
+      "user_content_utf8_bytes": 166219,
+      "blind_sections_bytes": {
+        "schema_version": 22,
+        "judge_id": 28,
+        "track": 12,
+        "episode": 246759,
+        "authoritative_rule_facts": 11217,
+        "judge_reference": 1815,
+        "rubric": 4154
+      },
+      "episode_sections_bytes": {
+        "schema_version": 21,
+        "track": 12,
+        "trigger": 468,
+        "state_after": 28754,
+        "state_delta": 30415,
+        "environment": 1795,
+        "observable_trace": 182433,
+        "result": 1720,
+        "completeness": 389,
+        "isolation_evidence": 600
+      },
+      "shared_enum_candidate": {
+        "wire_bytes": 193031,
+        "input_bound": 195079,
+        "saved_bytes": 1727,
+        "passes_input_limit": true,
+        "same_path_set": true,
+        "network_validation": false
+      },
+      "latest_original_attempt": {
+        "record_sha256": "8b81f0c952eccc7fca13d7f931e52c3922f080472ade5c43f7d61c1a2075edaa",
+        "blind_input_sha256": "e74ed2a78f27f473b92d5b465a927f3625fc8feb643559beffdc9826a44ae55f",
+        "provider_attempted": false,
+        "budget_ticket": null,
+        "validation_error_codes": [
+          "judge_request_rejected"
+        ]
+      }
+    },
+    {
+      "scope": "formal",
+      "case_key": "formal-g06-assessment",
+      "episode_id": "episode-69689a24f90e17244f094c18",
+      "episode_bytes": 263855,
+      "source_files": [
+        {
+          "path": "formal/runtime/episodes/episode-69689a24f90e17244f094c18.json",
+          "sha256": "0789f6bc9109b918e73d81c5be82278eea809e155a5393bf3013996db7f4eeac"
+        },
+        {
+          "path": "formal/rules/rules/episode-69689a24f90e17244f094c18.json",
+          "sha256": "5454778a860bd91c8044cb0a075d8b1feba558e4a41b42776f5eaf6d26703807"
+        },
+        {
+          "path": "formal/runtime/judge-references/episode-69689a24f90e17244f094c18.json",
+          "sha256": "ea07a8983764a1d74a0ceedd35e0a6d67dd817881f46268a4e65fe9c9b870c67"
+        }
+      ],
+      "blind_input_sha256": "6d9ea8385375fd0fa0b09d607dd74a2130dbb0b0d50ff0330f49f1ba1a3a14e1",
+      "attempt_blind_sha_matches": null,
+      "attempt_validation_codes": null,
+      "blind_document_bytes": 263148,
+      "packed_document_bytes": 166024,
+      "packing_lossless_roundtrip": true,
+      "wire_bytes": 195441,
+      "wire_sha256": "9c90232d07e31fea6ddb71e678984830bfc772acc0257c48fe32fbc8624f127e",
+      "input_bound": 197489,
+      "input_limit": 196608,
+      "exceeds_by": 881,
+      "actual_offline_exception": {
+        "type": "ValueError",
+        "message": "judge_input_limit_exceeded",
+        "budget_reserve_reached": false,
+        "provider_calls_counter": 0
+      },
+      "max_output_tokens": 12288,
+      "catalog_paths": 22,
+      "catalog_json_bytes": 893,
+      "schema_enum_copies": 3,
+      "enum_node_locations": [
+        "$.json_schema.schema.$defs.JudgeDimensionV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+      ],
+      "schema_bytes": 5701,
+      "messages_bytes": 189627,
+      "system_content_utf8_bytes": 4955,
+      "user_content_utf8_bytes": 166942,
+      "blind_sections_bytes": {
+        "schema_version": 22,
+        "judge_id": 28,
+        "track": 12,
+        "episode": 245775,
+        "authoritative_rule_facts": 11217,
+        "judge_reference": 1832,
+        "rubric": 4154
+      },
+      "episode_sections_bytes": {
+        "schema_version": 21,
+        "track": 12,
+        "trigger": 471,
+        "state_after": 28282,
+        "state_delta": 29787,
+        "environment": 1795,
+        "observable_trace": 182546,
+        "result": 1720,
+        "completeness": 389,
+        "isolation_evidence": 600
+      },
+      "shared_enum_candidate": {
+        "wire_bytes": 193714,
+        "input_bound": 195762,
+        "saved_bytes": 1727,
+        "passes_input_limit": true,
+        "same_path_set": true,
+        "network_validation": false
+      },
+      "latest_original_attempt": {
+        "record_sha256": "631324759773694b414d55e9f0764576d8131da68d228628bf7b2b396c685bac",
+        "blind_input_sha256": "6d9ea8385375fd0fa0b09d607dd74a2130dbb0b0d50ff0330f49f1ba1a3a14e1",
+        "provider_attempted": false,
+        "budget_ticket": null,
+        "validation_error_codes": [
+          "judge_request_rejected"
+        ]
+      }
+    },
+    {
+      "scope": "formal",
+      "case_key": "formal-g05-assessment",
+      "episode_id": "episode-7824bb4c507d637c295ed1b3",
+      "episode_bytes": 271782,
+      "source_files": [
+        {
+          "path": "formal/runtime/episodes/episode-7824bb4c507d637c295ed1b3.json",
+          "sha256": "ed52066ff10bdbd026e35003496aecb19d2ee926dc851ff3b8ffc18caac10441"
+        },
+        {
+          "path": "formal/rules/rules/episode-7824bb4c507d637c295ed1b3.json",
+          "sha256": "5bd6a77899def98a77788ba41d51a5213e9b7dc52a931399d65ee43cde4d2d76"
+        },
+        {
+          "path": "formal/runtime/judge-references/episode-7824bb4c507d637c295ed1b3.json",
+          "sha256": "59860654f0b5f596496c319c6045467766ac3a05f1f688e4d1a42757d7f2eefb"
+        }
+      ],
+      "blind_input_sha256": "4104d311082199a76760ff0c212e1d458fefa329c12c5b9cd1b50892c5434543",
+      "attempt_blind_sha_matches": null,
+      "attempt_validation_codes": null,
+      "blind_document_bytes": 270945,
+      "packed_document_bytes": 169738,
+      "packing_lossless_roundtrip": true,
+      "wire_bytes": 200201,
+      "wire_sha256": "a14976418c074a68683d03520b2ac852e9b9e6c6adb4ad23ef3e4691786bd942",
+      "input_bound": 202249,
+      "input_limit": 196608,
+      "exceeds_by": 5641,
+      "actual_offline_exception": {
+        "type": "ValueError",
+        "message": "judge_input_limit_exceeded",
+        "budget_reserve_reached": false,
+        "provider_calls_counter": 0
+      },
+      "max_output_tokens": 12288,
+      "catalog_paths": 24,
+      "catalog_json_bytes": 993,
+      "schema_enum_copies": 3,
+      "enum_node_locations": [
+        "$.json_schema.schema.$defs.JudgeDimensionV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+      ],
+      "schema_bytes": 6001,
+      "messages_bytes": 194087,
+      "system_content_utf8_bytes": 4955,
+      "user_content_utf8_bytes": 170756,
+      "blind_sections_bytes": {
+        "schema_version": 22,
+        "judge_id": 28,
+        "track": 12,
+        "episode": 253641,
+        "authoritative_rule_facts": 11188,
+        "judge_reference": 1792,
+        "rubric": 4154
+      },
+      "episode_sections_bytes": {
+        "schema_version": 21,
+        "track": 12,
+        "trigger": 474,
+        "state_after": 30034,
+        "state_delta": 31989,
+        "environment": 1795,
+        "observable_trace": 186492,
+        "result": 1683,
+        "completeness": 389,
+        "isolation_evidence": 600
+      },
+      "shared_enum_candidate": {
+        "wire_bytes": 198274,
+        "input_bound": 200322,
+        "saved_bytes": 1927,
+        "passes_input_limit": false,
+        "same_path_set": true,
+        "network_validation": false
+      },
+      "latest_original_attempt": {
+        "record_sha256": "3125d97f30aafdf39565e14f9222f69be54df600c8d51a8fccc8b534e3e804f4",
+        "blind_input_sha256": "4104d311082199a76760ff0c212e1d458fefa329c12c5b9cd1b50892c5434543",
+        "provider_attempted": false,
+        "budget_ticket": null,
+        "validation_error_codes": [
+          "judge_request_rejected"
+        ]
+      }
+    },
+    {
+      "scope": "formal",
+      "case_key": "formal-g04-revision",
+      "episode_id": "episode-863a10524ef13f275c3835da",
+      "episode_bytes": 351400,
+      "source_files": [
+        {
+          "path": "formal/runtime/episodes/episode-863a10524ef13f275c3835da.json",
+          "sha256": "9645d7f6d5502439f48b67610078121ec538a09de852e2f126f04dc3d2c084ad"
+        },
+        {
+          "path": "formal/rules/rules/episode-863a10524ef13f275c3835da.json",
+          "sha256": "b7a9f59197dd60091cb25a18543b60d81ea21125e4f709b02e9e59a1dbcf025f"
+        },
+        {
+          "path": "formal/runtime/judge-references/episode-863a10524ef13f275c3835da.json",
+          "sha256": "246f2213d038de196610739c6d347b945e9dd46a3a0c790ea93d258ad7291462"
+        }
+      ],
+      "blind_input_sha256": "b66bfdcfbeb7c5f99db74f24b0617fe580983e404eef06550c29a4ec200120f0",
+      "attempt_blind_sha_matches": null,
+      "attempt_validation_codes": null,
+      "blind_document_bytes": 352163,
+      "packed_document_bytes": 174554,
+      "packing_lossless_roundtrip": true,
+      "wire_bytes": 205692,
+      "wire_sha256": "7226a2c9dde2c1bf973d93662f77c89651410678906c789f45e141d01d7d8d17",
+      "input_bound": 207740,
+      "input_limit": 196608,
+      "exceeds_by": 11132,
+      "actual_offline_exception": {
+        "type": "ValueError",
+        "message": "judge_input_limit_exceeded",
+        "budget_reserve_reached": false,
+        "provider_calls_counter": 0
+      },
+      "max_output_tokens": 12288,
+      "catalog_paths": 26,
+      "catalog_json_bytes": 1101,
+      "schema_enum_copies": 3,
+      "enum_node_locations": [
+        "$.json_schema.schema.$defs.JudgeDimensionV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+        "$.json_schema.schema.$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+      ],
+      "schema_bytes": 6325,
+      "messages_bytes": 199254,
+      "system_content_utf8_bytes": 4955,
+      "user_content_utf8_bytes": 175680,
+      "blind_sections_bytes": {
+        "schema_version": 22,
+        "judge_id": 28,
+        "track": 10,
+        "episode": 334521,
+        "authoritative_rule_facts": 11238,
+        "judge_reference": 2147,
+        "rubric": 4089
+      },
+      "episode_sections_bytes": {
+        "schema_version": 21,
+        "track": 10,
+        "trigger": 516,
+        "state_after": 27417,
+        "state_delta": 30961,
+        "environment": 1795,
+        "observable_trace": 268235,
+        "result": 4425,
+        "completeness": 389,
+        "isolation_evidence": 600
+      },
+      "shared_enum_candidate": {
+        "wire_bytes": 203549,
+        "input_bound": 205597,
+        "saved_bytes": 2143,
+        "passes_input_limit": false,
+        "same_path_set": true,
+        "network_validation": false
+      },
+      "latest_original_attempt": {
+        "record_sha256": "73082a8f425584b4bcc194683b4d9814c485fcec347f8c855dac782bcaf6d90c",
+        "blind_input_sha256": "b66bfdcfbeb7c5f99db74f24b0617fe580983e404eef06550c29a4ec200120f0",
+        "provider_attempted": false,
+        "budget_ticket": null,
+        "validation_error_codes": [
+          "judge_request_rejected"
+        ]
+      }
+    }
+  ],
+  "enum_expansion": {
+    "copies_in_response_schema": 3,
+    "locations": [
+      "$defs.JudgeDimensionV1.properties.evidence_paths.items",
+      "$defs.JudgeSemanticIssueV1.properties.evidence_paths.items",
+      "$defs.SuggestedHardGateV1.properties.evidence_paths.items"
+    ],
+    "additional_user_catalog_copy": 1,
+    "contribution": "Schema duplicates amplify bytes and cause some threshold crossings, but are not the largest payload component. G06-P messages=193265 bytes, schema=5401; enum sharing alone saves1527 and still fails by2692.",
+    "shared_enum_only_resolves": 4,
+    "shared_enum_only_still_rejects": 4
+  },
+  "why_development_missed": {
+    "historical_1ae8cd2_development_7_max_bound": 194443,
+    "historical_headroom": 2165,
+    "same_1f1f35f_projection_development_7_max_bound": 194889,
+    "same_1f1f35f_projection_calibration_24_max_bound": 165899,
+    "difference": "Historical Development7 had one real long Planning request, with only2165 bytes spare. Formal introduces additional artifact reads, longer generated task arguments, model-visible tool schemas/results, approval request state and duplicated public delta values. Calibration uses short controlled trajectories and did not exercise this high payload bound.",
+    "coverage_gap": "Validation covered successful concrete Development trajectories and semantic Calibration scores, without request-size headroom/boundary stress on larger complete public trajectories. Passing these samples did not establish capacity for all unseen legitimate episodes.",
+    "attribution": "This is a method engineering regression/coverage defect revealed by new heldout trajectories; not a flaw in learner mathematical inputs. Enum strengthening and payload policy belong to this repair method. Preserve original8 failures and48 denominator."
+  },
+  "minimal_candidate": {
+    "changes": [
+      "Replace three exact identical path enums with one shared local $defs/$ref; same allowed strings.",
+      "Lower existing exact duplicate sharing minimum from512 to256 UTF-8 bytes; same shared-json-v1 encoding and decoder.",
+      "Parent implementation adds explicit safe JudgeInputLimitExceeded subtype and config version for new request policy."
+    ],
+    "candidate_file": "formal-ai-review/judge_request_candidate.py",
+    "candidate_validation_file": "formal-ai-review/judge-request-candidate-validation.json",
+    "candidate_sha256": "a66cbf593c8a016adc9cace80e6499a418a399ed2330c2f8d8bc8696a2b9edcc",
+    "validated_cases": 79,
+    "boundary_roundtrip_fixtures": 6,
+    "remaining_input_rejections": 0,
+    "max_input_bound": 188943,
+    "minimum_headroom": 7665,
+    "all_public_content_canonical_roundtrip_exact": true,
+    "same_evidence_path_set": true,
+    "schema_ref_expansion_equals_original": true,
+    "no_truncation_or_evidence_omission": true,
+    "same_prompt_instructions": true,
+    "limitation": "Candidate used EvidencePath def label; parent1.5 uses EpisodeEvidencePath, so exact new1.5 byte sizes must be rebuilt independently. No paid provider validation and no formal eligibility follows from offline79 or old1.4 judgments. $ref supported semantics verified by exact expansion, not a provider API call. jsonschema dependency absent; no full validator claimed.",
+    "original_results_not_replaced": true,
+    "candidate_protocol": "1.5 unregistered until parent builds; no new Benchmark registration authorized by this task"
+  },
+  "source_verification": [
+    {
+      "relative_path": "evaluation/src/learning_agent_eval/active_judge.py",
+      "matches_git_1f1f35f": true,
+      "sha256": "258418ea6883f37748ab54dbcd6fa1519315fb0baa78b47cb250d62298b6827c"
+    },
+    {
+      "relative_path": "evaluation/src/learning_agent_eval/judge_request_projection.py",
+      "matches_git_1f1f35f": true,
+      "sha256": "588342fc4df24b066d6be2a909d350511b35b75cbc8b3b9a117ebd30df29e89b"
+    },
+    {
+      "relative_path": "evaluation/src/learning_agent_eval/model_budget.py",
+      "matches_git_1f1f35f": true,
+      "sha256": "88042c58bdf93918c66cfec3fbf26664e5811d3c1b04e16a527bba7a225cd5db"
+    },
+    {
+      "relative_path": "evaluation/src/learning_agent_eval/blinding_v2.py",
+      "matches_git_1f1f35f": true,
+      "sha256": "db115eabc80efe1d26e7d4fd8f166eda2134bbacb5e4d6415b5f9f8652b58e23"
+    },
+    {
+      "relative_path": "evaluation/src/learning_agent_eval/rubric.py",
+      "matches_git_1f1f35f": true,
+      "sha256": "505a23f11a85f2942a82a48cc66875fe4a5ae4f9bf4c1ad3eb134a5568abd233"
+    }
+  ],
+  "reproduction": {
+    "interpreter": "/root/workspace/tencent_rhinobird2026/learning_travel/.venv/bin/python",
+    "scripts": [
+      "formal-ai-review/reproduce-judge-input-rejection.py",
+      "formal-ai-review/measure-lossless-packing-candidate.py",
+      "formal-ai-review/verify-judge-request-candidate.py",
+      "formal-ai-review/measure-historical-development-request.py",
+      "formal-ai-review/write-judge-input-failure-analysis.py"
+    ],
+    "safety": "Frozen external source snapshot import. __new__ skips provider auth/ledger init; NoLedger raises before any reserve; urlopen sentinel forbids network. Under-limit inputs stop at synthetic budget boundary. No actual budget object created.",
+    "artifacts": [
+      {
+        "path": "formal-ai-review/judge-input-offline-measurements.json",
+        "sha256": "63250bb4898226facfae568e14c0575be00ba937b68fc995337d56b4292a8347"
+      },
+      {
+        "path": "formal-ai-review/judge-lossless-candidate-measurements.json",
+        "sha256": "cf0490daa6002526720a200f3e8bcf93bc9eadee26d9daba58828b71818aa025"
+      },
+      {
+        "path": "formal-ai-review/judge-request-candidate-validation.json",
+        "sha256": "f5a2de048bdb1f486394dbf0db01c458cb5d23f9f2c9cac87dd4b15915360266"
+      },
+      {
+        "path": "formal-ai-review/historical-development-request-sizes.json",
+        "sha256": "e2754b066d71d444e286d6e4a4abbf2795055067db4758806977c659e5ed8ffd"
+      },
+      {
+        "path": "formal-ai-review/candidate-verifier-corrections.json",
+        "sha256": "dd18156728966a8c1c65580123d28ef430c2ab4bd3e9744c5fab67334aaa9098"
+      }
+    ]
+  }
+}

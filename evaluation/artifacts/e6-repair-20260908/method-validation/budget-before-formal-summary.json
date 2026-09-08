@@ -1,0 +1,9 @@
+{
+  "requests": 771,
+  "occupied_micro_cny": 29570867,
+  "available_micro_cny": 5039115,
+  "historical_490_unchanged": true,
+  "active_reservations": 0,
+  "unknown_usage_reservations": 7,
+  "budget_ledger_sha256": "96fd1eab3f59aa308fa77fb5ee2c3013c6435157a2e30054dd41a2d6c4595ea5"
+}

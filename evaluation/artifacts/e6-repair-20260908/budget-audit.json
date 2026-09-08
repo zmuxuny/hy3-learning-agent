@@ -1,0 +1,1740 @@
+{
+  "version": "e6-repair-request-accounting-v1",
+  "final": true,
+  "ledger_sha256": "c1e42e0ab9a111a0513aa3b60a410b662f119673e2d3d992249dfebc97e06587",
+  "ledger_path": "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json",
+  "historical_490_unchanged": true,
+  "authorization_unchanged": true,
+  "limit_micro_cny": 34609982,
+  "occupied_micro_cny": 34393029,
+  "remaining_micro_cny": 216953,
+  "within_limit": true,
+  "cloud_bill_verified": false,
+  "parts": {
+    "historical": {
+      "requests": 490,
+      "occupied_micro_cny": 17609982,
+      "settled_micro_cny": 15842306,
+      "states": {
+        "unknown_usage_reserved": 7,
+        "settled": 483
+      },
+      "outcomes": {
+        "agent_no_separate_outcome": 329,
+        "complete": 143,
+        "response_invalid": 13,
+        "output_truncated": 4,
+        "provider_error": 1
+      }
+    },
+    "this_turn": {
+      "requests": 417,
+      "occupied_micro_cny": 16783047,
+      "settled_micro_cny": 16783047,
+      "states": {
+        "settled": 417
+      },
+      "outcomes": {
+        "agent_no_separate_outcome": 157,
+        "complete": 260
+      }
+    },
+    "method_and_experience": {
+      "requests": 281,
+      "occupied_micro_cny": 11960885,
+      "settled_micro_cny": 11960885,
+      "states": {
+        "settled": 281
+      },
+      "outcomes": {
+        "agent_no_separate_outcome": 54,
+        "complete": 227
+      }
+    },
+    "formal": {
+      "requests": 136,
+      "occupied_micro_cny": 4822162,
+      "settled_micro_cny": 4822162,
+      "states": {
+        "settled": 136
+      },
+      "outcomes": {
+        "agent_no_separate_outcome": 103,
+        "complete": 33
+      }
+    }
+  },
+  "artifact_matched_requests": 417,
+  "unmatched_requests": [],
+  "errors": [],
+  "matches": [
+    {
+      "ticket": 491,
+      "source": "method-v1/dev-runtime/episodes/episode-cbf7d6a19c3fb74d4d4aaeac.json:model-call:001"
+    },
+    {
+      "ticket": 492,
+      "source": "method-v1/dev-runtime/episodes/episode-cbf7d6a19c3fb74d4d4aaeac.json:model-call:002"
+    },
+    {
+      "ticket": 493,
+      "source": "method-v1/dev-runtime/episodes/episode-824e00f6e6592b78fd3607f3.json:model-call:001"
+    },
+    {
+      "ticket": 494,
+      "source": "method-v1/dev-runtime/episodes/episode-824e00f6e6592b78fd3607f3.json:model-call:002"
+    },
+    {
+      "ticket": 495,
+      "source": "method-v1/dev-runtime/episodes/episode-7c215febed40047a27f693cb.json:model-call:001"
+    },
+    {
+      "ticket": 496,
+      "source": "method-v1/dev-runtime/episodes/episode-7c215febed40047a27f693cb.json:model-call:002"
+    },
+    {
+      "ticket": 497,
+      "source": "method-v1/dev-runtime/episodes/episode-7c215febed40047a27f693cb.json:model-call:003"
+    },
+    {
+      "ticket": 498,
+      "source": "method-v1/dev-runtime/episodes/episode-0ac3d3f49a8b6b3c116423ab.json:model-call:001"
+    },
+    {
+      "ticket": 499,
+      "source": "method-v1/dev-runtime/episodes/episode-0ac3d3f49a8b6b3c116423ab.json:model-call:002"
+    },
+    {
+      "ticket": 500,
+      "source": "method-v1/dev-runtime/episodes/episode-0ac3d3f49a8b6b3c116423ab.json:model-call:003"
+    },
+    {
+      "ticket": 501,
+      "source": "method-v1/dev-runtime/episodes/episode-0ba166b9562080e0fea98b0b.json:model-call:001"
+    },
+    {
+      "ticket": 502,
+      "source": "method-v1/dev-runtime/episodes/episode-0ba166b9562080e0fea98b0b.json:model-call:002"
+    },
+    {
+      "ticket": 503,
+      "source": "method-v1/dev-runtime/episodes/episode-0ba166b9562080e0fea98b0b.json:model-call:003"
+    },
+    {
+      "ticket": 504,
+      "source": "method-v1/dev-runtime/episodes/episode-0760e40291cc1d6f6a1e01f5.json:model-call:001"
+    },
+    {
+      "ticket": 505,
+      "source": "method-v1/dev-runtime/episodes/episode-0760e40291cc1d6f6a1e01f5.json:model-call:002"
+    },
+    {
+      "ticket": 506,
+      "source": "method-v1/dev-runtime/episodes/episode-953f98f1e0b6efd2113fc3fd.json:model-call:001"
+    },
+    {
+      "ticket": 507,
+      "source": "method-v1/dev-runtime/episodes/episode-953f98f1e0b6efd2113fc3fd.json:model-call:002"
+    },
+    {
+      "ticket": 508,
+      "source": "method-v1/experiments/judge-r1-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 509,
+      "source": "method-v1/experiments/judge-r1-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 510,
+      "source": "method-v1/experiments/judge-r1-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 511,
+      "source": "method-v1/experiments/judge-r1-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 512,
+      "source": "method-v1/controlled-judge-r1-attempts.jsonl:1"
+    },
+    {
+      "ticket": 513,
+      "source": "method-v1/experiments/judge-r1-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 514,
+      "source": "method-v1/experiments/judge-r1-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 515,
+      "source": "method-v1/experiments/judge-r1-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 516,
+      "source": "method-v1/controlled-judge-r1-attempts.jsonl:2"
+    },
+    {
+      "ticket": 517,
+      "source": "method-v1/experiments/judge-r1-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 518,
+      "source": "method-v1/experiments/judge-r1-intervention-attempts.jsonl:5"
+    },
+    {
+      "ticket": 519,
+      "source": "method-v1/experiments/judge-r1-planning-attempts.jsonl:5"
+    },
+    {
+      "ticket": 520,
+      "source": "method-v1/experiments/judge-r1-intervention-attempts.jsonl:6"
+    },
+    {
+      "ticket": 521,
+      "source": "method-v1/controlled-judge-r2-attempts.jsonl:1"
+    },
+    {
+      "ticket": 522,
+      "source": "method-v1/controlled-judge-r3-attempts.jsonl:1"
+    },
+    {
+      "ticket": 523,
+      "source": "method-v1/experiments/judge-r1-planning-attempts.jsonl:6"
+    },
+    {
+      "ticket": 524,
+      "source": "method-v1/controlled-judge-r2-attempts.jsonl:2"
+    },
+    {
+      "ticket": 525,
+      "source": "method-v1/controlled-judge-r3-attempts.jsonl:2"
+    },
+    {
+      "ticket": 526,
+      "source": "method-v1/experiments/judge-r1-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 527,
+      "source": "method-v1/experiments/judge-r1-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 528,
+      "source": "product-experience-v1/public-calls.jsonl:1"
+    },
+    {
+      "ticket": 529,
+      "source": "product-experience-v1/public-calls.jsonl:2"
+    },
+    {
+      "ticket": 530,
+      "source": "method-v1/experiments/judge-r1-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 531,
+      "source": "method-v1/experiments/judge-r1-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 532,
+      "source": "product-plan-experience-v1/public-calls.jsonl:1"
+    },
+    {
+      "ticket": 533,
+      "source": "method-v1/experiments/judge-r1-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 534,
+      "source": "product-plan-experience-v1/public-calls.jsonl:2"
+    },
+    {
+      "ticket": 535,
+      "source": "method-v1/experiments/judge-r1-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 536,
+      "source": "method-v1/experiments/judge-r1-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 537,
+      "source": "method-v1/experiments/judge-r1-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 538,
+      "source": "method-v1/experiments/judge-r1-revision-attempts.jsonl:5"
+    },
+    {
+      "ticket": 539,
+      "source": "method-v1/experiments/judge-r1-assessment-attempts.jsonl:5"
+    },
+    {
+      "ticket": 540,
+      "source": "method-v1/experiments/judge-r1-revision-attempts.jsonl:6"
+    },
+    {
+      "ticket": 541,
+      "source": "method-v1/experiments/judge-r1-assessment-attempts.jsonl:6"
+    },
+    {
+      "ticket": 542,
+      "source": "method-v1/experiments/judge-r2-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 543,
+      "source": "method-v1/experiments/judge-r2-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 544,
+      "source": "method-v1/experiments/judge-r2-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 545,
+      "source": "product-plan-experience-v1/public-calls.jsonl:3"
+    },
+    {
+      "ticket": 546,
+      "source": "method-v1/experiments/judge-r2-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 547,
+      "source": "method-v1/experiments/judge-r2-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 548,
+      "source": "method-v1/experiments/judge-r2-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 549,
+      "source": "method-v1/experiments/judge-r2-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 550,
+      "source": "method-v1/experiments/judge-r2-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 551,
+      "source": "method-v1/experiments/judge-r3-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 552,
+      "source": "method-v1/experiments/judge-r3-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 553,
+      "source": "method-v1/experiments/judge-r3-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 554,
+      "source": "method-v1/experiments/judge-r3-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 555,
+      "source": "method-v1/experiments/judge-r3-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 556,
+      "source": "method-v1/experiments/judge-r3-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 557,
+      "source": "method-v1/experiments/judge-r3-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 558,
+      "source": "method-v1/experiments/judge-r4-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 559,
+      "source": "method-v1/experiments/judge-r3-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 560,
+      "source": "method-v1/experiments/judge-r4-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 561,
+      "source": "method-v1/experiments/judge-r4-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 562,
+      "source": "method-v1/experiments/judge-r4-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 563,
+      "source": "method-v1/experiments/judge-r4-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 564,
+      "source": "method-v1/experiments/judge-r4-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 565,
+      "source": "method-v1/experiments/judge-r4-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 566,
+      "source": "method-v1/experiments/judge-r5-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 567,
+      "source": "method-v1/experiments/judge-r4-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 568,
+      "source": "method-v1/experiments/judge-r5-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 569,
+      "source": "method-v1/experiments/judge-r5-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 570,
+      "source": "method-v1/experiments/judge-r5-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 571,
+      "source": "method-v1/experiments/judge-r5-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 572,
+      "source": "method-v1/experiments/judge-r5-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 573,
+      "source": "method-v1/experiments/judge-r2-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 574,
+      "source": "method-v1/experiments/judge-r5-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 575,
+      "source": "method-v2/dev-runtime/episodes/episode-abb70ada734fe48692b7328d.json:model-call:001"
+    },
+    {
+      "ticket": 576,
+      "source": "method-v1/experiments/judge-r5-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 577,
+      "source": "method-v2/controlled-judge-r1-attempts.jsonl:1"
+    },
+    {
+      "ticket": 578,
+      "source": "method-v2/controlled-judge-r2-attempts.jsonl:1"
+    },
+    {
+      "ticket": 579,
+      "source": "method-v2/dev-runtime/episodes/episode-abb70ada734fe48692b7328d.json:model-call:002"
+    },
+    {
+      "ticket": 580,
+      "source": "product-plan-experience-v2/public-calls.jsonl:1"
+    },
+    {
+      "ticket": 581,
+      "source": "method-v1/experiments/judge-r2-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 582,
+      "source": "method-v2/dev-runtime/episodes/episode-8598bb3e849abf97fbd1af09.json:model-call:001"
+    },
+    {
+      "ticket": 583,
+      "source": "method-v1/experiments/judge-r2-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 584,
+      "source": "product-plan-experience-v2/public-calls.jsonl:2"
+    },
+    {
+      "ticket": 585,
+      "source": "method-v2/dev-runtime/episodes/episode-8598bb3e849abf97fbd1af09.json:model-call:002"
+    },
+    {
+      "ticket": 586,
+      "source": "method-v2/controlled-judge-r1-attempts.jsonl:2"
+    },
+    {
+      "ticket": 587,
+      "source": "method-v2/controlled-judge-r2-attempts.jsonl:2"
+    },
+    {
+      "ticket": 588,
+      "source": "method-v1/experiments/judge-r2-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 589,
+      "source": "method-v2/dev-runtime/episodes/episode-3fcf5d8bfe4617e037d36369.json:model-call:001"
+    },
+    {
+      "ticket": 590,
+      "source": "method-v2/dev-runtime/episodes/episode-3fcf5d8bfe4617e037d36369.json:model-call:002"
+    },
+    {
+      "ticket": 591,
+      "source": "method-v2/controlled-judge-r3-attempts.jsonl:1"
+    },
+    {
+      "ticket": 592,
+      "source": "method-v1/experiments/judge-r2-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 593,
+      "source": "method-v2/dev-runtime/episodes/episode-4d22ea514fe2afc1d31f6aa6.json:model-call:001"
+    },
+    {
+      "ticket": 594,
+      "source": "method-v2/controlled-judge-r3-attempts.jsonl:2"
+    },
+    {
+      "ticket": 595,
+      "source": "method-v2/dev-runtime/episodes/episode-4d22ea514fe2afc1d31f6aa6.json:model-call:002"
+    },
+    {
+      "ticket": 596,
+      "source": "method-v2/dev-runtime/episodes/episode-087d6b9009cef5e20f9682de.json:model-call:001"
+    },
+    {
+      "ticket": 597,
+      "source": "method-v1/experiments/judge-r2-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 598,
+      "source": "method-v2/dev-runtime/episodes/episode-087d6b9009cef5e20f9682de.json:model-call:002"
+    },
+    {
+      "ticket": 599,
+      "source": "method-v2/dev-runtime/episodes/episode-087d6b9009cef5e20f9682de.json:model-call:003"
+    },
+    {
+      "ticket": 600,
+      "source": "method-v1/experiments/judge-r3-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 601,
+      "source": "method-v2/dev-runtime/episodes/episode-a47e970ed5b3ce37b39abc2e.json:model-call:001"
+    },
+    {
+      "ticket": 602,
+      "source": "method-v2/dev-runtime/episodes/episode-a47e970ed5b3ce37b39abc2e.json:model-call:002"
+    },
+    {
+      "ticket": 603,
+      "source": "product-plan-experience-v2/public-calls.jsonl:3"
+    },
+    {
+      "ticket": 604,
+      "source": "method-v2/dev-runtime/episodes/episode-cc4203c5adadb2047ded408b.json:model-call:001"
+    },
+    {
+      "ticket": 605,
+      "source": "method-v1/experiments/judge-r2-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 606,
+      "source": "method-v2/dev-runtime/episodes/episode-cc4203c5adadb2047ded408b.json:model-call:002"
+    },
+    {
+      "ticket": 607,
+      "source": "method-v1/experiments/judge-r3-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 608,
+      "source": "method-v2/experiments/judge-r1-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 609,
+      "source": "method-v2/experiments/judge-r2-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 610,
+      "source": "method-v2/experiments/judge-r2-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 611,
+      "source": "method-v2/experiments/judge-r1-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 612,
+      "source": "method-v1/experiments/judge-r3-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 613,
+      "source": "method-v1/experiments/judge-r2-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 614,
+      "source": "method-v2/experiments/judge-r2-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 615,
+      "source": "method-v2/experiments/judge-r1-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 616,
+      "source": "method-v2/experiments/judge-r1-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 617,
+      "source": "method-v2/experiments/judge-r2-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 618,
+      "source": "method-v2/experiments/judge-r2-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 619,
+      "source": "method-v1/experiments/judge-r3-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 620,
+      "source": "method-v2/experiments/judge-r2-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 621,
+      "source": "method-v2/experiments/judge-r1-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 622,
+      "source": "method-v1/experiments/judge-r3-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 623,
+      "source": "method-v2/experiments/judge-r2-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 624,
+      "source": "method-v2/experiments/judge-r2-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 625,
+      "source": "method-v2/experiments/judge-r1-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 626,
+      "source": "method-v1/experiments/judge-r4-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 627,
+      "source": "method-v2/experiments/judge-r1-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 628,
+      "source": "method-v1/experiments/judge-r3-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 629,
+      "source": "method-v2/experiments/judge-r1-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 630,
+      "source": "method-v2/experiments/judge-r1-planning-attempts.jsonl:5"
+    },
+    {
+      "ticket": 631,
+      "source": "method-v2/experiments/judge-r1-intervention-attempts.jsonl:5"
+    },
+    {
+      "ticket": 632,
+      "source": "method-v2/experiments/judge-r3-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 633,
+      "source": "method-v2/experiments/judge-r3-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 634,
+      "source": "method-v1/experiments/judge-r3-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 635,
+      "source": "method-v1/experiments/judge-r4-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 636,
+      "source": "method-v2/experiments/judge-r1-planning-attempts.jsonl:6"
+    },
+    {
+      "ticket": 637,
+      "source": "method-v2/experiments/judge-r3-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 638,
+      "source": "method-v2/experiments/judge-r1-intervention-attempts.jsonl:6"
+    },
+    {
+      "ticket": 639,
+      "source": "method-v1/experiments/judge-r3-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 640,
+      "source": "method-v2/experiments/judge-r3-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 641,
+      "source": "method-v1/experiments/judge-r4-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 642,
+      "source": "method-v2/experiments/judge-r3-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 643,
+      "source": "method-v2/experiments/judge-r1-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 644,
+      "source": "method-v2/experiments/judge-r3-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 645,
+      "source": "method-v2/experiments/judge-r3-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 646,
+      "source": "method-v1/experiments/judge-r4-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 647,
+      "source": "method-v2/experiments/judge-r1-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 648,
+      "source": "method-v2/experiments/judge-r3-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 649,
+      "source": "method-v1/experiments/judge-r4-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 650,
+      "source": "method-v2/experiments/judge-r4-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 651,
+      "source": "method-v2/experiments/judge-r1-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 652,
+      "source": "method-v2/experiments/judge-r4-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 653,
+      "source": "method-v1/experiments/judge-r4-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 654,
+      "source": "method-v2/experiments/judge-r4-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 655,
+      "source": "method-v1/experiments/judge-r5-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 656,
+      "source": "method-v2/experiments/judge-r1-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 657,
+      "source": "method-v2/experiments/judge-r4-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 658,
+      "source": "method-v2/experiments/judge-r1-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 659,
+      "source": "method-v2/experiments/judge-r4-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 660,
+      "source": "method-v2/experiments/judge-r4-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 661,
+      "source": "method-v1/experiments/judge-r4-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 662,
+      "source": "method-v2/experiments/judge-r1-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 663,
+      "source": "method-v2/experiments/judge-r1-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 664,
+      "source": "method-v1/experiments/judge-r5-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 665,
+      "source": "method-v2/experiments/judge-r4-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 666,
+      "source": "method-v2/experiments/judge-r5-intervention-attempts.jsonl:1"
+    },
+    {
+      "ticket": 667,
+      "source": "method-v2/experiments/judge-r1-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 668,
+      "source": "method-v2/experiments/judge-r1-revision-attempts.jsonl:5"
+    },
+    {
+      "ticket": 669,
+      "source": "method-v2/experiments/judge-r5-intervention-attempts.jsonl:2"
+    },
+    {
+      "ticket": 670,
+      "source": "method-v2/experiments/judge-r4-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 671,
+      "source": "method-v1/experiments/judge-r5-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 672,
+      "source": "method-v1/experiments/judge-r4-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 673,
+      "source": "method-v2/experiments/judge-r5-intervention-attempts.jsonl:3"
+    },
+    {
+      "ticket": 674,
+      "source": "method-v2/experiments/judge-r1-revision-attempts.jsonl:6"
+    },
+    {
+      "ticket": 675,
+      "source": "method-v1/experiments/judge-r5-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 676,
+      "source": "method-v2/experiments/judge-r5-intervention-attempts.jsonl:4"
+    },
+    {
+      "ticket": 677,
+      "source": "method-v2/experiments/judge-r1-assessment-attempts.jsonl:5"
+    },
+    {
+      "ticket": 678,
+      "source": "method-v2/experiments/judge-r5-planning-attempts.jsonl:1"
+    },
+    {
+      "ticket": 679,
+      "source": "method-v1/experiments/judge-r5-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 680,
+      "source": "method-v2/experiments/judge-r2-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 681,
+      "source": "method-v2/experiments/judge-r1-assessment-attempts.jsonl:6"
+    },
+    {
+      "ticket": 682,
+      "source": "method-v2/experiments/judge-r5-planning-attempts.jsonl:2"
+    },
+    {
+      "ticket": 683,
+      "source": "method-v2/experiments/judge-r5-planning-attempts.jsonl:3"
+    },
+    {
+      "ticket": 684,
+      "source": "method-v2/experiments/judge-r5-planning-attempts.jsonl:4"
+    },
+    {
+      "ticket": 685,
+      "source": "method-v2/experiments/judge-r2-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 686,
+      "source": "method-v1/experiments/judge-r5-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 687,
+      "source": "method-v1/experiments/judge-r5-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 688,
+      "source": "method-v2/experiments/judge-r2-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 689,
+      "source": "method-v2/experiments/judge-r2-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 690,
+      "source": "method-v2/experiments/judge-r2-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 691,
+      "source": "method-v2/experiments/judge-r2-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 692,
+      "source": "method-v1/experiments/judge-r5-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 693,
+      "source": "method-v2/experiments/judge-r2-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 694,
+      "source": "method-v3/dev-runtime/episodes/episode-b2e0bdcec73eb21b9dcfdeb3.json:model-call:001"
+    },
+    {
+      "ticket": 695,
+      "source": "method-v2/experiments/judge-r2-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 696,
+      "source": "method-v2/experiments/judge-r3-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 697,
+      "source": "method-v3/dev-runtime/episodes/episode-b2e0bdcec73eb21b9dcfdeb3.json:model-call:002"
+    },
+    {
+      "ticket": 698,
+      "source": "method-v3/controlled-judge-r1-attempts.jsonl:1"
+    },
+    {
+      "ticket": 699,
+      "source": "method-v3/controlled-judge-r2-attempts.jsonl:1"
+    },
+    {
+      "ticket": 700,
+      "source": "method-v3/dev-runtime/episodes/episode-099b7b27e7cde117f1128208.json:model-call:001"
+    },
+    {
+      "ticket": 701,
+      "source": "method-v3/dev-runtime/episodes/episode-099b7b27e7cde117f1128208.json:model-call:002"
+    },
+    {
+      "ticket": 702,
+      "source": "method-v2/experiments/judge-r3-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 703,
+      "source": "method-v3/dev-runtime/episodes/episode-3042eebd7bab4ce08aefa324.json:model-call:001"
+    },
+    {
+      "ticket": 704,
+      "source": "method-v3/controlled-judge-r1-attempts.jsonl:2"
+    },
+    {
+      "ticket": 705,
+      "source": "method-v3/controlled-judge-r2-attempts.jsonl:2"
+    },
+    {
+      "ticket": 706,
+      "source": "method-v3/dev-runtime/episodes/episode-3042eebd7bab4ce08aefa324.json:model-call:002"
+    },
+    {
+      "ticket": 707,
+      "source": "method-v2/experiments/judge-r3-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 708,
+      "source": "method-v2/experiments/judge-r3-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 709,
+      "source": "method-v3/dev-runtime/episodes/episode-336a627994ec34a535fb0d5e.json:model-call:001"
+    },
+    {
+      "ticket": 710,
+      "source": "method-v2/experiments/judge-r3-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 711,
+      "source": "method-v3/dev-runtime/episodes/episode-336a627994ec34a535fb0d5e.json:model-call:002"
+    },
+    {
+      "ticket": 712,
+      "source": "method-v3/controlled-judge-r3-attempts.jsonl:1"
+    },
+    {
+      "ticket": 713,
+      "source": "method-v2/experiments/judge-r3-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 714,
+      "source": "method-v3/dev-runtime/episodes/episode-388f64e77e05add7f4f48081.json:model-call:001"
+    },
+    {
+      "ticket": 715,
+      "source": "method-v3/dev-runtime/episodes/episode-388f64e77e05add7f4f48081.json:model-call:002"
+    },
+    {
+      "ticket": 716,
+      "source": "method-v3/controlled-judge-r3-attempts.jsonl:2"
+    },
+    {
+      "ticket": 717,
+      "source": "method-v3/dev-runtime/episodes/episode-790be9e690fbe2f15fdb0430.json:model-call:001"
+    },
+    {
+      "ticket": 718,
+      "source": "method-v2/experiments/judge-r3-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 719,
+      "source": "method-v3/dev-runtime/episodes/episode-790be9e690fbe2f15fdb0430.json:model-call:002"
+    },
+    {
+      "ticket": 720,
+      "source": "method-v2/experiments/judge-r3-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 721,
+      "source": "method-v3/dev-runtime/episodes/episode-917de4bb4f1e7287b12a55bc.json:model-call:001"
+    },
+    {
+      "ticket": 722,
+      "source": "method-v3/dev-runtime/episodes/episode-917de4bb4f1e7287b12a55bc.json:model-call:002"
+    },
+    {
+      "ticket": 723,
+      "source": "method-v2/experiments/judge-r4-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 724,
+      "source": "method-v2/experiments/judge-r4-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 725,
+      "source": "method-v2/experiments/judge-r4-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 726,
+      "source": "method-v3/dev-judge-attempts.jsonl:1"
+    },
+    {
+      "ticket": 727,
+      "source": "method-v2/experiments/judge-r4-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 728,
+      "source": "method-v2/experiments/judge-r4-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 729,
+      "source": "method-v3/dev-judge-attempts.jsonl:2"
+    },
+    {
+      "ticket": 730,
+      "source": "method-v2/experiments/judge-r4-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 731,
+      "source": "method-v2/experiments/judge-r4-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 732,
+      "source": "method-v3/dev-judge-attempts.jsonl:3"
+    },
+    {
+      "ticket": 733,
+      "source": "method-v2/experiments/judge-r4-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 734,
+      "source": "method-v3/dev-judge-attempts.jsonl:4"
+    },
+    {
+      "ticket": 735,
+      "source": "method-v2/experiments/judge-r5-revision-attempts.jsonl:1"
+    },
+    {
+      "ticket": 736,
+      "source": "method-v2/experiments/judge-r5-assessment-attempts.jsonl:1"
+    },
+    {
+      "ticket": 737,
+      "source": "method-v2/experiments/judge-r5-revision-attempts.jsonl:2"
+    },
+    {
+      "ticket": 738,
+      "source": "method-v3/dev-judge-attempts.jsonl:5"
+    },
+    {
+      "ticket": 739,
+      "source": "method-v2/experiments/judge-r5-revision-attempts.jsonl:3"
+    },
+    {
+      "ticket": 740,
+      "source": "method-v3/dev-judge-attempts.jsonl:6"
+    },
+    {
+      "ticket": 741,
+      "source": "method-v2/experiments/judge-r5-revision-attempts.jsonl:4"
+    },
+    {
+      "ticket": 742,
+      "source": "method-v3/dev-judge-attempts.jsonl:7"
+    },
+    {
+      "ticket": 743,
+      "source": "method-v2/experiments/judge-r5-assessment-attempts.jsonl:2"
+    },
+    {
+      "ticket": 744,
+      "source": "method-v2/experiments/judge-r5-assessment-attempts.jsonl:3"
+    },
+    {
+      "ticket": 745,
+      "source": "method-v2/experiments/judge-r5-assessment-attempts.jsonl:4"
+    },
+    {
+      "ticket": 746,
+      "source": "method-v4/controlled-judge-r2-attempts.jsonl:1"
+    },
+    {
+      "ticket": 747,
+      "source": "method-v4/controlled-judge-r1-attempts.jsonl:1"
+    },
+    {
+      "ticket": 748,
+      "source": "method-v4/controlled-judge-r2-attempts.jsonl:2"
+    },
+    {
+      "ticket": 749,
+      "source": "method-v4/controlled-judge-r1-attempts.jsonl:2"
+    },
+    {
+      "ticket": 750,
+      "source": "method-v4/focused/judge-r2-attempts.jsonl:1"
+    },
+    {
+      "ticket": 751,
+      "source": "method-v4/focused/judge-r1-attempts.jsonl:1"
+    },
+    {
+      "ticket": 752,
+      "source": "method-v4/controlled-judge-r3-attempts.jsonl:1"
+    },
+    {
+      "ticket": 753,
+      "source": "method-v4/focused/judge-r2-attempts.jsonl:2"
+    },
+    {
+      "ticket": 754,
+      "source": "method-v4/focused/judge-r1-attempts.jsonl:2"
+    },
+    {
+      "ticket": 755,
+      "source": "method-v4/controlled-judge-r3-attempts.jsonl:2"
+    },
+    {
+      "ticket": 756,
+      "source": "method-v4/focused/judge-r2-attempts.jsonl:3"
+    },
+    {
+      "ticket": 757,
+      "source": "method-v4/focused/judge-r1-attempts.jsonl:3"
+    },
+    {
+      "ticket": 758,
+      "source": "method-v4/focused/judge-r1-attempts.jsonl:4"
+    },
+    {
+      "ticket": 759,
+      "source": "method-v4/focused/judge-r2-attempts.jsonl:4"
+    },
+    {
+      "ticket": 760,
+      "source": "method-v4/focused/judge-r3-attempts.jsonl:1"
+    },
+    {
+      "ticket": 761,
+      "source": "method-v4/focused/judge-r4-attempts.jsonl:1"
+    },
+    {
+      "ticket": 762,
+      "source": "method-v4/focused/judge-r3-attempts.jsonl:2"
+    },
+    {
+      "ticket": 763,
+      "source": "method-v4/focused/judge-r4-attempts.jsonl:2"
+    },
+    {
+      "ticket": 764,
+      "source": "method-v4/focused/judge-r3-attempts.jsonl:3"
+    },
+    {
+      "ticket": 765,
+      "source": "method-v4/focused/judge-r4-attempts.jsonl:3"
+    },
+    {
+      "ticket": 766,
+      "source": "method-v4/focused/judge-r3-attempts.jsonl:4"
+    },
+    {
+      "ticket": 767,
+      "source": "method-v4/focused/judge-r4-attempts.jsonl:4"
+    },
+    {
+      "ticket": 768,
+      "source": "method-v4/focused/judge-r5-attempts.jsonl:1"
+    },
+    {
+      "ticket": 769,
+      "source": "method-v4/focused/judge-r5-attempts.jsonl:2"
+    },
+    {
+      "ticket": 770,
+      "source": "method-v4/focused/judge-r5-attempts.jsonl:3"
+    },
+    {
+      "ticket": 771,
+      "source": "method-v4/focused/judge-r5-attempts.jsonl:4"
+    },
+    {
+      "ticket": 772,
+      "source": "formal/runtime/episodes/episode-7aafd70e332b6094bbde31e0.json:model-call:001"
+    },
+    {
+      "ticket": 773,
+      "source": "formal/runtime/episodes/episode-7aafd70e332b6094bbde31e0.json:model-call:002"
+    },
+    {
+      "ticket": 774,
+      "source": "formal/runtime/episodes/episode-0ef5260d1871d4185ee9ec6f.json:model-call:001"
+    },
+    {
+      "ticket": 775,
+      "source": "formal/runtime/episodes/episode-0ef5260d1871d4185ee9ec6f.json:model-call:002"
+    },
+    {
+      "ticket": 776,
+      "source": "formal/runtime/episodes/episode-0ef5260d1871d4185ee9ec6f.json:model-call:003"
+    },
+    {
+      "ticket": 777,
+      "source": "formal/runtime/episodes/episode-9694ed34572fd9c775ef40ec.json:model-call:001"
+    },
+    {
+      "ticket": 778,
+      "source": "formal/runtime/episodes/episode-9694ed34572fd9c775ef40ec.json:model-call:002"
+    },
+    {
+      "ticket": 779,
+      "source": "formal/runtime/episodes/episode-554ebcdf2f9bf8f3bfb85135.json:model-call:001"
+    },
+    {
+      "ticket": 780,
+      "source": "formal/runtime/episodes/episode-554ebcdf2f9bf8f3bfb85135.json:model-call:002"
+    },
+    {
+      "ticket": 781,
+      "source": "formal/runtime/episodes/episode-554ebcdf2f9bf8f3bfb85135.json:model-call:003"
+    },
+    {
+      "ticket": 782,
+      "source": "formal/runtime/episodes/episode-b156df5924392968b4aaff7c.json:model-call:001"
+    },
+    {
+      "ticket": 783,
+      "source": "formal/runtime/episodes/episode-b156df5924392968b4aaff7c.json:model-call:002"
+    },
+    {
+      "ticket": 784,
+      "source": "formal/runtime/episodes/episode-54b7b31e7984a924f9246ac4.json:model-call:001"
+    },
+    {
+      "ticket": 785,
+      "source": "formal/runtime/episodes/episode-b11b2b0c810cbca72922cf20.json:model-call:001"
+    },
+    {
+      "ticket": 786,
+      "source": "formal/runtime/episodes/episode-b11b2b0c810cbca72922cf20.json:model-call:002"
+    },
+    {
+      "ticket": 787,
+      "source": "formal/runtime/episodes/episode-3b2459e907134306c99ffea1.json:model-call:001"
+    },
+    {
+      "ticket": 788,
+      "source": "formal/runtime/episodes/episode-3b2459e907134306c99ffea1.json:model-call:002"
+    },
+    {
+      "ticket": 789,
+      "source": "formal/runtime/episodes/episode-89450d67205a4afac4cacfd8.json:model-call:001"
+    },
+    {
+      "ticket": 790,
+      "source": "formal/runtime/episodes/episode-89450d67205a4afac4cacfd8.json:model-call:002"
+    },
+    {
+      "ticket": 791,
+      "source": "formal/runtime/episodes/episode-091d86f22e10b65b7ea502eb.json:model-call:001"
+    },
+    {
+      "ticket": 792,
+      "source": "formal/runtime/episodes/episode-e9bf7667e7692735f2c338a1.json:model-call:001"
+    },
+    {
+      "ticket": 793,
+      "source": "formal/runtime/episodes/episode-e9bf7667e7692735f2c338a1.json:model-call:002"
+    },
+    {
+      "ticket": 794,
+      "source": "formal/runtime/episodes/episode-e9bf7667e7692735f2c338a1.json:model-call:003"
+    },
+    {
+      "ticket": 795,
+      "source": "formal/runtime/episodes/episode-bb4807e81a1711e8afc414b2.json:model-call:001"
+    },
+    {
+      "ticket": 796,
+      "source": "formal/runtime/episodes/episode-bb4807e81a1711e8afc414b2.json:model-call:002"
+    },
+    {
+      "ticket": 797,
+      "source": "formal/runtime/episodes/episode-bb4807e81a1711e8afc414b2.json:model-call:003"
+    },
+    {
+      "ticket": 798,
+      "source": "formal/runtime/episodes/episode-ec3379fd9b1f2a1ec408edba.json:model-call:001"
+    },
+    {
+      "ticket": 799,
+      "source": "formal/runtime/episodes/episode-ec3379fd9b1f2a1ec408edba.json:model-call:002"
+    },
+    {
+      "ticket": 800,
+      "source": "formal/runtime/episodes/episode-f77cd11725c189a0ac37d869.json:model-call:001"
+    },
+    {
+      "ticket": 801,
+      "source": "formal/runtime/episodes/episode-f77cd11725c189a0ac37d869.json:model-call:002"
+    },
+    {
+      "ticket": 802,
+      "source": "formal/runtime/episodes/episode-3c2bffbaea0f6260db8ddbad.json:model-call:001"
+    },
+    {
+      "ticket": 803,
+      "source": "formal/runtime/episodes/episode-3c2bffbaea0f6260db8ddbad.json:model-call:002"
+    },
+    {
+      "ticket": 804,
+      "source": "formal/runtime/episodes/episode-3c2bffbaea0f6260db8ddbad.json:model-call:003"
+    },
+    {
+      "ticket": 805,
+      "source": "formal/runtime/episodes/episode-863a10524ef13f275c3835da.json:model-call:001"
+    },
+    {
+      "ticket": 806,
+      "source": "formal/runtime/episodes/episode-863a10524ef13f275c3835da.json:model-call:002"
+    },
+    {
+      "ticket": 807,
+      "source": "formal/runtime/episodes/episode-863a10524ef13f275c3835da.json:model-call:003"
+    },
+    {
+      "ticket": 808,
+      "source": "formal/runtime/episodes/episode-7824bb4c507d637c295ed1b3.json:model-call:001"
+    },
+    {
+      "ticket": 809,
+      "source": "formal/runtime/episodes/episode-7824bb4c507d637c295ed1b3.json:model-call:002"
+    },
+    {
+      "ticket": 810,
+      "source": "formal/runtime/episodes/episode-a0b5574a4afb554d8baa8ce8.json:model-call:001"
+    },
+    {
+      "ticket": 811,
+      "source": "formal/runtime/episodes/episode-a0b5574a4afb554d8baa8ce8.json:model-call:002"
+    },
+    {
+      "ticket": 812,
+      "source": "formal/runtime/episodes/episode-a96a0b4b4f28cc160fe8b394.json:model-call:001"
+    },
+    {
+      "ticket": 813,
+      "source": "formal/runtime/episodes/episode-a96a0b4b4f28cc160fe8b394.json:model-call:002"
+    },
+    {
+      "ticket": 814,
+      "source": "formal/runtime/episodes/episode-f149c022081412dd588abeea.json:model-call:001"
+    },
+    {
+      "ticket": 815,
+      "source": "formal/runtime/episodes/episode-f149c022081412dd588abeea.json:model-call:002"
+    },
+    {
+      "ticket": 816,
+      "source": "formal/runtime/episodes/episode-69689a24f90e17244f094c18.json:model-call:001"
+    },
+    {
+      "ticket": 817,
+      "source": "formal/runtime/episodes/episode-69689a24f90e17244f094c18.json:model-call:002"
+    },
+    {
+      "ticket": 818,
+      "source": "formal/runtime/episodes/episode-9c728b06a58a9c238ce76b1c.json:model-call:001"
+    },
+    {
+      "ticket": 819,
+      "source": "formal/runtime/episodes/episode-1e14d58935f2e0fab437c573.json:model-call:001"
+    },
+    {
+      "ticket": 820,
+      "source": "formal/runtime/episodes/episode-1e14d58935f2e0fab437c573.json:model-call:002"
+    },
+    {
+      "ticket": 821,
+      "source": "formal/runtime/episodes/episode-ad3a804e20e0f43ce89bffbb.json:model-call:001"
+    },
+    {
+      "ticket": 822,
+      "source": "formal/runtime/episodes/episode-ad3a804e20e0f43ce89bffbb.json:model-call:002"
+    },
+    {
+      "ticket": 823,
+      "source": "formal/runtime/episodes/episode-16e3e918f0d90c3ea20339d2.json:model-call:001"
+    },
+    {
+      "ticket": 824,
+      "source": "formal/runtime/episodes/episode-16e3e918f0d90c3ea20339d2.json:model-call:002"
+    },
+    {
+      "ticket": 825,
+      "source": "formal/runtime/episodes/episode-93dcad272d0cebf2668bff31.json:model-call:001"
+    },
+    {
+      "ticket": 826,
+      "source": "formal/runtime/episodes/episode-476e9f0c3b3d5b6d69217cc0.json:model-call:001"
+    },
+    {
+      "ticket": 827,
+      "source": "formal/runtime/episodes/episode-476e9f0c3b3d5b6d69217cc0.json:model-call:002"
+    },
+    {
+      "ticket": 828,
+      "source": "formal/runtime/episodes/episode-476e9f0c3b3d5b6d69217cc0.json:model-call:003"
+    },
+    {
+      "ticket": 829,
+      "source": "formal/runtime/episodes/episode-a5fc81db40ac3a22136f9817.json:model-call:001"
+    },
+    {
+      "ticket": 830,
+      "source": "formal/runtime/episodes/episode-a5fc81db40ac3a22136f9817.json:model-call:002"
+    },
+    {
+      "ticket": 831,
+      "source": "formal/runtime/episodes/episode-efe01563d7bc9709e7cf9c82.json:model-call:001"
+    },
+    {
+      "ticket": 832,
+      "source": "formal/runtime/episodes/episode-efe01563d7bc9709e7cf9c82.json:model-call:002"
+    },
+    {
+      "ticket": 833,
+      "source": "formal/runtime/episodes/episode-0e394c7a4afef3cc1a37a3e4.json:model-call:001"
+    },
+    {
+      "ticket": 834,
+      "source": "formal/runtime/episodes/episode-0e394c7a4afef3cc1a37a3e4.json:model-call:002"
+    },
+    {
+      "ticket": 835,
+      "source": "formal/runtime/episodes/episode-2de3fd83bee74939b2c9fa9f.json:model-call:001"
+    },
+    {
+      "ticket": 836,
+      "source": "formal/runtime/episodes/episode-2de3fd83bee74939b2c9fa9f.json:model-call:002"
+    },
+    {
+      "ticket": 837,
+      "source": "formal/runtime/episodes/episode-c5c9c2cb8b8ea8f8cfbb4e19.json:model-call:001"
+    },
+    {
+      "ticket": 838,
+      "source": "formal/runtime/episodes/episode-c5c9c2cb8b8ea8f8cfbb4e19.json:model-call:002"
+    },
+    {
+      "ticket": 839,
+      "source": "formal/runtime/episodes/episode-c5c9c2cb8b8ea8f8cfbb4e19.json:model-call:003"
+    },
+    {
+      "ticket": 840,
+      "source": "formal/runtime/episodes/episode-587b519c4ce81989ec8c6466.json:model-call:001"
+    },
+    {
+      "ticket": 841,
+      "source": "formal/runtime/episodes/episode-587b519c4ce81989ec8c6466.json:model-call:002"
+    },
+    {
+      "ticket": 842,
+      "source": "formal/runtime/episodes/episode-33cc0d8e27c04ac45ee9b9bc.json:model-call:001"
+    },
+    {
+      "ticket": 843,
+      "source": "formal/runtime/episodes/episode-3c372db3978d30c5cdd6e0a2.json:model-call:001"
+    },
+    {
+      "ticket": 844,
+      "source": "formal/runtime/episodes/episode-3c372db3978d30c5cdd6e0a2.json:model-call:002"
+    },
+    {
+      "ticket": 845,
+      "source": "formal/runtime/episodes/episode-5b4572949dedfa80693a7d9e.json:model-call:001"
+    },
+    {
+      "ticket": 846,
+      "source": "formal/runtime/episodes/episode-5b4572949dedfa80693a7d9e.json:model-call:002"
+    },
+    {
+      "ticket": 847,
+      "source": "formal/runtime/episodes/episode-593161e210b4958fcc19d005.json:model-call:001"
+    },
+    {
+      "ticket": 848,
+      "source": "formal/runtime/episodes/episode-593161e210b4958fcc19d005.json:model-call:002"
+    },
+    {
+      "ticket": 849,
+      "source": "formal/runtime/episodes/episode-745e2e34e9b331c349391784.json:model-call:001"
+    },
+    {
+      "ticket": 850,
+      "source": "formal/runtime/episodes/episode-9de415293ddd3bb50b5a3e57.json:model-call:001"
+    },
+    {
+      "ticket": 851,
+      "source": "formal/runtime/episodes/episode-9de415293ddd3bb50b5a3e57.json:model-call:002"
+    },
+    {
+      "ticket": 852,
+      "source": "formal/runtime/episodes/episode-9de415293ddd3bb50b5a3e57.json:model-call:003"
+    },
+    {
+      "ticket": 853,
+      "source": "formal/runtime/episodes/episode-fba7924da6c97f334c983d6a.json:model-call:001"
+    },
+    {
+      "ticket": 854,
+      "source": "formal/runtime/episodes/episode-fba7924da6c97f334c983d6a.json:model-call:002"
+    },
+    {
+      "ticket": 855,
+      "source": "formal/runtime/episodes/episode-fba7924da6c97f334c983d6a.json:model-call:003"
+    },
+    {
+      "ticket": 856,
+      "source": "formal/runtime/episodes/episode-250531c9d847c2b5145df0ef.json:model-call:001"
+    },
+    {
+      "ticket": 857,
+      "source": "formal/runtime/episodes/episode-250531c9d847c2b5145df0ef.json:model-call:002"
+    },
+    {
+      "ticket": 858,
+      "source": "formal/runtime/episodes/episode-250531c9d847c2b5145df0ef.json:model-call:003"
+    },
+    {
+      "ticket": 859,
+      "source": "formal/runtime/episodes/episode-48b422e3d7b117f02f05ac1f.json:model-call:001"
+    },
+    {
+      "ticket": 860,
+      "source": "formal/runtime/episodes/episode-48b422e3d7b117f02f05ac1f.json:model-call:002"
+    },
+    {
+      "ticket": 861,
+      "source": "formal/runtime/episodes/episode-1b27c3b647e0f68687931c63.json:model-call:001"
+    },
+    {
+      "ticket": 862,
+      "source": "formal/runtime/episodes/episode-1b27c3b647e0f68687931c63.json:model-call:002"
+    },
+    {
+      "ticket": 863,
+      "source": "formal/runtime/episodes/episode-7ad1f5788d96abedd56be578.json:model-call:001"
+    },
+    {
+      "ticket": 864,
+      "source": "formal/runtime/episodes/episode-7ad1f5788d96abedd56be578.json:model-call:002"
+    },
+    {
+      "ticket": 865,
+      "source": "formal/runtime/episodes/episode-6c43b9209d4a7e2baa8608f9.json:model-call:001"
+    },
+    {
+      "ticket": 866,
+      "source": "formal/runtime/episodes/episode-6c43b9209d4a7e2baa8608f9.json:model-call:002"
+    },
+    {
+      "ticket": 867,
+      "source": "formal/runtime/episodes/episode-a799d9433ff0424237f5227c.json:model-call:001"
+    },
+    {
+      "ticket": 868,
+      "source": "formal/runtime/episodes/episode-4b6a572a65cc1f07eb3ef0ab.json:model-call:001"
+    },
+    {
+      "ticket": 869,
+      "source": "formal/runtime/episodes/episode-4b6a572a65cc1f07eb3ef0ab.json:model-call:002"
+    },
+    {
+      "ticket": 870,
+      "source": "formal/runtime/episodes/episode-4b6a572a65cc1f07eb3ef0ab.json:model-call:003"
+    },
+    {
+      "ticket": 871,
+      "source": "formal/runtime/episodes/episode-835bdb61105b0a08a084d323.json:model-call:001"
+    },
+    {
+      "ticket": 872,
+      "source": "formal/runtime/episodes/episode-835bdb61105b0a08a084d323.json:model-call:002"
+    },
+    {
+      "ticket": 873,
+      "source": "formal/runtime/episodes/episode-835bdb61105b0a08a084d323.json:model-call:003"
+    },
+    {
+      "ticket": 874,
+      "source": "formal/runtime/episodes/episode-835bdb61105b0a08a084d323.json:model-call:004"
+    },
+    {
+      "ticket": 875,
+      "source": "formal/judge-attempts.jsonl:1"
+    },
+    {
+      "ticket": 876,
+      "source": "formal/judge-attempts.jsonl:2"
+    },
+    {
+      "ticket": 877,
+      "source": "formal/judge-attempts.jsonl:3"
+    },
+    {
+      "ticket": 878,
+      "source": "formal/judge-attempts.jsonl:4"
+    },
+    {
+      "ticket": 879,
+      "source": "formal/judge-attempts.jsonl:7"
+    },
+    {
+      "ticket": 880,
+      "source": "formal/judge-attempts.jsonl:8"
+    },
+    {
+      "ticket": 881,
+      "source": "formal/judge-attempts.jsonl:9"
+    },
+    {
+      "ticket": 882,
+      "source": "formal/judge-attempts.jsonl:10"
+    },
+    {
+      "ticket": 883,
+      "source": "formal/judge-attempts.jsonl:11"
+    },
+    {
+      "ticket": 884,
+      "source": "formal/judge-attempts.jsonl:13"
+    },
+    {
+      "ticket": 885,
+      "source": "formal/judge-attempts.jsonl:14"
+    },
+    {
+      "ticket": 886,
+      "source": "formal/judge-attempts.jsonl:16"
+    },
+    {
+      "ticket": 887,
+      "source": "formal/judge-attempts.jsonl:17"
+    },
+    {
+      "ticket": 888,
+      "source": "formal/judge-attempts.jsonl:19"
+    },
+    {
+      "ticket": 889,
+      "source": "formal/judge-attempts.jsonl:20"
+    },
+    {
+      "ticket": 890,
+      "source": "formal/judge-attempts.jsonl:22"
+    },
+    {
+      "ticket": 891,
+      "source": "formal/judge-attempts.jsonl:23"
+    },
+    {
+      "ticket": 892,
+      "source": "formal/judge-attempts.jsonl:25"
+    },
+    {
+      "ticket": 893,
+      "source": "formal/judge-attempts.jsonl:26"
+    },
+    {
+      "ticket": 894,
+      "source": "formal/judge-attempts.jsonl:27"
+    },
+    {
+      "ticket": 895,
+      "source": "formal/judge-attempts.jsonl:29"
+    },
+    {
+      "ticket": 896,
+      "source": "formal/judge-attempts.jsonl:30"
+    },
+    {
+      "ticket": 897,
+      "source": "formal/judge-attempts.jsonl:31"
+    },
+    {
+      "ticket": 898,
+      "source": "formal/judge-attempts.jsonl:32"
+    },
+    {
+      "ticket": 899,
+      "source": "formal/judge-attempts.jsonl:33"
+    },
+    {
+      "ticket": 900,
+      "source": "formal/judge-attempts.jsonl:34"
+    },
+    {
+      "ticket": 901,
+      "source": "formal/judge-attempts.jsonl:35"
+    },
+    {
+      "ticket": 902,
+      "source": "formal/judge-attempts.jsonl:36"
+    },
+    {
+      "ticket": 903,
+      "source": "formal/judge-attempts.jsonl:37"
+    },
+    {
+      "ticket": 904,
+      "source": "formal/judge-attempts.jsonl:38"
+    },
+    {
+      "ticket": 905,
+      "source": "formal/judge-attempts.jsonl:39"
+    },
+    {
+      "ticket": 906,
+      "source": "formal/judge-attempts.jsonl:40"
+    },
+    {
+      "ticket": 907,
+      "source": "formal/judge-attempts.jsonl:41"
+    }
+  ]
+}

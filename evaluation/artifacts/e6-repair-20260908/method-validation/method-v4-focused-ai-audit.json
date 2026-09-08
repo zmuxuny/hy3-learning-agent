@@ -1,0 +1,1431 @@
+{
+  "audit_version": "e6-method-v4-assessment-and-timezone-differential-second-ai-v1",
+  "reviewer_role": "delegated_ai_reviewer",
+  "disclosure": "参与治理和产品时区修复的第二AI，非独立人类，非盲审；逐条读取20个D7原始文本和6个D1/D7时区原始文本，对照完整公开Episode事实，不按Good/Mild标签自动确认。",
+  "source_commit": "c25da4406f94f1f168ebf99c7912f3a55e6ecc7e",
+  "design_sha256": "9197515b0241f03695036197b7ba3f37b871322050bad67a3d86c4cca24f54a5",
+  "judge_prompt_sha256": "05cdd51dbbcbdeee64642d291e221ec840f0d43e26555b9f48434cf3586c9c08",
+  "judge_config": {
+    "schema_version": "judge-provider-config-v3",
+    "judge_config_version": "hy3-judge-config-v3-budgeted-e6-1",
+    "model": "hy3",
+    "wire_protocol": "openai-compatible-structured-output-v1",
+    "temperature": 0.0,
+    "reasoning_effort": "high",
+    "max_tokens": 12288,
+    "timeout_seconds": 180,
+    "input_token_limit": 196608,
+    "input_estimator": "request-utf8-bytes-plus-2048-v1",
+    "n": 1,
+    "transport_retries": 0,
+    "repair_limit": 1,
+    "evidence_output_policy": "episode-path-enum-v1",
+    "provider_failure_policy": "safe-category-http-status-v1-no-transport-retry"
+  },
+  "formal": false,
+  "assessment_denominator": 20,
+  "assessment_complete": 20,
+  "good_not_falsely_penalized_numerator": 10,
+  "good_denominator": 10,
+  "mild_same_failed_boundary_detected_numerator": 10,
+  "mild_denominator": 10,
+  "timezone_denominator": 6,
+  "timezone_complete": 6,
+  "provider_calls_observed": 26,
+  "failures": [],
+  "invalid_evidence_paths": [],
+  "all_prespecified_differential_requirements_met": true,
+  "cases": [
+    {
+      "case_id": "calibration-c06-a-good",
+      "episode_id": "episode-17dd0f809f01c2058e5147d2",
+      "episode_sha256": "62d1b18dbf9010d23540a3b827465a489fe130541afbdd09d14f74affb9eba44",
+      "expected_failure_record": "NOT NULL 约束测试：插入 NULL 应拒绝，实际成功写入；重放三次一致。其余查询测试通过。",
+      "actual_feedback": "NOT NULL 约束失败；请补齐约束，重放 NULL 拒绝和普通写入两组测试后再提交。",
+      "actual_check": [
+        {
+          "criterion": "not_null",
+          "passed": false
+        }
+      ],
+      "actual_after_status": "revision_required",
+      "score": 40,
+      "rule_gates": [],
+      "public_evidence_paths": [
+        "state_before.logical_entities[6].data.content",
+        "observable_trace.model_calls[0].assistant_text",
+        "observable_trace.model_calls[1].assistant_text",
+        "observable_trace.tool_invocations[0].canonical_args.feedback",
+        "observable_trace.tool_invocations[0].canonical_args.checks",
+        "result.user_visible_output"
+      ],
+      "repeats": [
+        {
+          "repeat": 1,
+          "judge_sha256": "6ebf31356c91a6791eb831ffbe1383732bc90f7e144279156320a776d35f6ed6",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 2,
+            "public_summary": "指明NOT NULL失败，要求重放NULL拒绝与普通写入同组测试，步骤可复核。",
+            "reason_code": "actionable_evidence",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "认可重放NULL拒绝与普通写入测试；其中NULL拒绝明确对应失败输入及拒绝预期。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "d77a0070-f4e3-4f6a-bb6a-522e1f89143b",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:09:55.846485Z",
+              "responded_at": "2026-09-08T08:10:24.048240Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 2,
+          "judge_sha256": "50895dc108aa15ee6f6d44fba1cc5d7b4c6fcd2c7671aa972b65c4e32998e3f2",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "observable_trace.tool_invocations[0].canonical_args"
+            ],
+            "level": 2,
+            "public_summary": "援引失败约束并明确要求重放同项NULL拒绝测试，步骤可复核。",
+            "reason_code": "actionable_evidence",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确认可同项NULL拒绝复测，与原反馈吻合。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "9c662d77-10a4-41bc-a542-5399121a0a18",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:09:55.482483Z",
+              "responded_at": "2026-09-08T08:10:22.803321Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 3,
+          "judge_sha256": "3eb67659905318c5f2e39dd09b5a61d14d87120a11f9dc54179e89ff8a0c8b7f",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.tool_invocations[0].canonical_args"
+            ],
+            "level": 2,
+            "public_summary": "援引NULL约束失败证据，给出重放同一失败测试的具体下一步。",
+            "reason_code": "actionable_evidence",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "认可重放同一失败测试的具体下一步，未误罚普通写入附加回归。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "2a2f5a63-be48-4a5c-8f91-c8893d70640e",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:11:51.715700Z",
+              "responded_at": "2026-09-08T08:12:31.043923Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 4,
+          "judge_sha256": "75ead4d64add554278d0ca88c06b5809fd9d79fda18f68b3e39fd03253e3bde9",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 2,
+            "public_summary": "指明NOT NULL失败，要求重放NULL拒绝测试，步骤可复核。",
+            "reason_code": "actionable",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "认可NULL拒绝测试，具体重测路径有效。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "cea23a54-beff-48e6-b731-193df9e14fb7",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:11:52.824534Z",
+              "responded_at": "2026-09-08T08:12:35.185547Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 5,
+          "judge_sha256": "fd4df416f47356e4a708a6f540bda66c81e76483fc87c897c4f690c135054821",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "result.user_visible_output"
+            ],
+            "level": 2,
+            "public_summary": "援引 NOT NULL 失败证据，要求重放同项测试，步骤具体。",
+            "reason_code": "actionable_evidence",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确认可同项失败证据及复测，D7=2有公开反馈支撑。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "fa0fc4cf-75e4-4af9-8b14-56568783467d",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:13:56.695213Z",
+              "responded_at": "2026-09-08T08:14:21.363560Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        }
+      ],
+      "D7_levels": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "denominator": 5,
+      "complete": 5,
+      "all_five_requirements_met": true
+    },
+    {
+      "case_id": "calibration-c05-a-mild",
+      "episode_id": "episode-48a6cf4f85e6e279daf4888c",
+      "episode_sha256": "d6ffc51f38f1034b3a24fc39e4ab4d9a3272fa954f48fb85d699c4a5b3cdf256",
+      "expected_failure_record": "必需测试：空输入应返回空集合，实际抛异常。重放三次一致。其余测试通过。",
+      "actual_feedback": "空输入测试明确失败；请补上边界处理，重放正常输入后再提交。",
+      "actual_check": [
+        {
+          "criterion": "empty_input",
+          "passed": false
+        }
+      ],
+      "actual_after_status": "revision_required",
+      "score": 40,
+      "rule_gates": [],
+      "public_evidence_paths": [
+        "state_before.logical_entities[6].data.content",
+        "observable_trace.model_calls[0].assistant_text",
+        "observable_trace.model_calls[1].assistant_text",
+        "observable_trace.tool_invocations[0].canonical_args.feedback",
+        "observable_trace.tool_invocations[0].canonical_args.checks",
+        "result.user_visible_output"
+      ],
+      "repeats": [
+        {
+          "repeat": 1,
+          "judge_sha256": "8715de2ad7201ae875dcc4c3b9c0da7c5bb58e8aaecb3099551bf2471214dcda",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "援引了空输入测试失败证据，但下一步写“重放正常输入”而非同一失败边界，未给期望结果。",
+            "reason_code": "next_step_vague",
+            "specific_issue": "反馈未要求重放同一空输入边界，也未说明期望返回空集合，下一步偏模糊。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "具体指出只重放正常输入而未重放空输入边界；附提期望空集合，但主要遗漏确为没有索引失败测试。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "5763e772-9cde-4c31-9cd6-edf2117c0f53",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:10:24.468162Z",
+              "responded_at": "2026-09-08T08:10:55.841073Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output",
+                "observable_trace.model_calls[0].assistant_text"
+              ],
+              "issue_id": "D7-issue-1",
+              "public_summary": "反馈未要求重放同一空输入边界，也未说明期望返回空集合，下一步偏模糊。",
+              "reason_code": "next_step_vague",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 2,
+          "judge_sha256": "3e101c5b2276923c244bbc9baee0283f84f9d7bdc86305dc5775b10724513d4d",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.tool_invocations[0].canonical_args"
+            ],
+            "level": 1,
+            "public_summary": "指出空输入测试失败，但下一步要求“重放正常输入”，未明确要求重跑同一空输入失败用例验证修复。",
+            "reason_code": "underspecified_retest",
+            "specific_issue": "反馈未指定重跑相同空输入边界用例及期望空集合结果。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出未重跑相同空输入失败用例验证修复，与原反馈仅正常输入相符。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "517f1897-4a57-4442-ad72-ebfe4c142368",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:10:23.168772Z",
+              "responded_at": "2026-09-08T08:10:55.316148Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output",
+                "observable_trace.tool_invocations[0].canonical_args"
+              ],
+              "issue_id": "D7-issue-1",
+              "public_summary": "反馈要求重放正常输入，未明确要求重跑同一空输入失败用例验证修复。",
+              "reason_code": "underspecified_retest",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 3,
+          "judge_sha256": "3e0bb8406496c00a0400d852b6d0f3f9f32d10becd9a84d44564fece93a009b1",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "反馈援引空输入失败证据，但下一步建议重放正常输入，未指明重放同一失败边界验证修复。",
+            "reason_code": "vague_next_step",
+            "specific_issue": "反馈建议“重放正常输入”，未要求重放同一失败边界（空输入）来验证修复。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出“正常输入”不能替代原失败空输入，缺陷定位准确。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "fddaa00e-50b8-4ffd-bbad-63c963d10f91",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:12:31.465596Z",
+              "responded_at": "2026-09-08T08:13:02.223324Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output",
+                "observable_trace.model_calls[0].assistant_text"
+              ],
+              "issue_id": "D7-issue-1",
+              "public_summary": "反馈建议“重放正常输入”，未要求重放同一失败边界（空输入）来验证修复。",
+              "reason_code": "vague_next_step",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 4,
+          "judge_sha256": "0a024bd057bbe1608faa2c983999ce0eaf3e77056383e27c8a9ce83b86eb9792",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.tool_invocations[0].canonical_args"
+            ],
+            "level": 1,
+            "public_summary": "解释援引空输入失败证据，但后续步骤指向正常输入而非失败用例。",
+            "reason_code": "vague_next_step",
+            "specific_issue": "下一步建议重放正常输入，未要求重放同一失败边界（空输入）验证修复。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出后续步骤转向正常输入而不是空输入失败边界，缺陷定位准确。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "4c327ad9-b5dd-49a7-8736-2496b1e1c2bb",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:12:35.606472Z",
+              "responded_at": "2026-09-08T08:13:07.041772Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output",
+                "observable_trace.tool_invocations[0].canonical_args"
+              ],
+              "issue_id": "D7-issue-1",
+              "public_summary": "下一步建议重放正常输入，未要求重放同一失败边界（空输入）验证修复。",
+              "reason_code": "vague_next_step",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 5,
+          "judge_sha256": "385b7ce94fc276d120a08f87c0c8c3f15f33edf67a6a556048587d961c8062c0",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output"
+            ],
+            "level": 1,
+            "public_summary": "解释援引空输入失败并给下一步，但重测指向正常输入而非同一失败用例。",
+            "reason_code": "vague_next_step",
+            "specific_issue": "反馈要求重放正常输入，未指明重放同一失败空输入测试验证修复。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出没有要求重放同一失败空输入测试验证修复，未因表面“边界处理”字样漏检。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "228c53b5-bf24-4225-9765-13c01a7a4b35",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:14:21.774756Z",
+              "responded_at": "2026-09-08T08:14:51.672646Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output"
+              ],
+              "issue_id": "issue_d7_1",
+              "public_summary": "反馈要求重放正常输入，未指明重放同一失败空输入测试验证修复。",
+              "reason_code": "vague_next_step",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        }
+      ],
+      "D7_levels": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "denominator": 5,
+      "complete": 5,
+      "all_five_requirements_met": true
+    },
+    {
+      "case_id": "calibration-c06-a-mild",
+      "episode_id": "episode-811564e6c875e329def5ad6c",
+      "episode_sha256": "d196a5e0adf611ac48b8badb3091a707d03893eda3c2e955ad00148bfdc81119",
+      "expected_failure_record": "NOT NULL 约束测试：插入 NULL 应拒绝，实际成功写入；重放三次一致。其余查询测试通过。",
+      "actual_feedback": "NOT NULL 约束失败；请补齐约束，重放普通 SELECT 查询后再提交。",
+      "actual_check": [
+        {
+          "criterion": "not_null",
+          "passed": false
+        }
+      ],
+      "actual_after_status": "revision_required",
+      "score": 40,
+      "rule_gates": [],
+      "public_evidence_paths": [
+        "state_before.logical_entities[6].data.content",
+        "observable_trace.model_calls[0].assistant_text",
+        "observable_trace.model_calls[1].assistant_text",
+        "observable_trace.tool_invocations[0].canonical_args.feedback",
+        "observable_trace.tool_invocations[0].canonical_args.checks",
+        "result.user_visible_output"
+      ],
+      "repeats": [
+        {
+          "repeat": 1,
+          "judge_sha256": "724325090fce9cbd80e0725ac3245fc857e2c27a713d308b709a93ffe3f5fb15",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output"
+            ],
+            "level": 1,
+            "public_summary": "反馈援引NOT NULL失败证据，但下一步要求重放普通SELECT查询，非同一失败边界。",
+            "reason_code": "vague_next_step",
+            "specific_issue": "反馈要求重放普通SELECT查询，但失败边界是NOT NULL插入，未指引复现同一失败条件。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确对比普通SELECT和NOT NULL插入失败，说明未指引复现同一失败条件。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "6fdb85a8-2879-4197-a82d-70ab475ddd2b",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:10:56.251858Z",
+              "responded_at": "2026-09-08T08:11:24.812454Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output"
+              ],
+              "issue_id": "D7-issue-1",
+              "public_summary": "反馈要求重放普通SELECT查询，但失败边界是NOT NULL插入，未指引复现同一失败条件。",
+              "reason_code": "vague_next_step",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 2,
+          "judge_sha256": "712f185598b2584d4b8825b9763cebddd5ab241fb693ea8c04e73eeb5dc78b00",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "解释援引了失败条件，但下一步仅提“重放普通SELECT查询”，未明确要求重跑同一失败插入NULL用例。",
+            "reason_code": "vague_next_step",
+            "specific_issue": "反馈未指明重放失败边界（插入NULL应拒）并验证修复，下一步可执行性不清。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出缺少插入NULL应拒的同一失败用例，未把泛称补约束当完整验证。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "fa24e2f5-3a06-4753-8bd7-5ebe7169b2dd",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:10:55.702927Z",
+              "responded_at": "2026-09-08T08:11:28.467055Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output",
+                "observable_trace.model_calls[0].assistant_text"
+              ],
+              "issue_id": "D7-issue-1",
+              "public_summary": "反馈未指明重放失败边界（插入NULL应拒）并验证修复，下一步可执行性不清。",
+              "reason_code": "vague_next_step",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 3,
+          "judge_sha256": "6d2e8da2d3868d3871cc0b3b34f1db2939fc3fa6f2215ce38cd4908b46607b9f",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "state_after"
+            ],
+            "level": 1,
+            "public_summary": "解释援引NOT NULL失败证据，但下一步建议重放普通SELECT而非同一失败边界。",
+            "reason_code": "vague_next_step",
+            "specific_issue": "建议重放普通SELECT而非失败的NULL插入测试，未针对同一失败边界给出复核步骤。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出SELECT替代了失败NULL插入；缺陷定位符合原报告。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "94b5ea0b-8f35-43cc-8ead-6c87e81d69c7",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:13:02.608028Z",
+              "responded_at": "2026-09-08T08:13:31.056434Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output",
+                "state_after"
+              ],
+              "issue_id": "D7-issue-1",
+              "public_summary": "建议重放普通SELECT而非失败的NULL插入测试，未针对同一失败边界给出复核步骤。",
+              "reason_code": "vague_next_step",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 4,
+          "judge_sha256": "5458d7f538602c97fcd5cff17fa35b6e0c8baf075adf59766eec0d603838fd26",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "援引 NOT NULL 失败证据，但下一步建议重放普通 SELECT 查询。",
+            "reason_code": "vague_next_step",
+            "specific_issue": "建议重放普通 SELECT 查询，但失败边界是插入 NULL，SELECT 已通过，未指向同一失败测试。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出SELECT已通过，实际失败边界是插入NULL，与公开“其余查询测试通过”相符。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "4ce97d10-c7e6-4f2d-a1ad-3a0346974630",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:13:07.409183Z",
+              "responded_at": "2026-09-08T08:13:37.743531Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "result.user_visible_output",
+                "observable_trace.model_calls[0].assistant_text"
+              ],
+              "issue_id": "issue_d7_1",
+              "public_summary": "建议重放普通 SELECT 查询，但失败边界是插入 NULL，SELECT 已通过，未指向同一失败测试。",
+              "reason_code": "vague_next_step",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 5,
+          "judge_sha256": "280e94566f129b9e88457dd60c34b9b0a879b70fefeeb23ea883900cbf198919",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "援引了NOT NULL失败条件，但下一步建议“重放普通SELECT查询”而非失败的INSERT NULL测试，稍模糊。",
+            "reason_code": "vague_next_step",
+            "specific_issue": "未明确要求重放同一失败输入（插入NULL）来验证修复。"
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出缺重放同一失败输入INSERT NULL，缺陷定位准确。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "dbcc52f4-77e1-4615-b7ff-42553990fd7f",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:14:52.034611Z",
+              "responded_at": "2026-09-08T08:15:34.966354Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [
+            {
+              "dimension_id": "D7",
+              "evidence_paths": [
+                "observable_trace.model_calls[0].assistant_text"
+              ],
+              "issue_id": "D7-issue-1",
+              "public_summary": "未明确要求重放同一失败输入（插入NULL）来验证修复。",
+              "reason_code": "vague_next_step",
+              "severity": "major"
+            }
+          ],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        }
+      ],
+      "D7_levels": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "denominator": 5,
+      "complete": 5,
+      "all_five_requirements_met": true
+    },
+    {
+      "case_id": "calibration-c05-a-good",
+      "episode_id": "episode-b789b890d299968d6871ec12",
+      "episode_sha256": "77f05e91ef9541809dca28b7c88099379825cc566e1b7025aefd9706511ccd0b",
+      "expected_failure_record": "必需测试：空输入应返回空集合，实际抛异常。重放三次一致。其余测试通过。",
+      "actual_feedback": "空输入测试明确失败；请补上边界处理，重放空输入及正常输入后再提交。",
+      "actual_check": [
+        {
+          "criterion": "empty_input",
+          "passed": false
+        }
+      ],
+      "actual_after_status": "revision_required",
+      "score": 40,
+      "rule_gates": [],
+      "public_evidence_paths": [
+        "state_before.logical_entities[6].data.content",
+        "observable_trace.model_calls[0].assistant_text",
+        "observable_trace.model_calls[1].assistant_text",
+        "observable_trace.tool_invocations[0].canonical_args.feedback",
+        "observable_trace.tool_invocations[0].canonical_args.checks",
+        "result.user_visible_output"
+      ],
+      "repeats": [
+        {
+          "repeat": 1,
+          "judge_sha256": "b4763949baff7a73b88d131043dee091791e31366725b0cb88b77a3e75698961",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "state_after"
+            ],
+            "level": 2,
+            "public_summary": "指明空输入测试失败并明确要求重放该失败输入及正常输入后重交，步骤可复核。",
+            "reason_code": "actionable_evidence",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确认可“重放该失败输入及正常输入”，与实际反馈空输入+正常输入一致，无重复预期文字罚分。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "d2a45f01-6c7f-4e20-98a1-31a801fc7795",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:11:25.176952Z",
+              "responded_at": "2026-09-08T08:11:48.508995Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 2,
+          "judge_sha256": "3d253e7e2ecd760b96eea3ee2bf090274626a839f645be682407c1cc2499d836",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "observable_trace.tool_invocations[0].canonical_args"
+            ],
+            "level": 2,
+            "public_summary": "指明空输入测试失败，要求重放该测试及正常输入再提交，步骤可复核。",
+            "reason_code": "actionable_evidence",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确认可重放该空输入测试并重交；公开提交已定义空集合预期，不需反馈逐字重述。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "e68921d1-1524-4dc5-8937-1b79cbfc86c0",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:11:28.873332Z",
+              "responded_at": "2026-09-08T08:11:49.243498Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 3,
+          "judge_sha256": "f21261602ddd6a90eb5c4bde2385dd629e043abb3b35eb8ab3818f78138b8627",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "observable_trace.tool_invocations[0].canonical_args"
+            ],
+            "level": 2,
+            "public_summary": "指明空输入测试失败，要求重放空输入及正常输入，引用同一失败准则并可复核。",
+            "reason_code": "actionable_evidence",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "明确指出空输入及正常输入、引用同一失败准则；与原文和已有预期相符。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "78716dc6-3c7e-4fa8-850a-1095e75fb5f4",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:13:31.454632Z",
+              "responded_at": "2026-09-08T08:13:54.663408Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 4,
+          "judge_sha256": "684b56382e974ae8340725832d50368865a755e4d532f36bb6698a206321dd17",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[1].assistant_text"
+            ],
+            "level": 2,
+            "public_summary": "指明空输入测试失败，要求补边界并重放该失败输入及正常输入，步骤可复核。",
+            "reason_code": "actionable_evidence",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "认可补边界并重放原失败输入，引用最终第二模型轮文字准确。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "c5f63ba9-c2e2-4844-992c-bd9e8c563fb8",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:13:38.181866Z",
+              "responded_at": "2026-09-08T08:13:58.084862Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        },
+        {
+          "repeat": 5,
+          "judge_sha256": "4178bdec03c639833c94d46827a4ae26377c504fe69969f5137be498a6ee5007",
+          "judge_status": "complete",
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[1].assistant_text"
+            ],
+            "level": 2,
+            "public_summary": "援引空输入失败证据，明确要求重放该失败输入及正常输入，步骤可复核。",
+            "reason_code": "actionable_explanation",
+            "specific_issue": null
+          },
+          "manual_content_verdict": "same_failed_test_target_correctly_assessed",
+          "manual_rationale": "认可重放原空输入及正常输入，未把引用已定义测试当成信息不足。",
+          "score_requirement_met": true,
+          "semantic_content_requirement_met": true,
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "5fe27278-e062-47de-a6a8-33902b4bc1a0",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:15:35.344070Z",
+              "responded_at": "2026-09-08T08:16:11.165487Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ],
+          "semantic_issues": [],
+          "suggested_hard_gates": [],
+          "formal_evaluation_result": false
+        }
+      ],
+      "D7_levels": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "denominator": 5,
+      "complete": 5,
+      "all_five_requirements_met": true
+    }
+  ],
+  "timezone_cases": [
+    {
+      "episode_id": "episode-15fe62235931b54e34f9dc43",
+      "episode_sha256": "ad192ccace36e31c861fd8cdb00345fa29903498057324b8077e31d995c5027c",
+      "public_output": "当前UTC15:30对应上海23:30，处于23:00–08:00安静时段，保持等待；本地08:00后再检查是否适合提醒。",
+      "correct_timezone_example": true,
+      "denominator": 3,
+      "repeats": [
+        {
+          "repeat": 1,
+          "judge_status": "complete",
+          "judge_sha256": "f8abe61e5d1e6f8d7f1f6a8c01e6b92735bfb99bad6f3a50869436298f59d324",
+          "D1": {
+            "dimension_id": "D1",
+            "evidence_paths": [
+              "trigger.objective",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 2,
+            "public_summary": "决策一致使用触发目标与本地时区，无事实矛盾。",
+            "reason_code": "state_consistent",
+            "specific_issue": null
+          },
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 2,
+            "public_summary": "输出简明，引时间边界并给出08:00后检查下一步。",
+            "reason_code": "actionable",
+            "specific_issue": null
+          },
+          "requirement_met": true,
+          "manual_rationale": "UTC15:30=上海23:30，本地08:00后复查，事实与WAIT均正确。",
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "84e40e81-f9a5-40bd-82b8-77512f892608",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:09:29.860099Z",
+              "responded_at": "2026-09-08T08:09:48.753306Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "repeat": 2,
+          "judge_status": "complete",
+          "judge_sha256": "1cdb0ac4981884f3bdda1025496c781acf9505c8c42df54dde6b9b986cea2102",
+          "D1": {
+            "dimension_id": "D1",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "trigger.objective"
+            ],
+            "level": 2,
+            "public_summary": "代理正确引用学习者时区与安静时段，与触发目标及守护状态一致，无事实矛盾。",
+            "reason_code": "state_consistent",
+            "specific_issue": null
+          },
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 2,
+            "public_summary": "留言简明，援引UTC/本地时间与安静时段，并给出08:00后复检的清晰下一步。",
+            "reason_code": "actionable",
+            "specific_issue": null
+          },
+          "requirement_met": true,
+          "manual_rationale": "UTC15:30=上海23:30，本地08:00后复查，事实与WAIT均正确。",
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "6cceb52c-23b9-4d70-8209-efe1871363a1",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:09:29.810617Z",
+              "responded_at": "2026-09-08T08:09:48.610952Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "repeat": 3,
+          "judge_status": "complete",
+          "judge_sha256": "1190d92eaf819e67201d2db96d32086ab0cb7f489d227d47b63aa729203a5484",
+          "D1": {
+            "dimension_id": "D1",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "result.action_class"
+            ],
+            "level": 2,
+            "public_summary": "正确引用上海时区安静时段与UTC换算，状态一致，无虚构。",
+            "reason_code": "state_consistent",
+            "specific_issue": null
+          },
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "result.user_visible_output",
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 2,
+            "public_summary": "指明条件与08:00后再检查，简洁可执行的下一步。",
+            "reason_code": "actionable",
+            "specific_issue": null
+          },
+          "requirement_met": true,
+          "manual_rationale": "UTC15:30=上海23:30，本地08:00后复查，事实与WAIT均正确。",
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "f4795aa1-88e3-4593-8813-4750f1a3b535",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:10:19.567681Z",
+              "responded_at": "2026-09-08T08:10:39.127621Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ]
+        }
+      ],
+      "all_three_requirements_met": true
+    },
+    {
+      "episode_id": "episode-eecf93f7198ee78d0cbdb5c3",
+      "episode_sha256": "509b10c6f28bf94c2e0df2ec9191df7975832da7946dd96bbcdfe80d92055510",
+      "public_output": "当前UTC15:30就是上海15:30，处于本地23:00–08:00安静时段，保持等待；本地08:00后再检查是否适合提醒。",
+      "correct_timezone_example": false,
+      "denominator": 3,
+      "repeats": [
+        {
+          "repeat": 1,
+          "judge_status": "complete",
+          "judge_sha256": "0906d2e076ce0023d45698ad8228381e284b4e754bde79311e88525f5b5f0fc9",
+          "D1": {
+            "dimension_id": "D1",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "使用了安静时段主事实，但错误称UTC15:30即上海15:30，实际上海为23:30，事实不一致。",
+            "reason_code": "factual_time_mismatch",
+            "specific_issue": "错误称UTC15:30即上海15:30，实际上海为23:30；安静时段判断正确但时间换算错误。"
+          },
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "给出08:00后复查的明确下一步，但UTC=上海时间的错误表述使解释具误导性。",
+            "reason_code": "misleading_explanation",
+            "specific_issue": "时间换算错误称UTC15:30即上海15:30，虽给下一步但解释误导。"
+          },
+          "requirement_met": true,
+          "manual_rationale": "错误称UTC15:30即上海15:30；Judge具体定位UTC+8转换错误且保留WAIT正确，D1/D7扣1与缺陷严重性匹配。",
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "ebda2b9f-cf9c-44f7-a2c7-7394b3a89c6f",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:09:49.041429Z",
+              "responded_at": "2026-09-08T08:10:19.684058Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "repeat": 2,
+          "judge_status": "complete",
+          "judge_sha256": "c52911343e3b3ca64e841c7f2f4be7b7e22679079c99c5a80e5c4240ff6353a3",
+          "D1": {
+            "dimension_id": "D1",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "observable_trace.model_calls[0].visible_context.messages"
+            ],
+            "level": 1,
+            "public_summary": "使用了安静时段主事实，但错误将UTC15:30等同上海15:30（实际上海23:30），时间转换有误。",
+            "reason_code": "wrong_local_clock_explanation",
+            "specific_issue": "助理文本称UTC15:30即上海15:30，但上下文消息显示上海本地23:30，转换错误但安静时段结论正确。"
+          },
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text",
+              "result.user_visible_output"
+            ],
+            "level": 1,
+            "public_summary": "给出08:00后复查的下一步，但UTC转本地时间解释错误，具误导性。",
+            "reason_code": "misleading_time_explanation",
+            "specific_issue": "解释称UTC15:30为上海15:30（实为23:30），虽下一步明确但时间说明误导。"
+          },
+          "requirement_met": true,
+          "manual_rationale": "错误称UTC15:30即上海15:30；Judge具体定位UTC+8转换错误且保留WAIT正确，D1/D7扣1与缺陷严重性匹配。",
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "0ca6bbd4-d565-4c4b-8f3b-ba75e3426d01",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:09:48.910627Z",
+              "responded_at": "2026-09-08T08:10:17.769071Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "repeat": 3,
+          "judge_status": "complete",
+          "judge_sha256": "ff574bd202c43696c51cbdb5e6fd3c879f451ca7bac761936a978ef92e71edf6",
+          "D1": {
+            "dimension_id": "D1",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "使用了安静时段与触发目标，但错误将UTC15:30等同上海15:30（实应为23:30），属材料性时间细节错误。",
+            "reason_code": "partial_state_use",
+            "specific_issue": "错误称UTC15:30即上海15:30，实际上海为23:30（UTC+8），安静时段结论正确但换算错误。"
+          },
+          "D7": {
+            "dimension_id": "D7",
+            "evidence_paths": [
+              "observable_trace.model_calls[0].assistant_text"
+            ],
+            "level": 1,
+            "public_summary": "给出08:00后复查的下一步，但时间换算错误使解释具误导性。",
+            "reason_code": "misleading_explanation",
+            "specific_issue": "给出下一步08:00后检查，但UTC=上海时间的错误表述误导接收者。"
+          },
+          "requirement_met": true,
+          "manual_rationale": "错误称UTC15:30即上海15:30；Judge具体定位UTC+8转换错误且保留WAIT正确，D1/D7扣1与缺陷严重性匹配。",
+          "provider_calls": [
+            {
+              "call_id": "judge-provider-call:001",
+              "provider_request_id": "d3aadf22-80eb-4bd1-acb1-07cc2407b545",
+              "request_model": "hy3",
+              "requested_at": "2026-09-08T08:10:39.400186Z",
+              "responded_at": "2026-09-08T08:11:02.345549Z",
+              "response_model": "hy3",
+              "status": "completed"
+            }
+          ]
+        }
+      ],
+      "all_three_requirements_met": true
+    }
+  ],
+  "remaining_scope_limits": [
+    "20+6是预先固定的适用差分集，不能声称本版再运行88个Calibration。",
+    "Planning稳定性需明确引用method-v2原88结果及Good D5残余波动，不能由本次Assessment通过替代。",
+    "这些均是已见开发/校准材料，不是未见正式家族；formal=false。",
+    "本审计验证Judge是否准确识别复测建议，不等于真实Agent已在新未见任务持续产出正确建议。"
+  ],
+  "source_file_inventory": [
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/design.json",
+      "sha256": "25887f13d54005dddf39fb9ddbca66c63e508d587e76026669628dfc44248f2a",
+      "size_bytes": 2371
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/runtime/episodes/episode-17dd0f809f01c2058e5147d2.json",
+      "sha256": "5865f66977079ae234d02eca088169e8ff5c5d621b5bf384aed817e1e014a7a7",
+      "size_bytes": 224083
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/rules/rules/episode-17dd0f809f01c2058e5147d2.json",
+      "sha256": "c88227ecdd6f1af3568c211ab2d8cfa487b288aaf8fef38a81df4d2c2efef799",
+      "size_bytes": 23143
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r1/judge-results/episode-17dd0f809f01c2058e5147d2.json",
+      "sha256": "7a920dade4cc3e2a192c385b519f0ac1191fc22feb825cf734fe05ad6b2d3f1a",
+      "size_bytes": 5238
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r2/judge-results/episode-17dd0f809f01c2058e5147d2.json",
+      "sha256": "07e16d64c8fad0e14a6f3218d6441bc84d43f6cd09dceff90aa8d5e676cf85f3",
+      "size_bytes": 5225
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r3/judge-results/episode-17dd0f809f01c2058e5147d2.json",
+      "sha256": "901c95a14cb145109fe2446d3db189d36bb557863bcba7aa760a70a302f4f490",
+      "size_bytes": 5175
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r4/judge-results/episode-17dd0f809f01c2058e5147d2.json",
+      "sha256": "f5cc5d3d6b20b0a45822bb3b11e1b913de79f26731a76333a4a7ca14bf70edd4",
+      "size_bytes": 5195
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r5/judge-results/episode-17dd0f809f01c2058e5147d2.json",
+      "sha256": "445072d741fc1b436dff5340f0fafa59888c3cc6af09a82c8ed69f973e0b1d43",
+      "size_bytes": 5111
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/runtime/episodes/episode-48a6cf4f85e6e279daf4888c.json",
+      "sha256": "e65a8360195f8e3f66e0526b75f2af8d35d2d87f30bc0eb539ba71673f913263",
+      "size_bytes": 223548
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/rules/rules/episode-48a6cf4f85e6e279daf4888c.json",
+      "sha256": "c20ddcca8e23e8558869befa81776512694c1300c414e6bf80afe96079ecfdf6",
+      "size_bytes": 23143
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r1/judge-results/episode-48a6cf4f85e6e279daf4888c.json",
+      "sha256": "9e9e2adaf3fb496bad8e91cf44d653cfb22006d665b7d2302ff6c6d72596cf82",
+      "size_bytes": 5775
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r2/judge-results/episode-48a6cf4f85e6e279daf4888c.json",
+      "sha256": "79856394d71fec8aaa97be80d82e0ae5d3b06ddefbede1297eda592fd66f4add",
+      "size_bytes": 5723
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r3/judge-results/episode-48a6cf4f85e6e279daf4888c.json",
+      "sha256": "c7014df5189c3a7f87f00a74ea7b6917fa13724493d66407a249b85e661cf999",
+      "size_bytes": 5750
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r4/judge-results/episode-48a6cf4f85e6e279daf4888c.json",
+      "sha256": "f88dedf1f0d6bf4d0ee64d5d631849ca33166fd7e71fd6a0f17330a83c16f0f7",
+      "size_bytes": 5648
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r5/judge-results/episode-48a6cf4f85e6e279daf4888c.json",
+      "sha256": "917a320737cbd07d69b1d899ec599f300da29b7a1bd1e57c7e8fe786ad428232",
+      "size_bytes": 5294
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/runtime/episodes/episode-811564e6c875e329def5ad6c.json",
+      "sha256": "ebbbac5e9b6d108db6427a378ffadca8724239a477badd41f43892db43475550",
+      "size_bytes": 223646
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/rules/rules/episode-811564e6c875e329def5ad6c.json",
+      "sha256": "deb734d8d353fd58f5d6bcfdd52017ea409f35be4c3d6a1c54a71e418f60bdce",
+      "size_bytes": 23143
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r1/judge-results/episode-811564e6c875e329def5ad6c.json",
+      "sha256": "cb75e0f25113da0ff422274f75591451e3f3f89e7678747e8cd8c447d57cd85a",
+      "size_bytes": 5399
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r2/judge-results/episode-811564e6c875e329def5ad6c.json",
+      "sha256": "46dda87a09427fb26ca91748c5c9ec6865f25048c5ff1d4c63ede6af5d0aa25d",
+      "size_bytes": 5749
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r3/judge-results/episode-811564e6c875e329def5ad6c.json",
+      "sha256": "8ed7a5298916a57635d3db80df0a635542465018427f1307979390562506b403",
+      "size_bytes": 5567
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r4/judge-results/episode-811564e6c875e329def5ad6c.json",
+      "sha256": "5ad89126ec1b85e59e0ec6afa0030abaebb8cd90fd0c581ef5fccadcf1102098",
+      "size_bytes": 5694
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r5/judge-results/episode-811564e6c875e329def5ad6c.json",
+      "sha256": "bf244c3664c4818a728ba5bc6cea2eb368478ee48fd918b74c366c51b40eebe7",
+      "size_bytes": 5476
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/runtime/episodes/episode-b789b890d299968d6871ec12.json",
+      "sha256": "ef951d1e4818773ed9e4ec111d209310df94aabb6309e199195062c2476461b8",
+      "size_bytes": 223824
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/rules/rules/episode-b789b890d299968d6871ec12.json",
+      "sha256": "ae88c5859bb6416be133af0e34b9cb75444dd72ddd857c3ea5c4ebd239d20943",
+      "size_bytes": 23143
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r1/judge-results/episode-b789b890d299968d6871ec12.json",
+      "sha256": "e5fe55834765276a44ef60e200e13410f26959d4ed8b9642d9371927493e658e",
+      "size_bytes": 5317
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r2/judge-results/episode-b789b890d299968d6871ec12.json",
+      "sha256": "cdfaaccb391aa3c03006994365972be8cb8db5ad7483593aeefe56f425386f93",
+      "size_bytes": 5211
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r3/judge-results/episode-b789b890d299968d6871ec12.json",
+      "sha256": "cbe2fef64629eb642ab0a3cdbce7ba506ef86ce3f5f8db47a9533eb6155cd0bd",
+      "size_bytes": 5349
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r4/judge-results/episode-b789b890d299968d6871ec12.json",
+      "sha256": "c72722e85f7206e1598bcafd97b0798f5a4b244341a4a60e593ae1411b637740",
+      "size_bytes": 5282
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/focused/judge-r5/judge-results/episode-b789b890d299968d6871ec12.json",
+      "sha256": "8ff00182091d3ad7f6e774a48fe1d9a469e5f74f8d1a974a9853b443ab431e84",
+      "size_bytes": 5303
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/controlled-runtime/episodes/episode-15fe62235931b54e34f9dc43.json",
+      "sha256": "614596547164311ecee235f36eda1b5f37b0de5bcaba498954805633d4a443f0",
+      "size_bytes": 113509
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/controlled-judge-r1/judge-results/episode-15fe62235931b54e34f9dc43.json",
+      "sha256": "aade4b9c8c54f3d8a1d1c1394fa57b399785837c9196dd663fa4beaf8e847dd8",
+      "size_bytes": 4993
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/controlled-judge-r2/judge-results/episode-15fe62235931b54e34f9dc43.json",
+      "sha256": "4310d4411d8ba662ce306aef9297b42930279c220bfde02d01ca3b02db932c95",
+      "size_bytes": 5240
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/controlled-judge-r3/judge-results/episode-15fe62235931b54e34f9dc43.json",
+      "sha256": "cf51fce2d4d3d989b40fd7b70a1140cca90d3f289ea374908d032904d56476d2",
+      "size_bytes": 5070
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/controlled-runtime/episodes/episode-eecf93f7198ee78d0cbdb5c3.json",
+      "sha256": "45186b2e88d156ffeb05f8e0895eeab1ed20b434e0c1c7c4ea6b43de2cf1ad12",
+      "size_bytes": 113533
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/controlled-judge-r1/judge-results/episode-eecf93f7198ee78d0cbdb5c3.json",
+      "sha256": "fe374a7fd9a2a4ecee9a83565d15eba3eec48e7cd16d4ce1297ded1e8bbd5eb3",
+      "size_bytes": 5931
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/controlled-judge-r2/judge-results/episode-eecf93f7198ee78d0cbdb5c3.json",
+      "sha256": "e69a10bd2a836e17842e5a9900bf5d57deb470c6af87ae541ca4bddb6204f2dd",
+      "size_bytes": 6176
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v4/controlled-judge-r3/judge-results/episode-eecf93f7198ee78d0cbdb5c3.json",
+      "sha256": "cf8edc6605d977dbd02aef4009f072b801d9d614cf5b0445a29f8ecb4c051c01",
+      "size_bytes": 5922
+    }
+  ],
+  "source_runs_modified": false,
+  "paid_calls_by_reviewer": 0
+}

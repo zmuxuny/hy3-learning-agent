@@ -1,0 +1,12 @@
+{
+  "command": [
+    "python",
+    "evaluation/scripts/build_e6_repair_releases.py",
+    "verify"
+  ],
+  "source_commit": "3d20c8bb227cd8f2c37a966e64a3b8df061c3d51",
+  "cwd": "/tmp/learning-e6-repair-hoxki28l/offline-v5-copy",
+  "paid_enabled": false,
+  "seconds": 0.972,
+  "exit_code": 0
+}

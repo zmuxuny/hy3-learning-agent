@@ -1,0 +1,15 @@
+{
+  "reviewer_role": "primary_ai_reviewer",
+  "raw_second_ai_scanner_exit_code": 1,
+  "raw_scan_sha256": "c29cf19484c2a56bb5464a894415bc2955f36ae45106b9b9369982120741dd88",
+  "raw_sensitive_matches": 35,
+  "exact_synthetic_matches_reviewed": 35,
+  "unresolved_sensitive_findings": 0,
+  "inventory_files": 4416,
+  "all_required_original_bytes_preserved": true,
+  "additional_inputs_and_source_snapshots_scanned": true,
+  "real_secrets_found": false,
+  "private_reasoning_fields_found": false,
+  "database_or_env_files_found": false,
+  "completed": true
+}

@@ -1,0 +1,328 @@
+{
+  "version": "e6-repair-regression-index-v1",
+  "rows": [
+    {
+      "path": "budget-regression-updated.log",
+      "summary_lines": [
+        "12 passed in 0.95s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "fixed-267127d-regression.log",
+      "summary_lines": [],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "fixed-regression-v1.log",
+      "summary_lines": [
+        "5 failed, 74 passed, 6 errors in 7.96s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "fixed-regression-verified-v1.log",
+      "summary_lines": [
+        "1 failed, 85 passed in 32.97s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "governance-tests.log",
+      "summary_lines": [
+        "25 passed in 2.07s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "identity-chain-tests.log",
+      "summary_lines": [
+        "6 passed in 9.37s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "logs/action-transport-offline-v3.log",
+      "summary_lines": [
+        "14 passed in 12.80s"
+      ],
+      "execution": {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "evaluation/tests/test_e6_action_transport.py",
+          "evaluation/tests/test_e31_runtime_artifacts.py",
+          "-q"
+        ],
+        "source_commit": "1f51cedb442d0e94e851ec30e8f9f51c56544a74",
+        "cwd": "/tmp/learning-e6-repair-hoxki28l/verify-v1",
+        "paid_enabled": false,
+        "seconds": 14.021,
+        "exit_code": 0
+      },
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "logs/fixed-method-v2-regression.log",
+      "summary_lines": [
+        "86 passed in 18.63s"
+      ],
+      "execution": {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "evaluation/tests/test_e6_repairs.py",
+          "evaluation/tests/test_e6_release_versions.py",
+          "evaluation/tests/test_e312_release_governance.py",
+          "evaluation/tests/test_e5_budget_and_review.py",
+          "tests/test_product_invariants.py",
+          "tests/test_run_recovery.py",
+          "tests/test_learner_timezone.py",
+          "-q"
+        ],
+        "source_commit": "2e7a4db04da38a4e5655ec5959a26ac54f152d9d",
+        "cwd": "/tmp/learning-e6-repair-hoxki28l/run-v2",
+        "paid_enabled": false,
+        "seconds": 24.841,
+        "exit_code": 0
+      },
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "logs/product-method-v2-regression.log",
+      "summary_lines": [
+        "31 passed in 7.00s"
+      ],
+      "execution": {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "tests/test_product_invariants.py",
+          "tests/test_run_recovery.py",
+          "tests/test_learner_timezone.py",
+          "-q"
+        ],
+        "source_commit": "1f51cedb442d0e94e851ec30e8f9f51c56544a74",
+        "cwd": "/tmp/learning-e6-repair-hoxki28l/verify-v1",
+        "paid_enabled": false,
+        "seconds": 13.155,
+        "exit_code": 0
+      },
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "logs/targeted-method-v2-regression.log",
+      "summary_lines": [
+        "20 passed in 1.19s"
+      ],
+      "execution": {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "evaluation/tests/test_e6_repairs.py",
+          "-q"
+        ],
+        "source_commit": "1f51cedb442d0e94e851ec30e8f9f51c56544a74",
+        "cwd": "/tmp/learning-e6-repair-hoxki28l/verify-v1",
+        "paid_enabled": false,
+        "seconds": 1.899,
+        "exit_code": 0
+      },
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "regression-first.log",
+      "summary_lines": [
+        "3 failed, 24 passed in 7.57s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "rules-regression-fourth.log",
+      "summary_lines": [
+        "19 passed in 0.96s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "rules-regression-second.log",
+      "summary_lines": [
+        "10 passed in 1.02s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "rules-regression-third.log",
+      "summary_lines": [
+        "3 failed, 14 passed in 0.88s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "settings-timezone-tests.log",
+      "summary_lines": [
+        "6 passed in 1.10s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "v12-governance-tests-fixed.log",
+      "summary_lines": [
+        "28 passed in 10.86s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "v12-governance-tests.log",
+      "summary_lines": [
+        "1 failed, 27 passed in 11.80s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "v13-governance-tests-bound.log",
+      "summary_lines": [
+        "9 passed in 11.13s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "v13-governance-tests.log",
+      "summary_lines": [
+        "1 failed, 8 passed in 1.15s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "v14-governance-identity-history-tests.log",
+      "summary_lines": [
+        "7 passed, 3 deselected in 0.95s"
+      ],
+      "execution": null,
+      "note": "Keep original failures and corrected runs; overlapping tests must not be summed."
+    },
+    {
+      "path": "logs/encoding-exact-v5-canonical.log",
+      "summary_lines": [],
+      "execution": {
+        "command": [
+          "python",
+          "/tmp/learning-e6-repair-hoxki28l/verify_input_encoding_version.py",
+          "--output",
+          "/tmp/learning-e6-repair-hoxki28l/encoding-exact-v5.json"
+        ],
+        "source_commit": "3d20c8bb227cd8f2c37a966e64a3b8df061c3d51",
+        "cwd": "/tmp/learning-e6-repair-hoxki28l/offline-v5-copy",
+        "paid_enabled": false,
+        "seconds": 28.229,
+        "exit_code": 0
+      },
+      "note": "Original failures retained; corrected candidate external regression 45 passed. Overlapping tests not summed."
+    },
+    {
+      "path": "logs/encoding-exact-v5.log",
+      "summary_lines": [],
+      "execution": {
+        "command": [
+          "python",
+          "/tmp/learning-e6-repair-hoxki28l/verify_input_encoding_version.py",
+          "--output",
+          "/tmp/learning-e6-repair-hoxki28l/encoding-exact-v5.json"
+        ],
+        "source_commit": "3d20c8bb227cd8f2c37a966e64a3b8df061c3d51",
+        "cwd": "/tmp/learning-e6-repair-hoxki28l/offline-v5-copy",
+        "paid_enabled": false,
+        "seconds": 1.116,
+        "exit_code": 1
+      },
+      "note": "Original failures retained; corrected candidate external regression 45 passed. Overlapping tests not summed."
+    },
+    {
+      "path": "logs/offline-v5-regression-fixed.log",
+      "summary_lines": [
+        "45 passed in 31.45s"
+      ],
+      "execution": {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "-q",
+          "evaluation/tests/test_e6_judge_input_limits.py",
+          "evaluation/tests/test_e6_repairs.py",
+          "evaluation/tests/test_e5_judge_projection.py",
+          "evaluation/tests/test_e5_judge_failures.py",
+          "evaluation/tests/test_e6_release_versions.py"
+        ],
+        "source_commit": "3d20c8bb227cd8f2c37a966e64a3b8df061c3d51",
+        "cwd": "/tmp/learning-e6-repair-hoxki28l/offline-v5-copy",
+        "paid_enabled": false,
+        "seconds": 32.902,
+        "exit_code": 0
+      },
+      "note": "Original failures retained; corrected candidate external regression 45 passed. Overlapping tests not summed."
+    },
+    {
+      "path": "logs/offline-v5-regression.log",
+      "summary_lines": [
+        "E   ModuleNotFoundError: No module named 'jsonschema'",
+        "!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!",
+        "1 error in 1.47s"
+      ],
+      "execution": {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "-q",
+          "evaluation/tests/test_e6_judge_input_limits.py",
+          "evaluation/tests/test_e6_repairs.py",
+          "evaluation/tests/test_e5_judge_projection.py",
+          "evaluation/tests/test_e5_judge_failures.py",
+          "evaluation/tests/test_e6_release_versions.py"
+        ],
+        "source_commit": "e8c784235943a45ceed2beee51b9315d4aa4c5ef",
+        "cwd": "/tmp/learning-e6-repair-hoxki28l/offline-v5-copy",
+        "paid_enabled": false,
+        "seconds": 2.38,
+        "exit_code": 2
+      },
+      "note": "Original failures retained; corrected candidate external regression 45 passed. Overlapping tests not summed."
+    },
+    {
+      "path": "v15-governance-before-build-tests-fixed.log",
+      "summary_lines": [
+        "8 passed, 4 deselected in 0.87s"
+      ],
+      "execution": null,
+      "note": "Original failures retained; corrected candidate external regression 45 passed. Overlapping tests not summed."
+    },
+    {
+      "path": "v15-governance-before-build-tests.log",
+      "summary_lines": [
+        "1 failed, 7 passed, 4 deselected in 1.06s"
+      ],
+      "execution": null,
+      "note": "Original failures retained; corrected candidate external regression 45 passed. Overlapping tests not summed."
+    }
+  ]
+}

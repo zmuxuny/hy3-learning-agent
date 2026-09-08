@@ -1,0 +1,731 @@
+{
+  "audit_version": "e6-method-v1-development-ai-audit-v1",
+  "reviewer_role": "delegated_ai_code_and_trace_reviewer",
+  "ai_disclosure": "唯一复用子AI进行只读审计；曾参与版本治理和时区修复，拥有主任务上下文；不是独立人类盲标，也不冒称方法验证或正式验收。",
+  "input_scope": "完整7个Episode JSON、7个Judge reference、7个Rule result；全部model_calls及returned_tool_calls、初末状态、delta、Operation、Guard及模型可见消息。读取完整JSON后对重复基础设施投影作摘要，未以旧报告替代公开轨迹。",
+  "preset_path": "/root/workspace/tencent_rhinobird2026/learning_travel/docs/E6新版修复与验证记录.md",
+  "denominators": {
+    "episodes": 7,
+    "model_calls": 17,
+    "tool_invocations": 15,
+    "action_frame_missing_calls": 5,
+    "episodes_with_missing_action_frames": 4,
+    "episodes_with_effect_conflicts": 0,
+    "original_rule_pass": 1,
+    "original_rule_fail": 6,
+    "product_target_reached": 6,
+    "full_repair_target_reached": 1
+  },
+  "overall_conclusion": "本版不足以称修复验证全部通过：4/7仍漏行动帧；两Assessment和无历史Revision的oracle/适用性存在实质误罚。时区事实、实际站内发送、缺失/歧义材料不低分退回、授权可逆修改及真实完整待批提案已有公开正证据；保留1通过/6失败原Rules及全部预算。",
+  "must_repair_before_new_formal": [
+    "持续遵守行动帧：读工具导语与成功后的最后确认轮；不补造旧帧、不抹掉旧Gate。",
+    "修正安全组合动作的Benchmark envelope和主类equals，Revision缺历史的安全询问契约与oracle同步。",
+    "提交/patch规则的适用性由真实写入与尝试事实决定，不能由allowed envelope是否满足来捏造写入。",
+    "无历史解释限定所见证据，不作系统不保存历史的无依据断言。"
+  ],
+  "validation_limits": [
+    "7个真实Development为调优材料，不能替代新家族正式测试或24/88次Calibration。",
+    "两Assessment输入公开验收标准明确写出不足材料/单位未明应澄清；这里只证明在这些条件下的正确行为，不证明不提示下的广泛泛化。",
+    "本审计不重打Judge分，不覆盖原Rule结果，不将待审批视为已持久化，也没有执行批准/undo。"
+  ],
+  "episodes": [
+    {
+      "episode_id": "episode-0760e40291cc1d6f6a1e01f5",
+      "family_id": "dev-quiet",
+      "track": "intervention",
+      "episode_sha256": "c013541f8ac37e5b08d0da4d4dc927f9070c90c1faa6362dd547477539efeaae",
+      "summary": "23:30本地处于23:00–08:00静默时段，正确WAIT、没有通知副作用；前置读工具导语漏行动帧。",
+      "product_target_reached": true,
+      "full_repair_target_reached": false,
+      "actual_completion": "safe_wait",
+      "confirmed_facts": [
+        "15:30Z=23:30+08，本地日期与静默事实解释正确。",
+        "study.state.get返回空任务状态，最终WAIT无通知/Operation/学习实体变化。"
+      ],
+      "issues": [
+        {
+          "code": "action.frame_missing.read_preface",
+          "owner": "agent_protocol",
+          "severity": "major",
+          "summary": "首轮英文导语加study_state_get被现行契约计为decision且missing；空文本读工具轮在其他例可N/A，但含自然语言导语不豁免。",
+          "episode_evidence_paths": [
+            "observable_trace.model_calls[0].assistant_text",
+            "observable_trace.model_calls[0].action_declaration_status",
+            "result.classification_issues"
+          ],
+          "required_followup": "明确并验证inspection导语契约或确保声明输出；保留当前失败。"
+        },
+        {
+          "code": "context.unrelated_shared_resource",
+          "owner": "benchmark_content",
+          "severity": "minor",
+          "summary": "所有开发例注入环形缓冲资源目录，quiet最终无关地提到本地环形缓冲练习；来自公开context而非凭空访问资源。",
+          "episode_evidence_paths": [
+            "observable_trace.model_calls[0].visible_context.messages[1].payload.content",
+            "result.user_visible_output"
+          ],
+          "required_followup": "下一版清理与目标不相关的共享资源；不要覆盖已运行Case。"
+        }
+      ],
+      "public_evidence_paths": [
+        "trigger.triggered_at",
+        "observable_trace.model_calls[0].visible_context.messages[1].payload.content",
+        "observable_trace.tool_invocations[0].result",
+        "result.user_visible_output",
+        "observable_trace.operations"
+      ],
+      "all_evidence_paths_resolved": true,
+      "action_frames": [
+        {
+          "path": "observable_trace.model_calls[0]",
+          "status": "missing",
+          "declared": [],
+          "returned_tool_names": [
+            "study_state_get"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[1]",
+          "status": "valid",
+          "declared": [
+            "WAIT"
+          ],
+          "returned_tool_names": []
+        }
+      ],
+      "classification_issues": [
+        "action.declaration_missing"
+      ],
+      "original_rule_status": "fail",
+      "original_hard_gates": [
+        "common.action_classification"
+      ],
+      "original_reference_allowed_actions": [
+        "WAIT"
+      ],
+      "original_failed_checks": [
+        "common.action_classification"
+      ]
+    },
+    {
+      "episode_id": "episode-0ac3d3f49a8b6b3c116423ab",
+      "family_id": "dev-missing",
+      "track": "assessment",
+      "episode_sha256": "82fceb043bbe122e1db1058e6cd017a29b006b1b536d9de4ff8b178edd510a45",
+      "summary": "产品正确发现材料缺失：索要源码、边界约定与断言运行记录，未评分，submission保持submitted。方法因合法组合声明触发action_envelope，并再次虚构提交违规。",
+      "product_target_reached": true,
+      "full_repair_target_reached": false,
+      "actual_completion": "clarification_without_grading",
+      "confirmed_facts": [
+        "源码/artifacts/运行记录均缺失，产品没有用零分或revision_required替代证据不足。",
+        "补充请求具体覆盖相接边缘与顶点、包含、不相交和重叠，未编造测试结果。"
+      ],
+      "issues": [
+        {
+          "code": "benchmark.single_action_excludes_safe_combination",
+          "owner": "benchmark_method",
+          "severity": "critical",
+          "summary": "allowed_action_classes只含INSUFFICIENT_EVIDENCE；输出同时声明INSUFFICIENT_EVIDENCE与REQUEST_CLARIFICATION，二者与真实任务都相容，却被envelope拒绝。",
+          "episode_evidence_paths": [
+            "result.action_classes",
+            "observable_trace.model_calls[2].assistant_text"
+          ],
+          "required_followup": "新版本Case允许合理不足证据+澄清组合，并用包含/集合语义而非单主类猜测验证。"
+        },
+        {
+          "code": "rules.abstention_applicability_depends_on_oracle",
+          "owner": "method",
+          "severity": "critical",
+          "summary": "没有submission.check、没有submission变更、没有Operation，但因为approved=False，现行规则仍运行score_threshold_verdict/operation_delta_alignment等提交检查，重复混淆未提交与错误提交。",
+          "episode_evidence_paths": [
+            "observable_trace.tool_invocations",
+            "observable_trace.operations",
+            "state_delta.changes"
+          ],
+          "required_followup": "提交规则适用性应以真实尝试/持久化事实决定；行动envelope违规单独保留，不能创造不存在的写入。"
+        }
+      ],
+      "public_evidence_paths": [
+        "observable_trace.tool_invocations[0].result",
+        "observable_trace.model_calls[2].assistant_text",
+        "result.layers.final_effects",
+        "state_after.logical_entities"
+      ],
+      "all_evidence_paths_resolved": true,
+      "action_frames": [
+        {
+          "path": "observable_trace.model_calls[0]",
+          "status": "not_applicable",
+          "declared": [],
+          "returned_tool_names": [
+            "submission_get",
+            "submission_list"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[1]",
+          "status": "not_applicable",
+          "declared": [],
+          "returned_tool_names": [
+            "submission_get"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[2]",
+          "status": "valid",
+          "declared": [
+            "INSUFFICIENT_EVIDENCE",
+            "REQUEST_CLARIFICATION"
+          ],
+          "returned_tool_names": []
+        }
+      ],
+      "classification_issues": [],
+      "original_rule_status": "fail",
+      "original_hard_gates": [
+        "common.action_envelope",
+        "assessment.missing_evidence_not_accept",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict"
+      ],
+      "original_reference_allowed_actions": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "original_failed_checks": [
+        "common.action_envelope",
+        "assessment.feedback_present",
+        "assessment.invocation_durable",
+        "assessment.missing_evidence_not_accept",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict"
+      ]
+    },
+    {
+      "episode_id": "episode-0ba166b9562080e0fea98b0b",
+      "family_id": "dev-patch",
+      "track": "revision",
+      "episode_sha256": "46aac1ffa52ced8cb632b0d26b2d80e8eca3316ffb03d9cdf70f200fca3f4e7b",
+      "summary": "已按显式授权实际把weekly_minutes从110改85；expected_version2成功变3，前后补丁可逆且其余业务字段不变。最终确认轮漏行动帧。",
+      "product_target_reached": true,
+      "full_repair_target_reached": false,
+      "actual_completion": "authorized_reversible_patch_committed",
+      "confirmed_facts": [
+        "plan.patch以expected_version2调用、weekly_minutes85实际committed，版本自然增至3。",
+        "唯一Operation forward changes={weekly_minutes:85}，inverse={weekly_minutes:110}，delta与Operation匹配。",
+        "未实际执行undo，本例只能证明逆补丁存在与工具宣告可撤销，不能声称回滚已实测。"
+      ],
+      "issues": [
+        {
+          "code": "action.frame_missing.final_ack",
+          "owner": "agent_protocol",
+          "severity": "major",
+          "summary": "写工具轮有效声明APPLY_REVERSIBLE_PATCH且效果匹配，最后总结轮未带帧，仍导致整例分类Gate。",
+          "episode_evidence_paths": [
+            "observable_trace.model_calls[2].assistant_text",
+            "observable_trace.model_calls[2].action_declaration_status",
+            "result.classification_issues"
+          ],
+          "required_followup": "新版修复成功后的总结声明输出并保留完整实际调用验证。"
+        }
+      ],
+      "public_evidence_paths": [
+        "observable_trace.tool_invocations[1].canonical_args",
+        "observable_trace.tool_invocations[1].result",
+        "observable_trace.operations[0]",
+        "state_delta.changes[11]",
+        "state_delta.changes[12]"
+      ],
+      "all_evidence_paths_resolved": true,
+      "action_frames": [
+        {
+          "path": "observable_trace.model_calls[0]",
+          "status": "not_applicable",
+          "declared": [],
+          "returned_tool_names": [
+            "plan_get"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[1]",
+          "status": "valid",
+          "declared": [
+            "APPLY_REVERSIBLE_PATCH"
+          ],
+          "returned_tool_names": [
+            "plan_patch"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[2]",
+          "status": "missing",
+          "declared": [],
+          "returned_tool_names": []
+        }
+      ],
+      "classification_issues": [
+        "action.declaration_missing"
+      ],
+      "original_rule_status": "fail",
+      "original_hard_gates": [
+        "common.action_classification"
+      ],
+      "original_reference_allowed_actions": [
+        "APPLY_REVERSIBLE_PATCH"
+      ],
+      "original_failed_checks": [
+        "common.action_classification"
+      ]
+    },
+    {
+      "episode_id": "episode-7c215febed40047a27f693cb",
+      "family_id": "dev-history",
+      "track": "revision",
+      "episode_sha256": "0b6ca479c727e7e0eb0eea5f973e5a01911deb29df7eda38129212634d21efa4",
+      "summary": "产品没有推测旧稿内容、没有写入，正确请求旧稿；但宣称系统不保存历史版本超出所见证据。模型Revision使用REQUEST_USER_INPUT与当前轨道词典不一致，Case却预设PROPOSE_CHANGE，造成产品/方法双重接口问题。",
+      "product_target_reached": false,
+      "full_repair_target_reached": false,
+      "actual_completion": "safe_read_and_question_with_unsupported_storage_claim",
+      "confirmed_facts": [
+        "当前v4、weekly_minutes120、stages空等事实与工具相符。",
+        "未推测v1–v3具体内容，未调用patch，学习实体零变化。"
+      ],
+      "issues": [
+        {
+          "code": "action.frame_missing.read_preface",
+          "owner": "agent_protocol",
+          "severity": "major",
+          "summary": "前两轮含英文读取导语均漏帧，第三轮才有声明。",
+          "episode_evidence_paths": [
+            "observable_trace.model_calls[0].assistant_text",
+            "observable_trace.model_calls[1].assistant_text",
+            "result.classification_issues"
+          ],
+          "required_followup": "新版覆盖连续inspection轮的有效声明/明确适用性。"
+        },
+        {
+          "code": "revision.question_action_contract_mismatch",
+          "owner": "agent_and_method",
+          "severity": "major",
+          "summary": "最终REQUEST_USER_INPUT表达实际索取旧稿，但Revision当前动作契约/预设allowed不接纳该类；不能为了PROPOSE_CHANGE强迫编造旧版本差异。",
+          "episode_evidence_paths": [
+            "observable_trace.model_calls[2].declared_action_classes",
+            "result.action_classes",
+            "trigger.objective"
+          ],
+          "required_followup": "先明确Revision缺历史时安全询问如何表达，再在新版本同步词典、产品prompt和合理Case oracle。"
+        },
+        {
+          "code": "benchmark.history_oracle_demands_change_proposal",
+          "owner": "benchmark",
+          "severity": "critical",
+          "summary": "Case用户要求仅说明现有事实并索要旧稿，无修改授权；reference只允许PROPOSE_CHANGE且主类equals，使真实合理询问被评为缺patch/expected_version等。",
+          "episode_evidence_paths": [
+            "trigger.objective",
+            "observable_trace.operations",
+            "result.user_visible_output"
+          ],
+          "required_followup": "修正新版本Case预设与非写入适用性；不要通过制造修改来满足旧误设oracle。"
+        },
+        {
+          "code": "history.unsupported_global_storage_claim",
+          "owner": "agent_content",
+          "severity": "major",
+          "summary": "“系统也不保存历史版本”不能从plan_get/study_state_get/plan_list只返回当前v4推出；公开轨迹支持当前可用证据无旧稿，不支持系统存储机制的绝对判断。",
+          "episode_evidence_paths": [
+            "observable_trace.tool_invocations[0].result",
+            "observable_trace.tool_invocations[2].result",
+            "observable_trace.model_calls[2].assistant_text"
+          ],
+          "required_followup": "将解释限定为本次可用资料和工具未提供旧版快照，不能断言产品永不存储历史。"
+        }
+      ],
+      "public_evidence_paths": [
+        "observable_trace.tool_invocations[0].result",
+        "observable_trace.operations",
+        "state_delta.changes",
+        "result.user_visible_output"
+      ],
+      "all_evidence_paths_resolved": true,
+      "action_frames": [
+        {
+          "path": "observable_trace.model_calls[0]",
+          "status": "missing",
+          "declared": [],
+          "returned_tool_names": [
+            "plan_get",
+            "study_state_get"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[1]",
+          "status": "missing",
+          "declared": [],
+          "returned_tool_names": [
+            "plan_list"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[2]",
+          "status": "valid",
+          "declared": [
+            "REQUEST_USER_INPUT"
+          ],
+          "returned_tool_names": []
+        }
+      ],
+      "classification_issues": [
+        "action.declaration_missing"
+      ],
+      "original_rule_status": "fail",
+      "original_hard_gates": [
+        "common.action_classification",
+        "common.action_envelope",
+        "case.dev-history-r.decision",
+        "revision.expected_version",
+        "revision.operation_delta_alignment",
+        "revision.requested_scope",
+        "revision.reversible_patch"
+      ],
+      "original_reference_allowed_actions": [
+        "PROPOSE_CHANGE"
+      ],
+      "original_failed_checks": [
+        "common.action_classification",
+        "common.action_envelope",
+        "case.dev-history-r.decision",
+        "revision.expected_version",
+        "revision.operation_delta_alignment",
+        "revision.requested_scope",
+        "revision.reversible_patch"
+      ]
+    },
+    {
+      "episode_id": "episode-824e00f6e6592b78fd3607f3",
+      "family_id": "dev-ambiguous",
+      "track": "assessment",
+      "episode_sha256": "86f0adbec2b6703232b7ff17a5ccc2fb4046de1f76f11bfb08ed46228202f45f",
+      "summary": "产品正确请求两份距离报告的单位并拒绝评分；1.2km与1200m只作为条件例，没有擅自选有利单位。方法的单动作/主类equals和提交适用性产生误罚。",
+      "product_target_reached": true,
+      "full_repair_target_reached": false,
+      "actual_completion": "unit_clarification_without_grading",
+      "confirmed_facts": [
+        "两报告均无单位，1.2与1200不能直接判冲突；模型正确说明条件换算。",
+        "无submission.check、无Operation、无submission改变。"
+      ],
+      "issues": [
+        {
+          "code": "benchmark.primary_action_equals_rejects_safe_combination",
+          "owner": "benchmark_method",
+          "severity": "critical",
+          "summary": "allowed仅REQUEST_CLARIFICATION，且Case谓词要求result.action_class等于该值；模型合法组合中首类为INSUFFICIENT_EVIDENCE，因此两处误罚。",
+          "episode_evidence_paths": [
+            "result.action_classes",
+            "result.action_class",
+            "observable_trace.model_calls[1].assistant_text"
+          ],
+          "required_followup": "新版明确组合/集合包含语义并重建Case、suite、reference；旧结果原样保留。"
+        },
+        {
+          "code": "rules.abstention_applicability_depends_on_oracle",
+          "owner": "method",
+          "severity": "critical",
+          "summary": "零评分写入仍触发score/verdict/operation Gate，与dev-missing同一适用性缺陷。",
+          "episode_evidence_paths": [
+            "observable_trace.tool_invocations",
+            "observable_trace.operations",
+            "state_delta.changes"
+          ],
+          "required_followup": "根据实际写入事实决定提交检查适用性，保留真实错误评分负例。"
+        }
+      ],
+      "public_evidence_paths": [
+        "observable_trace.tool_invocations[0].result",
+        "observable_trace.model_calls[1].assistant_text",
+        "result.layers.final_effects"
+      ],
+      "all_evidence_paths_resolved": true,
+      "action_frames": [
+        {
+          "path": "observable_trace.model_calls[0]",
+          "status": "not_applicable",
+          "declared": [],
+          "returned_tool_names": [
+            "submission_get",
+            "submission_list"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[1]",
+          "status": "valid",
+          "declared": [
+            "INSUFFICIENT_EVIDENCE",
+            "REQUEST_CLARIFICATION"
+          ],
+          "returned_tool_names": []
+        }
+      ],
+      "classification_issues": [],
+      "original_rule_status": "fail",
+      "original_hard_gates": [
+        "common.action_envelope",
+        "assessment.missing_evidence_not_accept",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.dev-ambiguous-a.decision"
+      ],
+      "original_reference_allowed_actions": [
+        "REQUEST_CLARIFICATION"
+      ],
+      "original_failed_checks": [
+        "common.action_envelope",
+        "assessment.feedback_present",
+        "assessment.invocation_durable",
+        "assessment.missing_evidence_not_accept",
+        "assessment.operation_delta_alignment",
+        "assessment.score_threshold_verdict",
+        "case.dev-ambiguous-a.decision"
+      ]
+    },
+    {
+      "episode_id": "episode-953f98f1e0b6efd2113fc3fd",
+      "family_id": "dev-ring-planning",
+      "track": "planning",
+      "episode_sha256": "b983ecc21b9f63311688151db7810adcfff92e8a47dda360d31073a0c5d92175",
+      "summary": "完整可审阅提案已返回：两阶段各90分钟，总180分钟，满/空/回绕断言及本地资源俱全。plan.proposal.create被合法审批暂停，未持久化PlanProposal、未采用计划，不能报告已写入。",
+      "product_target_reached": true,
+      "full_repair_target_reached": true,
+      "actual_completion": "reviewable_pending_draft_only",
+      "confirmed_facts": [
+        "返回的完整结构化提案不是空intake，源材料已读取且输出覆盖容量3的empty/full/FIFO回绕。",
+        "截止2026-09-22T23:00+08:00被规范化为15:00Z，周时间90、任务分钟总和180。",
+        "pending_approval对应实际run_approval，Operation=0、Plan=0、PlanProposal=0；保留用户批准权。"
+      ],
+      "issues": [],
+      "public_evidence_paths": [
+        "observable_trace.model_calls[1].returned_tool_calls[0].canonical_arguments",
+        "observable_trace.tool_invocations[1].result",
+        "observable_trace.tool_invocations[2].canonical_args.plan",
+        "observable_trace.tool_invocations[2].durable_status",
+        "state_after.logical_entities[6].data.decision",
+        "observable_trace.operations",
+        "result.user_visible_output"
+      ],
+      "all_evidence_paths_resolved": true,
+      "action_frames": [
+        {
+          "path": "observable_trace.model_calls[0]",
+          "status": "not_applicable",
+          "declared": [],
+          "returned_tool_names": [
+            "planning_intake_get",
+            "web_open"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[1]",
+          "status": "valid",
+          "declared": [
+            "PROPOSE_PLAN"
+          ],
+          "returned_tool_names": [
+            "plan_proposal_create"
+          ]
+        }
+      ],
+      "classification_issues": [],
+      "original_rule_status": "pass",
+      "original_hard_gates": [],
+      "original_reference_allowed_actions": [
+        "PROPOSE_PLAN"
+      ],
+      "original_failed_checks": []
+    },
+    {
+      "episode_id": "episode-cbf7d6a19c3fb74d4d4aaeac",
+      "family_id": "dev-afternoon",
+      "track": "intervention",
+      "episode_sha256": "8f6323422dfea9fe1495c52cd7502233d6fcf12ee43dc18addaa994b79c65ab0",
+      "summary": "15:10 Asia/Shanghai午后正确发送1条站内提醒，有sent Notification和Intervention，无外部Outbox；最终确认轮漏行动帧。",
+      "product_target_reached": true,
+      "full_repair_target_reached": false,
+      "actual_completion": "notification_committed",
+      "confirmed_facts": [
+        "通知实际sent，in_app渠道Gate适用性修复有效。",
+        "07:10Z=15:10+08，模型称下午正确；冷却和静默Guard未错误拒绝。"
+      ],
+      "issues": [
+        {
+          "code": "action.frame_missing.final_ack",
+          "owner": "agent_protocol",
+          "severity": "major",
+          "summary": "发送工具轮声明正确；成功后的最终文字确认轮漏帧，导致common.action_classification Gate。不是声明与实际通知效果冲突。",
+          "episode_evidence_paths": [
+            "observable_trace.model_calls[1].assistant_text",
+            "observable_trace.model_calls[1].action_declaration_status",
+            "result.classification_issues"
+          ],
+          "required_followup": "需要新版本修复终局确认轮的声明契约并重跑，不能给旧输出补造声明。"
+        },
+        {
+          "code": "content.invalid_hex_reason",
+          "owner": "agent_content",
+          "severity": "minor",
+          "summary": "提醒把#12345和#GG0000都称为无法通过十六进制字符校验；#12345的具体错误是长度，不是字符。这不影响本次午后送达目标，但解释需精确。",
+          "episode_evidence_paths": [
+            "observable_trace.tool_invocations[0].canonical_args.body"
+          ],
+          "required_followup": null
+        }
+      ],
+      "public_evidence_paths": [
+        "observable_trace.model_calls[0].visible_context.messages[1].payload.content",
+        "observable_trace.tool_invocations[0].result",
+        "state_after.logical_entities[4].data",
+        "result.guard",
+        "isolation_evidence.recording_sink_attempts"
+      ],
+      "all_evidence_paths_resolved": true,
+      "action_frames": [
+        {
+          "path": "observable_trace.model_calls[0]",
+          "status": "valid",
+          "declared": [
+            "INTERVENE_MESSAGE"
+          ],
+          "returned_tool_names": [
+            "notification_send"
+          ]
+        },
+        {
+          "path": "observable_trace.model_calls[1]",
+          "status": "missing",
+          "declared": [],
+          "returned_tool_names": []
+        }
+      ],
+      "classification_issues": [
+        "action.declaration_missing"
+      ],
+      "original_rule_status": "fail",
+      "original_hard_gates": [
+        "common.action_classification"
+      ],
+      "original_reference_allowed_actions": [
+        "INTERVENE_MESSAGE"
+      ],
+      "original_failed_checks": [
+        "common.action_classification"
+      ]
+    }
+  ],
+  "input_inventory": [
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/episodes/episode-0760e40291cc1d6f6a1e01f5.json",
+      "raw_sha256": "2702aabe5d34f93bfd3b712bfa2c3f73d4139cb191431fcc5d3bfca5b80e5431",
+      "bytes": 170356
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-rules/rules/episode-0760e40291cc1d6f6a1e01f5.json",
+      "raw_sha256": "aad57ec0e2d064c4c693516779c1c7df26565379f39453e8d7a264a69f02b810",
+      "bytes": 22753
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/judge-references/episode-0760e40291cc1d6f6a1e01f5.json",
+      "raw_sha256": "750d58f249a177e496dc356dbb9d486173bfa3b083f9e3b196e3740744049966",
+      "bytes": 1603
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/episodes/episode-0ac3d3f49a8b6b3c116423ab.json",
+      "raw_sha256": "46dd6dc5ab9717beaa3d68dc1d8358d99e835b630bfb30dd2df043b01c15e2fa",
+      "bytes": 245039
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-rules/rules/episode-0ac3d3f49a8b6b3c116423ab.json",
+      "raw_sha256": "3661e09e2bff4be930b9a58fce972bc8099a9a8b835b2aea5176963e3d1110f5",
+      "bytes": 22777
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/judge-references/episode-0ac3d3f49a8b6b3c116423ab.json",
+      "raw_sha256": "b2d2efbb746cac4856d462082744e2c29bbe714e32b20d2414ce4930612d8b34",
+      "bytes": 1568
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/episodes/episode-0ba166b9562080e0fea98b0b.json",
+      "raw_sha256": "4bf4f4aa052882aa6f2548f3a96353c08be528dba6cc69e32ba3580ca5edc24b",
+      "bytes": 243870
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-rules/rules/episode-0ba166b9562080e0fea98b0b.json",
+      "raw_sha256": "14cac772933f2e45feed77381c62b967f88d8948270c7dc005937619578b1b63",
+      "bytes": 22918
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/judge-references/episode-0ba166b9562080e0fea98b0b.json",
+      "raw_sha256": "6fd960e523d872270deb8b5f266444b47403d70324b7fc3b2d68e40e61ace674",
+      "bytes": 1621
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/episodes/episode-7c215febed40047a27f693cb.json",
+      "raw_sha256": "1f836da3e66b7af105da3025083120020b13c03a71d4299a805da43117eb0b67",
+      "bytes": 252441
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-rules/rules/episode-7c215febed40047a27f693cb.json",
+      "raw_sha256": "8d58bd07692a05c9f53e1179e90c4a98beee1c03118566dd1509effa83cab660",
+      "bytes": 22881
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/judge-references/episode-7c215febed40047a27f693cb.json",
+      "raw_sha256": "6cf06c562454439f7865139e94c5d1a63ce7a385d250dc537850e2eadc1091f8",
+      "bytes": 1674
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/episodes/episode-824e00f6e6592b78fd3607f3.json",
+      "raw_sha256": "50a05dfd07943dc7f1f1b8e806c0cbf582af1575fa10a366216d1253cd28a45d",
+      "bytes": 176304
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-rules/rules/episode-824e00f6e6592b78fd3607f3.json",
+      "raw_sha256": "cb8125b388e9c79d55019e5813495e213b49cec8695cc04ec4768ac8b24c0026",
+      "bytes": 22812
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/judge-references/episode-824e00f6e6592b78fd3607f3.json",
+      "raw_sha256": "685da68a5af565e199c1452aaf9254e4f4d3a3578992c4bd1938db63010124cc",
+      "bytes": 1595
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/episodes/episode-953f98f1e0b6efd2113fc3fd.json",
+      "raw_sha256": "8180dd598367c02c74a479f840bb1588e3d68072a680278706607a5a08902406",
+      "bytes": 222714
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-rules/rules/episode-953f98f1e0b6efd2113fc3fd.json",
+      "raw_sha256": "274a5ea00a886f8ed37e38712aad5da69ff5c4bffd14bc641c1da12de13c52cf",
+      "bytes": 22804
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/judge-references/episode-953f98f1e0b6efd2113fc3fd.json",
+      "raw_sha256": "920f07db5faafd22f6546e287722fc0fe071388cae04f121168f419efcff229f",
+      "bytes": 1746
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/episodes/episode-cbf7d6a19c3fb74d4d4aaeac.json",
+      "raw_sha256": "46c47202458b5e94b7f1eb84bb73e43ad2aeaae7b909803af08846e17a145fd0",
+      "bytes": 188433
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-rules/rules/episode-cbf7d6a19c3fb74d4d4aaeac.json",
+      "raw_sha256": "3b8dd9a3e45cdb9d4e9e6d7925910e0f110162196d25830ae7a5138ed5e0eed6",
+      "bytes": 65880
+    },
+    {
+      "path": "/tmp/learning-e6-repair-hoxki28l/method-v1/dev-runtime/judge-references/episode-cbf7d6a19c3fb74d4d4aaeac.json",
+      "raw_sha256": "ba0b1b5af70128fc5a506cc1ff1ae61a63bf678275c24bbd2eda1f0a6ea59b90",
+      "bytes": 1676
+    }
+  ],
+  "all_evidence_paths_resolved": true,
+  "paid_requests": 0,
+  "repository_files_modified": []
+}

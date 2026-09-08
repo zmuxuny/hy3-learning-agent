@@ -1,0 +1,10 @@
+{
+  "archive_sha256": "27715a34d8802027a502aaa590b538a00fd6fc875becb1c5715c25650b8c4f87",
+  "archive_size_bytes": 16735758,
+  "evidence_manifest_sha256": "0699964a6189b0ae4b5188a2fd8f84c47bd819855886ee66ae727522a05c8af0",
+  "files_verified": 4904,
+  "all_identical": true,
+  "original_inventory_verified": 4416,
+  "reviewed_synthetic_fixture_matches": 35,
+  "unresolved_sensitive_findings": 0
+}

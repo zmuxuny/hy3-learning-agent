@@ -1,0 +1,27 @@
+{
+  "disclosure": "primary AI offline exact implementation verification; no provider calls",
+  "frozen_source": "1f1f35f04aff5c2c83f69a1ceb98b4d80d7f3fd6",
+  "candidate_source": "3d20c8bb227cd8f2c37a966e64a3b8df061c3d51",
+  "requests": 79,
+  "formal_seen_requests": 48,
+  "exact_matching_fields": [
+    "scope",
+    "case_key",
+    "blind_sha256",
+    "expanded_output_schema_sha256",
+    "catalog_sha256",
+    "unpacked_document_sha256"
+  ],
+  "all_equivalent": true,
+  "frozen_input_rejections": 8,
+  "candidate_input_rejections": 0,
+  "candidate_max_input_bound": 188971,
+  "smallest_corrected_failed_request_reservation_micro_cny": 225624,
+  "remaining_micro_cny": 216953,
+  "real_candidate_judge_calls": 0,
+  "formal": false,
+  "comparison_inputs_sha256": {
+    "encoding-frozen-v4.json": "3d79e2013d6319a31dc51890e1a1e9a3d3050b5341c92334f205b746654baea7",
+    "encoding-exact-v5.json": "0b9609ecec2347c490641f0d3eeec020a99a84e38e721cc5074612088e576b62"
+  }
+}
