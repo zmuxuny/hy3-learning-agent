@@ -1,0 +1,104 @@
+[
+  {
+    "directory": "completion-source",
+    "commit": "500622ee5835878bf17b73ffd6f078d4e7f61899",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "demo-recording-source",
+    "commit": "217c8801b47c50626e7b3c440295538a9058581a",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "final-release-source",
+    "commit": "da2a76fd0b206d0f3f47ce8c550fc11b59cdea2a",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "final-source",
+    "commit": "ee9151e52c3eb4df4e57a55796739c7904353e80",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "frozen-final-source",
+    "commit": "2a9c38af36bffed1df2222df04fbcd7d6087eec3",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "ingestion-fixed-source",
+    "commit": "7ac56ed5fe337c125b62d3f0a9f0f489494d4822",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "product-final-source",
+    "commit": "500f280c08086d9a93a8b5d1ebaedb3ebd0ecd8f",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "quality3-source",
+    "commit": "28735bf3576d40f06819bd0e2ab8e60b6cfcbfd3",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "quality4-source",
+    "commit": "1775fbb5a90d50189c0f1b5ede7e4a27667741b9",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "quality5-source",
+    "commit": "ac4bf63672f7ad80c130a804c1152b2f5619df63",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "quality6-source",
+    "commit": "3385e8f13f6eb2d5c00cc6ba83e2d5f76a7d2807",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "quality7-source",
+    "commit": "2ea6d0461b08a7d49446bb0f34ce90b262e11b78",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "release-check-source",
+    "commit": "bb522db40ebc87ed35ba892d79711bd212a1c7a3",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "release-final2",
+    "commit": "1b5cd22029ee9cda501367026e3fb733b3800bd3",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "release-final3",
+    "commit": "0f790defd1baa86b17077eeaa5a9b8e727f9273b",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "source",
+    "commit": "736f11f160822bf2633e046fdcd0cd45efe5290d",
+    "clean": true,
+    "status": ""
+  },
+  {
+    "directory": "title-check-source",
+    "commit": "7ac56ed5fe337c125b62d3f0a9f0f489494d4822",
+    "clean": false,
+    "status": " M backend/app/runtime/agent.py\n M backend/app/runtime/session_titles.py\n M frontend/src/components/AgentRunTurn.vue\n M frontend/src/components/HomeView.vue\n M frontend/src/styles/layout.css\n M frontend/src/styles/responsive.css\n?? tests/test_session_title_approval.py\n"
+  }
+]

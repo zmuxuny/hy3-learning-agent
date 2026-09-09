@@ -43,5 +43,12 @@
       "seconds": 157.21
     }
   ],
-  "targeted_note": "Selections overlap; counts are not added as unique tests."
+  "targeted_note": "Selections overlap; counts are not added as unique tests.",
+  "release_timeout_update": {
+    "source": "032d953",
+    "reason": "Measured initial full regression took 52m24s, exceeding the old 45-minute CI job limit",
+    "changes": "Full-suite subprocess and enclosing release gate allow 120 minutes; CI job allows 130 minutes including setup; commands and checks unchanged",
+    "targeted_checks_passed": 6,
+    "seconds": 2.29
+  }
 }

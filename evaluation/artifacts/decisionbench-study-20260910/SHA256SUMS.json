@@ -387,6 +387,10 @@
   "verification/application-375.png": "9e1df79f597ee9d9dfab5da3a6b9a5dc9eaceb3c0cb6bf699a8e0c3607211e28",
   "verification/application-768.png": "4b29df42c46b1c65f440cf50d90b216b2919aac646a06475ece7e8e5ba847cab",
   "verification/budget-at-delivery.json": "5a67c0c3591ed08b924f28c68332547bea91dfe087a42e1aeff13b18b1be3668",
+  "verification/demo-page-1440.png": "26025aa9271a70eeb9d3536f7d2954c7a89722c7214553978e2437da49d4303e",
+  "verification/demo-page-375.png": "fcae63de17142c283145989ecf67acde84347bf3c4437fe1c1c712322283a0ad",
+  "verification/demo-page-check.json": "3420653e3cfe13505133b1031affe3fa353a2b22168ac16cfbe8eebbb06ef2bf",
+  "verification/demo-playback.json": "518388eb40872bd5963676556a15f7714baf6d6adf44e9237f512ec4e9a990ce",
   "verification/demo-responsive-review.json": "d8022aeb8c642f0dca46a6a012e7770fe1a74713ea4ed7e014008fbd61218050",
   "verification/final-responsive.json": "785416502a070612bca295902962ceb14f56143ad036d9c262f1ef65c81fd8bd",
   "verification/historical-endpoint-regression-0f790de.txt": "4ff4c1d956b961496c7f74b4e75f71f84dae431d6531b5486b0c62dce38110df",
@@ -395,6 +399,9 @@
   "verification/initial-environment-recovery.txt": "eecf054620dfb25255298ec1b716a87313f41e0de415472ec1292649a1735ddc",
   "verification/initial-full-suite-bb522db.txt": "d6d4d660ab8960a0ddc92a5c853707f54f662af35977c1df22a4aa04590ebdd4",
   "verification/interrupted-release-gates-da2a76f.json": "6b338ce32f6ee57e2b6aea934bee464786389834f2e634b570ddd79350128d1f",
-  "verification/regression-repairs.json": "b3326bce64b7b49a43864972dafe02af9e3773e83e765bd61d5c3fc7632d0ebc",
+  "verification/regression-repairs.json": "ba9b27422307c4900e7c38371f2225296819a1be2e164e2b41a9e3bc06a33777",
+  "verification/release-timeout-check-032d953.txt": "fb748c096714591cb3cbd416470aa3fc833a3dedcd4bac9c3ba75b9528e8e801",
+  "verification/temporary-checkouts.json": "38c64fdcd29f0cc28532c4f55b0f52bfe40b37d87304b6e20d4af16449876eca",
+  "verification/ui-prototype-source.tar.gz": "d1ff66ff4dba10a652e2562f9b37f30ab5b9ea91bb1a15b1ab28409d550a1ee9",
   "viewer.html": "c2473c7d95f28b4440e9a48373c5e553460b55fd9449fc93d1f592f7ae3636b9"
 }

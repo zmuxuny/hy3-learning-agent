@@ -1,0 +1,13 @@
+{
+  "browser": "Chromium",
+  "readyState": 4,
+  "currentTime_seconds": 0.967417,
+  "paused": false,
+  "error": null,
+  "duration_seconds": 108,
+  "video_dimensions": [
+    1920,
+    1080
+  ],
+  "deployment": "local verification only"
+}

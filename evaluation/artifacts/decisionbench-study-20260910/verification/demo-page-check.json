@@ -1,0 +1,26 @@
+[
+  {
+    "width": 375,
+    "pageOverflow": false,
+    "duration": 108,
+    "videoWidth": 1920,
+    "videoHeight": 1080,
+    "oldPrLink": false
+  },
+  {
+    "width": 768,
+    "pageOverflow": false,
+    "duration": 108,
+    "videoWidth": 1920,
+    "videoHeight": 1080,
+    "oldPrLink": false
+  },
+  {
+    "width": 1440,
+    "pageOverflow": false,
+    "duration": 108,
+    "videoWidth": 1920,
+    "videoHeight": 1080,
+    "oldPrLink": false
+  }
+]
