@@ -1,0 +1,14 @@
+{
+  "before": {
+    "main": "036e2b7171ab4d550c279350a410ce923fd9f214",
+    "develop": "e0c9d7c7e8efc424aff47cf49e7572117870ebfa",
+    "fix/evaluation-audit-readiness": "a8426e8de0df819053ff03b63bd98bc06b1d66d8"
+  },
+  "after": {
+    "main": "a8426e8de0df819053ff03b63bd98bc06b1d66d8",
+    "develop": "a8426e8de0df819053ff03b63bd98bc06b1d66d8",
+    "fix/evaluation-audit-readiness": "a8426e8de0df819053ff03b63bd98bc06b1d66d8"
+  },
+  "method": "fast-forward",
+  "remote_actions": false
+}
