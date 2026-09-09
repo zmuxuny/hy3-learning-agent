@@ -4,7 +4,7 @@
 
 ### 一个持续理解学习状态、主动判断并推动目标完成的个人学习 Agent
 
-[在线 Demo](https://zmuxuny.github.io/hy3-learning-agent/) · [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md) · [产品定义](docs/PRODUCT.md) · [系统架构](docs/ARCHITECTURE.md)
+[演示页（已发布版本）](https://zmuxuny.github.io/hy3-learning-agent/) · [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md) · [产品定义](docs/PRODUCT.md) · [系统架构](docs/ARCHITECTURE.md)
 
 Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩展为贯穿目标、计划、执行、验收与调整的持续学习伙伴。
 

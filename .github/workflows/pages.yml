@@ -33,8 +33,8 @@ jobs:
         run: |
           mkdir -p _site/media
           cp pages/index.html _site/index.html
-          cp assets/demo/learning-agent-hy3-demo-cover.jpg _site/media/
-          cp assets/demo/learning-agent-hy3-demo.mp4 _site/media/
+          cp assets/demo/stage3/cover.png _site/media/
+          cp assets/demo/stage3/learning-agent-stage3.mp4 _site/media/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
