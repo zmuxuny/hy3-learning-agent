@@ -28,7 +28,7 @@
       "resolution": "0f790de retains isolated loopback port 9 and uses HTTPS"
     }
   ],
-  "final_checks": "running on 0f790de",
+  "final_checks": "All eight release checks passed; details and source identities in release-checks.json.",
   "targeted_checks": [
     {
       "source": "1b5cd22",
@@ -50,5 +50,19 @@
     "changes": "Full-suite subprocess and enclosing release gate allow 120 minutes; CI job allows 130 minutes including setup; commands and checks unchanged",
     "targeted_checks_passed": 6,
     "seconds": 2.29
+  },
+  "final_full_suite": {
+    "source": "0f790de",
+    "passed": 1528,
+    "failed": 0,
+    "errors": 0,
+    "warnings": 2,
+    "seconds": 2956.49
+  },
+  "browser_assertion_repair": {
+    "source": "2dc9915",
+    "old": "最近 Evidence",
+    "current": "最近学习证据",
+    "behavior_or_selector_removed": false
   }
 }

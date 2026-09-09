@@ -1,0 +1,10 @@
+{"onboardingViewports":4}
+file:///tmp/learning-agent-h8-browser-uq957ka2/candidate/scripts/h7_browser_check.mjs:207
+            if (!text.includes(required)) throw new Error(`Learning map omitted ${required}`);
+                                                ^
+
+Error: Learning map omitted 最近 Evidence
+    at file:///tmp/learning-agent-h8-browser-uq957ka2/candidate/scripts/h7_browser_check.mjs:207:49
+
+Node.js v24.14.0
+release_gate_command_failed:node:1

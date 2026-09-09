@@ -1,0 +1,11 @@
+{
+  "verified_report_case_scores": {
+    "formal-i10-p": 69,
+    "formal-i11-r": 69,
+    "formal-i07-r": 80,
+    "formal-i10-i": 97.5,
+    "formal-i09-r": 92.5
+  },
+  "pdf_contains_corrected_scores": true,
+  "data_or_summary_changed": false
+}

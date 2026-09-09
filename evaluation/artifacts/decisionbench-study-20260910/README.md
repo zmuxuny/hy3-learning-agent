@@ -34,6 +34,8 @@
 
 ## 交付核验
 
+[软件与交付验证](verification/README.md)记录整库1528项、八项发布检查、原始失败及修复验证。浏览器覆盖5种宽度、43项路由检查，另有4种首次配置宽度。
+
 [独立复算记录](verification/independent-recompute.json)核对全部自动与复核表格在干净源码副本中逐字节一致。[源码连接核对](source-verification.json)将48份原始运行的协议、运行源码集合与输入摘要对应到当时的Git提交。应用按固定设计逐例隔离执行；原始采集器中的单例过滤与资格字段继续保留，当前汇总使用本实验设计及内容质量方法。
 
 [最终页面检查](verification/final-responsive.json)记录四种宽度下的页面溢出、计划标题及虚线移除情况。演示服务已停止；[最终费用摘要](verification/budget-at-delivery.json)包含实验及Demo完成后的累计占用和余额。

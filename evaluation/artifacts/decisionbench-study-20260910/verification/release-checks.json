@@ -1,0 +1,91 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "gate": "lint_typecheck",
+      "returncode": 0,
+      "elapsed_seconds": 2.7,
+      "source": "0f790de",
+      "log": "gate-lint_typecheck-0f790de.txt"
+    },
+    {
+      "gate": "python_dependency_audit",
+      "returncode": 0,
+      "elapsed_seconds": 47.72,
+      "source": "0f790de",
+      "log": "gate-python_dependency_audit-0f790de.txt"
+    },
+    {
+      "gate": "historical_migration",
+      "returncode": 0,
+      "elapsed_seconds": 2967.7,
+      "source": "0f790de",
+      "log": "gate-historical_migration-0f790de.txt"
+    },
+    {
+      "gate": "evidence_audit",
+      "returncode": 0,
+      "elapsed_seconds": 173.25,
+      "source": "0f790de",
+      "log": "gate-evidence_audit-0f790de.txt"
+    },
+    {
+      "gate": "context_isolation",
+      "returncode": 0,
+      "elapsed_seconds": 42.5,
+      "source": "0f790de",
+      "log": "gate-context_isolation-0f790de.txt"
+    },
+    {
+      "gate": "browser_matrix",
+      "source": "2dc9915",
+      "returncode": 0,
+      "elapsed_seconds": 42.58,
+      "log": "gate-browser_matrix-2dc9915.txt"
+    },
+    {
+      "gate": "secret_scan",
+      "source": "2dc9915",
+      "returncode": 0,
+      "elapsed_seconds": 0.47,
+      "log": "gate-secret_scan-2dc9915.txt"
+    },
+    {
+      "gate": "frontend_build",
+      "source": "2dc9915",
+      "returncode": 0,
+      "elapsed_seconds": 6.49,
+      "log": "gate-frontend_build-2dc9915.txt"
+    }
+  ],
+  "full_suite": {
+    "source": "0f790de",
+    "passed": 1528,
+    "warnings": 2,
+    "seconds": 2956.49
+  },
+  "resumption": "Initial browser check expected an obsolete mixed-language heading; updated only that assertion and resumed browser, secret scan and frontend gates. The five earlier successful gates were retained.",
+  "unchanged_core_trees_between_verified_sources": {
+    "backend": "e3dfe8f4b70d9c91c08b4ad201407b4c76bba898",
+    "frontend": "8bc7c95f079cf984a2d50a24b804e097c79b3567",
+    "evaluation/src": "2261a5f2c66531d2430a794927e4173836b9d638",
+    "evaluation/scripts": "951410f77a95d468d5e95ec8076c2cd9d19af71a",
+    "evaluation/tests": "16dc2c6011a421ac0a9d1d9161c4e139b8c7216d",
+    "evaluation/releases": "77f1105ec4df17b28b8952c4d81374b22e6be455",
+    "tests": "688c3049dac0ff1cb5ffab01e4c7f4cf0ab10a94"
+  },
+  "additional_release_timeout_checks": {
+    "source": "032d953",
+    "passed": 6
+  },
+  "browser": {
+    "onboarding_viewports": 4,
+    "application_viewports": 5,
+    "route_checks": 43
+  },
+  "frontend": {
+    "vitest": 45,
+    "build": true,
+    "production_dependency_vulnerabilities": 0
+  }
+}

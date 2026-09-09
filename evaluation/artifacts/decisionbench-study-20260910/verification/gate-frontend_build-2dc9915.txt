@@ -1,0 +1,58 @@
+
+> frontend@1.1.1 test
+> npm run test:contracts && npm run test:unit
+
+
+> frontend@1.1.1 test:contracts
+> node --test tests/*.test.js
+
+✔ GET requests use the API prefix without a request body (1.911243ms)
+✔ JSON requests serialize their body and set the content type (0.474885ms)
+✔ API errors preserve the response payload and status (5.062608ms)
+✔ non-JSON errors fall back to the HTTP status (0.769016ms)
+✔ retry and reconciliation states cannot be mistaken for an idle session (1.017747ms)
+✔ only executable states retain a live stream or accept steering (0.220599ms)
+✔ durable exceptional states have explicit user-facing labels (0.244033ms)
+✔ SMTP diagnostic retries retain one client action id until enqueue is confirmed (7.716722ms)
+✔ a failed settings refresh does not invalidate a confirmed SMTP enqueue (1.056313ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 176.481275
+
+> frontend@1.1.1 test:unit
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/tmp/learning-travel-mainline-0tqjp9d1/release-final3/frontend[39m
+
+ [32m✓[39m tests/h7-sse-reconciliation.spec.js [2m([22m[2m4 tests[22m[2m)[22m[32m 93[2mms[22m[39m
+ [32m✓[39m tests/h7-intervention-optional.spec.js [2m([22m[2m6 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32m✓[39m tests/h7-routing-plan.spec.js [2m([22m[2m15 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+ [32m✓[39m tests/h7-learning-map.spec.js [2m([22m[2m2 tests[22m[2m)[22m[32m 131[2mms[22m[39m
+ [32m✓[39m tests/h8-onboarding.spec.js [2m([22m[2m3 tests[22m[2m)[22m[32m 137[2mms[22m[39m
+ [32m✓[39m tests/e5-browser-regressions.spec.js [2m([22m[2m9 tests[22m[2m)[22m[32m 173[2mms[22m[39m
+ [32m✓[39m tests/h7-rendering-a11y.spec.js [2m([22m[2m6 tests[22m[2m)[22m[32m 256[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m7 passed[39m[22m[90m (7)[39m
+[2m      Tests [22m [1m[32m45 passed[39m[22m[90m (45)[39m
+[2m   Start at [22m 19:00:50
+[2m   Duration [22m 2.70s[2m (transform 2.76s, setup 0ms, import 6.80s, tests 901ms, environment 7.59s)[22m
+
+
+> frontend@1.1.1 build
+> vite build
+
+rolldown-vite v7.2.5 building client environment for production...
+[2Ktransforming...✓ 402 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.89 kB │ gzip:   0.53 kB
+dist/assets/index-Cj0_fNfs.css   99.64 kB │ gzip:  19.56 kB
+dist/assets/index-BmGR-K2P.js   373.68 kB │ gzip: 136.18 kB
+✓ built in 580ms
+found 0 vulnerabilities
