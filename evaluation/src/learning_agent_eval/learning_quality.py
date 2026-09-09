@@ -12,10 +12,11 @@ from copy import deepcopy
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .canonical import canonical_json, sha256_digest
+from .quality_content_audit import CONFIG as AUDIT_CONFIG
 from .validator import resolve_evidence_path
 from .judge_request_projection import pack_shared_values, unpack_shared_values, evidence_catalog, draft_reading_aid
 
-METHOD_VERSION = 'learning-quality-3'
+METHOD_VERSION = 'learning-quality-4'
 WEIGHTS = dict(D1=15,D2=15,D3=20,D4=20,D5=15,D6=5,D7=10)
 # Explicit levels, rather than a generic "good/partly good" scale.
 CRITERIA = {
@@ -77,7 +78,7 @@ METHOD = dict(version=METHOD_VERSION,criteria=CRITERIA,instructions=INSTRUCTIONS
               provider=dict(model='hy3',temperature=0,reasoning_effort='high',max_tokens=8192,n=1),
               deterministic_policy='Every structured draft task/review datetime checked against visible confirmed deadline; violations cap 69',
               old_rule_policy='diagnostics retained separately, never silently converted to learning-quality gates',
-              input_projection='source-addressed-reader-v1',output_schema=Rating.model_json_schema())
+              content_audit=AUDIT_CONFIG,input_projection='source-addressed-reader-v1',output_schema=Rating.model_json_schema())
 METHOD_SHA256=sha256_digest(METHOD)
 
 def projection(blind_document):
@@ -160,13 +161,14 @@ def reading_view(e):
     return records
 
 
-def request_for(e):
+def request_for(e,content_audit=None):
     records=reading_view(e)
     paths=list(dict.fromkeys([*catalog(e),*(r['path'] for r in records)]))
     content={'reading_view':records,'draft_reading_aid':draft_reading_aid(e),
-             'catalog':paths,'schedule_facts':schedule_facts(e)}
+             'catalog':paths,'schedule_facts':schedule_facts(e),'content_audit':content_audit}
+    guidance='\ncontent_audit是独立内容核验，须逐项与原证据复查；其error/unsupported若成立须在相应维度扣分。不能无解释忽略核验发现，也不能盲从其判断。脱敏UUID与opaque标识差异不得扣分。证据路径从catalog或reading_view.path原样复制。'
     schema=Rating.model_json_schema()
-    return {'messages':[{'role':'system','content':INSTRUCTIONS+'\n逐维判据：'+canonical_json(CRITERIA)+'\nJSON结构：'+canonical_json(schema)},
+    return {'messages':[{'role':'system','content':INSTRUCTIONS+guidance+'\n逐维判据：'+canonical_json(CRITERIA)+'\nJSON结构：'+canonical_json(schema)},
                         {'role':'user','content':canonical_json(content)}],
             'response_format':{'type':'json_schema','json_schema':{'name':'learning_quality_rating','strict':True,'schema':schema}}}
 
