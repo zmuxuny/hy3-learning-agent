@@ -35,12 +35,24 @@ def summarize(root,output):
                         assert validate_rating(json.loads(row['reply']['content']),e)==row['rating']
                         assert schedule_facts(e)==row['schedule_facts']
                         assert all(row[k]==v for k,v in aggregate(row['rating'],e).items())
+                    elif row.get('validation_error')=='ValueError: evidence path not visible in supplied input' and row['reply']['status']=='completed':
+                        # Ingestion erratum: schema-less constructed samples were resolved
+                        # with v1 roots, excluding their existing state_after. No new API
+                        # call, input/rubric change, score editing, or old-file overwrite.
+                        try: recovered=validate_rating(json.loads(row['reply']['content']),e)
+                        except (ValueError,TypeError): pass
+                        else:
+                            row={**row,'original_status':row['status'],'status':'complete',
+                                 'recovery':'visible-input-root-parser-fix','rating':recovered,
+                                 'schedule_facts':schedule_facts(e),**aggregate(recovered,e)}
                 rows.append(row)
         repeats=design[kind]['repeats'];assert seen=={(i,r) for i in byid for r in range(1,repeats+1)}
-        result[kind]={'slots':len(rows),'status':dict(Counter(r['status'] for r in rows))}
+        result[kind]={'slots':len(rows),'status':dict(Counter(r['status'] for r in rows)),
+                      'parser_recovered':sum(bool(r.get('recovery')) for r in rows),
+                      'original_status':dict(Counter(r.get('original_status',r['status']) for r in rows))}
         for row in rows:
             dims={d['dimension']:d['level'] for d in row.get('rating',{}).get('dimensions',[])}
-            allrows.append(dict(experiment=kind,id=row['id'],repeat=row['repeat'],track=row['track'],status=row['status'],
+            allrows.append(dict(experiment=kind,id=row['id'],repeat=row['repeat'],track=row['track'],status=row['status'],recovery=row.get('recovery',''),
                 raw_score=row.get('raw_score'),score=row.get('score'),outcome=row.get('outcome'),
                 **{d:dims.get(d) for d in ['D1','D2','D3','D4','D5','D6','D7']}))
         if kind=='validation':

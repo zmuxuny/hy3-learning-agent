@@ -50,3 +50,9 @@ def test_pending_review_date_checked_against_confirmed_deadline_in_timezone():
     plan['stages'][0]['tasks'][0]['review_due_at']='2026-09-22T15:30:00Z'
     e['observable_trace']['model_calls'][0]['returned_tool_calls'][0]['canonical_arguments']['plan']=plan
     assert aggregate(rating(),e)['score']==100
+
+def test_controlled_evidence_roots_match_real_fields_without_episode_schema():
+    r=rating();r['dimensions'][3]['evidence_paths']=['state_after']
+    assert validate_rating(r,sample())['dimensions'][3]['level']==2
+    r['dimensions'][3]['evidence_paths']=['state_after.missing']
+    with pytest.raises(ValueError):validate_rating(r,sample())

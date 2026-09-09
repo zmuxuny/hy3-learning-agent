@@ -137,7 +137,7 @@ def request_for(e):
 def validate_rating(payload,e):
     r=Rating.model_validate(payload)
     for item in [*r.checks,*r.dimensions]:
-        if any(path not in catalog(e) or not resolve_evidence_path(e,path)[0] for path in item.evidence_paths):
+        if any(path not in catalog(e) or not resolve_evidence_path(e,path,roots=set(e))[0] for path in item.evidence_paths):
             raise ValueError('evidence path not visible in supplied input')
     return r.model_dump()
 
