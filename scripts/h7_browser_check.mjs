@@ -203,7 +203,7 @@ try {
         }
         if (routeCase.label === 'plan') {
           const text = await target.page.locator('.learning-map-section').innerText();
-          for (const required of ['事务原子性', '训练', '证明', '最近 Evidence', '不把完成进度推断成掌握度']) {
+          for (const required of ['事务原子性', '训练', '证明', '最近学习证据', '不把完成进度推断成掌握度']) {
             if (!text.includes(required)) throw new Error(`Learning map omitted ${required}`);
           }
           if (viewport.width > 560) {
