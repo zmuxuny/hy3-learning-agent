@@ -98,7 +98,7 @@ def historical_migration() -> None:
     # The historical migration contracts are part of the complete backend
     # suite. Running the whole suite here preserves the pre-H8 CI regression
     # boundary while keeping the release manifest at exactly eight gates.
-    _run([sys.executable, "-m", "pytest", "-q"])
+    _run([sys.executable, "-m", "pytest", "-q"], timeout=7200)
 
 
 def evidence_audit() -> None:

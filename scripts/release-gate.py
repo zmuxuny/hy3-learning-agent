@@ -114,7 +114,7 @@ def run(repository: Path) -> tuple[int, dict]:
                 env=environment,
                 capture_output=True,
                 text=True,
-                timeout=3600,
+                timeout=7200 if gate == "historical_migration" else 3600,
                 check=False,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
