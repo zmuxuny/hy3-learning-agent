@@ -1,0 +1,1 @@
+{"observable_trace":{"guard_decisions":[],"model_calls":[],"tool_invocations":[]},"result":{"user_visible_output":"23:45处于免打扰时段，不发通知。到10月7日07:15还有6小时30分钟，届时再检查进度。"},"state_after":{"new_notifications":0},"state_before":{"now_local":"2026-10-06 23:45","quiet_hours":"22:30-07:15","timezone":"Asia/Shanghai","urgent":false},"track":"intervention","trigger":{"objective":"根据状态决定是否介入"}}
