@@ -1,0 +1,20 @@
+{
+  "source_commit": "0f790defd1baa86b17077eeaa5a9b8e727f9273b",
+  "isolated_checkout": true,
+  "tables_byte_identical": true,
+  "files": {
+    "automatic/triplets.csv": "d121f63094ce08cb448518054e9c33797e9122b406bb303c0a2319b62d826516",
+    "automatic/cases.csv": "5dc7d4ebe5680d7f6ee80b04be578bb2ea49bc7c1ed18b7e8dc2a3fe0fcef627",
+    "automatic/summary.json": "a825814efe70c61467b17df02fcfbaa167659dd5de790c0864ecc1187a247b66",
+    "automatic/adversarial.csv": "e9aaaa46930095d6027040c747848b3d326badec9dffecdf1d21903ac6fdcf75",
+    "automatic/tracks.csv": "c17acd5a9c46f52a8d438a4a85483a8cc5755d901af0b7544213a8d13799d29e",
+    "automatic/stability.csv": "c8c4fe8b857a9d591e6363bba470982d51572bc84b2d461d6a454f519b235a08",
+    "automatic/dimensions.csv": "ccc68f37083a0725101020f8a189e1adfd9f490a2578151d26b91adf3a9eb94b",
+    "review/reviews.csv": "95e45359f6654e510ec65a028b0ab36b6c5d1aa2319ade85ccc2913c6b785a72",
+    "review/summary.json": "fec7d80e17456b5dc564720fe5de774516fbfeaa0925f05db8149398cfe1bc7a",
+    "review/application.csv": "1b97a5bc6c3f9c6f590bfdd7acabc62a54aff44b54b85ddb98be12d82baa9065",
+    "review/tracks.csv": "9cef2542ab3a0d317653a49032dd1d2a4164cd3679b7fc5301a120a2aff8942b",
+    "review/dimensions.csv": "6d4a6d83b470ec30c22c7f7872f9d57af6b05e89c8e47c045252f0185fa8a8ea"
+  },
+  "earlier_verified_source": "da2a76fd0b206d0f3f47ce8c550fc11b59cdea2a"
+}

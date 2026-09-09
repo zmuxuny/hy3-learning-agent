@@ -1,0 +1,5 @@
+{
+  "source": "da2a76f",
+  "status": "interrupted_after_independent_reproduction",
+  "reason": "Active test responses lacked mandatory audit_checks; fixing the separate engineering fixture before rerunning the final gates. First lint/typecheck and dependency audit gates had completed; full suite was in progress."
+}

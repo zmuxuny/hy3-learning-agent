@@ -1,0 +1,38 @@
+[
+  {
+    "viewportWidth": 375,
+    "width": 338,
+    "scroll": 338,
+    "copyWidth": 310,
+    "previewWidth": 310,
+    "top": 71.6875,
+    "pageOverflow": false
+  },
+  {
+    "viewportWidth": 768,
+    "width": 642,
+    "scroll": 642,
+    "copyWidth": 614,
+    "previewWidth": 614,
+    "top": 79.25,
+    "pageOverflow": false
+  },
+  {
+    "viewportWidth": 1280,
+    "width": 678,
+    "scroll": 678,
+    "copyWidth": 650,
+    "previewWidth": 650,
+    "top": 89.25,
+    "pageOverflow": false
+  },
+  {
+    "viewportWidth": 1440,
+    "width": 678,
+    "scroll": 678,
+    "copyWidth": 650,
+    "previewWidth": 650,
+    "top": 89.25,
+    "pageOverflow": false
+  }
+]

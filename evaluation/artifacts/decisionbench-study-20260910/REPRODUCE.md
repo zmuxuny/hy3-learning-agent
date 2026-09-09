@@ -30,12 +30,42 @@ tar -xzf evaluation/artifacts/decisionbench-study-20260910/application-runs.tar.
 
 ## 新的真实模型实验
 
-新的模型调用会产生新的输出，应写入新的仓外目录，使用自己的API配置和费用账本。命令格式：
+新的模型调用会产生新的输出，应写入新的仓外目录，使用自己的API配置和费用账本。评分重跑命令如下；先将 `experiment_ledger` 设为已初始化的仓外费用账本路径，通过 `OPENAI_API_KEY` 提供密钥。
 
 ```bash
-PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/run_learning_quality.py --help
-PYTHONPATH=evaluation/src:backend .venv/bin/python -m learning_agent_eval --help
+experiment_output=$(mktemp -d /tmp/decisionbench-new-XXXXXX)
+experiment_ledger=/absolute/path/to/authorized-budget.json
+archive=evaluation/artifacts/decisionbench-study-20260910
+PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/run_learning_quality.py \
+  --suite "$archive/evidence/full/suite.json" --output "$experiment_output/application-scores" \
+  --budget-ledger "$experiment_ledger" --repeats 1
+PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/run_learning_quality.py \
+  --suite "$archive/evidence/validation/suite.json" --output "$experiment_output/validation-scores" \
+  --budget-ledger "$experiment_ledger" --repeats 3
+PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/run_learning_quality.py \
+  --suite "$archive/evidence/adversarial/suite.json" --output "$experiment_output/adversarial-scores" \
+  --budget-ledger "$experiment_ledger" --repeats 1
 ```
+
+重新生成应用输出时，先运行同一组场景，再从新轨迹整理评分输入：
+
+```bash
+application_data=evaluation/datasets/decisionbench-learning-v1/application
+PYTHONPATH=evaluation/src:backend .venv/bin/python -m learning_agent_eval run-agent \
+  --dataset "$application_data" --manifest "$application_data/manifest.json" \
+  --output "$experiment_output/new-product/runtime" --model-mode real --allow-real-model \
+  --budget-ledger "$experiment_ledger"
+PYTHONPATH=evaluation/src:backend .venv/bin/python -m learning_agent_eval evaluate-rules \
+  --input "$experiment_output/new-product/runtime" --output "$experiment_output/new-product/rules"
+PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/prepare_learning_quality.py \
+  --run "$experiment_output/new-product" --output "$experiment_output/new-inputs" \
+  --kind current-real-application
+PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/run_learning_quality.py \
+  --suite "$experiment_output/new-inputs/suite.json" --output "$experiment_output/new-product-scores" \
+  --budget-ledger "$experiment_ledger"
+```
+
+新运行中的成功与故障都保留在终态清单中，故障样本在评分输入中继续保留为无有效运行。原实验逐例隔离调度与首次成功选择的实际脚本另保存在开发记录压缩包中。
 
 本轮固定评分输入为`evidence/full/suite.json`（48×1）、`evidence/validation/suite.json`（24×3）、`evidence/adversarial/suite.json`（8×1）。运行器要求源码干净、依赖与锁文件一致，密钥通过环境变量传入。`design.json`包含方法全文、结构约束与样本摘要；原始评分响应记有实际模型参数和调用凭证。
 

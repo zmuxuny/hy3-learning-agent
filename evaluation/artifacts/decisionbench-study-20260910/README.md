@@ -31,3 +31,9 @@
 - [数据集](../../datasets/decisionbench-learning-v1/README.md)
 
 金额以唯一授权账本为准。`budget-at-experiment-close.json`保存实验结束时的累计摘要，含既有历史调用及未知用量的预留费用，不能作为本轮新增消费额。
+
+## 交付核验
+
+[独立复算记录](verification/independent-recompute.json)核对全部自动与复核表格在干净源码副本中逐字节一致。[源码连接核对](source-verification.json)将48份原始运行的协议、运行源码集合与输入摘要对应到当时的Git提交。应用按固定设计逐例隔离执行；原始采集器中的单例过滤与资格字段继续保留，当前汇总使用本实验设计及内容质量方法。
+
+[最终页面检查](verification/final-responsive.json)记录四种宽度下的页面溢出、计划标题及虚线移除情况。演示服务已停止；[最终费用摘要](verification/budget-at-delivery.json)包含实验及Demo完成后的累计占用和余额。

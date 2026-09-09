@@ -1,0 +1,26 @@
+[
+  {
+    "viewportWidth": 375,
+    "pageOverflow": false,
+    "railCount": 0,
+    "titleVisible": true
+  },
+  {
+    "viewportWidth": 768,
+    "pageOverflow": false,
+    "railCount": 0,
+    "titleVisible": true
+  },
+  {
+    "viewportWidth": 1280,
+    "pageOverflow": false,
+    "railCount": 0,
+    "titleVisible": true
+  },
+  {
+    "viewportWidth": 1440,
+    "pageOverflow": false,
+    "railCount": 0,
+    "titleVisible": true
+  }
+]

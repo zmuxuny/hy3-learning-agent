@@ -1,0 +1,47 @@
+{
+  "initial_source": "bb522db",
+  "initial_full_suite": {
+    "passed": 1463,
+    "failed": 25,
+    "errors": 38,
+    "seconds": 3144.21
+  },
+  "causes": [
+    {
+      "cause": "External copy lacked installed frontend dependencies/build",
+      "resolution": "Provisioned dependencies/build; six targeted checks passed"
+    },
+    {
+      "cause": "Pre-archive relative links",
+      "resolution": "Complete archive and referenced documents provided in da2a76f"
+    },
+    {
+      "cause": "Active engineering responses predated required public audit fields",
+      "resolution": "Separate active fixture in 1b5cd22; historical fixture bytes preserved"
+    },
+    {
+      "cause": "Response-only audit_checks copied into frozen result schemas",
+      "resolution": "0f790de persists only existing result fields"
+    },
+    {
+      "cause": "Global test endpoint used HTTP while current endpoint contract requires HTTPS",
+      "resolution": "0f790de retains isolated loopback port 9 and uses HTTPS"
+    }
+  ],
+  "final_checks": "running on 0f790de",
+  "targeted_checks": [
+    {
+      "source": "1b5cd22",
+      "selection": "active fixture, validity, audit, active review, Judge failures and release versions",
+      "passed": 73,
+      "seconds": 688.89
+    },
+    {
+      "source": "0f790de",
+      "selection": "historical v1/v2 chains, loopback isolation, provider attribution, budget, Judge failures and input limits",
+      "passed": 69,
+      "seconds": 157.21
+    }
+  ],
+  "targeted_note": "Selections overlap; counts are not added as unique tests."
+}

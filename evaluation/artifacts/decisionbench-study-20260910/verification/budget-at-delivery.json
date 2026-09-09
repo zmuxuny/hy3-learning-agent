@@ -1,0 +1,9 @@
+{
+  "limit_micro_cny": 199770238,
+  "charged_micro_cny": 95677338,
+  "remaining_micro_cny": 104092900,
+  "requests": 2343,
+  "unsettled": 58,
+  "scope": "cumulative ledger including historical calls, experiments, Demo and unknown-usage reservations; not cloud bill",
+  "additional_since_125_cny_authorization_micro_cny": 20907100
+}
