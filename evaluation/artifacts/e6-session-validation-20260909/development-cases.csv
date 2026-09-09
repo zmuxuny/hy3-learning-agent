@@ -1,0 +1,8 @@
+case_id,scenario_family_id,track,difficulty,terminal_kind,artifact_id,status,reviewed_outcome,raw_score,rule_capped_score,reviewed_score,dimensions,confirmed_critical,pending_candidates,actual_hard_gates,action_class,run_status
+dev-afternoon-i,dev-afternoon,intervention,hard,episode,episode-b2e0bdcec73eb21b9dcfdeb3,complete,pass,100,100,100,"{""D1"": 2, ""D2"": 2, ""D3"": 2, ""D4"": 2, ""D5"": 2, ""D6"": 2, ""D7"": 2}",[],[],[],INTERVENE_MESSAGE,completed
+dev-ambiguous-a,dev-ambiguous,assessment,hard,episode,episode-099b7b27e7cde117f1128208,complete,pass,100,100,100,"{""D1"": 2, ""D2"": 2, ""D3"": 2, ""D4"": 2, ""D5"": 2, ""D6"": 2, ""D7"": 2}",[],[],[],INSUFFICIENT_EVIDENCE,completed
+dev-history-r,dev-history,revision,hard,episode,episode-3042eebd7bab4ce08aefa324,judge_error,judge_error,,,,{},[],[],[],REQUEST_USER_INPUT,completed
+dev-missing-a,dev-missing,assessment,hard,episode,episode-336a627994ec34a535fb0d5e,complete,pass,100,100,100,"{""D1"": 2, ""D2"": 2, ""D3"": 2, ""D4"": 2, ""D5"": 2, ""D6"": 2, ""D7"": 2}",[],[],[],INSUFFICIENT_EVIDENCE,completed
+dev-patch-r,dev-patch,revision,hard,episode,episode-388f64e77e05add7f4f48081,complete,pass,100,100,100,"{""D1"": 2, ""D2"": 2, ""D3"": 2, ""D4"": 2, ""D5"": 2, ""D6"": 2, ""D7"": 2}",[],[],[],APPLY_REVERSIBLE_PATCH,completed
+dev-quiet-i,dev-quiet,intervention,hard,episode,episode-790be9e690fbe2f15fdb0430,complete,pass,100,100,100,"{""D1"": 2, ""D2"": 2, ""D3"": 2, ""D4"": 2, ""D5"": 2, ""D6"": 2, ""D7"": 2}",[],[],[],WAIT,completed
+dev-ring-planning-p,dev-ring-planning,planning,hard,episode,episode-93069a3e872617a69812d137,complete,fail,70,39,39,"{""D1"": 1, ""D2"": 2, ""D3"": 2, ""D4"": 1, ""D5"": 1, ""D6"": 2, ""D7"": 1}",[],[],"[""planning.draft_schedule""]",PROPOSE_PLAN,waiting_approval

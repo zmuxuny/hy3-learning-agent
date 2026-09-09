@@ -1,6 +1,6 @@
 # E6最终修复、验证与评测档案（2026-09-09）
 
-E6要求已执行完成：修复第三阶段实际代码问题、另版方法验证、重新建立未见家族并冻结登记、完整运行、主AI全轨迹审核及归档。最终I48固定Protocol1.13 / 源码35e77cf；结果formal=false。冻结批次已执行；因运行及评分不完整，未形成正式能力统计。I批formal=false源于I01-P调用失败使来源资格不完整，以及Runtime/Judge错误；18个有分失败案例不参与该布尔值计算。Benchmark登记与完整套件检查通过，第三方接口也不是一律不受信任。E7/E8未开展，未推送、未发布。
+本目录保留1.13冻结家族实验、原始结果与当时AI审核；后续工程审计补修和新版验证见[1.15交付](../e6-session-validation-20260909/README.md)。最终I48固定Protocol1.13 / 源码35e77cf；结果formal=false。冻结批次已执行；因运行及评分不完整，未形成正式能力统计。I批formal=false源于I01-P调用失败使来源资格不完整，以及Runtime/Judge错误；18个有分失败案例不参与该布尔值计算。Benchmark登记与完整套件检查通过，第三方接口也不是一律不受信任。E7/E8未开展，未推送、未发布。
 
 ## 最终固定48分母结果
 
@@ -56,8 +56,9 @@ git clone --no-hardlinks "$REPO" "$WORK/source"
 git -C "$WORK/source" checkout --detach 35e77cf
 cd "$WORK/source"
 # 使用项目锁定依赖；已有同一锁定环境时也可使用其Python绝对路径。
-uv sync --frozen
-PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/summarize_e6_run.py \
+python -m venv "$WORK/venv"
+"$WORK/venv/bin/pip" install -r evaluation/runtime-requirements.lock
+PYTHONPATH=evaluation/src:backend "$WORK/venv/bin/python" evaluation/scripts/summarize_e6_run.py \
   --dataset evaluation/datasets/decisionbench-v1.13-e6-final-test \
   --run "$WORK/evidence/formal113" --output "$WORK/recomputed"
 cmp "$WORK/recomputed/summary.json" "$WORK/evidence/formal113/report/summary.json"
@@ -69,3 +70,5 @@ cmp "$WORK/recomputed/cases.csv" "$WORK/evidence/formal113/report/cases.csv"
 [归档校验](archive-verification.json)核对外层全部成员、嵌套源码清单和配置密钥缺席；[历史保全](historical-preservation.json)核对e491164旧不可变制品，注册表仅追加，Release入口README保留原历史正文并增加当前说明。实际数据库、.env、缓存不归档。[收尾清单](closure-checks.json)记录本轮仓外副本/临时库清理与本地提交状态。
 
 独立审计后的工程修复为Protocol1.14未登记候选，完成离线验证，未做新付费方法实验或新测试批次；1.13原实验不移名。见[审计修复记录](../e6-audit-fixes-20260909/README.md)。
+
+后续1.15已完成定向真实验证；1.14仅离线的历史事实不变。原实验与报告不迁移版本，见[当前验证入口](../e6-session-validation-20260909/README.md)。

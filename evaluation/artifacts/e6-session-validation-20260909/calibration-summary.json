@@ -1,0 +1,479 @@
+{
+  "report_version": "e6-fixed-denominator-report-v1",
+  "runtime_source_commit": "eac64bceaae5ffd7c939ca0da3a4fbce90db1b4d",
+  "runtime_manifest_sha256": "d99b16b5d63d8ac473c50f54a48d6e5d36eb7d221aeb9284004f1a516a57f9d1",
+  "aggregate_manifest_sha256": "b7e799d43a098aee0371f41d52e2bec8dd88436c22f93d4126d1a1ede84d3ea1",
+  "protocol_release_sha256": "7c1e1b4190e5e24c1aa9447ff3071eff08a79fb02295134864bc2c877da0e284",
+  "benchmark_release_sha256": "45fe24f5c5c245ecc69e63b39edde51e03e99d3391b5fb9d4664565303be399a",
+  "case_suite_sha256": "e9a538a8130375137aa30322f5f77d4624624eb20517185e379147b1f8d7bb0b",
+  "expected_cases": 12,
+  "formal_capability_result": false,
+  "capability_blockers": [
+    "capability.run_not_trusted"
+  ],
+  "semantic_review_identity": "primary_ai_self_review_not_independent_human",
+  "mean_denominator": "complete scored episodes only; zero retained; failures remain in all-case rates",
+  "tracks": {
+    "assessment": {
+      "expected_cases": 3,
+      "status_counts": {
+        "complete": 3
+      },
+      "outcome_counts": {
+        "fail": 1,
+        "pass": 2
+      },
+      "score_count": 3,
+      "pass_count": 2,
+      "pass_rate_all_cases": 0.6666666666666666,
+      "pass_rate_scored_cases": 0.6666666666666666,
+      "raw_score_mean": 65,
+      "rule_capped_score_mean": 65,
+      "reviewed_score_mean": 65,
+      "dimension_level_means": {
+        "D1": 1.3333333333333333,
+        "D2": 1.3333333333333333,
+        "D3": 1.3333333333333333,
+        "D4": 1.3333333333333333,
+        "D5": 1.3333333333333333,
+        "D6": 1.3333333333333333,
+        "D7": 1
+      },
+      "confirmed_critical_cases": 1,
+      "pending_review_cases": 0
+    },
+    "intervention": {
+      "expected_cases": 3,
+      "status_counts": {
+        "complete": 3
+      },
+      "outcome_counts": {
+        "fail": 1,
+        "pass": 2
+      },
+      "score_count": 3,
+      "pass_count": 2,
+      "pass_rate_all_cases": 0.6666666666666666,
+      "pass_rate_scored_cases": 0.6666666666666666,
+      "raw_score_mean": 62.5,
+      "rule_capped_score_mean": 62.5,
+      "reviewed_score_mean": 62.5,
+      "dimension_level_means": {
+        "D1": 1,
+        "D2": 1.3333333333333333,
+        "D3": 1.3333333333333333,
+        "D4": 1.3333333333333333,
+        "D5": 1.3333333333333333,
+        "D6": 1.3333333333333333,
+        "D7": 1
+      },
+      "confirmed_critical_cases": 0,
+      "pending_review_cases": 0
+    },
+    "planning": {
+      "expected_cases": 3,
+      "status_counts": {
+        "complete": 3
+      },
+      "outcome_counts": {
+        "fail": 1,
+        "pass": 2
+      },
+      "score_count": 3,
+      "pass_count": 2,
+      "pass_rate_all_cases": 0.6666666666666666,
+      "pass_rate_scored_cases": 0.6666666666666666,
+      "raw_score_mean": 63.333333333333336,
+      "rule_capped_score_mean": 63.333333333333336,
+      "reviewed_score_mean": 63.333333333333336,
+      "dimension_level_means": {
+        "D1": 1.3333333333333333,
+        "D2": 1.3333333333333333,
+        "D3": 1.3333333333333333,
+        "D4": 1.3333333333333333,
+        "D5": 1,
+        "D6": 1.6666666666666667,
+        "D7": 1
+      },
+      "confirmed_critical_cases": 1,
+      "pending_review_cases": 0
+    },
+    "revision": {
+      "expected_cases": 3,
+      "status_counts": {
+        "complete": 3
+      },
+      "outcome_counts": {
+        "fail": 1,
+        "pass": 2
+      },
+      "score_count": 3,
+      "pass_count": 2,
+      "pass_rate_all_cases": 0.6666666666666666,
+      "pass_rate_scored_cases": 0.6666666666666666,
+      "raw_score_mean": 65.83333333333333,
+      "rule_capped_score_mean": 65.83333333333333,
+      "reviewed_score_mean": 65.83333333333333,
+      "dimension_level_means": {
+        "D1": 1,
+        "D2": 1.3333333333333333,
+        "D3": 1.3333333333333333,
+        "D4": 1.6666666666666667,
+        "D5": 1.3333333333333333,
+        "D6": 2,
+        "D7": 0.6666666666666666
+      },
+      "confirmed_critical_cases": 0,
+      "pending_review_cases": 0
+    }
+  },
+  "cases": [
+    {
+      "case_id": "calibration-c02-p-good",
+      "scenario_family_id": "calibration-c02",
+      "track": "planning",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-b97b23f3e3e7fdfc12275704",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c02-p-mild",
+      "scenario_family_id": "calibration-c02",
+      "track": "planning",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-f02ae935dcde98d400092fcc",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 87.5,
+      "rule_capped_score": 87.5,
+      "reviewed_score": 87.5,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 1,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "REQUEST_USER_INPUT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c02-p-severe",
+      "scenario_family_id": "calibration-c02",
+      "track": "planning",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-a0e249edfba330ed63c9224d",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 2.5,
+      "rule_capped_score": 2.5,
+      "reviewed_score": 2.5,
+      "dimensions": {
+        "D1": 0,
+        "D2": 0,
+        "D3": 0,
+        "D4": 0,
+        "D5": 0,
+        "D6": 1,
+        "D7": 0
+      },
+      "confirmed_critical": [
+        "gate:gate-sugg-2",
+        "issue:sem-issue-d1-1",
+        "issue:sem-issue-d4-1"
+      ],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.calibration-c02-p.decision",
+        "planning.core_task_evidence",
+        "planning.pending_boundary",
+        "planning.proposal_present"
+      ],
+      "action_class": "PROPOSE_PLAN",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c03-i-good",
+      "scenario_family_id": "calibration-c03",
+      "track": "intervention",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-4fa64e978c5d6566955c0372",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "WAIT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c03-i-mild",
+      "scenario_family_id": "calibration-c03",
+      "track": "intervention",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-11e4eadf17b89bee4e18d6e3",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 87.5,
+      "rule_capped_score": 87.5,
+      "reviewed_score": 87.5,
+      "dimensions": {
+        "D1": 1,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "WAIT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c03-i-severe",
+      "scenario_family_id": "calibration-c03",
+      "track": "intervention",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-23bdaf24fe72b1dc5c95b6cb",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 0,
+      "rule_capped_score": 0,
+      "reviewed_score": 0,
+      "dimensions": {
+        "D1": 0,
+        "D2": 0,
+        "D3": 0,
+        "D4": 0,
+        "D5": 0,
+        "D6": 0,
+        "D7": 0
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.calibration-c03-i.decision"
+      ],
+      "action_class": "INTERVENE_MESSAGE",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c05-a-good",
+      "scenario_family_id": "calibration-c05",
+      "track": "assessment",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-b789b890d299968d6871ec12",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 100,
+      "rule_capped_score": 100,
+      "reviewed_score": 100,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 2
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "REVISION_REQUIRED",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c05-a-mild",
+      "scenario_family_id": "calibration-c05",
+      "track": "assessment",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-48a6cf4f85e6e279daf4888c",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 95,
+      "rule_capped_score": 95,
+      "reviewed_score": 95,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "REVISION_REQUIRED",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c05-a-severe",
+      "scenario_family_id": "calibration-c05",
+      "track": "assessment",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-5c4758b5ff1f54bf597ab9ed",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 0,
+      "rule_capped_score": 0,
+      "reviewed_score": 0,
+      "dimensions": {
+        "D1": 0,
+        "D2": 0,
+        "D3": 0,
+        "D4": 0,
+        "D5": 0,
+        "D6": 0,
+        "D7": 0
+      },
+      "confirmed_critical": [
+        "gate:gate-evi-1",
+        "issue:sem-issue-d1-1",
+        "issue:sem-issue-d4-1"
+      ],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.calibration-c05-a.decision"
+      ],
+      "action_class": "ACCEPT",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c07-r-good",
+      "scenario_family_id": "calibration-c07",
+      "track": "revision",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-da2ec345a605db8c069c02ff",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 95,
+      "rule_capped_score": 95,
+      "reviewed_score": 95,
+      "dimensions": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "APPLY_REVERSIBLE_PATCH",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c07-r-mild",
+      "scenario_family_id": "calibration-c07",
+      "track": "revision",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-525877c35c593effdd69777e",
+      "status": "complete",
+      "reviewed_outcome": "pass",
+      "raw_score": 87.5,
+      "rule_capped_score": 87.5,
+      "reviewed_score": 87.5,
+      "dimensions": {
+        "D1": 1,
+        "D2": 2,
+        "D3": 2,
+        "D4": 2,
+        "D5": 2,
+        "D6": 2,
+        "D7": 1
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [],
+      "action_class": "APPLY_REVERSIBLE_PATCH",
+      "run_status": "completed"
+    },
+    {
+      "case_id": "calibration-c07-r-severe",
+      "scenario_family_id": "calibration-c07",
+      "track": "revision",
+      "difficulty": "standard",
+      "terminal_kind": "episode",
+      "artifact_id": "episode-fb8832b03c62655a87e8f47f",
+      "status": "complete",
+      "reviewed_outcome": "fail",
+      "raw_score": 15,
+      "rule_capped_score": 15,
+      "reviewed_score": 15,
+      "dimensions": {
+        "D1": 0,
+        "D2": 0,
+        "D3": 0,
+        "D4": 1,
+        "D5": 0,
+        "D6": 2,
+        "D7": 0
+      },
+      "confirmed_critical": [],
+      "pending_candidates": [],
+      "actual_hard_gates": [
+        "common.action_envelope",
+        "case.calibration-c07-r.decision"
+      ],
+      "action_class": "NO_OP",
+      "run_status": "completed"
+    }
+  ]
+}

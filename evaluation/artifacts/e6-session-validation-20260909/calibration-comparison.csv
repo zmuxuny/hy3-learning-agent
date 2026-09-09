@@ -1,0 +1,5 @@
+group,good,mild,severe,strict_order,severe_joint_recall
+c02-p,100,87.5,2.5,True,True
+c03-i,100,87.5,0,True,True
+c05-a,100,95,0,True,True
+c07-r,95,87.5,15,True,True

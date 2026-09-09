@@ -1,6 +1,6 @@
 # 项目状态
 
-> 审计后口径：冻结批次已执行；因运行及评分不完整，未形成正式能力统计。I批formal=false源于I01-P调用失败使来源资格不完整，以及Runtime/Judge错误；18个有分失败案例不参与该布尔值计算。Benchmark登记与完整套件检查通过，第三方接口也不是一律不受信任。 工程补修为Protocol1.14未登记候选，旧实验仍固定1.13；见[审计修复档案](../evaluation/artifacts/e6-audit-fixes-20260909/README.md)。
+> 审计后口径：冻结批次已执行；因运行及评分不完整，未形成正式能力统计。I批formal=false源于I01-P调用失败使来源资格不完整，以及Runtime/Judge错误；18个有分失败案例不参与该布尔值计算。Benchmark登记与完整套件检查通过，第三方接口也不是一律不受信任。 工程活动协议现为 **1.15未登记验证版 / eac64bc**，产品仍为`learning-runtime-e6-audit-1`。跨会话约束归属已修复，真实Collector及Runtime审批回归62项通过；定向真实Development7与Calibration12+4已执行并由主AI审核。Development为5通过/1不通过/1 Judge HTTP429无分；校准四组三档排序与Good重复指标达标。该验证使用已见样本，不是新版正式能力统计。见[本轮验证与交付](../evaluation/artifacts/e6-session-validation-20260909/README.md)。
 
 > 当前状态（2026-09-09）：E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。E7/E8未开展。 详见[E6最终记录](E6最终修复与验收记录.md)与[完整档案](../evaluation/artifacts/e6-completion-20260909/README.md)。
 

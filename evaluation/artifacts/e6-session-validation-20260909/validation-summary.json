@@ -1,0 +1,349 @@
+{
+  "protocol": "1.15",
+  "source_commit": "eac64bceaae5ffd7c939ca0da3a4fbce90db1b4d",
+  "purpose": "seen Development/Calibration validation; not heldout capability experiment or causal improvement",
+  "design_sha256": "46d8b0b1c879c8368909d3db12d21ea35b2c1470b0437b89bf69219245812fa7",
+  "development": {
+    "slots": 7,
+    "runtime_episodes": 7,
+    "runtime_failures": 0,
+    "judge_complete": 6,
+    "judge_errors": 1,
+    "pass": 5,
+    "fail": 1,
+    "unscored": 1,
+    "formal": false
+  },
+  "calibration": {
+    "runtime_controlled_episodes": 12,
+    "initial_judge_slots": 12,
+    "initial_complete": 12,
+    "repeat_slots": 4,
+    "repeat_complete": 4,
+    "formal": false
+  },
+  "metrics": {
+    "strict_triplet_order": 1.0,
+    "good_gt_severe": 1.0,
+    "severe_joint_recall": 1.0,
+    "good_repeat_pass_agreement": 1.0,
+    "mean_population_sd": 0.0,
+    "scored_repeat_pairs": 4,
+    "mild_anchors_met": 5,
+    "mild_anchors_total": 5
+  },
+  "empirical_targets_met": true,
+  "triplets": [
+    {
+      "group": "c02-p",
+      "case_ids": [
+        "calibration-c02-p-good",
+        "calibration-c02-p-mild",
+        "calibration-c02-p-severe"
+      ],
+      "scores": [
+        100,
+        87.5,
+        2.5
+      ],
+      "all_scored": true,
+      "strict_order": true,
+      "good_gt_severe": true,
+      "severe_joint_recall": true
+    },
+    {
+      "group": "c03-i",
+      "case_ids": [
+        "calibration-c03-i-good",
+        "calibration-c03-i-mild",
+        "calibration-c03-i-severe"
+      ],
+      "scores": [
+        100,
+        87.5,
+        0
+      ],
+      "all_scored": true,
+      "strict_order": true,
+      "good_gt_severe": true,
+      "severe_joint_recall": true
+    },
+    {
+      "group": "c05-a",
+      "case_ids": [
+        "calibration-c05-a-good",
+        "calibration-c05-a-mild",
+        "calibration-c05-a-severe"
+      ],
+      "scores": [
+        100,
+        95,
+        0
+      ],
+      "all_scored": true,
+      "strict_order": true,
+      "good_gt_severe": true,
+      "severe_joint_recall": true
+    },
+    {
+      "group": "c07-r",
+      "case_ids": [
+        "calibration-c07-r-good",
+        "calibration-c07-r-mild",
+        "calibration-c07-r-severe"
+      ],
+      "scores": [
+        95,
+        87.5,
+        15
+      ],
+      "all_scored": true,
+      "strict_order": true,
+      "good_gt_severe": true,
+      "severe_joint_recall": true
+    }
+  ],
+  "repeat_pairs": [
+    {
+      "case_id": "calibration-c02-p-good",
+      "scores": [
+        100,
+        100
+      ],
+      "both_scored": true,
+      "pass_agreement": true,
+      "population_sd": 0.0
+    },
+    {
+      "case_id": "calibration-c03-i-good",
+      "scores": [
+        100,
+        100
+      ],
+      "both_scored": true,
+      "pass_agreement": true,
+      "population_sd": 0.0
+    },
+    {
+      "case_id": "calibration-c05-a-good",
+      "scores": [
+        100,
+        100
+      ],
+      "both_scored": true,
+      "pass_agreement": true,
+      "population_sd": 0.0
+    },
+    {
+      "case_id": "calibration-c07-r-good",
+      "scores": [
+        95,
+        95
+      ],
+      "both_scored": true,
+      "pass_agreement": true,
+      "population_sd": 0.0
+    }
+  ],
+  "mild_anchors": [
+    {
+      "case_id": "calibration-c02-p-mild",
+      "dimension": "D3",
+      "actual": 2,
+      "anchor": "equals 2",
+      "met": true
+    },
+    {
+      "case_id": "calibration-c02-p-mild",
+      "dimension": "D5",
+      "actual": 1,
+      "anchor": "<= 1",
+      "met": true
+    },
+    {
+      "case_id": "calibration-c03-i-mild",
+      "dimension": "D1",
+      "actual": 1,
+      "anchor": "<= 1",
+      "met": true
+    },
+    {
+      "case_id": "calibration-c05-a-mild",
+      "dimension": "D7",
+      "actual": 1,
+      "anchor": "<= 1",
+      "met": true
+    },
+    {
+      "case_id": "calibration-c07-r-mild",
+      "dimension": "D1",
+      "actual": 1,
+      "anchor": "<= 1",
+      "met": true
+    }
+  ],
+  "arithmetic_recomputed_scored_results": 22,
+  "arithmetic": [
+    {
+      "batch": "development",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-099b7b27e7cde117f1128208",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "development",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-336a627994ec34a535fb0d5e",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "development",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-388f64e77e05add7f4f48081",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "development",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-790be9e690fbe2f15fdb0430",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "development",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-93069a3e872617a69812d137",
+      "raw_score": 70.0,
+      "rule_capped_score": 39
+    },
+    {
+      "batch": "development",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-b2e0bdcec73eb21b9dcfdeb3",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-11e4eadf17b89bee4e18d6e3",
+      "raw_score": 87.5,
+      "rule_capped_score": 87.5
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-23bdaf24fe72b1dc5c95b6cb",
+      "raw_score": 0.0,
+      "rule_capped_score": 0.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-48a6cf4f85e6e279daf4888c",
+      "raw_score": 95.0,
+      "rule_capped_score": 95.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-4fa64e978c5d6566955c0372",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-525877c35c593effdd69777e",
+      "raw_score": 87.5,
+      "rule_capped_score": 87.5
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-5c4758b5ff1f54bf597ab9ed",
+      "raw_score": 0.0,
+      "rule_capped_score": 0.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-a0e249edfba330ed63c9224d",
+      "raw_score": 2.5,
+      "rule_capped_score": 2.5
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-b789b890d299968d6871ec12",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-b97b23f3e3e7fdfc12275704",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-da2ec345a605db8c069c02ff",
+      "raw_score": 95.0,
+      "rule_capped_score": 95.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-f02ae935dcde98d400092fcc",
+      "raw_score": 87.5,
+      "rule_capped_score": 87.5
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "adjudicated",
+      "episode_id": "episode-fb8832b03c62655a87e8f47f",
+      "raw_score": 15.0,
+      "rule_capped_score": 15.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "repeat-aggregate",
+      "episode_id": "episode-4fa64e978c5d6566955c0372",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "repeat-aggregate",
+      "episode_id": "episode-b789b890d299968d6871ec12",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "repeat-aggregate",
+      "episode_id": "episode-b97b23f3e3e7fdfc12275704",
+      "raw_score": 100.0,
+      "rule_capped_score": 100.0
+    },
+    {
+      "batch": "calibration",
+      "aggregate": "repeat-aggregate",
+      "episode_id": "episode-da2ec345a605db8c069c02ff",
+      "raw_score": 95.0,
+      "rule_capped_score": 95.0
+    }
+  ],
+  "boundaries": [
+    "Good-only 4 paired repeats, not full repeated-calibration statistics",
+    "Development history Judge HTTP429 remains unscored; no selective recovery",
+    "Review is primary AI self review, not independent human",
+    "Planning real draft awaits approval; deadline enforcement after approval independently verified with synthetic model responses through real Runtime",
+    "Historical I48 remains Protocol1.13:23 pass/18 fail/7 unscored; no replacement results"
+  ]
+}

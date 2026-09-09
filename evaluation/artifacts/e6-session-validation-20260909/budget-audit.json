@@ -1,0 +1,320 @@
+{
+  "old_request_prefix_unchanged": true,
+  "all_authorization_and_limits_unchanged": true,
+  "baseline_requests": 1515,
+  "final_requests": 1552,
+  "new_requests": 37,
+  "baseline_charge_micro_cny": 61933642,
+  "new_charge_micro_cny": 1724250,
+  "total_charge_micro_cny": 63657892,
+  "limit_micro_cny": 84393029,
+  "remaining_micro_cny": 20735137,
+  "allocation_micro_cny": 12000000,
+  "within_allocation": true,
+  "all_unknown_usage_count": 27,
+  "all_unknown_usage_reserved_micro_cny": 5841159,
+  "new_status_counts": {
+    "settled": 36,
+    "unknown_usage_reserved": 1
+  },
+  "ledger_sha256": "b12ee2c84f1fab366c7605953f517acab9e8fa5a819875873f14c704502134f3",
+  "pricing_status": "equivalent estimate, supplier CNY invoice not verified",
+  "rows": [
+    {
+      "ticket": 1516,
+      "scope": "dev-afternoon-i",
+      "call_id": "model-call:001",
+      "status": "settled",
+      "charged_micro_cny": 31492,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1517,
+      "scope": "dev-afternoon-i",
+      "call_id": "model-call:002",
+      "status": "settled",
+      "charged_micro_cny": 24634,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1518,
+      "scope": "dev-ambiguous-a",
+      "call_id": "model-call:001",
+      "status": "settled",
+      "charged_micro_cny": 25339,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1519,
+      "scope": "dev-ambiguous-a",
+      "call_id": "model-call:002",
+      "status": "settled",
+      "charged_micro_cny": 26529,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1520,
+      "scope": "dev-history-r",
+      "call_id": "model-call:001",
+      "status": "settled",
+      "charged_micro_cny": 23795,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1521,
+      "scope": "dev-history-r",
+      "call_id": "model-call:002",
+      "status": "settled",
+      "charged_micro_cny": 39335,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1522,
+      "scope": "dev-missing-a",
+      "call_id": "model-call:001",
+      "status": "settled",
+      "charged_micro_cny": 27989,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1523,
+      "scope": "dev-missing-a",
+      "call_id": "model-call:002",
+      "status": "settled",
+      "charged_micro_cny": 25099,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1524,
+      "scope": "dev-patch-r",
+      "call_id": "model-call:001",
+      "status": "settled",
+      "charged_micro_cny": 21635,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1525,
+      "scope": "dev-patch-r",
+      "call_id": "model-call:002",
+      "status": "settled",
+      "charged_micro_cny": 22754,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1526,
+      "scope": "judge",
+      "call_id": "episode-11e4eadf17b89bee4e18d6e3:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 43369,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1527,
+      "scope": "dev-patch-r",
+      "call_id": "model-call:003",
+      "status": "settled",
+      "charged_micro_cny": 22831,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1528,
+      "scope": "dev-quiet-i",
+      "call_id": "model-call:001",
+      "status": "settled",
+      "charged_micro_cny": 24460,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1529,
+      "scope": "dev-ring-planning-p",
+      "call_id": "model-call:001",
+      "status": "settled",
+      "charged_micro_cny": 27667,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1530,
+      "scope": "dev-ring-planning-p",
+      "call_id": "model-call:002",
+      "status": "settled",
+      "charged_micro_cny": 49489,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1531,
+      "scope": "judge",
+      "call_id": "episode-23bdaf24fe72b1dc5c95b6cb:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 57187,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1532,
+      "scope": "repeat-judge",
+      "call_id": "episode-4fa64e978c5d6566955c0372:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 42900,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1533,
+      "scope": "judge",
+      "call_id": "episode-48a6cf4f85e6e279daf4888c:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 55189,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1534,
+      "scope": "repeat-judge",
+      "call_id": "episode-b789b890d299968d6871ec12:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 54761,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1535,
+      "scope": "judge",
+      "call_id": "episode-099b7b27e7cde117f1128208:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 50131,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1536,
+      "scope": "repeat-judge",
+      "call_id": "episode-b97b23f3e3e7fdfc12275704:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 51269,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1537,
+      "scope": "judge",
+      "call_id": "episode-3042eebd7bab4ce08aefa324:attempt:1",
+      "status": "unknown_usage_reserved",
+      "charged_micro_cny": 213756,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1538,
+      "scope": "repeat-judge",
+      "call_id": "episode-da2ec345a605db8c069c02ff:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 50337,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1539,
+      "scope": "judge",
+      "call_id": "episode-4fa64e978c5d6566955c0372:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 43768,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1540,
+      "scope": "judge",
+      "call_id": "episode-336a627994ec34a535fb0d5e:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 48744,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1541,
+      "scope": "judge",
+      "call_id": "episode-525877c35c593effdd69777e:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 53909,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1542,
+      "scope": "judge",
+      "call_id": "episode-388f64e77e05add7f4f48081:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 56204,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1543,
+      "scope": "judge",
+      "call_id": "episode-5c4758b5ff1f54bf597ab9ed:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 63480,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1544,
+      "scope": "judge",
+      "call_id": "episode-790be9e690fbe2f15fdb0430:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 42181,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1545,
+      "scope": "judge",
+      "call_id": "episode-a0e249edfba330ed63c9224d:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 47473,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1546,
+      "scope": "judge",
+      "call_id": "episode-93069a3e872617a69812d137:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 64299,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1547,
+      "scope": "judge",
+      "call_id": "episode-b789b890d299968d6871ec12:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 55249,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1548,
+      "scope": "judge",
+      "call_id": "episode-b2e0bdcec73eb21b9dcfdeb3:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 52736,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1549,
+      "scope": "judge",
+      "call_id": "episode-b97b23f3e3e7fdfc12275704:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 41321,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1550,
+      "scope": "judge",
+      "call_id": "episode-da2ec345a605db8c069c02ff:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 53729,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1551,
+      "scope": "judge",
+      "call_id": "episode-f02ae935dcde98d400092fcc:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 42593,
+      "formula_verified": true
+    },
+    {
+      "ticket": 1552,
+      "scope": "judge",
+      "call_id": "episode-fb8832b03c62655a87e8f47f:attempt:1",
+      "status": "settled",
+      "charged_micro_cny": 46617,
+      "formula_verified": true
+    }
+  ]
+}

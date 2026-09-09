@@ -1,0 +1,31 @@
+{
+  "archive_sha256": "2b1d1201f6cbcc4bf5d6f073d63b6c2d49ed67f3a81a767fc757b82f8772b9e1",
+  "source_commit": "eac64bceaae5ffd7c939ca0da3a4fbce90db1b4d",
+  "paid_calls": 0,
+  "rows": [
+    {
+      "batch": "development",
+      "file": "summary.json",
+      "sha256": "e9083875f64e88c5ebb800ee5de502d7e1958a096952b3f73f564c0c75cfdcb9",
+      "byte_equal": true
+    },
+    {
+      "batch": "development",
+      "file": "cases.csv",
+      "sha256": "7fcbdc0d55ff6acfd4815f0ea46fad79f7fbfb6b86b90456256d2f99ce8b304f",
+      "byte_equal": true
+    },
+    {
+      "batch": "calibration",
+      "file": "summary.json",
+      "sha256": "f067447051a060bff634ad45d1eb5f866be2fe3b99ca5f3f1a9d04c75c968701",
+      "byte_equal": true
+    },
+    {
+      "batch": "calibration",
+      "file": "cases.csv",
+      "sha256": "920bbb2d92868006ce2ad70bfbdea19758349399f6c1cbd05af15a0434a440df",
+      "byte_equal": true
+    }
+  ]
+}

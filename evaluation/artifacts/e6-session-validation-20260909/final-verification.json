@@ -1,0 +1,28 @@
+{
+  "validated_directories": [
+    "development/runtime",
+    "development/rules",
+    "development/judge",
+    "development/aggregate",
+    "development/adjudicated",
+    "calibration/runtime",
+    "calibration/rules",
+    "calibration/judge",
+    "calibration/aggregate",
+    "calibration/adjudicated",
+    "calibration/repeat-judge",
+    "calibration/repeat-aggregate"
+  ],
+  "content_review_bindings_valid": true,
+  "source_snapshot_members_verified": 246,
+  "source_snapshot_sha256": "74be543cbb36f3ffbb394efb2c49ce4ceab996d58bb59d42c40a7221dfb5adf6",
+  "immutable_assets_since_f47e3a1_unchanged": true,
+  "old_archive_members_verified": 6766,
+  "old_archive_verification": "old-archive-verification.json",
+  "modified_old_mutable_entries": [
+    "M\tevaluation/artifacts/e6-audit-fixes-20260909/README.md",
+    "M\tevaluation/artifacts/e6-completion-20260909/README.md",
+    "M\tevaluation/releases/README.md"
+  ],
+  "no_new_formal_benchmark_registration": true
+}
