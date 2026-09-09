@@ -96,3 +96,12 @@ def test_exponential_requirement_checked_with_actual_float_operations():
     assert aggregate(rating(),e)['score']==100
     task['description']='对[1000,1001,1002]展示朴素exp溢出，稳定Softmax不溢出。'
     assert not exponential_facts(e)
+
+
+def test_audit_coverage_requires_inventory_but_allows_additional_finding_labels():
+    from learning_agent_eval.quality_content_audit import validate,CATEGORIES
+    payload={'findings':[{'category':cat,'claim':'核验','claim_ids':['local-label'],
+        'verdict':'not_applicable','verification':'该类无适用内容','evidence_paths':['result.user_visible_output']} for cat in CATEGORIES]}
+    assert validate(payload,sample())==payload
+    e=sample();e['observable_trace']['model_calls']=[{'assistant_text':'撤销时请确认原值。'}]
+    with pytest.raises(ValueError,match='every listed assertion'):validate(payload,e)

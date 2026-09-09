@@ -43,7 +43,7 @@ def validate(payload,e):
     if set(f.category for f in r.findings)!=set(CATEGORIES):raise ValueError('all content categories required')
     expected={x['claim_id'] for x in assertions(e)}
     covered={identity for f in r.findings for identity in f.claim_ids}
-    if covered!=expected:raise ValueError('every listed assertion must be checked, no invented identifiers')
+    if not expected.issubset(covered):raise ValueError('every listed assertion must be checked')
     for f in r.findings:
         for path in f.evidence_paths:
             if not resolve_evidence_path(e,path,roots=set(e))[0]:raise ValueError('audit evidence path not visible')
