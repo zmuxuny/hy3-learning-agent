@@ -52,6 +52,7 @@ def verify_bundle(terminal, episode, rule, reference, runtime, rules):
         == episode_hash,
         rules["input_reference_digests"][identity] == reference_hash,
         rule["input_runtime_manifest_sha256"] == runtime["manifest_sha256"],
+        rules["input_runtime_manifest_sha256"] == runtime["manifest_sha256"],
         terminal["runtime_run_id"]
         == episode["provenance"]["runtime_run_id"]
         == runtime["runtime_run_id"]

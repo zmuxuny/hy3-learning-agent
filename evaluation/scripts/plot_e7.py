@@ -93,7 +93,13 @@ matrix = np.array(
 )
 fig, ax = plt.subplots(figsize=(9, 3.5))
 im = ax.imshow(matrix, cmap="RdYlGn", vmin=-2, vmax=2, aspect="auto")
-ax.set_yticks(range(4), [t.title() for t in tracks])
+ax.set_yticks(
+    range(4),
+    [
+        f"{t.title()} ({d['product']['tracks'][t]['valid_pairs']}/{d['product']['tracks'][t]['expected_pairs']} pairs)"
+        for t in tracks
+    ],
+)
 ax.set_xticks(range(7), [f"D{i}" for i in range(1, 8)])
 for i in range(4):
     for j in range(7):
@@ -111,16 +117,27 @@ save(fig, "dimension-deltas")
 fig, axes = plt.subplots(1, 3, figsize=(11, 3.4), sharey=True)
 for ax, label in zip(axes, ["good", "mild", "severe"]):
     selected = [r for r in d["method_stability"] if r["label"] == label]
+    counts = []
     for arm, x, c in [("baseline", 0, "#737d89"), ("candidate", 1, "#287c67")]:
         rows = [r for r in selected if r["arm"] == arm]
+        counts.append(
+            f"{sum(r['score_population_sd'] is not None for r in rows)}/{len(rows)} complete"
+        )
         for i, row in enumerate(rows):
             sd = row["score_population_sd"]
             if sd is not None:
                 ax.scatter(x + (i - 1.5) * 0.08, sd, color=c, s=35)
     ax.set_title(label.title())
-    ax.set_xticks([0, 1], ["Old Judge", "New Judge"])
+    ax.set_xticks([0, 1], [f"Old Judge\n{counts[0]}", f"New Judge\n{counts[1]}"])
     ax.set_xlim(-0.4, 1.4)
     ax.grid(axis="y", alpha=0.15)
 axes[0].set_ylabel("Population score SD (two repeats)")
 fig.suptitle("Identical controlled trajectories · four cases per grade", y=1.04)
+fig.text(
+    0.5,
+    -0.08,
+    "A point requires two valid repeats. Missing results remain in the case denominator.",
+    ha="center",
+    fontsize=9,
+)
 save(fig, "method-stability")

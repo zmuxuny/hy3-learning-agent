@@ -125,6 +125,9 @@ def compute(root, index):
             raise ValueError("fixed_comparison_inventory_invalid")
         for terminal in selected:
             case, identity = terminal["case_id"], terminal["artifact_id"]
+            comparison = next(x for x in jm["rows"] if x["case_id"] == case)
+            if comparison["artifact_sha256"] != terminal["artifact_sha256"]:
+                raise ValueError("comparison_terminal_binding_invalid")
             row = dict(
                 kind=slot["kind"],
                 arm=slot["arm"],
@@ -164,6 +167,9 @@ def compute(root, index):
                     != episode["provenance"]["episode_sha256"]
                     or judge["rule_result_sha256"] != rule["result_sha256"]
                     or judge["judge_reference_sha256"] != reference["reference_sha256"]
+                    or comparison["judge_result_sha256"] != judge["result_sha256"]
+                    or comparison["episode_sha256"] != judge["episode_sha256"]
+                    or comparison["comparison_status"] != judge["status"]
                 ):
                     raise ValueError("judge_binding_invalid")
                 aggregate = _aggregate_document(
