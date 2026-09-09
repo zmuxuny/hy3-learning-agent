@@ -492,6 +492,7 @@ export const useShellStore = defineStore('shell', () => {
         } else if (result.ok && toolName === 'plan_proposal_create' && session.activeSessionId) {
           const response = await api.get(`/agent/sessions/${session.activeSessionId}/planning`);
           session.setPlanningState(response.data);
+          await session.loadActiveSessions();
         }
       },
       onSteer: (payload, runId) => {
