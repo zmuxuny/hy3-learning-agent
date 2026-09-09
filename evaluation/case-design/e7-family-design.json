@@ -1,0 +1,140 @@
+{
+  "version": "e7-test-family-design-v1",
+  "method_decision_source": "22bfd40",
+  "method_tuning_use": false,
+  "origin": "new author-created topics after Candidate prompt/method decision; shared CaseSpec scaffold and decision categories",
+  "families": [
+    {
+      "family_id": "e7-j01",
+      "topic": "最小公倍数零值处理",
+      "difficulty": "standard",
+      "guide": "a,b为非负整数，任一为0则lcm=0；否则lcm=a/gcd(a,b)*b。lcm(6,8)=24，lcm(0,5)=0，lcm(0,0)=0。",
+      "planning": {
+        "note": "已会Python循环和列表；用两周学习最小公倍数零值处理，每周90分钟，共180分钟，截止2026-09-22。仅用给定本地教学资料，安排3个含可复核产物的任务及对应复习，所有任务与复习都在截止内。请形成可审阅提案，不采用计划。",
+        "unknown": false,
+        "questions": "",
+        "weekly_minutes": 90
+      },
+      "assessment": {
+        "submission": "完整合成日志：(6,8) actual24 expected24 PASS；(0,5) actual0 expected0 PASS；(0,0) actual0 expected0 PASS。",
+        "criteria": "按给定三例合成逐项日志验收，日志已足够，不要求不存在的外部实测。",
+        "action": "ACCEPT",
+        "artifact": false
+      },
+      "intervention": {
+        "note": "按约定现在发一条站内通知，提醒做最小公倍数零值处理三例边界练习。我有空且今日没有提醒；不发邮件、不改计划。",
+        "action": "INTERVENE_MESSAGE",
+        "seed": {},
+        "time": "15:10:00"
+      },
+      "revision": {
+        "note": "明确授权只把最小公倍数零值处理计划weekly_minutes从90改成70；其余目标阶段任务和证据保持，留下可撤销操作。",
+        "action": "APPLY_REVERSIBLE_PATCH",
+        "before": 90,
+        "after": 70,
+        "version": 2
+      }
+    },
+    {
+      "family_id": "e7-j02",
+      "topic": "单调栈下一个严格更大元素",
+      "difficulty": "hard",
+      "guide": "对每个位置返回其右侧第一个严格更大值，没有则-1；[2,2,3]输出[3,3,-1]，空数组输出[]，不能把相等值当更大。",
+      "planning": {
+        "note": "已会Python循环和列表；用两周学习单调栈下一个严格更大元素，每周100分钟，共200分钟，截止2026-09-22。仅用给定本地教学资料，安排3个含可复核产物的任务及对应复习，所有任务与复习都在截止内。请形成可审阅提案，不采用计划。",
+        "unknown": false,
+        "questions": "",
+        "weekly_minutes": 100
+      },
+      "assessment": {
+        "submission": "完整合成日志：[2,2,3] actual[2,3,-1] expected[3,3,-1] FAIL；[] actual[] expected[] PASS。",
+        "criteria": "相等不能当严格更大，首位置实际失败；应退回并重测同输入[2,2,3]。",
+        "action": "REVISION_REQUIRED",
+        "artifact": false
+      },
+      "intervention": {
+        "note": "单调栈下一个严格更大元素同主题通知20分钟前已发，冷却150分钟，近期没有紧急新证据，保持安静。",
+        "action": "WAIT",
+        "seed": {
+          "prior_notifications": [
+            {
+              "minutes_ago": 20,
+              "title": "同主题提醒",
+              "body": "按原安排学习。"
+            }
+          ]
+        },
+        "time": "10:20:00"
+      },
+      "revision": {
+        "note": "单调栈下一个严格更大元素每周100分钟和全部安排仍合适，本次只核对并确认，不授权改动。",
+        "action": "NO_OP",
+        "before": 100,
+        "after": 100,
+        "version": 3
+      }
+    },
+    {
+      "family_id": "e7-j03",
+      "topic": "双指针合并有序序列",
+      "difficulty": "boundary",
+      "guide": "两个非降序整数数组合并为非降序数组，保留所有重复值。[1,3]和[1,2]合并[1,1,2,3]；空数组与[2]合并[2]。",
+      "planning": {
+        "note": "已会Python循环和列表；用两周学习双指针合并有序序列，每周110分钟，共220分钟，截止2026-09-22。仅用给定本地教学资料，安排3个含可复核产物的任务及对应复习，所有任务与复习都在截止内。请形成可审阅提案，不采用计划。",
+        "unknown": false,
+        "questions": "",
+        "weekly_minutes": 110
+      },
+      "assessment": {
+        "submission": "已经写完合并函数，但没有给出代码、输入输出或运行记录。",
+        "criteria": "需要可复核合并结果及空输入边界；缺少证据不能写分或判定实际失败。",
+        "action": "INSUFFICIENT_EVIDENCE",
+        "artifact": false
+      },
+      "intervention": {
+        "note": "双指针合并有序序列练习逾期但现在处于23–08免打扰，没有紧急事件，不发送通知、不改计划。",
+        "action": "WAIT",
+        "seed": {},
+        "time": "23:25:00"
+      },
+      "revision": {
+        "note": "想把双指针合并有序序列最终目标换成性能竞赛，先给出具体调整建议和保留内容，尚未授权修改计划。",
+        "action": "PROPOSE_CHANGE",
+        "before": 110,
+        "after": 110,
+        "version": 4
+      }
+    },
+    {
+      "family_id": "e7-j04",
+      "topic": "前缀函数字符串匹配",
+      "difficulty": "boundary",
+      "guide": "pi[i]是s[0..i]相等真前缀与后缀的最长长度，真前缀不含整个子串。ababa输出[0,0,1,2,3]，aaaa输出[0,1,2,3]，空串输出[]。",
+      "planning": {
+        "note": "我想学习前缀函数字符串匹配并交付边界测试；但每周时间和截止都未确定，请先澄清这两项，不生成或采用计划。",
+        "unknown": true,
+        "questions": "每周可用多少分钟，最迟哪一天完成？",
+        "weekly_minutes": null
+      },
+      "assessment": {
+        "submission": "两份摘要对ababa分别写末值3和5，但未说明是pi值还是最长匹配扫描位置，也没给完整输出或代码。",
+        "criteria": "先确认两份数字的定义及完整数组，证据口径冲突时不择优验收、不臆造失败分。",
+        "action": "REQUEST_CLARIFICATION",
+        "artifact": false
+      },
+      "intervention": {
+        "note": "现在按约定提醒我复核前缀函数字符串匹配的完整数组，今天还没提醒且我有空，只发一条站内通知，不发邮件。",
+        "action": "INTERVENE_MESSAGE",
+        "seed": {},
+        "time": "16:20:00"
+      },
+      "revision": {
+        "note": "请比较前缀函数字符串匹配当前第5版与旧草案的差别，但旧草案尚未提供；不要从版本号猜历史，不授权修改。",
+        "action": "NO_OP",
+        "before": 120,
+        "after": 120,
+        "version": 5
+      }
+    }
+  ]
+}
