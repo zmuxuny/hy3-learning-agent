@@ -2,6 +2,8 @@
 
 `evaluation/` 是第三阶段的隔离评测控制平面。活动协议为 **Evaluation Protocol Release 1.16**。E7完成同输入产品版本比较、同轨迹Judge方法比较、逐例复核与全新环境离线复算；[结果档案](artifacts/e7-comparison-20260909/README.md)、[复现命令](artifacts/e7-comparison-20260909/REPRODUCE.md)及[报告初稿](../docs/E8阶段三报告初稿.md)是当前入口。比较保留各自来源协议，formal=false；E6 I48与1.15定向验证继续按原版独立引用。DecisionEpisode v4、方法协议与Benchmark分别版本化。
 
+当前研究重点是判据是否合理、缺陷是否正确定位及重复评分是否稳定；E7产品分数变化属于已完成的补充实验。任务书要求与扩展边界见[当前方案](../docs/腾讯犀牛鸟开源实习第三阶段项目方案.md#当前任务范围与验收依据)。
+
 当前活动链路是：
 
 ```text
