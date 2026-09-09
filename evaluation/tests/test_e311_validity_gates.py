@@ -65,7 +65,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATASET = PROJECT_ROOT / "evaluation" / "datasets" / "decisionbench-v4-engineering"
 CASE_MANIFEST = DATASET / "manifest.json"
 FIXED_RESPONSES = (
-    PROJECT_ROOT / "evaluation" / "fixtures" / "e311-fixed-judge-responses-v3.json"
+    PROJECT_ROOT / "evaluation" / "fixtures" / "active-fixed-judge-responses-v3.json"
 )
 RUNTIME_FAILURE_ID = "failure:case-e31-p-provider-failure"
 

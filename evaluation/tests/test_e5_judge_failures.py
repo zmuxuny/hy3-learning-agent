@@ -41,7 +41,7 @@ def judge_inputs(tmp_path_factory):
     )
     evaluate_active_rules(input_path=runtime, output=rules)
     payload = json.loads(
-        (ROOT / "evaluation/fixtures/e311-fixed-judge-responses-v3.json").read_text()
+        (ROOT / "evaluation/fixtures/active-fixed-judge-responses-v3.json").read_text()
     )["responses"][0]
     return {"runtime": runtime, "rules": rules, "episode_id": episode_id, "payload": payload}
 

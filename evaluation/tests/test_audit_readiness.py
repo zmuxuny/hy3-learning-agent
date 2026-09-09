@@ -31,7 +31,7 @@ from pydantic import ValidationError
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "evaluation/datasets/decisionbench-v4-engineering"
-FIXED = ROOT / "evaluation/fixtures/e311-fixed-judge-responses-v3.json"
+FIXED = ROOT / "evaluation/fixtures/active-fixed-judge-responses-v3.json"
 
 
 def load(path):

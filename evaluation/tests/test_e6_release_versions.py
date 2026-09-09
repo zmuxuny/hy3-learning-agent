@@ -138,16 +138,8 @@ def test_stub_runtime_rules_judge_preserve_active_protocol_identity(tmp_path):
     )
     evaluate_active_rules(input_path=runtime, output=rules)
     payload = json.loads(
-        (ROOT / "evaluation/fixtures/e311-fixed-judge-responses-v3.json").read_text()
+        (ROOT / "evaluation/fixtures/active-fixed-judge-responses-v3.json").read_text()
     )["responses"][0]
-    # The historical fixture predates the required public audit checks. Keep its
-    # bytes frozen and supply this active-contract engineering observation here.
-    payload["audit_checks"] = [{
-        "claim": "The controlled response is present in the public Episode",
-        "verification": "Read result.user_visible_output from the captured fixture",
-        "consistent": True,
-        "evidence_paths": ["result.user_visible_output"],
-    }]
     provider = FixedResponseJudgeProviderV3(
         [payload], frozen_time="2026-09-08T00:00:00Z"
     )

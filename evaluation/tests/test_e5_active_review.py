@@ -23,7 +23,7 @@ def test_semantic_pending_and_confirmed_complete_active_pipeline(tmp_path):
     runtime, rules, judges = (tmp_path / name for name in ["runtime", "rules", "judges"])
     run_active_runtime(dataset=dataset, manifest=dataset / "manifest.json", output=runtime, episode_ids={episode_id}, model_mode="stub")
     evaluate_active_rules(input_path=runtime, output=rules)
-    payload = json.loads((ROOT / "evaluation/fixtures/e311-fixed-judge-responses-v3.json").read_text())["responses"][0]
+    payload = json.loads((ROOT / "evaluation/fixtures/active-fixed-judge-responses-v3.json").read_text())["responses"][0]
     payload["semantic_issues"] = [{"issue_id": "synthetic-critical", "dimension_id": "D4", "severity": "critical", "reason_code": "synthetic-claim", "evidence_paths": ["result.action_class"], "public_summary": "Synthetic semantic concern for the review pipeline test."}]
     provider = FixedResponseJudgeProviderV3([payload], frozen_time="2026-09-01T00:00:00Z")
     evaluate_active_judges(episodes=runtime, rules=rules, output=judges, judge_mode="stub", provider=provider)
