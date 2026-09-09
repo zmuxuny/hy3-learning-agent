@@ -1,0 +1,143 @@
+..............................FFF......                                  [100%]
+=================================== FAILURES ===================================
+_ test_provider_failures_keep_safe_cause_and_unknown_usage_reservation[error0-transport_timeout-None] _
+
+tmp_path = PosixPath('/tmp/e6-review-fix-sw8a8c3r/pytest-temp/test_provider_failures_keep_sa0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7469842950f0>
+error = TimeoutError('SECRET'), category = 'transport_timeout'
+http_status = None
+
+    @pytest.mark.parametrize("error,category,http_status", [
+        (TimeoutError("SECRET"), "transport_timeout", None),
+        (urllib.error.HTTPError("https://secret.invalid", 429, "SECRET", {}, None), "http_error", 429),
+        (urllib.error.URLError("SECRET"), "transport_error", None),
+    ])
+    def test_provider_failures_keep_safe_cause_and_unknown_usage_reservation(tmp_path, monkeypatch, error, category, http_status):
+        ledger = tmp_path / "budget.json"
+        ModelBudget.create(ledger, limit_micro_cny=500_000)
+        monkeypatch.setenv("OPENAI_API_KEY", "synthetic-key")
+        def fail(*args, **kwargs):
+            assert kwargs["timeout"] == 180
+            raise error
+        monkeypatch.setattr("urllib.request.urlopen", fail)
+>       reply = OpenAICompatibleHy3JudgeProviderV3(budget_ledger=ledger).complete({"messages": [], "response_format": {}})
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+evaluation/tests/test_e6_repairs.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+evaluation/src/learning_agent_eval/active_judge.py:328: in __init__
+    self.endpoint = configured_endpoint()
+                    ^^^^^^^^^^^^^^^^^^^^^
+evaluation/src/learning_agent_eval/provider_config.py:49: in configured_endpoint
+    return ProviderEndpoint(os.environ.get("OPENAI_API_BASE", DEFAULT_API_BASE))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:4: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ProviderEndpoint(api_base='http://127.0.0.1:9/v1')
+
+    def __post_init__(self):
+        base = self.api_base.rstrip("/")
+        parsed = urlsplit(base)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username
+                or parsed.password or parsed.query or parsed.fragment):
+>           raise ValueError("provider base must be credential-free HTTPS")
+E           ValueError: provider base must be credential-free HTTPS
+
+evaluation/src/learning_agent_eval/provider_config.py:25: ValueError
+_ test_provider_failures_keep_safe_cause_and_unknown_usage_reservation[error1-http_error-429] _
+
+tmp_path = PosixPath('/tmp/e6-review-fix-sw8a8c3r/pytest-temp/test_provider_failures_keep_sa1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x746984295810>
+error = <HTTPError 429: 'SECRET'>, category = 'http_error', http_status = 429
+
+    @pytest.mark.parametrize("error,category,http_status", [
+        (TimeoutError("SECRET"), "transport_timeout", None),
+        (urllib.error.HTTPError("https://secret.invalid", 429, "SECRET", {}, None), "http_error", 429),
+        (urllib.error.URLError("SECRET"), "transport_error", None),
+    ])
+    def test_provider_failures_keep_safe_cause_and_unknown_usage_reservation(tmp_path, monkeypatch, error, category, http_status):
+        ledger = tmp_path / "budget.json"
+        ModelBudget.create(ledger, limit_micro_cny=500_000)
+        monkeypatch.setenv("OPENAI_API_KEY", "synthetic-key")
+        def fail(*args, **kwargs):
+            assert kwargs["timeout"] == 180
+            raise error
+        monkeypatch.setattr("urllib.request.urlopen", fail)
+>       reply = OpenAICompatibleHy3JudgeProviderV3(budget_ledger=ledger).complete({"messages": [], "response_format": {}})
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+evaluation/tests/test_e6_repairs.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+evaluation/src/learning_agent_eval/active_judge.py:328: in __init__
+    self.endpoint = configured_endpoint()
+                    ^^^^^^^^^^^^^^^^^^^^^
+evaluation/src/learning_agent_eval/provider_config.py:49: in configured_endpoint
+    return ProviderEndpoint(os.environ.get("OPENAI_API_BASE", DEFAULT_API_BASE))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:4: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ProviderEndpoint(api_base='http://127.0.0.1:9/v1')
+
+    def __post_init__(self):
+        base = self.api_base.rstrip("/")
+        parsed = urlsplit(base)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username
+                or parsed.password or parsed.query or parsed.fragment):
+>           raise ValueError("provider base must be credential-free HTTPS")
+E           ValueError: provider base must be credential-free HTTPS
+
+evaluation/src/learning_agent_eval/provider_config.py:25: ValueError
+_ test_provider_failures_keep_safe_cause_and_unknown_usage_reservation[error2-transport_error-None] _
+
+tmp_path = PosixPath('/tmp/e6-review-fix-sw8a8c3r/pytest-temp/test_provider_failures_keep_sa2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7469842ffbf0>
+error = URLError('SECRET'), category = 'transport_error', http_status = None
+
+    @pytest.mark.parametrize("error,category,http_status", [
+        (TimeoutError("SECRET"), "transport_timeout", None),
+        (urllib.error.HTTPError("https://secret.invalid", 429, "SECRET", {}, None), "http_error", 429),
+        (urllib.error.URLError("SECRET"), "transport_error", None),
+    ])
+    def test_provider_failures_keep_safe_cause_and_unknown_usage_reservation(tmp_path, monkeypatch, error, category, http_status):
+        ledger = tmp_path / "budget.json"
+        ModelBudget.create(ledger, limit_micro_cny=500_000)
+        monkeypatch.setenv("OPENAI_API_KEY", "synthetic-key")
+        def fail(*args, **kwargs):
+            assert kwargs["timeout"] == 180
+            raise error
+        monkeypatch.setattr("urllib.request.urlopen", fail)
+>       reply = OpenAICompatibleHy3JudgeProviderV3(budget_ledger=ledger).complete({"messages": [], "response_format": {}})
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+evaluation/tests/test_e6_repairs.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+evaluation/src/learning_agent_eval/active_judge.py:328: in __init__
+    self.endpoint = configured_endpoint()
+                    ^^^^^^^^^^^^^^^^^^^^^
+evaluation/src/learning_agent_eval/provider_config.py:49: in configured_endpoint
+    return ProviderEndpoint(os.environ.get("OPENAI_API_BASE", DEFAULT_API_BASE))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:4: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ProviderEndpoint(api_base='http://127.0.0.1:9/v1')
+
+    def __post_init__(self):
+        base = self.api_base.rstrip("/")
+        parsed = urlsplit(base)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username
+                or parsed.password or parsed.query or parsed.fragment):
+>           raise ValueError("provider base must be credential-free HTTPS")
+E           ValueError: provider base must be credential-free HTTPS
+
+evaluation/src/learning_agent_eval/provider_config.py:25: ValueError
+=========================== short test summary info ============================
+FAILED evaluation/tests/test_e6_repairs.py::test_provider_failures_keep_safe_cause_and_unknown_usage_reservation[error0-transport_timeout-None]
+FAILED evaluation/tests/test_e6_repairs.py::test_provider_failures_keep_safe_cause_and_unknown_usage_reservation[error1-http_error-429]
+FAILED evaluation/tests/test_e6_repairs.py::test_provider_failures_keep_safe_cause_and_unknown_usage_reservation[error2-transport_error-None]
+3 failed, 36 passed in 4.56s

@@ -1,0 +1,1 @@
+{'scope': 'seen original public responses, offline contract validation only; no rescoring or model calls', 'valid_responses': 41, 'fact_checks': 225, 'counterexamples': [{'mutation': 'missing', 'errors': ['response_schema_invalid']}, {'mutation': 'empty', 'errors': ['response_schema_invalid']}, {'mutation': 'invalid_path', 'errors': ['response_evidence_invalid']}]}
