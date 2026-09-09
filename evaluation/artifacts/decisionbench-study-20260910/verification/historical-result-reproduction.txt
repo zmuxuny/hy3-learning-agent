@@ -1,0 +1,170 @@
+E
+==================================== ERRORS ====================================
+_ ERROR at setup of test_v3_wrong_decision_is_valid_and_receives_critical_fail _
+
+tmp_path_factory = TempPathFactory(_given_basetemp=None, _trace=<pluggy._tracing.TagTracerSub object at 0x703108ea2060>, _basetemp=PosixPath('/tmp/pytest-of-root/pytest-77'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope="module")
+    def e31_chain(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
+        root = tmp_path_factory.mktemp("e31-chain")
+        runtime = root / "runtime"
+        rules = root / "rules"
+        judges = root / "judges"
+        aggregate = root / "aggregate"
+        runtime_summary = run_agent_v3(
+            dataset=DATASET,
+            manifest=CASE_MANIFEST,
+            output=runtime,
+            model_mode="stub",
+        )
+        rule_summary = evaluate_run_rules_v2(input_path=runtime, output=rules)
+>       judge_summary = evaluate_judges_v2(
+            episodes=runtime,
+            rules=rules,
+            output=judges,
+            judge_mode="stub",
+            stub_response=FIXED_RESPONSES,
+        )
+
+evaluation/tests/test_e31_scoring_chain.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+evaluation/src/learning_agent_eval/active_judge.py:944: in _evaluate_judges_historical_v2
+    result, repaired = _evaluate_one(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+episode = {'schema_version': 'decision-episode-v3', 'episode_id': 'episode-2cdb9b5463d3b78023c6aba0', 'case_spec_sha256': '2cdb9...aee57900ba904c6205', 'judge_reference_sha256': 'c2fb713e91998efd5cc23718d7b2c9fca1cd3eb05823125dae1b73c54fede3a8', ...}
+rule_result = {'schema_version': 'rule-result-v2', 'evaluator_version': 'deterministic-rule-evaluator-v2', 'episode_id': 'episode-2cdb9b5463d3b78023c6aba0', 'episode_sha256': '8f700927f6868d5e39b56cce8706a42faef6faf8df710b86530bb77869c7b364', ...}
+reference = {'schema_version': 'judge-reference-v1', 'opaque_case_id': 'case-2cdb9b5463d3b78023c6aba0', 'case_spec_sha256': '2cdb9b5463d3b78023c6aba0aa04f260d1f6b4fd8f0585aee57900ba904c6205', 'track': 'planning', ...}
+judge_mode = 'stub'
+provider = <learning_agent_eval.active_judge.FixedResponseJudgeProviderV2 object at 0x703107e992b0>
+git_commit = '1b5cd22029ee9cda501367026e3fb733b3800bd3', worktree_clean = True
+dependency_digest = '2f169d5e5b702a6c9d76f841791635b851b6e21887bff55aa651b20fec5873b1'
+dependency_lock_verified = True
+
+    def _evaluate_one(
+        *,
+        episode: Mapping[str, Any],
+        rule_result: Mapping[str, Any],
+        reference: Mapping[str, Any],
+        judge_mode: str,
+        provider: JudgeProviderV2,
+        git_commit: str,
+        worktree_clean: bool,
+        dependency_digest: str,
+        dependency_lock_verified: bool = True,
+    ) -> tuple[dict[str, Any], bool]:
+        try:
+            blind_input = build_blind_judge_input_v2(episode, rule_result, reference)
+        except BlindProjectionV2Error as exc:
+            raise JudgeEvaluationV2Error(
+                "blind_input_invalid",
+                "blind",
+                str(episode["episode_id"]),
+                "DecisionEpisode v3 could not produce a safe blind Judge input",
+            ) from exc
+        result = _result_base(
+            episode=episode,
+            rule_result=rule_result,
+            reference=reference,
+            blind_input=blind_input,
+            judge_mode=judge_mode,
+        )
+        replies: list[JudgeProviderReplyV2] = []
+        repaired = False
+        if rule_result["status"] == "invalid_input":
+            payload = None
+            status = "invalid_input"
+            error_code = "rule_invalid_input"
+        else:
+            payload = None
+            error_codes: tuple[str, ...] = ()
+            for attempt in range(REPAIR_LIMIT + 1):
+                request = build_provider_request_v2(
+                    blind_input,
+                    repair_error_codes=error_codes if attempt else (),
+                )
+                try:
+                    reply = provider.complete(request)
+                except Exception:  # noqa: BLE001 - raw provider exceptions are discarded
+                    error_codes = ("provider_error",)
+                    break
+                replies.append(reply)
+                if reply.status != "completed":
+                    error_codes = ("provider_error",)
+                    break
+                payload, error_codes = _validate_payload(
+                    reply.content, episode=episode, blind_input=blind_input
+                )
+                if payload is not None:
+                    repaired = attempt == 1
+                    break
+            if payload is None:
+                status = "judge_error"
+                error_code = (
+                    "judge_provider_error"
+                    if error_codes == ("provider_error",)
+                    else "judge_response_invalid"
+                )
+            else:
+                status = "complete"
+                error_code = None
+        attestation = _provider_attestation(
+            mode=judge_mode,
+            replies=replies,
+            frozen_time=episode["environment"]["frozen_time"],
+            git_commit=git_commit,
+            worktree_clean=worktree_clean,
+            dependency_digest=dependency_digest,
+            dependency_lock_verified=dependency_lock_verified,
+        )
+        formal = bool(
+            status == "complete"
+            and judge_mode == "real"
+            and attestation["attribution_status"] == "eligible"
+            and episode["provenance"]["formal_evaluation_result"]
+            and rule_result["formal_evaluation_result"]
+        )
+        if payload is None:
+            result.update(
+                {
+                    "dimensions": [],
+                    "semantic_issues": [],
+                    "suggested_hard_gates": [],
+                }
+            )
+        else:
+            result.update(payload)
+        result.update(
+            {
+                "status": status,
+                "provider_attestation": attestation,
+                "formal_evaluation_result": formal,
+                "evaluation_status": (
+                    "formal_model_evaluation" if formal else "not_a_formal_model_evaluation"
+                ),
+                "error_code": error_code,
+                "result_sha256": "0" * 64,
+            }
+        )
+        result["result_sha256"] = judge_result_digest(result)
+        errors = validate_judge_result_v2(
+            result,
+            episode=episode,
+            rule_result=rule_result,
+            reference=reference,
+            blind_input=blind_input,
+        )
+        if errors:
+>           raise JudgeEvaluationV2Error(
+                "judge_result_invalid",
+                "validate",
+                str(episode["episode_id"]),
+                "Judge Result v2 failed contract or evidence validation",
+            )
+E           learning_agent_eval.active_judge.JudgeEvaluationV2Error: Judge Result v2 failed contract or evidence validation
+
+evaluation/src/learning_agent_eval/active_judge.py:849: JudgeEvaluationV2Error
+=========================== short test summary info ============================
+ERROR evaluation/tests/test_e31_scoring_chain.py::test_v3_wrong_decision_is_valid_and_receives_critical_fail
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 error in 72.09s (0:01:12)

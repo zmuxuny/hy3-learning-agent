@@ -1,0 +1,8 @@
+......                                                                   [100%]
+=============================== warnings summary ===============================
+tests/hardening/test_h0_release_regressions.py::test_release_archive_starts_without_node_when_python_runtime_is_ready
+  /root/miniconda3/lib/python3.13/shutil.py:1281: DeprecationWarning: Python 3.14 will, by default, filter extracted tar archives and reject files or modify their metadata. Use the filter argument to control this behavior.
+    tarobj.extractall(extract_dir, filter=filter)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+6 passed, 1 warning in 14.46s

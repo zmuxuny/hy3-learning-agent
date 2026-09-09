@@ -1,0 +1,51 @@
+F
+=================================== FAILURES ===================================
+__________ test_full_active_chain_keeps_every_terminal_and_validates ___________
+
+e311_chain = {'root': PosixPath('/tmp/pytest-of-root/pytest-75/e311-chain0'), 'runtime': PosixPath('/tmp/pytest-of-root/pytest-75/e...st-of-root/pytest-75/e311-chain0/rules'), 'judges': PosixPath('/tmp/pytest-of-root/pytest-75/e311-chain0/judges'), ...}
+
+    def test_full_active_chain_keeps_every_terminal_and_validates(
+        e311_chain: dict[str, Any],
+    ) -> None:
+        assert len(e311_chain["runtime_summary"].episode_ids) == 11
+        assert e311_chain["runtime_summary"].failure_ids == (RUNTIME_FAILURE_ID,)
+        failure = _load(
+            e311_chain["runtime"] / "failures" / f"{RUNTIME_FAILURE_ID}.json"
+        )
+        assert failure["isolation_evidence"] is None
+        assert failure["protocol_eligible"] is False
+        for key in ("runtime", "rules", "judges", "aggregate"):
+            report = validate_dataset(e311_chain[key])
+            assert report.ok, [item.render() for item in report.issues]
+        for summary in (
+            e311_chain["runtime_summary"],
+            e311_chain["rule_summary"],
+            e311_chain["judge_summary"],
+            e311_chain["aggregate_summary"],
+        ):
+            assert summary.formal_evaluation_result is False
+        manifests = [
+            _load(e311_chain["runtime"] / "run-manifest.json"),
+            _load(e311_chain["rules"] / "rule-manifest.json"),
+            _load(e311_chain["judges"] / "run-manifest.json"),
+            _load(e311_chain["aggregate"] / "run-manifest.json"),
+        ]
+        assert all(item["git_commit"] == current_git_commit() for item in manifests)
+        assert all(item["trusted_benchmark_run"] is False for item in manifests)
+        aggregate_manifest = manifests[-1]
+        assert aggregate_manifest["formal_capability_result"] is False
+>       assert aggregate_manifest["capability_blockers"] == [
+            "capability.run_not_trusted",
+            "capability.runtime_failure",
+        ]
+E       AssertionError: assert ['capability....time_failure'] == ['capability....time_failure']
+E         
+E         At index 0 diff: 'capability.judge_error' != 'capability.run_not_trusted'
+E         Left contains one more item: 'capability.runtime_failure'
+E         Use -v to get more diff
+
+evaluation/tests/test_e311_validity_gates.py:272: AssertionError
+=========================== short test summary info ============================
+FAILED evaluation/tests/test_e311_validity_gates.py::test_full_active_chain_keeps_every_terminal_and_validates
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 129.85s (0:02:09)
