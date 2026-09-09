@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse,dataclasses,json
 from pathlib import Path
-from learning_agent_eval.learning_quality import METHOD,METHOD_SHA256,request_for,validate_rating,aggregate,schedule_facts,reading_view,catalog
+from learning_agent_eval.learning_quality import METHOD,METHOD_SHA256,request_for,validate_rating,aggregate,schedule_facts,reading_view,catalog,effective_levels,undo_version_facts
 from learning_agent_eval.quality_content_audit import request as audit_request,validate as validate_audit
 from learning_agent_eval.active_judge import OpenAICompatibleHy3JudgeProviderV3
 from learning_agent_eval.canonical import canonical_json_bytes,sha256_digest
@@ -59,7 +59,7 @@ def run(suite,output,ledger,ids=None,repeats=1):
                     row['content_audit']=audit
                     rating,attempts=complete_stage(provider,request_for(e,audit),e,validate_rating,identity,'rating',lambda a:checkpoint('rating',a))
                     if rating is not None:
-                        row.update(status='complete',rating=rating,schedule_facts=schedule_facts(e),**aggregate(rating,e))
+                        row.update(status='complete',rating=rating,effective_dimensions=effective_levels(rating,e),undo_version_facts=undo_version_facts(e),schedule_facts=schedule_facts(e),**aggregate(rating,e))
                 if row['status']=='in_progress':row['status']='judge_error'
                 row['result_sha256']=sha256_digest(row)
             save();print(row['id'],rep,row['status'],row.get('score'),flush=True)

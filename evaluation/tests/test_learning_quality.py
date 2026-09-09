@@ -70,3 +70,15 @@ def test_reading_view_retains_user_context_outputs_tools_and_sources():
     assert any(r['value']=={'content':'每周最多90分钟；经验未说明'} for r in rows)
     assert not any(r['value']=={'content':'internal schema'} for r in rows)
     assert any(r['value']==e['observable_trace']['tool_invocations'][0] for r in rows)
+
+
+def test_undo_version_claim_checked_without_penalizing_restored_content():
+    from learning_agent_eval.learning_quality import undo_version_facts,effective_levels
+    e=sample();e['observable_trace']['tool_invocations']=[{'tool_name':'plan.get','result':{'version':3}}]
+    e['observable_trace']['model_calls']=[{'assistant_text':'撤销将版本回退到2，预算恢复90。'}]
+    assert undo_version_facts(e)[0]['expected_undo_version']==4
+    assert effective_levels(rating(),e)['D1']==1
+    assert aggregate(rating(),e)['raw_score']==92.5
+    e['observable_trace']['model_calls'][0]['assistant_text']='撤销恢复到旧版本的内容，并形成新版本4。'
+    assert not undo_version_facts(e)
+    assert aggregate(rating(),e)['score']==100

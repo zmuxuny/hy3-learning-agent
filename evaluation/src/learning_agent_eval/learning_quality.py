@@ -13,10 +13,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .canonical import canonical_json, sha256_digest
 from .quality_content_audit import CONFIG as AUDIT_CONFIG
+from .quality_claims import assertions,undo_version_facts,UNDO_CONTRACT
 from .validator import resolve_evidence_path
 from .judge_request_projection import pack_shared_values, unpack_shared_values, evidence_catalog, draft_reading_aid
 
-METHOD_VERSION = 'learning-quality-5'
+METHOD_VERSION = 'learning-quality-6'
 WEIGHTS = dict(D1=15,D2=15,D3=20,D4=20,D5=15,D6=5,D7=10)
 # Explicit levels, rather than a generic "good/partly good" scale.
 CRITERIA = {
@@ -78,7 +79,7 @@ METHOD = dict(version=METHOD_VERSION,criteria=CRITERIA,instructions=INSTRUCTIONS
               provider=dict(model='hy3',temperature=0,reasoning_effort='high',max_tokens=16000,n=1,timeout_seconds=300),
               deterministic_policy='Every structured draft task/review datetime checked against visible confirmed deadline; violations cap 69',
               old_rule_policy='diagnostics retained separately, never silently converted to learning-quality gates',
-              content_audit=AUDIT_CONFIG,input_projection='source-addressed-reader-v1',output_schema=Rating.model_json_schema())
+              undo_contract=UNDO_CONTRACT,content_audit=AUDIT_CONFIG,input_projection='source-addressed-reader-v1',output_schema=Rating.model_json_schema())
 METHOD_SHA256=sha256_digest(METHOD)
 
 def projection(blind_document):
@@ -165,7 +166,7 @@ def request_for(e,content_audit=None):
     records=reading_view(e)
     paths=list(dict.fromkeys([*catalog(e),*(r['path'] for r in records)]))
     content={'reading_view':records,'draft_reading_aid':draft_reading_aid(e),
-             'catalog':paths,'schedule_facts':schedule_facts(e),'content_audit':content_audit}
+             'catalog':paths,'schedule_facts':schedule_facts(e),'content_audit':content_audit,'assertion_inventory':assertions(e),'undo_version_facts':undo_version_facts(e)}
     guidance='\ncontent_audit是独立内容核验，须逐项与原证据复查；其error/unsupported若成立须在相应维度扣分。不能无解释忽略核验发现，也不能盲从其判断。脱敏UUID与opaque标识差异不得扣分。证据路径从catalog或reading_view.path原样复制。'
     schema=Rating.model_json_schema()
     return {'messages':[{'role':'system','content':INSTRUCTIONS+guidance+'\n逐维判据：'+canonical_json(CRITERIA)+'\nJSON结构：'+canonical_json(schema)},
@@ -179,9 +180,15 @@ def validate_rating(payload,e):
             raise ValueError('evidence path not visible in supplied input')
     return r.model_dump()
 
+def effective_levels(payload,e=None):
+    r=Rating.model_validate(payload);levels={d.dimension:d.level for d in r.dimensions}
+    if e and any(f['incorrect'] for f in undo_version_facts(e)):levels['D1']=min(levels['D1'],1)
+    return levels
+
+
 def aggregate(payload,e=None):
     r=Rating.model_validate(payload)
-    raw=sum(WEIGHTS[d.dimension]*d.level/2 for d in r.dimensions)
+    raw=sum(WEIGHTS[d]*level/2 for d,level in effective_levels(payload,e).items())
     failures=[f for f in schedule_facts(e) if f['overdue'] or f['review_before_task']] if e else []
     score=min(raw,METHOD['caps'][r.severity],69 if failures else 100)
     return dict(raw_score=raw,score=score,outcome='pass' if score>=70 else 'fail')
