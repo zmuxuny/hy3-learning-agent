@@ -256,9 +256,7 @@
 
 .thread-run-content { min-width: 0; }
 
-.thread-run-rail { position: absolute; top: 3px; bottom: 2px; left: -31px; width: 5px; opacity: .42; background: repeating-linear-gradient(to bottom, #aaa9a5 0 3px, transparent 3px 10px); }
 
-.thread-run.live .thread-run-rail { opacity: .58; background: repeating-linear-gradient(to bottom, #777772 0 3px, transparent 3px 10px); }
 
 .thread-run.highlighted { border-radius: 10px; animation: notification-focus 2.3s ease-out; }
 

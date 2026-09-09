@@ -1,6 +1,6 @@
 <script setup>
 import { BellIcon, ClipboardIcon } from '@heroicons/vue/24/outline';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { usePlanStore } from '../stores/plan.js';
 import { useRunStore } from '../stores/run.js';
 import { useSessionStore } from '../stores/session.js';
@@ -23,6 +23,7 @@ const props = defineProps({
   highlighted: { type: Boolean, default: false },
 });
 
+const emit = defineEmits(['approval-ready']);
 const planStore = usePlanStore();
 const runStore = useRunStore();
 const sessionStore = useSessionStore();
@@ -48,6 +49,12 @@ const answerText = computed(() => (
 const approvalPending = computed(() => (
   live.value && resolvedRun.value?.status === 'waiting_approval' && Boolean(resolvedRun.value?.pending_approval)
 ));
+watch(approvalPending, async (pending) => {
+  if (pending) {
+    await nextTick();
+    emit('approval-ready');
+  }
+}, { immediate: true, flush: 'post' });
 const approvalEvent = computed(() => [...resolvedEvents.value].reverse().find((event) => (
   (event.type || event.event_type) === 'approval.required' && event.payload?.blocking
 )));
@@ -141,7 +148,6 @@ async function copyAnswer() {
     :id="props.messageId ? `message-${props.messageId}` : undefined"
     :class="['thread-run', { live: running, historical: props.historical, proactive, highlighted: props.highlighted }]"
   >
-    <span class="thread-run-rail" aria-hidden="true"></span>
     <div class="thread-run-content">
       <RunDisclosure
         v-if="resolvedRun"
@@ -187,9 +193,12 @@ async function copyAnswer() {
           <template v-if="approvalPlan">
             <p>每周 {{ approvalPlan.weekly_minutes }} 分钟 · {{ approvalPlan.description }}</p>
             <p>{{ approvalPlan.expected_outcome }}</p>
-            <div v-for="(stage, index) in approvalPlan.stages" :key="index">
+            <div v-for="(stage, index) in approvalPlan.stages" :key="index" class="approval-stage">
               <strong>{{ stage.title }}</strong>
-              <p v-for="(task, taskIndex) in stage.tasks" :key="taskIndex">{{ task.title }}（{{ task.estimated_minutes }} 分钟）<br>{{ task.description }}</p>
+              <details v-for="(task, taskIndex) in stage.tasks" :key="taskIndex" class="approval-task">
+                <summary>{{ task.title }} · {{ task.estimated_minutes }} 分钟</summary>
+                <p>{{ task.description }}</p>
+              </details>
             </div>
             <p>批准后生成提案；采用提案时再创建学习计划。</p>
           </template>
@@ -243,7 +252,12 @@ async function copyAnswer() {
 </template>
 
 <style scoped>
-.approval-request-preview { max-height: 360px; overflow: auto; line-height: 1.7; overflow-wrap: anywhere; }
+.approval-request-preview { min-width: 0; line-height: 1.65; overflow-wrap: anywhere; }
+.approval-stage { margin-top: 14px; }
+.approval-task { margin-top: 4px; }
+.approval-task summary { padding: 6px 0; font-weight: 400; }
+.approval-task p { white-space: pre-wrap; }
+.thread-approval-card { scroll-margin-block: 20px; }
 .approval-request-preview summary { cursor: pointer; font-weight: 600; }
 .approval-request-preview p { margin: 10px 0; }
 .approval-request-preview pre { white-space: pre-wrap; }

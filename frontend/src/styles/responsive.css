@@ -36,7 +36,6 @@
   .sidebar-heading .brand strong { display: block; font-size: 0; }
   .sidebar-heading .brand strong::after { content: '学'; font-size: 16px; }
   .sidebar-utility { display: none; }
-  .thread-run-rail { left: -17px; width: 4px; }
   .conversation-scroll { padding-inline: 27px 20px; }
   .workspace-header { height: 58px; flex-basis: 58px; padding-inline: 16px 10px; }
   .open-context-button { width: 34px; padding: 0; justify-content: center; font-size: 0; }
@@ -108,7 +107,6 @@ body { overflow: auto; }.app-shell { display: block; height: auto; }.sidebar { p
   .workspace-title strong { font-size: 14px; }
   .thread { padding-top: 18px; }
   .thread-run { margin-bottom: 34px; }
-  .thread-run-rail { display: none; }
   .conversation-scroll { padding: 14px 14px 6px; }
   .message-bubble { max-width: 90%; font-size: 14px; }
   .run-action-line, .assistant-answer { font-size: 14px; }

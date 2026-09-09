@@ -35,7 +35,7 @@ from app.runtime.model_clients import (
 )
 from app.runtime.prompt import SYSTEM_PROMPT
 from app.runtime.retry import is_transient_model_error
-from app.runtime.session_titles import generate_session_title, initial_session_title
+from app.runtime.session_titles import generate_session_title, initial_session_title, pending_plan_title
 from app.runtime.state import (
     RunLease,
     RunLeaseLostError,
@@ -52,7 +52,7 @@ from app.runtime.state import (
     terminate_run,
 )
 from app.runtime.tasks import start_tracked_task
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 
 class AgentModelTimeout(RuntimeError):
@@ -851,6 +851,18 @@ class AgentRuntime:
                     )
             data = result.get("data") or {}
             if data.get("approval_required") and data.get("blocking"):
+                title = pending_plan_title(call)
+                if title and session:
+                    # Publish the title before the approval event refreshes the UI.
+                    # The compare-and-set preserves a concurrent manual rename.
+                    async with AsyncSessionLocal() as title_db:
+                        await title_db.execute(
+                            update(Session).where(
+                                Session.id == session.id,
+                                Session.title == initial_session_title(run.objective),
+                            ).values(title=title, updated_at=utc_now())
+                        )
+                        await commit_uow(title_db)
                 await pause_for_approval(
                     db,
                     lease,
@@ -982,6 +994,7 @@ class AgentRuntime:
             # Release the read snapshot before the optional title provider.
             # The title write is committed only after the external wait ends.
             await commit_uow(db)
+            previous_title = stored_session.title
             with model_call_scope(
                 run_id=run.id,
                 parent_run_id=run.parent_run_id,
@@ -989,12 +1002,20 @@ class AgentRuntime:
                 decision_relevant=False,
                 depth=0 if run.parent_run_id is None else 1,
             ):
-                await generate_session_title(
+                renamed = await generate_session_title(
                     stored_session,
                     objective=stored_run.objective,
                     answer=stored_run.output,
                     client=self.client,
                 )
+            proposed_title = stored_session.title
+            db.expunge(stored_session)
+            if renamed:
+                await db.execute(update(Session).where(
+                    Session.id == session.id, Session.title == previous_title,
+                ).values(title=proposed_title, updated_at=utc_now()))
+            await commit_uow(db)
+            stored_session = await db.get(Session, session.id)
             await commit_uow(db)
             with model_call_scope(
                 run_id=run.id,

@@ -36,7 +36,13 @@ function onScroll() {
 async function scrollToLatest(force = false) {
   await nextTick();
   if (scrollArea.value && (force || pinnedToBottom.value)) {
-    scrollArea.value.scrollTop = scrollArea.value.scrollHeight;
+    const approval = scrollArea.value.querySelector('.approval-card');
+    if (approval) {
+      const areaTop = scrollArea.value.getBoundingClientRect().top;
+      scrollArea.value.scrollTop += approval.getBoundingClientRect().top - areaTop - 20;
+    } else {
+      scrollArea.value.scrollTop = scrollArea.value.scrollHeight;
+    }
   }
 }
 
@@ -45,7 +51,7 @@ watch(() => runStore.currentRun?.id, () => {
   scrollToLatest(true);
 });
 watch(() => sessionStore.conversationMessages.length, () => scrollToLatest());
-watch(() => runStore.runEvents.length, () => scrollToLatest());
+watch(() => runStore.runEvents.length, () => scrollToLatest(runStore.currentRun?.status === 'waiting_approval'));
 watch(() => shell.highlightedMessageId, async (messageId) => {
   if (!messageId) return;
   await nextTick();
@@ -79,6 +85,7 @@ watch(() => shell.highlightedMessageId, async (messageId) => {
           </div>
 
           <AgentRunTurn
+            @approval-ready="scrollToLatest(true)"
             v-if="message.role === 'user' && message.id === currentRunUser?.id"
             :answer="currentRunAssistant?.content || ''"
             :user-message="currentRunUser"
@@ -89,6 +96,7 @@ watch(() => shell.highlightedMessageId, async (messageId) => {
           />
 
           <AgentRunTurn
+            @approval-ready="scrollToLatest(true)"
             v-if="message.role === 'assistant' && message.run_id !== runStore.currentRun?.id"
             :answer="message.content"
             :run="runStore.runForId(message.run_id)"
@@ -106,6 +114,7 @@ watch(() => shell.highlightedMessageId, async (messageId) => {
             <div class="message-bubble">{{ runStore.currentRun.objective }}</div>
           </div>
           <AgentRunTurn
+            @approval-ready="scrollToLatest(true)"
             :answer="currentRunAssistant?.content || ''"
             :user-message="currentRunUser"
             :message-id="currentRunAssistant?.id"

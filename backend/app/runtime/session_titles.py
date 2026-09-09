@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 from typing import Any
 
@@ -59,3 +60,18 @@ async def generate_session_title(
     session.title = _clean_title(generated, fallback)
     session.updated_at = utc_now()
     return True
+
+
+def pending_plan_title(tool_call: dict) -> str | None:
+    """Use the proposed plan's own title while the user reviews approval."""
+    if tool_call.get("name") != "plan_proposal_create":
+        return None
+    try:
+        args = tool_call.get("arguments", {})
+        args = json.loads(args) if isinstance(args, str) else args
+        plan = args.get("plan", {})
+        plan = json.loads(plan) if isinstance(plan, str) else plan
+        title = plan.get("title")
+    except (ValueError, TypeError, AttributeError):
+        return None
+    return _clean_title(title, "") if isinstance(title, str) and title.strip() else None
