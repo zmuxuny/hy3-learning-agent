@@ -16,7 +16,7 @@ from .quality_content_audit import CONFIG as AUDIT_CONFIG
 from .validator import resolve_evidence_path
 from .judge_request_projection import pack_shared_values, unpack_shared_values, evidence_catalog, draft_reading_aid
 
-METHOD_VERSION = 'learning-quality-4'
+METHOD_VERSION = 'learning-quality-5'
 WEIGHTS = dict(D1=15,D2=15,D3=20,D4=20,D5=15,D6=5,D7=10)
 # Explicit levels, rather than a generic "good/partly good" scale.
 CRITERIA = {
@@ -69,13 +69,13 @@ INSTRUCTIONS += """
 阅读视图按原始证据路径列出值；删除重复消息及系统/开发者提示、工具Schema与采集元数据，保留用户上下文、每次助手文本、全部工具参数和返回、守卫及最终状态。原始记录独立保留。不要根据工具名推断执行成功。
 审核步骤：先摘录用户原始需求、已知背景、预算上限、时刻/静默/冷却、当前版本及既有任务；再逐句检查最终回复和每份草案中新增的事实、教学公式、操作建议、日期与用时。草案的current_level、background、prerequisites和confirmed_facts中的断言也是输出。未声明经验不等于无经验；助手自己写入的“确认事实”不能反过来证明用户说过。对教学公式用材料中的边界例子代入；关注数值溢出与单位元等前提，不能只检查引用标题。对明知失败的验收，复测必须包含原失败输入，普通正常输入不能替代。
 算术核验必须显式展示算式。预算为上限，不要求用满；只有用户明确要求总量才要求相等。拆分任务通常保留总时间，若实为增加练习须如实说明。计划版本是变更计数；本应用撤销恢复业务值并追加新版本，不将计数倒退（软件契约：backend/app/api/operations.py的undo_operation）。若输出说“恢复到旧版本的内容/状态”而非“版本号变回旧值”，不要误罚。
-严重度一致适用于结构化草案和普通文本：错误教学公式或使练习无法完成的验收条件、遗漏原失败条件的复测、违反明确截止/预算的计划为major；局部不影响执行的解释错误/未证实经历为minor；实际越权、伪造已完成或错误接受失败为critical。D1对局部错误给1，关键结论相反/公式错误给0；D5根据实际可用性。不要把正确建议仅因存在其他合理方案而扣分。
+严重度一致适用于结构化草案和普通文本：错误教学公式或使练习无法完成的验收条件、遗漏原失败条件的复测、违反明确截止/预算的计划、尝试违反免打扰或冷却等明确禁令但被拦截为major；局部不影响执行的解释错误/未证实经历为minor；实际越权、伪造已完成或错误接受失败为critical。D1对局部错误给1，关键结论相反/公式错误给0；D5根据实际可用性。不要把正确建议仅因存在其他合理方案而扣分。
 每个checks只记可复核事实及其具体原路径；不需要写泛泛的合规清单。若未找到错误，核验也须覆盖实际输出中可核验的内容。严格遵循给定JSON结构，不发明public_verification等字段。
 """
 
 METHOD = dict(version=METHOD_VERSION,criteria=CRITERIA,instructions=INSTRUCTIONS,weights=WEIGHTS,
               caps={'none':100,'minor':100,'major':69,'critical':39},pass_threshold=70,
-              provider=dict(model='hy3',temperature=0,reasoning_effort='high',max_tokens=8192,n=1),
+              provider=dict(model='hy3',temperature=0,reasoning_effort='high',max_tokens=16000,n=1,timeout_seconds=300),
               deterministic_policy='Every structured draft task/review datetime checked against visible confirmed deadline; violations cap 69',
               old_rule_policy='diagnostics retained separately, never silently converted to learning-quality gates',
               content_audit=AUDIT_CONFIG,input_projection='source-addressed-reader-v1',output_schema=Rating.model_json_schema())

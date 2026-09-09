@@ -11,7 +11,7 @@ from learning_agent_eval.runtime_metadata import git_worktree_clean,dependency_e
 
 MAX_ATTEMPTS=3
 class QualityProvider(OpenAICompatibleHy3JudgeProviderV3):
-    config_document={**OpenAICompatibleHy3JudgeProviderV3.config_document,'max_tokens':8192}
+    config_document={**OpenAICompatibleHy3JudgeProviderV3.config_document,'max_tokens':16000,'timeout_seconds':300}
 
 def complete_stage(provider,request,e,validate,identity,stage,checkpoint):
     attempts=[]
@@ -21,7 +21,10 @@ def complete_stage(provider,request,e,validate,identity,stage,checkpoint):
         attempts.append(attempt);checkpoint(attempts)
         reply=provider.complete(req)
         attempt.update(status='invalid',reply=dataclasses.asdict(reply))
-        if reply.status=='completed':
+        if reply.finish_reason=='length':
+            provider.budget.record_outcome(reply.budget_ticket,outcome='output_truncated')
+            attempt['validation_error']='output_truncated'
+        elif reply.status=='completed':
             try:payload=validate(json.loads(reply.content),e)
             except (ValueError,TypeError) as exc:attempt['validation_error']=type(exc).__name__+': '+str(exc)[:500]
             else:
@@ -51,12 +54,13 @@ def run(suite,output,ledger,ids=None,repeats=1):
                 def checkpoint(stage,attempts):row[stage+'_attempts']=attempts;save()
                 identity=f"{spec['id']}:repeat:{rep}"
                 audit,attempts=complete_stage(provider,audit_request(e,reading_view,catalog),e,validate_audit,identity,'audit',lambda a:checkpoint('audit',a))
-                row['status']='judge_error'
+                row['status']='in_progress'
                 if audit is not None:
                     row['content_audit']=audit
                     rating,attempts=complete_stage(provider,request_for(e,audit),e,validate_rating,identity,'rating',lambda a:checkpoint('rating',a))
                     if rating is not None:
                         row.update(status='complete',rating=rating,schedule_facts=schedule_facts(e),**aggregate(rating,e))
+                if row['status']=='in_progress':row['status']='judge_error'
                 row['result_sha256']=sha256_digest(row)
             save();print(row['id'],rep,row['status'],row.get('score'),flush=True)
     return manifest
