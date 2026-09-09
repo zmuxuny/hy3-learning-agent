@@ -7,6 +7,9 @@ from learning_agent_eval import learning_quality as method
 from learning_agent_eval.quality_content_audit import request as audit_request,validate as validate_audit
 from learning_agent_eval.canonical import canonical_json_bytes,sha256_digest
 from summarize_learning_quality import write_csv
+from evaluate_e7_trace import verify_bundle
+from learning_agent_eval.integrity import artifact_manifest_digest
+from learning_agent_eval.blinding_v2 import build_blind_judge_input_v3
 
 DIMS=tuple(method.WEIGHTS)
 
@@ -49,6 +52,18 @@ def load_study(root):
     for kind in ['full','validation','adversarial']:
         specs=json.loads((root/kind/'suite.json').read_text());byid={s['id']:s for s in specs}
         assert len(byid)==design[kind]['count'] and sha256_digest(specs)==design[kind]['suite_sha256']
+        if kind=='full':
+            for spec in specs:
+                source=root/kind/'sources'/spec['id']
+                def read(name):return json.loads((source/name).read_text())
+                runtime=read('runtime-manifest.json');rules=read('rule-manifest.json')
+                for manifest in [runtime,rules]:assert artifact_manifest_digest(manifest)==manifest['manifest_sha256']
+                episode,rule,reference=[read(f"{spec['id']}-{name}.json") for name in ['episode','rules','reference']]
+                assert spec['source_terminal'] in runtime['terminals']
+                verify_bundle(spec['source_terminal'],episode,rule,reference,runtime,rules)
+                assert spec['source_episode_sha256']==episode['provenance']['episode_sha256']
+                public=method.projection(build_blind_judge_input_v3(episode,rule,reference).document)
+                assert sha256_digest(public)==spec['evidence_sha256'], 'public evidence does not match original run'
         rows={}
         for shard in range(design['shards']):
             p=root/f'{kind}-results-{shard}/results.json';data=json.loads(p.read_text())
