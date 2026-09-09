@@ -28,7 +28,7 @@ EVALUATOR_VERSION_V2 = "deterministic-rule-evaluator-v2"
 RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
 EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
-RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-audit-1"
+RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-session-1"
 RULE_IMPLEMENTATION_SHA256_V3 = source_bundle_sha256("rules")
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
@@ -1932,6 +1932,94 @@ def evaluate_rules_v2(
     return result
 
 
+def _draft_intake_context(episode, draft_call_index, draft_tool_index):
+    """Resolve constraint ownership from the emitting run, never entity order."""
+    calls = episode["observable_trace"].get("model_calls", [])
+    snapshots = [(name, episode.get(name, {}).get("logical_entities", []))
+                 for name in ("state_before", "state_after")]
+    paths = []
+
+    def run_session(run_id):
+        # Before/after copies may differ in status, but not in session ownership.
+        matches = [(f"{name}.logical_entities[{i}]", entity)
+                   for name, entities in snapshots for i, entity in enumerate(entities)
+                   if entity.get("entity_type") == "agent_run"
+                   and run_id and entity.get("logical_id") == run_id]
+        sessions = {entity["data"].get("session_ref") for _, entity in matches}
+        if len(sessions) != 1 or None in sessions:
+            return None, []
+        session = next(iter(sessions))
+        session_exists = any(entity.get("entity_type") == "session"
+                             and entity.get("logical_id") == session
+                             for _, entities in snapshots for entity in entities)
+        if not session_exists:
+            return None, []
+        return session, [f"{path}.data.session_ref" for path, _ in matches]
+
+    session, run_paths = run_session(calls[draft_call_index].get("run_id"))
+    if session is None:
+        return [], [], "UTC", "draft_run_session_unresolved"
+    paths.extend(run_paths)
+    before = episode.get("state_before", {}).get("logical_entities", [])
+    learners = [entity for entity in before if entity.get("entity_type") == "learner"]
+    if len(learners) != 1 or not learners[0]["data"].get("timezone"):
+        return [], paths, "UTC", "learner_timezone_unresolved"
+    timezone_name = learners[0]["data"]["timezone"]
+    intakes = [(i, entity) for i, entity in enumerate(before)
+               if entity.get("entity_type") == "planning_intake"
+               and entity["data"].get("session_ref") == session]
+    if len(intakes) > 1:
+        return [], paths, timezone_name, "planning_intake_scope_ambiguous"
+    facts = None
+    if intakes:
+        index, intake = intakes[0]
+        facts = intake["data"].get("confirmed_facts")
+        paths.extend([f"state_before.logical_entities[{index}].data.session_ref",
+                      f"state_before.logical_entities[{index}].data.confirmed_facts"])
+
+    # Iterate the emitted call order, not the invocation array order. Bind both
+    # the originating run and the result's session, including same-round tools.
+    invocations = episode["observable_trace"].get("tool_invocations", [])
+    for ci, call in enumerate(calls[:draft_call_index + 1]):
+        source_session, source_paths = run_session(call.get("run_id"))
+        tools = call.get("returned_tool_calls", [])
+        if ci == draft_call_index:
+            tools = tools[:draft_tool_index]
+        if source_session is None:
+            intake_ids = {t.get("call_id") for t in tools
+                          if t.get("name") in {"planning_intake_get", "planning_intake_update"}}
+            if any(i.get("tool_call_id") in intake_ids and i.get("observation_status") == "succeeded"
+                   for i in invocations):
+                return [], paths, timezone_name, "intake_observation_run_unresolved"
+        if source_session != session:
+            continue
+        for tool in tools:
+            expected_name = {"planning_intake_get": "planning.intake.get",
+                             "planning_intake_update": "planning.intake.update"}.get(tool.get("name"))
+            if expected_name is None:
+                continue
+            matches = [(i, invocation) for i, invocation in enumerate(invocations)
+                       if tool.get("call_id") and invocation.get("tool_call_id") == tool["call_id"]
+                       and invocation.get("tool_name") == expected_name]
+            if len(matches) > 1:
+                return [], paths, timezone_name, "intake_observation_ambiguous"
+            if not matches:
+                continue
+            ii, invocation = matches[0]
+            if invocation.get("observation_status") != "succeeded":
+                continue
+            result = invocation.get("result", {})
+            if result.get("session_ref") != session:
+                return [], paths, timezone_name, "intake_observation_session_mismatch"
+            facts = result.get("confirmed_facts")
+            paths = [*run_paths, *source_paths,
+                     f"observable_trace.tool_invocations[{ii}].result.session_ref",
+                     f"observable_trace.tool_invocations[{ii}].result.confirmed_facts"]
+    if not isinstance(facts, list):
+        return [], paths, timezone_name, "planning_intake_evidence_missing"
+    return facts, list(dict.fromkeys(paths)), timezone_name, None
+
+
 def _draft_schedule_checks(episode):
     """Check the latest proposed schedule even when its write awaits approval."""
     if episode["track"] != "planning":
@@ -1952,30 +2040,18 @@ def _draft_schedule_checks(episode):
         return []
     path, plan = drafts[-1]
     violations = []
-    constraint_paths = []
-    facts = []
-    timezone_name = "UTC"
-    for ei, entity in enumerate(episode.get("state_before", {}).get("logical_entities", [])):
-        if entity["entity_type"] == "learner":
-            timezone_name = entity["data"].get("timezone", "UTC")
-        if entity["entity_type"] == "planning_intake":
-            facts = entity["data"].get("confirmed_facts", [])
-            constraint_paths = [f"state_before.logical_entities[{ei}].data.confirmed_facts"]
-    # Only successful observations before the draft tool can establish or
-    # update the constraint. Returned arguments awaiting approval are not facts.
     draft_call = int(path.split("model_calls[")[1].split("]")[0])
-    prior_ids = {t["call_id"] for c in episode["observable_trace"].get("model_calls", [])[:draft_call]
-                 for t in c.get("returned_tool_calls", []) if "call_id" in t}
     draft_tool = int(path.split("returned_tool_calls[")[1].split("]")[0])
-    prior_ids.update(t["call_id"] for t in episode["observable_trace"]["model_calls"][draft_call]
-                     .get("returned_tool_calls", [])[:draft_tool] if "call_id" in t)
-    for ii, invocation in enumerate(episode["observable_trace"].get("tool_invocations", [])):
-        if (invocation.get("tool_call_id") in prior_ids
-                and invocation.get("tool_name") in {"planning.intake.get", "planning.intake.update"}
-                and invocation.get("observation_status") == "succeeded"
-                and "confirmed_facts" in invocation.get("result", {})):
-            facts = invocation["result"]["confirmed_facts"]
-            constraint_paths = [f"observable_trace.tool_invocations[{ii}].result.confirmed_facts"]
+    facts, constraint_paths, timezone_name, scope_error = _draft_intake_context(episode, draft_call, draft_tool)
+    if scope_error:
+        # A missing attribution is an evaluator evidence failure, not a proven
+        # violation by the model and never permission to borrow another session.
+        return [{"check_id": "planning.draft_schedule", "rule_pack": "planning",
+                 "status": "invalid_input", "severity": "critical", "evidence_paths": [path],
+                 "observed": {"scope_error": scope_error},
+                 "expected": "an unambiguous emitting run/session and its own intake evidence",
+                 "reason_code": "planning_intake_evidence_insufficient",
+                 "message": "Cannot establish the draft's confirmed constraints from its session evidence."}]
     confirmed_bounds = []
     for fact in facts:
         if fact.get("key") != "deadline" or fact.get("source", "user") not in {"user", "user_confirmed"}:

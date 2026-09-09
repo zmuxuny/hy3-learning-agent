@@ -32,7 +32,7 @@ def plan():
 
 
 def episode(p):
-    return {'track':'planning','state_before':{'logical_entities':[{'entity_type':'planning_intake','data':{'confirmed_facts':[{'key':'deadline','value':'2026-09-20','source':'user'}]}},{'entity_type':'learner','data':{'timezone':'Asia/Shanghai'}}]},'observable_trace':{'model_calls':[{'returned_tool_calls':[{'name':'plan_proposal_create','canonical_arguments':{'plan':p}}]}]}}
+    return {'track':'planning','state_before':{'logical_entities':[{'entity_type':'planning_intake','data':{'session_ref':'session:current','confirmed_facts':[{'key':'deadline','value':'2026-09-20','source':'user'}]}},{'entity_type':'learner','data':{'timezone':'Asia/Shanghai'}},{'entity_type':'session','logical_id':'session:current','data':{}},{'entity_type':'agent_run','logical_id':'agent_run:current','data':{'session_ref':'session:current'}}]},'observable_trace':{'model_calls':[{'run_id':'agent_run:current','returned_tool_calls':[{'name':'plan_proposal_create','canonical_arguments':{'plan':p}}]}]}}
 
 
 def test_draft_cannot_move_its_own_deadline_past_confirmed_constraint():
@@ -61,7 +61,7 @@ def test_recorder_projection_reason_precedes_generic_provider_terminal(record):
 def test_only_successful_intake_observation_updates_deadline_before_draft():
     p=plan();e=episode(p)
     e['observable_trace']['model_calls'][0]['returned_tool_calls'].insert(0, {'name':'planning_intake_update','call_id':'update','canonical_arguments':{}})
-    i={'tool_call_id':'update','tool_name':'planning.intake.update','observation_status':'pending_approval','result':{'confirmed_facts':[{'key':'deadline','value':'2026-10-20','source':'user'}]}}
+    i={'tool_call_id':'update','tool_name':'planning.intake.update','observation_status':'pending_approval','result':{'session_ref':'session:current','confirmed_facts':[{'key':'deadline','value':'2026-10-20','source':'user'}]}}
     e['observable_trace']['tool_invocations']=[i]
     assert _draft_schedule_checks(e)[0]['status']=='fail'
     i['observation_status']='succeeded'

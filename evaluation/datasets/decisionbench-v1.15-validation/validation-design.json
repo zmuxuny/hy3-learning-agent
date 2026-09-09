@@ -1,0 +1,162 @@
+{
+  "version": "e6-session-validation-design-v1",
+  "baseline": "f47e3a1",
+  "protocol": "1.15",
+  "product_version": "learning-runtime-e6-audit-1 unchanged; production deadline implementation unchanged this round",
+  "formal": false,
+  "purpose": "seen regression and targeted active-runtime/Judge compatibility; no heldout experiment",
+  "cases": {
+    "development": [
+      {
+        "case_id": "dev-afternoon-i",
+        "case_sha256": "b2e0bdcec73eb21b9dcfdeb395d6946f9bd4dfd11e9e201af64d28d3239a96fc",
+        "label": null
+      },
+      {
+        "case_id": "dev-ambiguous-a",
+        "case_sha256": "099b7b27e7cde117f112820877e78e62e74fc29e619e586aea7c04fa5a166c51",
+        "label": null
+      },
+      {
+        "case_id": "dev-history-r",
+        "case_sha256": "3042eebd7bab4ce08aefa3249e365f9c4ae0a60b79d3765ede0a9dd46631179c",
+        "label": null
+      },
+      {
+        "case_id": "dev-missing-a",
+        "case_sha256": "336a627994ec34a535fb0d5ede222bc2d9e5f5be28ea06ba37dd165858362c25",
+        "label": null
+      },
+      {
+        "case_id": "dev-patch-r",
+        "case_sha256": "388f64e77e05add7f4f480811ae0e156a65279979da8234e04cb94f28e06dea5",
+        "label": null
+      },
+      {
+        "case_id": "dev-quiet-i",
+        "case_sha256": "790be9e690fbe2f15fdb0430c4042e8c8f2e42f93caf27a00e0065426924c65e",
+        "label": null
+      },
+      {
+        "case_id": "dev-ring-planning-p",
+        "case_sha256": "93069a3e872617a69812d13772b563dcb92179aa09d64bf99dd7f5b9c0df6580",
+        "label": null
+      }
+    ],
+    "calibration": [
+      {
+        "case_id": "calibration-c02-p-good",
+        "case_sha256": "b97b23f3e3e7fdfc12275704caa6560115d2750752d5405fbbc7132157bf4f95",
+        "label": "good"
+      },
+      {
+        "case_id": "calibration-c02-p-mild",
+        "case_sha256": "f02ae935dcde98d400092fcca44e812e3d8e591e67daa261b0565642002b45fa",
+        "label": "mild"
+      },
+      {
+        "case_id": "calibration-c02-p-severe",
+        "case_sha256": "a0e249edfba330ed63c9224d689931b7a68901ef8d2dc1738edf9646bd65fba7",
+        "label": "severe"
+      },
+      {
+        "case_id": "calibration-c03-i-good",
+        "case_sha256": "4fa64e978c5d6566955c03725c6d816fe4d339d37e0dfcb40057883977d55c7b",
+        "label": "good"
+      },
+      {
+        "case_id": "calibration-c03-i-mild",
+        "case_sha256": "11e4eadf17b89bee4e18d6e3aac16b3420cc3f52649e0f5767b82b18b593923f",
+        "label": "mild"
+      },
+      {
+        "case_id": "calibration-c03-i-severe",
+        "case_sha256": "23bdaf24fe72b1dc5c95b6cb22f1e10a65f64325a9876a7512005b3199fed872",
+        "label": "severe"
+      },
+      {
+        "case_id": "calibration-c05-a-good",
+        "case_sha256": "b789b890d299968d6871ec126605b3ecb41b18092096dff71df86614f6ea3b6d",
+        "label": "good"
+      },
+      {
+        "case_id": "calibration-c05-a-mild",
+        "case_sha256": "48a6cf4f85e6e279daf4888cce108bd20fb3e43c37af512d9ca4bd32bd95d12b",
+        "label": "mild"
+      },
+      {
+        "case_id": "calibration-c05-a-severe",
+        "case_sha256": "5c4758b5ff1f54bf597ab9ed8ff5aa32deb2dc913697e367ffcd48225037f314",
+        "label": "severe"
+      },
+      {
+        "case_id": "calibration-c07-r-good",
+        "case_sha256": "da2ec345a605db8c069c02ffb633841520e1f5bc4e5bb13439253c590285ed4e",
+        "label": "good"
+      },
+      {
+        "case_id": "calibration-c07-r-mild",
+        "case_sha256": "525877c35c593effdd69777e175b89505659702e31372f63596cfd05c0f16d69",
+        "label": "mild"
+      },
+      {
+        "case_id": "calibration-c07-r-severe",
+        "case_sha256": "fb8832b03c62655a87e8f47f0e1dd001be275f8004ab5d344323cf8ea74f5ed0",
+        "label": "severe"
+      }
+    ]
+  },
+  "development_runtime_slots": 7,
+  "development_judge_slots": "all produced Episodes; RuntimeFailures retained in 7 denominator",
+  "calibration_initial_slots": 12,
+  "calibration_repeat_case_ids": [
+    "calibration-c02-p-good",
+    "calibration-c03-i-good",
+    "calibration-c05-a-good",
+    "calibration-c07-r-good"
+  ],
+  "calibration_repeat_count": 1,
+  "calibration_total_judge_slots": 16,
+  "engineering_conditions": [
+    "multi-session and order-invariance regressions pass",
+    "missing scope is invalid_input, not model Critical violation",
+    "approve/reject change/removal Runtime cases all preserve correct session and user control",
+    "original complete Judge response replay retains full evidence and catches contract mutations"
+  ],
+  "empirical_targets": {
+    "strict_triplet_order_min": 0.75,
+    "good_gt_severe_min": 0.9,
+    "severe_rule_or_confirmed_semantic_critical_recall": 1.0,
+    "good_repeat_pass_agreement_min": 0.85,
+    "mean_population_score_sd_max": 5.0
+  },
+  "target_scope": "diagnostic 4 groups and Good repeat pairs only; not full repeated-calibration validation; report every miss without changing criteria",
+  "mild_anchors": {
+    "calibration-c02-p-mild": {
+      "D3": 2,
+      "D5_max": 1
+    },
+    "calibration-c03-i-mild": {
+      "D1_max": 1
+    },
+    "calibration-c05-a-mild": {
+      "D7_max": 1
+    },
+    "calibration-c07-r-mild": {
+      "D1_max": 1
+    }
+  },
+  "failure_policy": "one original attempt per slot, no transport recovery or selective rerun; existing at-most-one structural repair retained and billed; repeat slots execute regardless first result; failures stay unscored; provider/input/budget/framework errors separate",
+  "budget": {
+    "ledger": "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json",
+    "baseline_requests": 1515,
+    "baseline_charge_micro_cny": 61933642,
+    "authorized_total_limit_micro_cny": 84393029,
+    "validation_allocation_micro_cny": 12000000,
+    "additional_authorization": false,
+    "unknown_usage": "keep reservations",
+    "rate_status": "equivalent estimate, not supplier invoice"
+  },
+  "ai_review": "primary AI reviews full public output, tools, approvals, deltas, original Judge and semantic candidates; same developer/reviewer, not independent human",
+  "design_sha256": "46d8b0b1c879c8368909d3db12d21ea35b2c1470b0437b89bf69219245812fa7"
+}

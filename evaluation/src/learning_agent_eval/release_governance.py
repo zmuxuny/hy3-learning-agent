@@ -28,8 +28,8 @@ from .source_bundles import SOURCE_COMPONENTS, build_source_bundle
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 RELEASE_ROOT = PROJECT_ROOT / "evaluation" / "releases"
-SUPPORTED_PROTOCOL_VERSIONS = ("1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10", "1.11", "1.12", "1.13", "1.14")
-ACTIVE_PROTOCOL_VERSION = "1.14"
+SUPPORTED_PROTOCOL_VERSIONS = ("1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10", "1.11", "1.12", "1.13", "1.14", "1.15")
+ACTIVE_PROTOCOL_VERSION = "1.15"
 ACTIVE_PROTOCOL_RELEASE_ID = f"evaluation-protocol-release-{ACTIVE_PROTOCOL_VERSION}"
 PROTOCOL_RELEASE_PATH = RELEASE_ROOT / f"{ACTIVE_PROTOCOL_RELEASE_ID}.json"
 PRODUCTION_REGISTRY_PATH = RELEASE_ROOT / "trusted-benchmark-registry-v1.json"
