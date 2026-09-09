@@ -82,3 +82,17 @@ def test_undo_version_claim_checked_without_penalizing_restored_content():
     e['observable_trace']['model_calls'][0]['assistant_text']='撤销恢复到旧版本的内容，并形成新版本4。'
     assert not undo_version_facts(e)
     assert aggregate(rating(),e)['score']==100
+
+
+def test_exponential_requirement_checked_with_actual_float_operations():
+    from learning_agent_eval.learning_quality import exponential_facts,effective_levels
+    e=sample();task={'description':'对[1000, 1001, 1002]，稳定Softmax与朴素exp在1e-6内一致且不发生溢出。'}
+    e['observable_trace']['model_calls']=[{'returned_tool_calls':[{'canonical_arguments':{'plan':{'stages':[{'tasks':[task]}]}}}]}]
+    assert all(x['overflow'] for x in exponential_facts(e)[0]['naive_exp'])
+    assert abs(sum(exponential_facts(e)[0]['stable_result'])-1)<1e-12
+    assert aggregate(rating(),e)['score']==69
+    assert effective_levels(rating(),e)['D1']==0
+    task['description']='对[1, 2, 3]，稳定Softmax与朴素exp在1e-6内一致且不发生溢出。'
+    assert aggregate(rating(),e)['score']==100
+    task['description']='对[1000,1001,1002]展示朴素exp溢出，稳定Softmax不溢出。'
+    assert not exponential_facts(e)
