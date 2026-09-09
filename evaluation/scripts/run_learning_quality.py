@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse, dataclasses, json
 from pathlib import Path
-from learning_agent_eval.learning_quality import METHOD,METHOD_SHA256,request_for,validate_rating,aggregate
+from learning_agent_eval.learning_quality import METHOD,METHOD_SHA256,request_for,validate_rating,aggregate,schedule_facts
 from learning_agent_eval.active_judge import OpenAICompatibleHy3JudgeProviderV3
 from learning_agent_eval.canonical import canonical_json_bytes,sha256_digest
 from learning_agent_eval.e3_io import current_git_commit
@@ -38,7 +38,7 @@ def run(suite,output,ledger,ids=None,repeats=1):
                         payload=validate_rating(json.loads(reply.content),e)
                     except (ValueError,TypeError) as exc:
                         row['validation_error']=type(exc).__name__+': '+str(exc)[:300]
-                    else:row.update(status='complete',rating=payload,**aggregate(payload))
+                    else:row.update(status='complete',rating=payload,schedule_facts=schedule_facts(e),**aggregate(payload,e))
                 row['result_sha256']=sha256_digest(row)
             manifest['rows'].append(row)
             (output/'results.json').write_bytes(canonical_json_bytes(manifest))

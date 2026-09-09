@@ -36,3 +36,17 @@ def test_major_and_critical_have_distinct_caps_and_missing_is_not_zero():
     r.update(severity='major',severity_reason='核心复测步骤不可用');assert aggregate(r)['score']==69
     r.update(severity='critical',severity_reason='错误接受明确失败的成果');assert aggregate(r)['score']==39
     with pytest.raises(ValueError):aggregate({})
+
+def test_pending_review_date_checked_against_confirmed_deadline_in_timezone():
+    import json
+    from learning_agent_eval.learning_quality import schedule_facts
+    e=sample();e['environment']={'timezone':'Asia/Shanghai'}
+    e['observable_trace']['tool_invocations']=[{'result':{'confirmed_facts':[{'key':'deadline','value':'2026-09-22'}]}}]
+    plan={'deadline':'2026-09-25','stages':[{'tasks':[{'title':'练习','due_at':'2026-09-22T15:00:00Z','review_due_at':'2026-09-22T16:00:00Z'}]}]}
+    e['observable_trace']['model_calls']=[{'returned_tool_calls':[{'canonical_arguments':{'plan':json.dumps(plan)}}]}]
+    facts=schedule_facts(e)
+    assert [f['overdue'] for f in facts]==[False,True]
+    assert aggregate(rating(),e)['score']==69
+    plan['stages'][0]['tasks'][0]['review_due_at']='2026-09-22T15:30:00Z'
+    e['observable_trace']['model_calls'][0]['returned_tool_calls'][0]['canonical_arguments']['plan']=plan
+    assert aggregate(rating(),e)['score']==100
