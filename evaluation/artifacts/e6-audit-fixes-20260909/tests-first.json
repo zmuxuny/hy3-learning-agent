@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/root/workspace/tencent_rhinobird2026/learning_travel/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "evaluation/tests/test_e6_audit_fixes.py",
+    "evaluation/tests/test_e6_final_repairs.py",
+    "evaluation/tests/test_e6_repairs.py",
+    "tests/test_e6_deadline_constraints.py",
+    "tests/test_planning_card_snapshots.py",
+    "tests/test_learning_loop.py::test_planning_intake_requires_readiness_and_proposal_accept_is_idempotent",
+    "--basetemp",
+    "/tmp/e6-review-fix-sw8a8c3r/pytest-temp"
+  ],
+  "exit_code": 1,
+  "seconds": 10.139043092727661
+}

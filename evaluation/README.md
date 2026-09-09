@@ -1,6 +1,6 @@
 # Learning Agent Evaluation
 
-`evaluation/` 是第三阶段的隔离评测控制平面。当前活动协议为 **Evaluation Protocol Release 1.13**，最终测试为 `decisionbench-v1.13-e6-final-test`，源码固定 `35e77cf`。E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。E7/E8未开展。 见[E6最终记录](../docs/E6最终修复与验收记录.md)与[完整档案](artifacts/e6-completion-20260909/README.md)。DecisionEpisode v4、方法协议与Benchmark分别版本化。
+`evaluation/` 是第三阶段的隔离评测控制平面。当前活动协议为 **Evaluation Protocol Release 1.14（审计补修、未登记候选，仅离线验证）**，最终测试为 `decisionbench-v1.13-e6-final-test`，源码固定 `35e77cf`。E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。E7/E8未开展。 见[E6最终记录](../docs/E6最终修复与验收记录.md)与[完整档案](artifacts/e6-completion-20260909/README.md)。DecisionEpisode v4、方法协议与Benchmark分别版本化。
 
 当前活动链路是：
 
@@ -87,7 +87,7 @@ Judge按完整base路径追加 `/chat/completions`，不再固定腾讯地址。
 | `rule-result-v3` / `rule-run-manifest-v3` | v4 确定性规则、源码 bundle 摘要与 Hard Gate |
 | `judge-result-v3` / `judge-run-manifest-v3` | 盲化结构化 Judge、一次修复与 formal 继承 |
 | `aggregate-result-v3` / Track/Manifest v3 | 纯确定性 Rule-first 聚合与源码摘要 |
-| `evaluation-protocol-release-v1` | 活动 Protocol1.13 及历史版本分别绑定组件 |
+| `evaluation-protocol-release-v1` | 活动候选Protocol1.14及历史版本分别绑定组件 |
 | `benchmark-release-manifest-v1` | 固定 Benchmark Case/资源/partition/协议摘要 |
 | `trusted-benchmark-registry-v1` | 仓库固定的生产信任根；旧E6与新版E6分项登记 |
 | `source-bundle-manifest-v1` | 四个活动执行组件的保守来源包摘要 |
@@ -118,7 +118,7 @@ JSON/SHA-256 和自摘要。独立 Schema Lock 覆盖全部生成 Schema；即�
 `legacy_execution_disabled`。包级公共 API 只暴露当前 `run_active_runtime`、
 `evaluate_active_rules`、`evaluate_active_judges` 与 `aggregate_active_results`。
 
-当前 `decisionbench-v1.13-regression/engineering` 将旧v4工程Case原内容重新绑定到1.13，
+以下冻结1.13示例需先检出`35e77cf`，不能直接用于1.14候选。`decisionbench-v1.13-regression/engineering` 将旧v4工程Case原内容重新绑定到1.13，
 包含故意的错误动作和Provider Failure，预期保留失败终态及非零退出码；不作为模型能力实验。
 以下命令在干净仓外副本和项目锁定依赖中执行，输出使用临时目录。旧v4绑定只供其历史源码执行：
 
@@ -329,3 +329,5 @@ E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归�
 尚未统计完整 14 类真实遵循率；下一轮调用继续复用原预算，不能自动把探索记录升级为正式数据。发布治理细节见
 [`../docs/E3.1.2正式评测准入与版本治理.md`](../docs/E3.1.2正式评测准入与版本治理.md)，最终验收命令和精确结果
 记录在 [`../docs/STATUS.md`](../docs/STATUS.md)。
+
+审计修复、原H07-R归因更正、正式统计口径与Git历史复现要求见[补修档案](artifacts/e6-audit-fixes-20260909/README.md)。当前候选可运行`PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/build_e6_repair_releases.py verify`检查绑定；旧测试不重新登记或回填。

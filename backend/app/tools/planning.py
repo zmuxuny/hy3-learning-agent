@@ -21,7 +21,8 @@ from app.runtime.events import emit_event
 from app.runtime.model_clients import create_model_client
 from app.runtime.tasks import start_tracked_task
 from app.schemas import PlanCreate
-from app.services.plans import plan_completeness_issues
+from app.services.plans import plan_completeness_issues, confirmed_deadline_issues, confirmed_deadline_values
+from app.core.learner_time import learner_clock
 from app.tools.base import EmptyArgs, ToolContext, ToolDefinition, ToolEffectKind
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -124,12 +125,18 @@ async def planning_intake_update(ctx: ToolContext, args: PlanningIntakeUpdateArg
     if args.readiness == "ready" and args.open_questions:
         return {"error": "A ready intake cannot still contain open questions"}
     intake = await ctx.db.get(PlanningIntake, session_id)
+    updated_facts = [item.model_dump(mode="json") for item in args.confirmed_facts]
+    if intake is not None:
+        previous = confirmed_deadline_values(intake.confirmed_facts)
+        if previous and previous != confirmed_deadline_values(updated_facts) and not ctx.approval_granted:
+            return {"approval_required": True, "blocking": True,
+                    "reason": "Changing or removing the confirmed deadline requires approval of this specific update."}
     if intake is None:
         intake = PlanningIntake(session_id=session_id, owner_id=ctx.owner_id)
         ctx.db.add(intake)
     intake.source_run_id = ctx.run_id
     intake.goal = args.goal
-    intake.confirmed_facts = [item.model_dump(mode="json") for item in args.confirmed_facts]
+    intake.confirmed_facts = updated_facts
     intake.open_questions = [item.model_dump(mode="json") for item in args.open_questions]
     intake.readiness = args.readiness
     intake.readiness_confidence = args.readiness_confidence
@@ -450,7 +457,10 @@ async def plan_proposal_create(ctx: ToolContext, args: PlanProposalCreateArgs) -
         return {
             "error": "Requirements are not ready. Update planning_intake with the remaining questions first."
         }
-    completeness_issues = plan_completeness_issues(args.plan)
+    clock = await learner_clock(ctx.db, ctx.owner_id)
+    completeness_issues = plan_completeness_issues(args.plan) + confirmed_deadline_issues(
+        args.plan, intake.confirmed_facts, timezone=clock["timezone"],
+    )
     if completeness_issues:
         return {
             "error": "The formal plan is incomplete: " + "; ".join(completeness_issues),
@@ -518,11 +528,12 @@ PLANNING_TOOLS = [
     ),
     ToolDefinition(
         "planning_intake_update",
-        "Record confirmed requirements, renderable follow-up questions, and the Agent's evidence-based readiness judgment.",
+        "Record confirmed requirements (deadline: ISO date or timestamp with timezone), renderable follow-up questions, and readiness. Changing an existing deadline requires specific user approval.",
         PlanningIntakeUpdateArgs,
         planning_intake_update,
         effect_kind=ToolEffectKind.DATABASE_WRITE,
         idempotent=True,
+        blocking=True,
     ),
     ToolDefinition(
         "planning_delegate",

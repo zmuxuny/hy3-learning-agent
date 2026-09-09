@@ -665,7 +665,12 @@ async def decide_plan_proposal(
         plan_data = PlanCreate.model_validate(proposal.plan_payload)
     except Exception as exc:
         raise HTTPException(status_code=409, detail=f"Proposal payload is invalid: {exc}") from exc
-    completeness_issues = plan_service.plan_completeness_issues(plan_data)
+    intake = await db.get(PlanningIntake, proposal.session_id)
+    from app.core.learner_time import learner_clock
+    clock = await learner_clock(db, settings.DEFAULT_OWNER_ID)
+    completeness_issues = plan_service.plan_completeness_issues(plan_data) + plan_service.confirmed_deadline_issues(
+        plan_data, intake.confirmed_facts if intake else [], timezone=clock["timezone"],
+    )
     if completeness_issues:
         raise HTTPException(
             status_code=409,

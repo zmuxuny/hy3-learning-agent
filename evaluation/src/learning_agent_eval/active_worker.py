@@ -122,6 +122,19 @@ def _failure_class(stage: str) -> str:
     return "framework_error"
 
 
+def _recorded_failure_reason(root, records):
+    """Prefer the precise local recording failure over Runtime's generic reason."""
+    if any(r.get("record_error") == "response_projection_rejected"
+           or any((e.get("code") if isinstance(e, dict) else e) == "response_projection_rejected"
+                  for e in r.get("response_validation_errors", [])) for r in records):
+        return ("runtime", "runtime.response_projection_rejected",
+                "Local response projection was rejected; the retained evidence does not identify the specific cause.")
+    if any(r.get("response_status") == "provider_error" for r in records):
+        return "provider", "provider.runtime_call_failed", "The isolated model provider did not complete."
+    code, summary = _terminal_failure_reason(root)
+    return "runtime", code, summary
+
+
 def _terminal_failure_reason(root: dict[str, Any]) -> tuple[str, str]:
     """Expose only fixed durable reason codes, never arbitrary exception text."""
 
@@ -435,25 +448,13 @@ async def _execute_inner(
             )
         root_status = root_runs[0]["data"]["status"]
         if root_status not in {"completed", "waiting_approval"}:
-            terminal_code, terminal_summary = _terminal_failure_reason(root_runs[0]["data"])
-            provider_failed = any(
-                record.get("response_status") == "provider_error"
-                for record in public_records
-            )
+            stage, code, summary = _recorded_failure_reason(root_runs[0]["data"], public_records)
             failure = _failure_document(
                 request=request,
                 case=case,
-                stage="provider" if provider_failed else "runtime",
-                reason_code=(
-                    "provider.runtime_call_failed"
-                    if provider_failed
-                    else terminal_code
-                ),
-                public_summary=(
-                    "The isolated model provider did not complete."
-                    if provider_failed
-                    else terminal_summary
-                ),
+                stage=stage,
+                reason_code=code,
+                public_summary=summary,
                 records=public_records,
                 isolation_evidence=isolation,
                 configured_model=app_config.settings.MODEL_NAME,

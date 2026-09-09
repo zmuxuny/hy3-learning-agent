@@ -1,0 +1,33 @@
+{
+  "baseline": "b2352dd",
+  "case_id": "formal-h07-r",
+  "reviewer_role": "primary_ai_reviewer",
+  "source": "user-supplied independent review, primary AI rechecked original failure",
+  "corrected_attribution": "H07-R为本地响应投影拒绝（framework_error / response_projection_rejected），具体触发原因无法从保留材料确认；不是已证实的Provider失败。原记录含服务端请求ID及21699输入/421输出usage，无分状态保持不变。",
+  "original_artifacts_unchanged": true,
+  "denominators_and_scores_unchanged": true,
+  "targets": [
+    {
+      "archive_member": "formal/runtime/failures/failure:formal-h07-r.json",
+      "file_sha256": "f3c89edb966bdd8f24fa4a837a9a3f04554bc2ddc2fe83d9184491a2c2e5b17c",
+      "field_or_row": "public_summary"
+    },
+    {
+      "archive_member": "formal/content-audit.json",
+      "file_sha256": "d1bac74695d1267fc833c6c8e9b179e5f010b1f70e94845c189588c73e4029fb",
+      "field_or_row": "rows[27].rationale"
+    },
+    {
+      "archive_member": "formal/report/summary.json",
+      "file_sha256": "bcfbc46e002c3c3b57ebc58447d145314091fb23802d0682d1542e074205fd2e",
+      "field_or_row": "cases[27]"
+    }
+  ],
+  "evidence_paths": [
+    "failure_class",
+    "model_calls[0].status",
+    "model_calls[0].response_validation_errors[0].code",
+    "model_calls[0].token_usage",
+    "provider_attestation.calls[0].provider_request_id"
+  ]
+}

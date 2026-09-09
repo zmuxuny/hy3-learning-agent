@@ -1,0 +1,314 @@
+{
+  "scope": "seen original public responses, offline contract validation only; no rescoring or model calls",
+  "valid_responses": 41,
+  "fact_checks": 225,
+  "rows": [
+    {
+      "episode_id": "episode-0039586eac2d8f11ae1ac4e4",
+      "attempt": 1,
+      "original_record_sha256": "3103c611b0da85ad4a6da02517f0bfe13ba56ec106000d9bc2d894bac6e8488e",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-0eb4eae7f87245b87fcb25ae",
+      "attempt": 1,
+      "original_record_sha256": "7081c3b33015360bf1ee2060f40bc3f912f96ff2527ee3ebaf5ac1885f9093de",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-12671ebaaf2564cf6dbbcb4f",
+      "attempt": 1,
+      "original_record_sha256": "9115c76dfd9af18b877d7e1fd632cb4fec8cc1f324f14c3dc02ff071c96f63fb",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-14609e901ba741f34665f6e1",
+      "attempt": 1,
+      "original_record_sha256": "ed5be00bbcb3276abe3b9bec2595d4e1539befff9df367c7c8b75efa3fe8624a",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-189369f04a546545a4889e14",
+      "attempt": 1,
+      "original_record_sha256": "7506ffab9287f85c3f6c00f55e05e000e5feafbae71af5fe43ad92e75717d744",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-258e982f5ff1f886e5a09fc3",
+      "attempt": 1,
+      "original_record_sha256": "fb464c264b1cad978348899f81be7c3dbbb6ed7741d9dfad28c4e380cdf5fca6",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-2632d06b4415e19f308ee249",
+      "attempt": 1,
+      "original_record_sha256": "0ba0a11577bb63ea0aee23b10453e337f884e557cf2d1925389310936f475fd0",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-2cd73e99e927de7349772cb7",
+      "attempt": 1,
+      "original_record_sha256": "b7b64fab9eafac197ae7cfe30f78e68af7221f46056367dd874a60eb161be02b",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-32b81c4c5b01c2f8d587eac3",
+      "attempt": 1,
+      "original_record_sha256": "cc149a195e42cf88a08445292e36d4c15f30e2b5a528327b454b13bd19d9a491",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-33798aa668600de55eea52e4",
+      "attempt": 1,
+      "original_record_sha256": "c4654c586fbeccd0fb3cadabe34c21633611f559c09d9ab6cf64d62a394048ed",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-342011663f03d1976cd7cc96",
+      "attempt": 1,
+      "original_record_sha256": "13b5ec047f86bf2819f6f01c970b239d01eda5c3affea764dd30c54d4b159fcd",
+      "audit_checks": 7,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-38711e14634c7a557bdc7bb7",
+      "attempt": 1,
+      "original_record_sha256": "a033cc42a7ca7eaef2587b823d72a0121b1d043de51b2f7bf4045f2f7d2a526a",
+      "audit_checks": 4,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-44366efb6342061c3712786e",
+      "attempt": 2,
+      "original_record_sha256": "9f0c8f3032acec5fd33aa75f358d301229ccfe9de83bc69dcc4bef3d54ef3280",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-48cecc79cce300790d80990d",
+      "attempt": 1,
+      "original_record_sha256": "71eedb8bf5f7c6979d6e7c7c4171c6aca71ab6efc12c739880b91e0436c619b1",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-7024e4b1bac40e7f6e273a04",
+      "attempt": 1,
+      "original_record_sha256": "dabfacb692e9b9258ef3fb3b7e5ff37b55835cd7ccb3d4603e7f307a1e6fac5a",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-70466507fda7d8dcff6cbc22",
+      "attempt": 1,
+      "original_record_sha256": "85b9e31c657945d59411d030dfc5f1fd3e9ddd30d5170022491b82a026f6d213",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-75ac6ce5633640d1f7915517",
+      "attempt": 1,
+      "original_record_sha256": "538e03ce84aca317169514becca093fb58d953a80b3ebaf3c0d4b39fc8432de5",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-76acca95a02580a1fe4134b5",
+      "attempt": 1,
+      "original_record_sha256": "48ff0e617761290aaebe388e4284488e0a8500fa48dbb46f10d838b8df144877",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-7d6fdf99050e4e462077e818",
+      "attempt": 1,
+      "original_record_sha256": "6d0b04658e333b980b2b73960fc3eb18350711e85c58d8a8c9031b444f5dfaef",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-81c67e6bb046880d3b2558fa",
+      "attempt": 1,
+      "original_record_sha256": "512da0cad2edb24344e2e57899489718f2f8028fc9633586671ba1486e4ca08e",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-8255047b70812123c0feb620",
+      "attempt": 1,
+      "original_record_sha256": "266c356af19038dd80bbd6abb155d5c4b86e272798047b56feb2b86f5de1245c",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-84c130b6d17a0d1b422ca2ce",
+      "attempt": 1,
+      "original_record_sha256": "16a45bd3932d5ca7d9f4a83fcc2c07b613b1f4851c90cf17fa7ec007abf4e47c",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-85094279375740c147f781de",
+      "attempt": 1,
+      "original_record_sha256": "ed5e6e7b81182c3ab1e148759008afc4e859105e9770236f3a8197c78f2d39c9",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-8f9b0a44742b9f1fa383d687",
+      "attempt": 1,
+      "original_record_sha256": "442471f2f1267aec2156ba8d465ebc4a0f7e3f39fe3211a56e89dbf8106e06bf",
+      "audit_checks": 4,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-956b90109b69354d32d7448a",
+      "attempt": 1,
+      "original_record_sha256": "3cf754420bac6f804969196d8b85f7058a86da5aa952eee3952361333c660531",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-960a5ab7c8c7105fa930e2c6",
+      "attempt": 1,
+      "original_record_sha256": "ab50b7c5bd6a46d8f2613069e9e5e3538da3b622dde7d45bd6902f3c5a9c5a7d",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-97a6ff15d27c3ffe2bb45a4a",
+      "attempt": 1,
+      "original_record_sha256": "be1b8692ed47311042cbc89de776e75640c449cea5f75fdb7ad58137e3a7fd3a",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-9ce1f299e7a2856af6cd634f",
+      "attempt": 1,
+      "original_record_sha256": "9a160d340563f9dbae75db074d4cc80662b8ac6f7fdfb7113fb2216c16d9117b",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-b587608087f13169ed641f00",
+      "attempt": 1,
+      "original_record_sha256": "8a3373687dca05c793908e87091b414c3d5dba2b125caa0c2dc54b743f17784c",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-bbe5d982972293cf7594d642",
+      "attempt": 1,
+      "original_record_sha256": "71da725e13186e46352e3e461a16028b1fa025efefc31ec39f5b7c86de7272cc",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-be633440ccf7f0c15a568364",
+      "attempt": 1,
+      "original_record_sha256": "ebc0e5f180d6318c059c62f64cf58705b38b8a0efe122260efe031a795f8aa49",
+      "audit_checks": 4,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-c03ee0e36500080eb1856ce4",
+      "attempt": 1,
+      "original_record_sha256": "d988ade270e9fb6e32d59f58cd572d3bb8e50d90d462ed0ba19cbea8820265ff",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-c2479bcf2993eb1ab3f4e47d",
+      "attempt": 1,
+      "original_record_sha256": "8c97dc2984b32ddcc7b45aaf549e665959b916752b3322065cd849258c58fdd9",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-c297235b58ddc07c39ccb328",
+      "attempt": 1,
+      "original_record_sha256": "c7b41378b915c774f820a2d8a3a24e5084f6d889db38d41ebf8015033274b11d",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-c5bbd0d162e79d1eae475bb2",
+      "attempt": 1,
+      "original_record_sha256": "aa6aaece460cd2eea4b80ed5cc1259ef1b7914111c9f3d57961294ca789edb50",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-cba8f57b000ca8bc00496f4c",
+      "attempt": 1,
+      "original_record_sha256": "bbaf8185c8a9755959e0d7c4fffe0e38759e9c28709863180cb3fe03187326f4",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-d7cacfdd425e24d9cce3c639",
+      "attempt": 1,
+      "original_record_sha256": "8f3c3c65d1d565342285e7cccdc9d3c232a136d9ca162cabbd602fc885bbb533",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-dcb468e18d0673b16fc0d7ba",
+      "attempt": 1,
+      "original_record_sha256": "a3c41ef0a0b3257acfb6e0adf9b78a4ee81e92a1e0a013d57f7c16f0becbe3a2",
+      "audit_checks": 7,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-e5c29a6e505adf573bfc58cb",
+      "attempt": 1,
+      "original_record_sha256": "a2fa4df343a8a5e39859cd283d092f48d84401d1255f11420a6920d2eaff9e24",
+      "audit_checks": 5,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-e6f45c9af19ddc80948b02fe",
+      "attempt": 1,
+      "original_record_sha256": "6efc5da8510d70e25ee261b9bd954a25b8959839a6fb2bcbb6e38d637a197f48",
+      "audit_checks": 6,
+      "errors": []
+    },
+    {
+      "episode_id": "episode-eb9c44a990d776001eae504a",
+      "attempt": 1,
+      "original_record_sha256": "70f12c3cce46a5f4c94a1a972bd0805bca98cd50f6b99417a5d83b95a0f29cd0",
+      "audit_checks": 7,
+      "errors": []
+    }
+  ],
+  "counterexamples": [
+    {
+      "mutation": "missing",
+      "errors": [
+        "response_schema_invalid"
+      ]
+    },
+    {
+      "mutation": "empty",
+      "errors": [
+        "response_schema_invalid"
+      ]
+    },
+    {
+      "mutation": "invalid_path",
+      "errors": [
+        "response_evidence_invalid"
+      ]
+    }
+  ]
+}

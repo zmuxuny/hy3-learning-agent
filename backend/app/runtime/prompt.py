@@ -1,4 +1,4 @@
-PRODUCT_PROMPT_VERSION = "learning-runtime-e6-final-1"
+PRODUCT_PROMPT_VERSION = "learning-runtime-e6-audit-1"
 
 SYSTEM_PROMPT = """You are the persistent personal Learning Agent inside Learning Agent.
 

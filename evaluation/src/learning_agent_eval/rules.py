@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, time, timezone
+from zoneinfo import ZoneInfo
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -26,7 +28,7 @@ EVALUATOR_VERSION_V2 = "deterministic-rule-evaluator-v2"
 RULE_PACK_VERSION_V2 = "e31-rule-pack-v2"
 RULE_IMPLEMENTATION_REVISION_V2 = "structured-rules-2026-09-03.2"
 EVALUATOR_VERSION_V3 = "deterministic-rule-evaluator-v3"
-RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-final-3"
+RULE_PACK_VERSION_V3 = "e311-rule-pack-v3-e6-audit-1"
 RULE_IMPLEMENTATION_SHA256_V3 = source_bundle_sha256("rules")
 
 _PACK_RULES: dict[str, tuple[tuple[str, str], ...]] = {
@@ -1950,8 +1952,49 @@ def _draft_schedule_checks(episode):
         return []
     path, plan = drafts[-1]
     violations = []
+    constraint_paths = []
+    facts = []
+    timezone_name = "UTC"
+    for ei, entity in enumerate(episode.get("state_before", {}).get("logical_entities", [])):
+        if entity["entity_type"] == "learner":
+            timezone_name = entity["data"].get("timezone", "UTC")
+        if entity["entity_type"] == "planning_intake":
+            facts = entity["data"].get("confirmed_facts", [])
+            constraint_paths = [f"state_before.logical_entities[{ei}].data.confirmed_facts"]
+    # Only successful observations before the draft tool can establish or
+    # update the constraint. Returned arguments awaiting approval are not facts.
+    draft_call = int(path.split("model_calls[")[1].split("]")[0])
+    prior_ids = {t["call_id"] for c in episode["observable_trace"].get("model_calls", [])[:draft_call]
+                 for t in c.get("returned_tool_calls", []) if "call_id" in t}
+    draft_tool = int(path.split("returned_tool_calls[")[1].split("]")[0])
+    prior_ids.update(t["call_id"] for t in episode["observable_trace"]["model_calls"][draft_call]
+                     .get("returned_tool_calls", [])[:draft_tool] if "call_id" in t)
+    for ii, invocation in enumerate(episode["observable_trace"].get("tool_invocations", [])):
+        if (invocation.get("tool_call_id") in prior_ids
+                and invocation.get("tool_name") in {"planning.intake.get", "planning.intake.update"}
+                and invocation.get("observation_status") == "succeeded"
+                and "confirmed_facts" in invocation.get("result", {})):
+            facts = invocation["result"]["confirmed_facts"]
+            constraint_paths = [f"observable_trace.tool_invocations[{ii}].result.confirmed_facts"]
+    confirmed_bounds = []
+    for fact in facts:
+        if fact.get("key") != "deadline" or fact.get("source", "user") not in {"user", "user_confirmed"}:
+            continue
+        try:
+            raw = fact["value"]
+            bound = datetime.fromisoformat(raw)
+            if len(raw) == 10:
+                bound = datetime.combine(bound.date(), time.max, ZoneInfo(timezone_name))
+            elif bound.tzinfo is None:
+                raise ValueError("ambiguous deadline")
+            confirmed_bounds.append(bound.astimezone(timezone.utc))
+        except (ValueError, TypeError):
+            violations.append({"issue": "confirmed_deadline_needs_clarification"})
     try:
         deadline = normalize_rfc3339(plan["deadline"]) if plan.get("deadline") else None
+        for bound in confirmed_bounds:
+            if deadline is None or datetime.fromisoformat(deadline) > bound:
+                violations.append({"issue": "plan_exceeds_confirmed_deadline", "confirmed_deadline": bound.isoformat()})
         for si, stage in enumerate(plan.get("stages", [])):
             for ti, task in enumerate(stage.get("tasks", [])):
                 due = normalize_rfc3339(task["due_at"]) if task.get("due_at") else None
@@ -1959,12 +2002,15 @@ def _draft_schedule_checks(episode):
                 for field, value in (("due_at", due), ("review_due_at", review)):
                     if value and deadline and value > deadline:
                         violations.append({"stage": si, "task": ti, "field": field, "value": value, "deadline": deadline})
+                for field, value in (("due_at", due), ("review_due_at", review)):
+                    if value and any(datetime.fromisoformat(value) > b for b in confirmed_bounds):
+                        violations.append({"stage": si, "task": ti, "field": field, "issue": "exceeds_confirmed_deadline"})
                 if due and review and review < due:
                     violations.append({"stage": si, "task": ti, "issue": "review_before_task"})
     except (ValueError, TypeError, KeyError, AttributeError):
         violations.append({"issue": "invalid_schedule_structure"})
     return [_check(episode=episode, check_id="planning.draft_schedule", pack="planning", severity="critical",
-                   paths=[path], expected="all task and review dates within deadline; review no earlier than task",
+                   paths=[path, *constraint_paths], expected="plan, task and review dates honor the structured user-confirmed deadline; review no earlier than task",
                    observed={"violations": violations}, predicate=lambda _: not violations,
                    message="A pending draft must honor its deadline; approval waiting does not waive schedule constraints.")]
 

@@ -1,0 +1,16 @@
+{
+  "owned_temporary_root_removed": true,
+  "owned_temporary_root": "/tmp/e6-review-fix-sw8a8c3r",
+  "checkouts_removed": [
+    "formal-recompute-copy",
+    "test-copy",
+    "formal113-recompute-copy"
+  ],
+  "live_owned_processes_before_cleanup": [],
+  "paid_requests_added": 0,
+  "old_frozen_results_unchanged": true,
+  "E7_E8_started": false,
+  "pushed": false,
+  "published": false,
+  "local_commit_evidence": "git log -- evaluation/artifacts/e6-audit-fixes-20260909/closure.json"
+}

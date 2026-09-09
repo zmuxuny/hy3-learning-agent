@@ -1,0 +1,1 @@
+Initial 1.14 build rejected: SchemaLockManifestV1.lock_version literal lacked evaluation-schema-lock-1.14. Partial new schema files retained and rebuilt after extending version literals. No historical assets changed.

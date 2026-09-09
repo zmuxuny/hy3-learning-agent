@@ -44,6 +44,7 @@ from .judge_request_projection import evidence_catalog, pack_shared_values
 from .model_budget import ModelBudgetExceeded
 from .models import (
     JudgeResponsePayloadV1,
+    JudgeResponsePayloadV2,
     JudgeResultV2,
     JudgeResultV3,
     JudgeRunManifestV2,
@@ -480,9 +481,7 @@ def build_provider_request_v3(
                 ),
             }
         )
-    output_schema = JudgeResponsePayloadV1.model_json_schema(mode="validation")
-    output_schema["required"] = ["audit_checks", *output_schema["required"]]
-    output_schema["properties"]["audit_checks"]["minItems"] = 1
+    output_schema = JudgeResponsePayloadV2.model_json_schema(mode="validation")
     output_schema["$defs"]["EpisodeEvidencePath"] = {"type": "string", "enum": catalog}
     def constrain_paths(node):
         if isinstance(node, dict):
@@ -509,7 +508,7 @@ def build_provider_request_v3(
     }
 
 
-def _parse_response(value: object) -> dict[str, Any]:
+def _parse_response(value: object, *, active: bool = False) -> dict[str, Any]:
     if isinstance(value, str):
         try:
             value = json.loads(value)
@@ -518,15 +517,19 @@ def _parse_response(value: object) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise TypeError("response_json_invalid")
     try:
-        return JudgeResponsePayloadV1.model_validate(value).model_dump(
+        model = JudgeResponsePayloadV2 if active else JudgeResponsePayloadV1
+        return model.model_validate(value).model_dump(
             mode="json", by_alias=True
         )
     except ValidationError as exc:
         raise ValueError("response_schema_invalid") from exc
 
 
-def _all_evidence_paths(payload: Mapping[str, Any]) -> list[str]:
+def _all_evidence_paths(payload: Mapping[str, Any], *, include_audit: bool = False) -> list[str]:
     paths: list[str] = []
+    if include_audit:
+        for check in payload["audit_checks"]:
+            paths.extend(check["evidence_paths"])
     for dimension in payload["dimensions"]:
         paths.extend(dimension["evidence_paths"])
     for issue in payload["semantic_issues"]:
@@ -566,11 +569,11 @@ def _validate_payload_v3(
     blind_input: BlindJudgeInputV3,
 ) -> tuple[dict[str, Any] | None, tuple[str, ...]]:
     try:
-        payload = _parse_response(value)
+        payload = _parse_response(value, active=True)
     except (TypeError, ValueError) as exc:
         return None, (str(exc),)
     errors: set[str] = set()
-    for path in _all_evidence_paths(payload):
+    for path in _all_evidence_paths(payload, include_audit=True):
         if (
             path.startswith("capture.")
             or not resolve_evidence_path(episode, path)[0]
@@ -1315,7 +1318,7 @@ def _evaluate_one_v3(
                 )
             invalid_paths = []
             if "response_evidence_invalid" in error_codes and "response_privacy_invalid" not in error_codes:
-                invalid_paths = sorted({p for p in _all_evidence_paths(_parse_response(reply.content))
+                invalid_paths = sorted({p for p in _all_evidence_paths(_parse_response(reply.content, active=True), include_audit=True)
                                         if not resolve_evidence_path(episode, p)[0]
                                         or not path_visible_to_judge_v3(blind_input, p)})
             _record_judge_attempt(attempt_log_path, episode, blind_input, attempt, reply, error_codes, invalid_paths)

@@ -1,0 +1,56 @@
+[
+  {
+    "part": "formal",
+    "frozen_commit": "83fbf52cfe4a036cc5b3ef30ba007b7c38f6f36f",
+    "command": [
+      "/root/workspace/tencent_rhinobird2026/learning_travel/.venv/bin/python",
+      "evaluation/scripts/summarize_e6_run.py",
+      "--dataset",
+      "evaluation/datasets/decisionbench-v1.9-e6-final-test",
+      "--run",
+      "/tmp/e6-review-fix-sw8a8c3r/frozen-evidence/formal",
+      "--output",
+      "/tmp/e6-review-fix-sw8a8c3r/formal-recomputed"
+    ],
+    "exit_code": 0,
+    "files": [
+      {
+        "name": "summary.json",
+        "sha256": "bcfbc46e002c3c3b57ebc58447d145314091fb23802d0682d1542e074205fd2e",
+        "byte_equal": true
+      },
+      {
+        "name": "cases.csv",
+        "sha256": "1089385f2ae54169441a462445bc1d09a3ebd7d98399f95a6cfbcf4905406144",
+        "byte_equal": true
+      }
+    ]
+  },
+  {
+    "part": "formal113",
+    "frozen_commit": "35e77cfc3331df99c2e6ef44e030040557c20144",
+    "command": [
+      "/root/workspace/tencent_rhinobird2026/learning_travel/.venv/bin/python",
+      "evaluation/scripts/summarize_e6_run.py",
+      "--dataset",
+      "evaluation/datasets/decisionbench-v1.13-e6-final-test",
+      "--run",
+      "/tmp/e6-review-fix-sw8a8c3r/frozen-evidence/formal113",
+      "--output",
+      "/tmp/e6-review-fix-sw8a8c3r/formal113-recomputed"
+    ],
+    "exit_code": 0,
+    "files": [
+      {
+        "name": "summary.json",
+        "sha256": "9b32975517fdbdb72064c07afebcc0cac1b408418bb932b9717da6699e6eda69",
+        "byte_equal": true
+      },
+      {
+        "name": "cases.csv",
+        "sha256": "bdd31c5f3c682ae9e0d71a4e42d3f6ab5e1d26fb20368d8e4b886a7c983adfab",
+        "byte_equal": true
+      }
+    ]
+  }
+]

@@ -1,5 +1,6 @@
 import json
-from datetime import datetime
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -30,6 +31,35 @@ def build_plan_memory_summary(plan: Plan) -> str:
         f"阻塞：{'、'.join(blocked[:3]) or '无'}；"
         f"计划版本 {plan.version}。"
     )
+
+
+def confirmed_deadline_values(facts: list[dict]) -> list[str]:
+    """Only the explicit deadline key is a machine-readable constraint."""
+    return [f["value"] for f in facts if f.get("key") == "deadline"
+            and f.get("source", "user") in {"user", "user_confirmed"}]
+
+
+def confirmed_deadline_issues(data: PlanCreate, facts: list[dict], *, timezone: str) -> list[str]:
+    issues = []
+    for value in confirmed_deadline_values(facts):
+        try:
+            bound = datetime.fromisoformat(value)
+            if len(value) == 10:
+                bound = datetime.combine(bound.date(), time.max, ZoneInfo(timezone))
+            elif bound.tzinfo is None:
+                raise ValueError("deadline needs timezone")
+        except (ValueError, TypeError):
+            issues.append("confirmed deadline must be an ISO date or timestamp with timezone; clarify it first")
+            continue
+        if data.deadline is None or canonical_utc(data.deadline) > canonical_utc(bound):
+            issues.append("plan deadline must not exceed the user-confirmed deadline")
+        for stage in data.stages:
+            for task in stage.tasks:
+                for field in ("due_at", "review_due_at"):
+                    actual = getattr(task, field)
+                    if actual is not None and canonical_utc(actual) > canonical_utc(bound):
+                        issues.append(f"{field} exceeds user-confirmed deadline")
+    return issues
 
 
 def plan_completeness_issues(data: PlanCreate) -> list[str]:

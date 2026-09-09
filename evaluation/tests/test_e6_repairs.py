@@ -119,6 +119,7 @@ def test_provider_failures_keep_safe_cause_and_unknown_usage_reservation(tmp_pat
     ledger = tmp_path / "budget.json"
     ModelBudget.create(ledger, limit_micro_cny=500_000)
     monkeypatch.setenv("OPENAI_API_KEY", "synthetic-key")
+    monkeypatch.setenv("OPENAI_API_BASE", "https://provider.example.test/v1")
     def fail(*args, **kwargs):
         assert kwargs["timeout"] == 180
         raise error

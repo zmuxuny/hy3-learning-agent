@@ -1,6 +1,6 @@
 # E6最终修复、验证与评测档案（2026-09-09）
 
-E6要求已执行完成：修复第三阶段实际代码问题、另版方法验证、重新建立未见家族并冻结登记、完整运行、主AI全轨迹审核及归档。最终I48固定Protocol1.13 / 源码35e77cf；结果formal=false，不能称正式能力验收通过。E7/E8未开展，未推送、未发布。
+E6要求已执行完成：修复第三阶段实际代码问题、另版方法验证、重新建立未见家族并冻结登记、完整运行、主AI全轨迹审核及归档。最终I48固定Protocol1.13 / 源码35e77cf；结果formal=false。冻结批次已执行；因运行及评分不完整，未形成正式能力统计。I批formal=false源于I01-P调用失败使来源资格不完整，以及Runtime/Judge错误；18个有分失败案例不参与该布尔值计算。Benchmark登记与完整套件检查通过，第三方接口也不是一律不受信任。E7/E8未开展，未推送、未发布。
 
 ## 最终固定48分母结果
 
@@ -11,7 +11,7 @@ E6要求已执行完成：修复第三阶段实际代码问题、另版方法验
 | planning | 11/12 | 6 | 5 | 1 | 100.000 | 72.273 | 72.273 |
 | revision | 9/12 | 5 | 4 | 3 | 99.444 | 72.889 | 72.889 |
 
-状态分布：{"complete": 41, "runtime_failure": 1, "judge_error": 6}；正式能力阻断：capability.judge_error, capability.run_not_trusted, capability.runtime_failure。零分保留为零，运行或Judge失败保留无分；均分只以有分案例为分母，全案例通过率以每轨12为分母。七维均值和所有案例在[JSON](final-summary.json)与[CSV](final-cases.csv)。
+状态分布：{"complete": 41, "runtime_failure": 1, "judge_error": 6}；正式统计完整性阻断：capability.judge_error, capability.run_not_trusted, capability.runtime_failure。零分保留为零，运行或Judge失败保留无分；均分只以有分案例为分母，全案例通过率以每轨12为分母。七维均值和所有案例在[JSON](final-summary.json)与[CSV](final-cases.csv)。
 
 最终I批Judge为41有效、5 Provider错误（I03-R/I05-A/I05-R/I06-R/I12-A）及1本地输入超限（I10-A，无Provider调用或计费）。47份完整请求离线往返均等价，只有I10-A上界201992超过冻结上限196608；旧79份0超限并不代表新输入均通过。原错误保留，不截断、不在看过新测试后改上限或选择性重试。
 
@@ -35,7 +35,7 @@ H03暴露规范消息外键误按Notification解析后，1.10–1.13补齐ChatMe
 
 ## H批次及历史保全
 
-H48固定Protocol1.9/83fbf52，在当时方法决定后建立并冻结；后来发现消息身份框架缺陷，仍完成原版全流程，未回填或改名成1.13。状态分布：{"judge_error": 2, "complete": 44, "runtime_failure": 2}。H03-P原身份Failure和H07-R原Provider Failure保留；见[h-summary.json](h-summary.json)与[h-cases.csv](h-cases.csv)。F/G旧结果、各中间Release及失败全部保留，I家族在最终方法决定792a84b之后才编写。
+H48固定Protocol1.9/83fbf52，在当时方法决定后建立并冻结；后来发现消息身份框架缺陷，仍完成原版全流程，未回填或改名成1.13。状态分布：{"judge_error": 2, "complete": 44, "runtime_failure": 2}。H03-P原身份Failure保留。H07-R为本地响应投影拒绝（framework_error / response_projection_rejected），具体触发原因无法从保留材料确认；不是已证实的Provider失败。原记录含服务端请求ID及21699输入/421输出usage，无分状态保持不变。 原Failure、汇总和旧AI审核文字不覆盖，归因读取[H07-R更正](../e6-audit-fixes-20260909/h07-errata.json)；见[h-summary.json](h-summary.json)与[h-cases.csv](h-cases.csv)。F/G旧结果、各中间Release及失败全部保留，I家族在最终方法决定792a84b之后才编写。
 
 ## 费用
 
@@ -45,6 +45,27 @@ H48固定Protocol1.9/83fbf52，在当时方法决定后建立并冻结；后来�
 
 [证据包](public-evidence.tar.gz)含6766个文件；[清单](archive-manifest.json)逐文件记录大小/SHA256并绑定压缩包。包括全部原运行终态、Judge原响应/结构修复/失败、原始和裁决聚合、输入复核、方法统计、产品体验、账本、回归失败、辅助脚本，以及9个关键提交的精确tracked源码包。repair目录保留旧4904文件，便于独立复查跨版反例。已失败的首次源码打包部分文件也按原失败身份保留，不作完整源码。
 
-最终批次可离线复核：从source-snapshots/35e77cf…tar.gz取对应源码，将evidence解压到仓外，使用锁定依赖，设置PYTHONPATH=evaluation/src；运行evaluation/scripts/summarize_e6_run.py --dataset evaluation/datasets/decisionbench-v1.13-e6-final-test --run <evidence>/formal113 --output <new-report>，比较summary.json和cases.csv逐字节。H批次须用83fbf52源码和1.9数据。包内report-recompute与执行日志保存实际复算证据。此过程不调用模型。
+复算需要包含冻结提交的完整Git历史：来源校验会执行`git archive <commit>`。源码快照只用于核对字节，单独解压不能替代Git对象库。下面以I批为例；H批将提交换为`83fbf52`、数据版本换为`1.9`、运行目录换为`formal`。
+
+```bash
+REPO=/root/workspace/tencent_rhinobird2026/learning_travel
+WORK=$(mktemp -d)
+mkdir "$WORK/evidence"
+tar -xzf "$REPO/evaluation/artifacts/e6-completion-20260909/public-evidence.tar.gz" -C "$WORK/evidence"
+git clone --no-hardlinks "$REPO" "$WORK/source"
+git -C "$WORK/source" checkout --detach 35e77cf
+cd "$WORK/source"
+# 使用项目锁定依赖；已有同一锁定环境时也可使用其Python绝对路径。
+uv sync --frozen
+PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/summarize_e6_run.py \
+  --dataset evaluation/datasets/decisionbench-v1.13-e6-final-test \
+  --run "$WORK/evidence/formal113" --output "$WORK/recomputed"
+cmp "$WORK/recomputed/summary.json" "$WORK/evidence/formal113/report/summary.json"
+cmp "$WORK/recomputed/cases.csv" "$WORK/evidence/formal113/report/cases.csv"
+```
+
+以上复算不调用模型，也不需要.env。H/I修正后步骤均已在带Git历史的仓外冻结副本验证，见[复算证据](../e6-audit-fixes-20260909/frozen-recompute-verification.json)。原包内错误归因用更正文件解释，不改原结果以维持原字节复算。
 
 [归档校验](archive-verification.json)核对外层全部成员、嵌套源码清单和配置密钥缺席；[历史保全](historical-preservation.json)核对e491164旧不可变制品，注册表仅追加，Release入口README保留原历史正文并增加当前说明。实际数据库、.env、缓存不归档。[收尾清单](closure-checks.json)记录本轮仓外副本/临时库清理与本地提交状态。
+
+独立审计后的工程修复为Protocol1.14未登记候选，完成离线验证，未做新付费方法实验或新测试批次；1.13原实验不移名。见[审计修复记录](../e6-audit-fixes-20260909/README.md)。
