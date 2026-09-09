@@ -1,0 +1,8 @@
+{
+  "product_source_commit": "500f280",
+  "judge_source_commit": "2a9c38a",
+  "parser_fix_commit": "7ac56ed",
+  "operational_recovery_commit": "500622e",
+  "current_source_changes": "Session title and approval layout changed after application study; no change to tested reasoning prompts.",
+  "first_success_selection": "evidence/full/selection.json"
+}

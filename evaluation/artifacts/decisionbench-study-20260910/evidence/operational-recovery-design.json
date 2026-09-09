@@ -1,0 +1,8 @@
+{
+  "created_at": "2026-09-09T16:30:51.500633+00:00",
+  "method_sha256": "d466be9949cdd60abf4b93e00cadcd72f760b2b3f1281a00f7040fe030257640",
+  "source_commit": "500622e",
+  "max_cycles_per_slot": 1,
+  "max_attempts_per_stage": 3,
+  "eligible": "All terminal judge_error slots still unscored and ineligible for the parser erratum; never rerun a complete rating. Reuse an already valid original content audit. Preserve original failures, report completion after supplementary recovery separately."
+}

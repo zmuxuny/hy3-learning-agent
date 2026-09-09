@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 当前应用样本 | [48个学习决策输入](decisionbench-learning-v1/application/manifest.json) | 四类场景各12个，交给真实Hy3应用执行；样本输入和模型输出分开保存 |
 | 内容核验开发样本 | [三档构造输出](learning-quality-validation-v1/README.md)及历史真实轨迹 | 已用于发现评测漏检，属于开发证据 |
-| 最终方法验证样本 | 建设中，最终入口随实验固定 | 检验好中差排序、重复评分和对抗输出；构造输出不计作真实应用运行 |
+| 最终方法验证样本 | [24份三档输出](decisionbench-learning-v1/method-validation/README.md)与[8份对抗输出](decisionbench-learning-v1/adversarial/README.md) | 检验好中差排序、重复评分和对抗输出；构造输出不计作真实应用运行 |
 
 ## 旧目录为什么有不同版本号
 

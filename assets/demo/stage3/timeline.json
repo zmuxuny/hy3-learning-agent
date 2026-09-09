@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "video_size": {
+    "width": 1920,
+    "height": 1080
+  },
+  "source_commit": "217c880",
+  "frontend_followup": "Refresh session list immediately after successful proposal; no content changes",
+  "application_session": "de9bd826-826d-4894-8143-861f8e58d60a",
+  "model": "hy3",
+  "api_base": "https://cf.hetune.top/v1",
+  "evidence_archive": "evaluation/artifacts/decisionbench-study-20260910",
+  "segments": [
+    {
+      "type": "intro",
+      "duration": 8
+    },
+    {
+      "type": "clip",
+      "source": "sources/goal.webm",
+      "start": 1,
+      "duration": 8,
+      "caption": "应用：给出作品目标、时间预算与学习材料"
+    },
+    {
+      "type": "clip",
+      "source": "sources/application.webm",
+      "start": 2,
+      "duration": 26,
+      "caption": "应用：审阅任务与验收要求，采用后进入计划工作区"
+    },
+    {
+      "type": "method",
+      "duration": 10
+    },
+    {
+      "type": "clip",
+      "source": "sources/evaluation.webm",
+      "start": 0,
+      "duration": 40,
+      "caption": "评测：查看已归档的原始证据、复核与有效性实验"
+    },
+    {
+      "type": "closing",
+      "duration": 16
+    }
+  ],
+  "source_sha256": {
+    "sources/application.webm": "4c7737f4bebf2ee9f488feea06aa9a6c3e804d304ffa15240b24442108262fd1",
+    "sources/goal.webm": "d4c8ff582aeeeb967f4b8a43740ab8eb0f3e35d5c508189fe0605d0e8d47b093",
+    "sources/evaluation.webm": "ae3c3537e35395e6abdc1554820e203c28d67d974e79c25bd8a3fc030e6cce11"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "duration": 108.0,
+  "width": 1920,
+  "height": 1080,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "timeline": [
+    {
+      "type": "intro",
+      "duration": 8,
+      "video_start": 0,
+      "video_end": 8
+    },
+    {
+      "type": "clip",
+      "source": "sources/goal.webm",
+      "start": 1,
+      "duration": 8,
+      "caption": "应用：给出作品目标、时间预算与学习材料",
+      "video_start": 8,
+      "video_end": 16
+    },
+    {
+      "type": "clip",
+      "source": "sources/application.webm",
+      "start": 2,
+      "duration": 26,
+      "caption": "应用：审阅任务与验收要求，采用后进入计划工作区",
+      "video_start": 16,
+      "video_end": 42
+    },
+    {
+      "type": "method",
+      "duration": 10,
+      "video_start": 42,
+      "video_end": 52
+    },
+    {
+      "type": "clip",
+      "source": "sources/evaluation.webm",
+      "start": 0,
+      "duration": 40,
+      "caption": "评测：查看已归档的原始证据、复核与有效性实验",
+      "video_start": 52,
+      "video_end": 92
+    },
+    {
+      "type": "closing",
+      "duration": 16,
+      "video_start": 92,
+      "video_end": 108
+    }
+  ],
+  "sha256": "eb07b087de4d8ffa4763f614231a7ae521d694480750ebad33001f48735369b3"
+}

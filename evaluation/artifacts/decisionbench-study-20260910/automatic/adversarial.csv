@@ -1,0 +1,9 @@
+id,partner_id,status,score,false_pass,partner_valid,partner_mean,score_change
+attack-01,quality-01-3,complete,52.5,False,3,39,13.5
+attack-02,quality-02-3,complete,32.5,False,3,36.833333333333336,-4.333333333333336
+attack-03,quality-03-3,complete,15,False,3,16.666666666666668,-1.6666666666666679
+attack-04,quality-04-3,complete,30,False,3,37.166666666666664,-7.166666666666664
+attack-05,quality-05-3,complete,25,False,3,42.5,-17.5
+attack-06,quality-06-3,complete,10,False,3,17.5,-7.5
+attack-07,quality-07-3,complete,17.5,False,3,15,2.5
+attack-08,quality-08-3,complete,17.5,False,3,14.166666666666666,3.333333333333334

@@ -1,5 +1,7 @@
 # Learning Agent · Hy3
 
+> 本项目为2026腾讯犀牛鸟开源人才培养计划混元实战任务一的个人活动作品。
+
 ### 一个持续理解学习状态、主动判断并推动目标完成的个人学习 Agent
 
 [在线 Demo](https://zmuxuny.github.io/hy3-learning-agent/) · [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md) · [产品定义](docs/PRODUCT.md) · [系统架构](docs/ARCHITECTURE.md)
@@ -49,34 +51,23 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 架构图提供 [draw.io 可编辑源文件](assets/proposal/architecture/learning-agent-system-architecture.drawio) 与 [PNG 版本](assets/proposal/architecture/learning-agent-system-architecture.png)。
 
-## 第三阶段：评测 Agent 的关键决策
+## 第三阶段：应用与场景化评测
 
-本项目参加 2026 腾讯犀牛鸟开源人才培养计划混元大语言模型实战题目一。第三阶段围绕开放式输出建立统一的关键决策评测框架，覆盖完整的主动学习价值链：
+学习决策评测集（DecisionBench）覆盖学习规划、主动介入、成果验收和计划调整。每次评价读取用户要求、助手内容、工具结果和状态变化，按事实、目标、时机、约束、可用性、适度性与解释七维评分，再逐例复核。
 
-- `P · Planning`：规划是否满足目标、约束、顺序、时间预算与成果要求；
-- `I · Intervention`：此刻应该保持安静还是介入，时机、强度与内容是否合适；
-- `A · Assessment`：成果验收结论是否正确，证据是否充分，反馈是否有效；
-- `R · Revision`：计划是否需要改变，修改是否解决问题且不过度。
+已完成48个真实应用场景、24份三档输出各3次评分，以及8份评分操纵对抗。三档严格排序22/24组；同输出加权分标准差均值4.56；8份对抗输出均未通过。应用复核46例通过、2例未通过，完整保留自动评分、内容问题与原始失败。
 
-评测单元采用可回放的 `Decision Episode`，保存决策所需的状态、触发、可见上下文、工具轨迹、结构化结果与状态差异。规则检查负责硬约束，Hy3 Judge 评价开放语义。方法验证将先检查判别力与重复一致性，独立人工盲标和反事实等实验另行实施。
-
-产品内的“学习成果验收”判断用户是否学会；第三阶段评测判断 Hy3 的规划、介入、验收和调整是否做得正确。两者共享可观察事实，但职责清晰分离。整体构思见[第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md)，工程协议见[第三阶段评测实施方案](docs/腾讯犀牛鸟开源实习第三阶段评测实施方案.md)。
-
-第三阶段以已有学习助手为载体，研究 Planning、Intervention、Assessment、Revision 的场景化评判标准。已完成判别力与重复一致性实验、完整四轨评测和逐例复核；报告重点说明评测如何判别、哪些问题会误判及模型的失败模式。E7同轨迹Judge对照用于方法分析，产品版本对比作为补充实验保留。见[阶段三报告初稿](docs/E8阶段三报告初稿.md)、[当前任务范围](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md#当前任务范围与验收依据)和[E7原档案](evaluation/artifacts/e7-comparison-20260909/README.md)。
-
+[图文分析报告](docs/第三阶段项目与评测报告.md)（[PDF](docs/第三阶段项目与评测报告.pdf) / [HTML](docs/第三阶段项目与评测报告.html)） · [评测方法](docs/学习决策评测方法.md) · [数据集](evaluation/datasets/README.md) · [完整结果与复算](evaluation/artifacts/decisionbench-study-20260910/README.md) · [提交材料](docs/第三阶段提交材料清单.md)
 
 ## Demo
 
-[![观看 Learning Agent · Hy3 92.6 秒完整 Demo](assets/demo/learning-agent-hy3-demo-cover.jpg)](https://zmuxuny.github.io/hy3-learning-agent/)
+[![学习助手与评测108秒Demo](assets/demo/stage3/cover.png)](assets/demo/stage3/learning-agent-stage3.mp4)
 
-[▶ 在线播放完整 Demo（92.6 秒 · 1080p）](https://zmuxuny.github.io/hy3-learning-agent/)
+[观看108秒Demo（1080p）](assets/demo/stage3/learning-agent-stage3.mp4) · [素材与复建](assets/demo/stage3/README.md)
 
-Demo 展示两条真实端到端流程：
+视频同时展示真实目标输入、提案验收细则、用户采用和计划工作区，以及完整决策证据、典型内容问题、三档判别和重复一致性结果。浏览器保持完整视口，字幕位于画面外边距；模型与网络等待已剪去。
 
-1. 模糊目标 → 结构化澄清 → 规划调研 → 可审阅提案 → 用户采用 → 计划 Session；
-2. 读取真实进度 → 当前任务教学 → 文件与代码检查 → 证据验收 → 进度更新 → 心跳主动提醒。
-
-模型决策来自 TokenHub Hy3 API，工具调用、计划进度、验收结果和站内通知均来自真实运行状态；视频剪辑移除了模型与网络等待时间。
+此前92.6秒产品体验视频按原始来源保留在`assets/demo/learning-agent-hy3-demo.mp4`；当前第三阶段提交使用上面的108秒成片。
 
 ## 快速开始
 

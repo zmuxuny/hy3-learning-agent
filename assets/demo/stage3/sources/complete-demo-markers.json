@@ -1,0 +1,22 @@
+[
+  {
+    "name": "home",
+    "seconds": 2.113,
+    "url": "http://127.0.0.1:8878/"
+  },
+  {
+    "name": "goal",
+    "seconds": 5.78,
+    "url": "http://127.0.0.1:8878/"
+  },
+  {
+    "name": "thinking",
+    "seconds": 8.44,
+    "url": "http://127.0.0.1:8878/sessions/de9bd826-826d-4894-8143-861f8e58d60a"
+  },
+  {
+    "name": "proposal",
+    "seconds": 86.656,
+    "url": "http://127.0.0.1:8878/sessions/de9bd826-826d-4894-8143-861f8e58d60a"
+  }
+]

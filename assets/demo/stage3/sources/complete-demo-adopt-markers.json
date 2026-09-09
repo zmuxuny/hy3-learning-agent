@@ -1,0 +1,27 @@
+[
+  {
+    "name": "overview",
+    "seconds": 3.441,
+    "url": "http://127.0.0.1:8878/sessions/de9bd826-826d-4894-8143-861f8e58d60a"
+  },
+  {
+    "name": "acceptance",
+    "seconds": 8.606,
+    "url": "http://127.0.0.1:8878/sessions/de9bd826-826d-4894-8143-861f8e58d60a"
+  },
+  {
+    "name": "adopt-button",
+    "seconds": 16.945,
+    "url": "http://127.0.0.1:8878/sessions/de9bd826-826d-4894-8143-861f8e58d60a"
+  },
+  {
+    "name": "adopted",
+    "seconds": 19.124,
+    "url": "http://127.0.0.1:8878/sessions/de9bd826-826d-4894-8143-861f8e58d60a"
+  },
+  {
+    "name": "workspace",
+    "seconds": 21.109,
+    "url": "http://127.0.0.1:8878/plans"
+  }
+]
