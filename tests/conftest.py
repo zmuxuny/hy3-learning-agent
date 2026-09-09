@@ -19,7 +19,7 @@ TEST_BOOTSTRAP_TEMP_DIR = tempfile.TemporaryDirectory(prefix="learning-agent-boo
 TEST_BOOTSTRAP_ROOT = Path(TEST_BOOTSTRAP_TEMP_DIR.name)
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DATABASE_PATH}"
 os.environ["OPENAI_API_KEY"] = "test-key"
-os.environ["OPENAI_API_BASE"] = "http://127.0.0.1:9/v1"
+os.environ["OPENAI_API_BASE"] = "https://127.0.0.1:9/v1"
 os.environ["ENABLE_SCHEDULER"] = "false"
 os.environ["SMTP_HOST"] = ""
 os.environ["SMTP_USERNAME"] = ""

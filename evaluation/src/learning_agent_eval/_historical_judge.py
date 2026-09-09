@@ -457,7 +457,10 @@ def _evaluate_one(
                 rule_result=rule_result,
                 judge_mode=judge_mode,
             )
-            result.update(payload)
+            # The frozen result formats predate response-only audit checks.
+            result.update({key: payload[key] for key in (
+                "dimensions", "semantic_issues", "suggested_hard_gates",
+            )})
             result.update(
                 {
                     "status": "complete",

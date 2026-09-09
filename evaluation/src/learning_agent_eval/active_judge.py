@@ -824,7 +824,10 @@ def _evaluate_one(
             }
         )
     else:
-        result.update(payload)
+        # The frozen result formats predate response-only audit checks.
+        result.update({key: payload[key] for key in (
+            "dimensions", "semantic_issues", "suggested_hard_gates",
+        )})
     result.update(
         {
             "status": status,

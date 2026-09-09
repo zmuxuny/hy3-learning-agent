@@ -28,7 +28,7 @@ def test_external_test_integrations_are_fail_closed():
     assert settings.SMTP_HOST == ""
     assert settings.IMAP_HOST == ""
     assert settings.VAPID_PRIVATE_KEY == ""
-    assert settings.OPENAI_API_BASE == "http://127.0.0.1:9/v1"
+    assert settings.OPENAI_API_BASE == "https://127.0.0.1:9/v1"
 
 
 def test_runtime_file_writes_are_isolated_from_repository(
