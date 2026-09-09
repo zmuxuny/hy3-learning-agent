@@ -9,7 +9,7 @@ from pathlib import Path
 from statistics import mean, pstdev
 from learning_agent_eval.active_aggregate import _aggregate_document
 from learning_agent_eval.canonical import sha256_digest
-from learning_agent_eval.integrity import judge_result_digest
+from learning_agent_eval.integrity import judge_result_digest, artifact_manifest_digest
 from learning_agent_eval.semantic_adjudication import reviewed_results
 from evaluate_e7_trace import verify_bundle
 
@@ -109,12 +109,19 @@ def compute(root, index):
             read(run / "rules/rule-manifest.json"),
         )
         jm = read(judge_dir / "comparison-manifest.json")
+        if any(
+            artifact_manifest_digest(m) != m["manifest_sha256"]
+            for m in (runtime, rules)
+        ):
+            raise ValueError("source_manifest_digest_invalid")
         if jm["source_runtime_manifest_sha256"] != runtime["manifest_sha256"]:
             raise ValueError("comparison_runtime_binding_invalid")
         selected = [t for t in runtime["terminals"] if t["case_id"] in slot["case_ids"]]
-        if len(selected) != len(slot["case_ids"]) or {
-            r["case_id"] for r in jm["rows"]
-        } != set(slot["case_ids"]):
+        if (
+            len(selected) != len(slot["case_ids"])
+            or len(jm["rows"]) != len(slot["case_ids"])
+            or {r["case_id"] for r in jm["rows"]} != set(slot["case_ids"])
+        ):
             raise ValueError("fixed_comparison_inventory_invalid")
         for terminal in selected:
             case, identity = terminal["case_id"], terminal["artifact_id"]
@@ -135,6 +142,12 @@ def compute(root, index):
                 rule_failures=[],
                 confirmed_critical=[],
                 pending=[],
+                episode_sha256=None,
+                judge_result_sha256=None,
+                judge_provider_eligible=None,
+                judge_protocol_eligible=None,
+                runtime_durable_status=None,
+                rule_pass=None,
                 source_protocol_eligible=runtime["protocol_eligible"],
                 source_provider_eligible=runtime["provider_eligible"],
                 source_trusted=runtime["trusted_benchmark_run"],
@@ -180,6 +193,12 @@ def compute(root, index):
                     pending=review["pending_candidates"],
                     episode_sha256=episode["provenance"]["episode_sha256"],
                     judge_result_sha256=judge["result_sha256"],
+                    judge_provider_eligible=judge["provider_eligible"],
+                    judge_protocol_eligible=judge["protocol_eligible"],
+                    runtime_durable_status=episode["result"]["layers"][
+                        "durable_status"
+                    ],
+                    rule_pass=not aggregate["rule_failures"],
                 )
             rows.append(row)
     product = summarize_pairs([r for r in rows if r["kind"] == "product"])
@@ -218,8 +237,70 @@ def compute(root, index):
         reviews_sha256=sha256_digest(reviews),
         product=product,
         method_stability=stability,
+        method_comparison=method_comparison(method, stability),
         rows=rows,
     )
+
+
+def method_comparison(rows, stability):
+    """Two-repeat complete-case stability and fixed triplet discrimination."""
+    triplets = []
+    for arm in ("baseline", "candidate"):
+        for repeat in (1, 2):
+            for track in TRACKS:
+                group = [
+                    r
+                    for r in rows
+                    if (r["arm"], r["repeat"], r["track"]) == (arm, repeat, track)
+                ]
+                scores = {r["case_id"].rsplit("-", 1)[-1]: r["score"] for r in group}
+                complete = set(scores) == {"good", "mild", "severe"} and all(
+                    v is not None for v in scores.values()
+                )
+                triplets.append(
+                    dict(
+                        arm=arm,
+                        repeat=repeat,
+                        track=track,
+                        scores=scores,
+                        complete=complete,
+                        strictly_ordered=scores["good"]
+                        > scores["mild"]
+                        > scores["severe"]
+                        if complete
+                        else None,
+                    )
+                )
+    shared = {x["case_id"] for x in stability if x["valid"] == x["slots"] == 2}
+    shared = {
+        case
+        for case in shared
+        if sum(
+            x["case_id"] == case and x["valid"] == x["slots"] == 2 for x in stability
+        )
+        == 2
+    }
+    arms = {}
+    for arm in ("baseline", "candidate"):
+        a = [r for r in rows if r["arm"] == arm]
+        s = [x for x in stability if x["arm"] == arm and x["case_id"] in shared]
+        t = [x for x in triplets if x["arm"] == arm]
+        arms[arm] = dict(
+            slots=len(a),
+            scored=sum(r["score"] is not None for r in a),
+            statuses=dict(Counter(r["status"] for r in a)),
+            complete_stability_pairs=len(s),
+            mean_score_population_sd=mean(x["score_population_sd"] for x in s)
+            if s
+            else None,
+            dimension_exact_agreement=sum(
+                x["dimensions"][0] == x["dimensions"][1] for x in s
+            ),
+            outcome_exact_agreement=sum(x["outcome_agreement"] for x in s),
+            complete_triplets=sum(x["complete"] for x in t),
+            strictly_ordered_triplets=sum(x["strictly_ordered"] is True for x in t),
+        )
+    return dict(shared_complete_cases=sorted(shared), arms=arms, triplets=triplets)
 
 
 def write_csv(path, rows):

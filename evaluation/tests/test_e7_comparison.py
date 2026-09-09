@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from summarize_e7 import summarize_pairs
+from summarize_e7 import summarize_pairs, method_comparison
 
 
 def row(case, arm, score):
@@ -45,3 +45,18 @@ def test_fixed_denominator_keeps_zero_and_unscored_pairs():
 def test_duplicate_or_missing_arm_is_not_a_pair():
     with pytest.raises(ValueError):
         summarize_pairs([row("x", "baseline", 100), row("x", "baseline", 100)])
+
+
+def test_method_discrimination_preserves_missing_triplets():
+    rows = []
+    for arm in ("baseline", "candidate"):
+        for repeat in (1, 2):
+            for label, score in (("good", 100), ("mild", 90), ("severe", 0)):
+                if (arm, repeat, label) == ("candidate", 1, "severe"):
+                    score = None
+                rows.append({**row("p-" + label, arm, score), "repeat": repeat})
+    result = method_comparison(rows, [])
+    assert result["arms"]["baseline"]["strictly_ordered_triplets"] == 2
+    assert result["arms"]["candidate"]["scored"] == 5
+    assert result["arms"]["candidate"]["strictly_ordered_triplets"] == 1
+    assert result["arms"]["candidate"]["complete_triplets"] == 1
