@@ -38,7 +38,7 @@ def main():
         "EVALUATION_MODE": "1", "RUNTIME_STATE_ROOT": str(state),
         "DATABASE_URL": f"sqlite+aiosqlite:///{state}/data/learning_companion.db",
         "ENABLE_SCHEDULER": "false", "ENABLE_EMAIL_REPLY_POLLING": "false",
-        "OPENAI_API_BASE": "https://tokenhub.tencentmaas.com/v1", "MODEL_NAME": "hy3",
+        "OPENAI_API_BASE": os.environ.get("OPENAI_API_BASE", "https://tokenhub.tencentmaas.com/v1"), "MODEL_NAME": "hy3",
         "MODEL_CONTEXT_WINDOW": "196608", "AGENT_OUTPUT_TOKEN_RESERVE": "16000",
         "AGENT_MAX_MODEL_CALLS": "8", "AGENT_MAX_TOOL_CALLS": "16",
         "AGENT_MODEL_RETRY_ATTEMPTS": "1", "AGENT_MODEL_TIMEOUT_SECONDS": "120",
