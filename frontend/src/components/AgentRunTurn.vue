@@ -70,13 +70,18 @@ const approvalRequest = computed(() => {
 const approvalPlan = computed(() => approvalRequest.value?.name === 'plan_proposal_create' ? approvalRequest.value.args.plan : null);
 const approvalSubmission = computed(() => approvalRequest.value?.name === 'submission_create' ? approvalRequest.value.args : null);
 const approvalAssessment = computed(() => approvalRequest.value?.name === 'submission_check' ? approvalRequest.value.args : null);
+const approvalIntake = computed(() => approvalRequest.value?.name === 'planning_intake_update' ? approvalRequest.value.args : null);
+const factLabels = { current_level: '已有基础', deadline: '完成期限', weekly_minutes: '每周时间', time_budget: '时间预算', task_count: '任务数量', not_adopt: '采用方式', topic: '学习主题', deliverable: '预期作品', resources: '学习材料' };
 const approvalTitle = computed(() => (
   approvalPlan.value ? '生成可审阅的计划提案'
     : approvalSubmission.value ? '保存学习证据'
-      : approvalAssessment.value ? '记录成果验收结果' : '确认待执行操作'
+      : approvalAssessment.value ? '记录成果验收结果' : approvalIntake.value ? '确认学习条件' : '确认待执行操作'
 ));
 const approvalReason = computed(() => {
   const reason = approvalEvent.value?.payload?.reason || resolvedRun.value?.pending_approval?.reason;
+  if (reason === 'Changing or removing the confirmed deadline requires approval of this specific update.') {
+    return '以下期限与此前记录不同，请核对本次学习条件。你可以批准，或补充正确期限后继续。';
+  }
   return reason === 'External untrusted content cannot authorize this side effect without approval of the exact request.'
     ? 'Agent 参考了网页或文件。请核对下方具体内容，批准后保存。'
     : reason || '该操作需要你批准后才会执行。';
@@ -189,7 +194,7 @@ async function copyAnswer() {
           <p>{{ approvalReason }}</p>
         </div>
         <details v-if="approvalRequest" class="approval-request-preview" open>
-          <summary>{{ approvalPlan ? approvalPlan.title : approvalSubmission ? `任务 ${approvalSubmission.task_id} 的提交内容` : approvalAssessment ? `提交 ${approvalAssessment.submission_id} 的验收结果` : '查看待执行内容' }}</summary>
+          <summary>{{ approvalPlan ? approvalPlan.title : approvalSubmission ? `任务 ${approvalSubmission.task_id} 的提交内容` : approvalAssessment ? `提交 ${approvalAssessment.submission_id} 的验收结果` : approvalIntake ? '本次拟记录的学习条件' : '查看待执行内容' }}</summary>
           <template v-if="approvalPlan">
             <p>每周 {{ approvalPlan.weekly_minutes }} 分钟 · {{ approvalPlan.description }}</p>
             <p>{{ approvalPlan.expected_outcome }}</p>
@@ -201,6 +206,12 @@ async function copyAnswer() {
               </details>
             </div>
             <p>批准后生成提案；采用提案时再创建学习计划。</p>
+          </template>
+          <template v-else-if="approvalIntake">
+            <p>{{ approvalIntake.goal }}</p>
+            <p v-for="(fact, index) in approvalIntake.confirmed_facts" :key="index"><strong>{{ factLabels[fact.key] || '学习条件' }}：</strong>{{ fact.value }}</p>
+            <p v-for="(question, index) in approvalIntake.open_questions" :key="index">待确认：{{ question.prompt }}</p>
+            <p>批准后保存这些条件，供后续制定计划。</p>
           </template>
           <template v-else-if="approvalSubmission">
             <p v-for="(artifact, index) in approvalSubmission.artifacts" :key="index">{{ artifact.path || artifact.url }}<br>{{ artifact.note }}</p>
