@@ -4,7 +4,7 @@ import argparse,csv,json,statistics
 from collections import Counter
 from pathlib import Path
 from learning_agent_eval.canonical import canonical_json_bytes,sha256_digest
-from learning_agent_eval.learning_quality import METHOD_SHA256,validate_rating,aggregate,schedule_facts
+from learning_agent_eval import learning_quality, learning_quality_v2
 
 def write_csv(path,rows):
     if not rows:return
@@ -13,7 +13,9 @@ def write_csv(path,rows):
 
 def summarize(root,output):
     output.mkdir(parents=True,exist_ok=False)
-    design=json.loads((root/'design.json').read_text());assert design['method_sha256']==METHOD_SHA256
+    design=json.loads((root/'design.json').read_text())
+    method=next(m for m in (learning_quality,learning_quality_v2) if m.METHOD_SHA256==design['method_sha256'])
+    METHOD_SHA256=method.METHOD_SHA256;validate_rating=method.validate_rating;aggregate=method.aggregate;schedule_facts=method.schedule_facts
     result={};allrows=[]
     for kind in ['validation','full']:
         suite_root=root/kind

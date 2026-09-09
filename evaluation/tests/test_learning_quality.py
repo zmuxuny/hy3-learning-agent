@@ -19,7 +19,7 @@ def test_internal_action_mismatch_does_not_replace_public_behavior():
     p=projection({'episode':e,'authoritative_rule_facts':{'critical':True},'judge_reference':{'allowed_action_classes':['NO_OP']}})
     assert p['result']=={'user_visible_output':'请提供旧稿，暂不修改。'}
     assert e['result']['classification_issues']==['missing_declaration']
-    assert unpack_shared_values(__import__('json').loads(request_for(p)['messages'][1]['content']))['evidence']==p
+    assert __import__('json').loads(request_for(p)['messages'][1]['content'])['reading_view'][-1]['value']=='请提供旧稿，暂不修改。'
 
 def test_paths_to_absent_or_hidden_evidence_rejected():
     r=rating();r['dimensions'][0]['evidence_paths']=['provenance.episode_sha256']
@@ -56,3 +56,17 @@ def test_controlled_evidence_roots_match_real_fields_without_episode_schema():
     assert validate_rating(r,sample())['dimensions'][3]['level']==2
     r['dimensions'][3]['evidence_paths']=['state_after.missing']
     with pytest.raises(ValueError):validate_rating(r,sample())
+
+
+def test_reading_view_retains_user_context_outputs_tools_and_sources():
+    from learning_agent_eval.learning_quality import reading_view
+    e=sample();e['observable_trace']['model_calls']=[{
+        'visible_context':{'messages':[
+            {'role':'system','payload':{'content':'internal schema'}},
+            {'role':'user','payload':{'content':'每周最多90分钟；经验未说明'}}]},
+        'assistant_text':'假设未知', 'returned_tool_calls':[]}]
+    e['observable_trace']['tool_invocations']=[{'tool_name':'plan.get','result':{'weekly_minutes':90}}]
+    rows=reading_view(e)
+    assert any(r['value']=={'content':'每周最多90分钟；经验未说明'} for r in rows)
+    assert not any(r['value']=={'content':'internal schema'} for r in rows)
+    assert any(r['value']==e['observable_trace']['tool_invocations'][0] for r in rows)
