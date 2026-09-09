@@ -12,6 +12,9 @@ def assertions(e):
         plan=draft['draft_plan']
         for field in ('current_level','background','prerequisites','description','goal','expected_outcome'):
             if plan.get(field):rows.append(dict(kind='draft_'+field,claim=plan[field],evidence_path=draft['evidence_path']))
+        for stage in plan.get('stages',[]):
+            for task in stage.get('tasks',[]):
+                rows.append(dict(kind='task_content_and_acceptance',claim={'title':task.get('title'),'description':task.get('description'),'task_metadata':task.get('task_metadata',task.get('metadata'))},evidence_path=draft['evidence_path']))
     for i,inv in enumerate(e['observable_trace']['tool_invocations']):
         args=inv.get('canonical_args',{})
         if 'confirmed_facts' in args:rows.append(dict(kind='assistant_written_facts',claim=args['confirmed_facts'],evidence_path=f'observable_trace.tool_invocations[{i}].canonical_args'))
@@ -20,6 +23,7 @@ def assertions(e):
         for line in text.splitlines():
             if any(key in line for key in ('撤销','回退','回到','拆成','未系统','没学过','没有学过','零基础','还剩','静默','复测')):
                 rows.append(dict(kind='specific_output_claim',claim=line,evidence_path=f'observable_trace.model_calls[{i}].assistant_text'))
+    for i,row in enumerate(rows):row['claim_id']=f'claim-{i+1:03d}'
     return rows
 
 def undo_version_facts(e):

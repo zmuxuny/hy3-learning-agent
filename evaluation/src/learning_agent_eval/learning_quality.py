@@ -17,7 +17,7 @@ from .quality_claims import assertions,undo_version_facts,UNDO_CONTRACT
 from .validator import resolve_evidence_path
 from .judge_request_projection import pack_shared_values, unpack_shared_values, evidence_catalog, draft_reading_aid
 
-METHOD_VERSION = 'learning-quality-6'
+METHOD_VERSION = 'learning-quality-7'
 WEIGHTS = dict(D1=15,D2=15,D3=20,D4=20,D5=15,D6=5,D7=10)
 # Explicit levels, rather than a generic "good/partly good" scale.
 CRITERIA = {

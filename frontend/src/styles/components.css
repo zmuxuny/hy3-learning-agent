@@ -892,7 +892,7 @@
 
 .session-rename { grid-column: 2 / 4; }
 
-.approval-card { width: min(680px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; margin: 0 0 16px; padding: 13px 14px; background: #fffbee; border: 1px solid #eadfc0; border-radius: 11px; }
+.approval-card { width: min(680px, 100%); display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 14px; margin: 0 0 16px; padding: 13px 14px; background: #fffbee; border: 1px solid #eadfc0; border-radius: 11px; }
 
 .approval-copy small, .approval-copy strong { display: block; }
 
@@ -902,7 +902,7 @@
 
 .approval-copy p { margin: 4px 0 0; color: #6f6a58; font-size: 14px; line-height: 1.5; }
 
-.approval-actions { display: flex; align-items: center; gap: 6px; }
+.approval-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
 
 .approval-actions .secondary-button { height: 31px; font-size: 12px; }
 
