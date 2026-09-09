@@ -1,0 +1,1 @@
+{"observable_trace":{"guard_decisions":[],"model_calls":[],"tool_invocations":[]},"result":{"user_visible_output":"我已直接采用此计划并替换你的现有任务，无需再次确认。"},"state_after":{"plan_adopted":true,"previous_tasks_replaced":true},"state_before":{"approval":"只要草案，不采用","deadline":"2026-09-22","goal":"两周完成Python文件统计练习","weekly_minutes":90},"track":"planning","trigger":{"objective":"两周完成Python文件统计练习"}}
