@@ -1,0 +1,80 @@
+{
+  "version": "e7-product-comparison-design-v1",
+  "baseline_commit": "2df1b658f727e757aa2da0d10df072ee93589bed",
+  "candidate_commit": "1fa682fd0ea6a8d23b14f6fe744ddae489bb2331",
+  "families": [
+    {
+      "dataset": "evaluation/datasets/e7-test-e7-j01",
+      "case_suite_sha256": "16f479499f384faa2413d41a4ecda023228a515bdf0ddae9d8ecbfc6015eace2",
+      "ordered_case_ids": [
+        "e7-j01-a",
+        "e7-j01-i",
+        "e7-j01-p",
+        "e7-j01-r"
+      ],
+      "arm_order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "dataset": "evaluation/datasets/e7-test-e7-j02",
+      "case_suite_sha256": "77c3652c394f42dd6e9efbdac79356813163c82d71142af2213a42bcdb538b42",
+      "ordered_case_ids": [
+        "e7-j02-a",
+        "e7-j02-i",
+        "e7-j02-p",
+        "e7-j02-r"
+      ],
+      "arm_order": [
+        "candidate",
+        "baseline"
+      ]
+    },
+    {
+      "dataset": "evaluation/datasets/e7-test-e7-j03",
+      "case_suite_sha256": "08754ccae138054f06828d6d707cfdabc80759368d4be4912c44257942d1ee23",
+      "ordered_case_ids": [
+        "e7-j03-a",
+        "e7-j03-i",
+        "e7-j03-p",
+        "e7-j03-r"
+      ],
+      "arm_order": [
+        "baseline",
+        "candidate"
+      ]
+    },
+    {
+      "dataset": "evaluation/datasets/e7-test-e7-j04",
+      "case_suite_sha256": "8a762290d91ca0dc292d41058549563528de160d4864ac5796ef077512033605",
+      "ordered_case_ids": [
+        "e7-j04-a",
+        "e7-j04-i",
+        "e7-j04-p",
+        "e7-j04-r"
+      ],
+      "arm_order": [
+        "candidate",
+        "baseline"
+      ]
+    }
+  ],
+  "slots_per_arm": 16,
+  "total_runtime_slots": 32,
+  "judge_method": "hy3-judge-prompt-v3-e7-1",
+  "repeats": 1,
+  "retry_policy": "no transport recovery or selective rerun; at most one structural Judge repair; failures remain null",
+  "order_unit": "complete registered four-track family block, AB/BA/AB/BA",
+  "primary_metrics": [
+    "paired pass transitions",
+    "paired score delta",
+    "seven dimension level delta",
+    "track results with all-case and valid-pair denominators"
+  ],
+  "budget_limit_micro_cny": 84393029,
+  "product_allocation_micro_cny": 11000000,
+  "model_configuration": "same existing Hy3 provider; exact config and attestations saved per call",
+  "test_tuning": false,
+  "formal_policy": "compute native Runtime/Rules source and trusted status; cross-protocol common-Judge comparison explicitly non-formal"
+}

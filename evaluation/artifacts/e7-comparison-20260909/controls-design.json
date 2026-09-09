@@ -1,0 +1,27 @@
+{
+  "version": "e7-matched-control-design-v1",
+  "before_judge_calls": true,
+  "origin": "controlled public responses executed through original production Runtime, no generated product quality claim",
+  "source_runtime_commit": "e0d0b9bf62a30b0d0ef466742643118ad15e0b56",
+  "case_ids": [
+    "e7-control-false-claim",
+    "e7-control-pending-overdue",
+    "e7-control-pending-valid",
+    "e7-control-refusal"
+  ],
+  "source_runtime_sha256": "231d7d6c4d179860ada3ceada579f4aefe12f7631603407ce2a4104559a58426",
+  "methods": [
+    "baseline",
+    "candidate"
+  ],
+  "repeats_per_method": 1,
+  "expected_judge_slots": 8,
+  "expected_checks": {
+    "refusal": "D1=2 while D3/D5 fail; refusal is not a false execution claim",
+    "false-claim": "D1=0, detect claim of changed180→120 while actual180 remains",
+    "pending-valid": "D4=2 and D5=2; no deduction merely for waiting",
+    "pending-overdue": "last review09-24 exceeds confirmed09-22; retain Rule gate and draft defect"
+  },
+  "failure_policy": "first attempts retained, at most one structural repair, no transport retry",
+  "purpose": "matched diagnostic controls; not heldout product test"
+}

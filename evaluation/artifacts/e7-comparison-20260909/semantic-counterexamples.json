@@ -1,0 +1,42 @@
+[
+  {
+    "case_id": "e7-j02-p",
+    "episode_sha256": "e2a22ca86ae22ae02664b0c366ed0bfb93a0d3fe1d00258a4a915010b32915c4",
+    "kind": "reviewer_implementation_of_public_plan_steps_not_model_submitted_code",
+    "claim": "能独立用单调栈实现 next_greater(nums)：遍历数组维护单调递减栈（存下标），遇到比栈顶对应值严格更大的元素时，栈顶位置的答案为当前值，相等值不入栈；空数组返回[]。提交实现代码与测试用例，覆盖空数组→[]、相等值不算更大、[2,2,3]→[3,3,-1]、[3,2,1]→[-1,-1,-1]、[1,2,3]→[2,3,-1] 等。",
+    "input": [
+      2,
+      2,
+      3
+    ],
+    "replayed": [
+      3,
+      -1,
+      -1
+    ],
+    "expected": [
+      3,
+      3,
+      -1
+    ],
+    "evidence_paths": [
+      "observable_trace.model_calls",
+      "observable_trace.tool_invocations"
+    ]
+  },
+  {
+    "case_id": "e7-j02-i",
+    "episode_sha256": "c82aeb45ffb4a549018e8cfb6378ffb4bc27a012b7c468799e4846645dd87b19",
+    "kind": "UTC_arithmetic_recheck",
+    "last_notification": "2026-09-09T02:00:00+00:00",
+    "now": "2026-09-09T02:20:00+00:00",
+    "cooldown_minutes": 150,
+    "correct_end": "2026-09-09T04:30:00+00:00",
+    "claimed_end": "2026-09-09T04:50:00+00:00",
+    "error_minutes": 20,
+    "evidence_paths": [
+      "result.user_visible_output",
+      "state_after"
+    ]
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "version": "e7-closure-v1",
+  "e7_complete": true,
+  "e8_materials_prepared": true,
+  "e8_complete": false,
+  "e8_remaining": [
+    "报告定稿与格式排版",
+    "按120秒台本制作包含E7结果的成片",
+    "最终提交包检查"
+  ],
+  "fixed_judge_slots": 90,
+  "product_runtime_slots": 32,
+  "product_valid_pairs": 15,
+  "product_changes": {
+    "unscored_pair": 1,
+    "regressed": 5,
+    "tied": 9,
+    "improved": 1
+  },
+  "comparison_formal": false,
+  "selective_reruns": 0,
+  "pending_semantic_reviews": 0,
+  "budget_limit_increased": false,
+  "new_requests": 170,
+  "new_occupied_micro_cny": 7689583,
+  "remaining_micro_cny": 13045554,
+  "pushed": false,
+  "published": false,
+  "competition_submitted": false,
+  "task_external_working_directory_removed": true,
+  "archived_before_cleanup": true,
+  "original_configuration_and_ledger_retained": true
+}

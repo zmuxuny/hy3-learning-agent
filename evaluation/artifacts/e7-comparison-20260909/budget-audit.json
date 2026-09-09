@@ -1,0 +1,51 @@
+{
+  "version": "e7-budget-audit-v1",
+  "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+  "account_invoice_verified": false,
+  "before_requests": 1552,
+  "after_requests": 1722,
+  "new_requests": 170,
+  "prior_requests_unchanged": true,
+  "limit_unchanged": true,
+  "limit_micro_cny": 84393029,
+  "before_occupied_micro_cny": 63657892,
+  "after_occupied_micro_cny": 71347475,
+  "new_occupied_micro_cny": 7689583,
+  "remaining_micro_cny": 13045554,
+  "new_request_statuses": {
+    "settled": 166,
+    "unknown_usage_reserved": 4
+  },
+  "by_kind": {
+    "method_judge": {
+      "requests": 48,
+      "charged_micro_cny": 2833975,
+      "unknown_usage_micro_cny": 543822
+    },
+    "development_runtime": {
+      "requests": 5,
+      "charged_micro_cny": 149387,
+      "unknown_usage_micro_cny": 0
+    },
+    "product_runtime": {
+      "requests": 75,
+      "charged_micro_cny": 2085900,
+      "unknown_usage_micro_cny": 0
+    },
+    "product_judge": {
+      "requests": 32,
+      "charged_micro_cny": 2043517,
+      "unknown_usage_micro_cny": 221069
+    },
+    "control_judge": {
+      "requests": 8,
+      "charged_micro_cny": 453100,
+      "unknown_usage_micro_cny": 0
+    },
+    "development_judge": {
+      "requests": 2,
+      "charged_micro_cny": 123704,
+      "unknown_usage_micro_cny": 0
+    }
+  }
+}

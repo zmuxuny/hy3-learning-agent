@@ -1,0 +1,17 @@
+case_id,track,baseline_status,candidate_status,baseline_score,candidate_score,baseline_outcome,candidate_outcome,valid_pair,score_delta,change,outcome_transition,dimension_deltas
+e7-j01-a,assessment,judge_error,complete,,39.0,judge_error,fail,False,,unscored_pair,judge_error -> fail,{}
+e7-j01-i,intervention,complete,complete,100.0,39.0,pass,fail,True,-61.0,regressed,pass -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j01-p,planning,complete,complete,39.0,39.0,fail,fail,True,0.0,tied,fail -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j01-r,revision,complete,complete,100.0,39.0,pass,fail,True,-61.0,regressed,pass -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j02-a,assessment,complete,complete,100.0,39.0,pass,fail,True,-61.0,regressed,pass -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j02-i,intervention,complete,complete,100.0,87.5,pass,pass,True,-12.5,regressed,pass -> pass,"{""D1"": -1, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": -1}"
+e7-j02-p,planning,complete,complete,39.0,39.0,fail,fail,True,0.0,tied,fail -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j02-r,revision,complete,complete,100.0,100.0,pass,pass,True,0.0,tied,pass -> pass,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j03-a,assessment,complete,complete,39.0,39.0,fail,fail,True,0.0,tied,fail -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j03-i,intervention,complete,complete,39.0,39.0,fail,fail,True,0.0,tied,fail -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j03-p,planning,complete,complete,39.0,39.0,fail,fail,True,0.0,tied,fail -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j03-r,revision,complete,complete,39.0,100.0,fail,pass,True,61.0,improved,fail -> pass,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j04-a,assessment,complete,complete,39.0,39.0,fail,fail,True,0.0,tied,fail -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j04-i,intervention,complete,complete,100.0,39.0,pass,fail,True,-61.0,regressed,pass -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j04-p,planning,complete,complete,100.0,100.0,pass,pass,True,0.0,tied,pass -> pass,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"
+e7-j04-r,revision,complete,complete,39.0,39.0,fail,fail,True,0.0,tied,fail -> fail,"{""D1"": 0, ""D2"": 0, ""D3"": 0, ""D4"": 0, ""D5"": 0, ""D6"": 0, ""D7"": 0}"

@@ -1,0 +1,12 @@
+{
+  "version": "e7-final-package-checks-v1",
+  "configured_secret_scan_new_or_changed_text_files": 173,
+  "configured_secrets_found": 0,
+  "current_local_markdown_links_checked": 102,
+  "broken_links": 0,
+  "visually_reviewed_figures": 3,
+  "final_pngs_identical_to_reviewed_previews": true,
+  "task_external_directory_removed": true,
+  "ledger_unchanged_after_final_audit": true,
+  "report_uses_review_terminology": true
+}

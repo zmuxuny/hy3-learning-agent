@@ -1,0 +1,19 @@
+{
+  "version": "e7-reproduction-checks-v1",
+  "fresh_environment": true,
+  "source_commit": "e8c3e2d2081478e8a6a6e812461b0f11b53c91af",
+  "dependency_lock": "evaluation/runtime-requirements.lock",
+  "api_calls": 0,
+  "public_files_verified": 586,
+  "byte_identical_recomputed_files": {
+    "summary.json": "8be1e3b0700729bfe4ef0477a5555456bbb0ce771cc7de3b3bc0691bdf51c7c8",
+    "slots.csv": "f97b18a3fd6f830e010bba43178f42b06903b665decda34bfc8748ff309e3de0",
+    "pairs.csv": "7c78931ed58030dc89360db887b1876e32ca96503f7e0d7a94f5fe0cda218081",
+    "method-stability.csv": "d05a69502a4c189e78013a1c52e44bfd0d1c0a97654d12834239c73af2af9d64"
+  },
+  "baseline_controls_bundle_verified": true,
+  "public_text_files_checked_for_configured_secrets": 603,
+  "no_configured_secrets_found": true,
+  "no_product_databases_or_caches_in_public_evidence": true,
+  "mini_receipt": "evidence/fresh-mini/receipt.json"
+}

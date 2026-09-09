@@ -4,24 +4,26 @@
 
 ## 离线复算（不调用 API）
 
-从本仓库当前本地分支创建全新副本，保留 Git 历史：
+从包含本档案的本地分支创建全新副本，保留 Git 历史；先把结果复制到仓外，再检出固定复算源码，避免后续项目升级改变活动协议：
 
 ```bash
 REPO=/root/workspace/tencent_rhinobird2026/learning_travel
 E7_REPRO=$(mktemp -d /tmp/learning-travel-e7-repro-XXXXXX)
 git clone --no-hardlinks "$REPO" "$E7_REPRO/source"
 cd "$E7_REPRO/source"
-git fetch evaluation/artifacts/e7-comparison-20260909/baseline-controls.bundle 'refs/heads/*:refs/remotes/e7-archive/*'
+cp -a evaluation/artifacts/e7-comparison-20260909 "$E7_REPRO/expected"
+git fetch "$E7_REPRO/expected/baseline-controls.bundle" 'refs/heads/*:refs/remotes/e7-archive/*'
+git checkout --detach e8c3e2d
 python3 -m venv "$E7_REPRO/venv"
 "$E7_REPRO/venv/bin/pip" install -r evaluation/runtime-requirements.lock
 export PYTHONPATH="$E7_REPRO/source/evaluation/src:$E7_REPRO/source/backend"
-tar -xzf evaluation/artifacts/e7-comparison-20260909/public-evidence.tar.gz -C "$E7_REPRO"
+tar -xzf "$E7_REPRO/expected/public-evidence.tar.gz" -C "$E7_REPRO"
 "$E7_REPRO/venv/bin/python" evaluation/scripts/summarize_e7.py \
   --evidence "$E7_REPRO/evidence" --output "$E7_REPRO/recomputed"
-cmp evaluation/artifacts/e7-comparison-20260909/summary.json "$E7_REPRO/recomputed/summary.json"
-cmp evaluation/artifacts/e7-comparison-20260909/pairs.csv "$E7_REPRO/recomputed/pairs.csv"
-cmp evaluation/artifacts/e7-comparison-20260909/slots.csv "$E7_REPRO/recomputed/slots.csv"
-cmp evaluation/artifacts/e7-comparison-20260909/method-stability.csv "$E7_REPRO/recomputed/method-stability.csv"
+cmp "$E7_REPRO/expected/summary.json" "$E7_REPRO/recomputed/summary.json"
+cmp "$E7_REPRO/expected/pairs.csv" "$E7_REPRO/recomputed/pairs.csv"
+cmp "$E7_REPRO/expected/slots.csv" "$E7_REPRO/recomputed/slots.csv"
+cmp "$E7_REPRO/expected/method-stability.csv" "$E7_REPRO/recomputed/method-stability.csv"
 "$E7_REPRO/venv/bin/python" evaluation/scripts/run_e7_offline_mini.py --output "$E7_REPRO/mini"
 ```
 
@@ -70,3 +72,16 @@ export PYTHONPATH="$PWD/evaluation/src:$PWD/backend"
 方法重复使用 `evidence/e6/calibration` 同一轨迹，顺序为旧版第 1 次、新版第 1 次、新版第 2 次、旧版第 2 次，每次 12 例；控制组使用 `evidence/controls`，新旧各 4 例。分别在对应 Judge clone 运行上述评分脚本，输出到新目录。原始控制组是受控响应经过 Runtime 导出的轨迹，Judge 为真实调用；不能将它记作真实产品生成。
 
 复用测试会成为已见复测。需要新的泛化结论时，应另行固定新输入与实验设计；本次全部原始失败、无分与旧版本结果仍保留。
+
+如需重新生成控制组 Runtime，在已导入 bundle 的干净仓外副本检出 `e0d0b9bf62a30b0d0ef466742643118ad15e0b56`，运行固定响应模式；这一阶段不调用 API：
+
+```bash
+E7_CONTROL_DATA=evaluation/datasets/e7-method-controls
+"$E7_REPRO/venv/bin/python" -m learning_agent_eval run-agent \
+  --dataset "$E7_CONTROL_DATA" --manifest "$E7_CONTROL_DATA/manifest.json" \
+  --output "$E7_REPRO/new-controls/runtime" --model-mode stub
+"$E7_REPRO/venv/bin/python" -m learning_agent_eval evaluate-rules \
+  --input "$E7_REPRO/new-controls/runtime" --output "$E7_REPRO/new-controls/rules"
+```
+
+随后按前述新旧 Judge 命令各评一次。开发两例的输入已随 Candidate `deb3d75` 保存于 `evaluation/datasets/e7-development/`；开发轨迹与固定 Test 分开，不进入产品配对数。

@@ -1,6 +1,6 @@
 # Learning Agent Evaluation
 
-`evaluation/` 是第三阶段的隔离评测控制平面。当前活动协议为 **Evaluation Protocol Release 1.14（审计补修、未登记候选，仅离线验证）**，最终测试为 `decisionbench-v1.13-e6-final-test`，源码固定 `35e77cf`。E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。E7/E8未开展。 见[E6最终记录](../docs/E6最终修复与验收记录.md)与[完整档案](artifacts/e6-completion-20260909/README.md)。DecisionEpisode v4、方法协议与Benchmark分别版本化。
+`evaluation/` 是第三阶段的隔离评测控制平面。活动协议为 **Evaluation Protocol Release 1.16**。E7完成同输入产品版本比较、同轨迹Judge方法比较、逐例复核与全新环境离线复算；[结果档案](artifacts/e7-comparison-20260909/README.md)、[复现命令](artifacts/e7-comparison-20260909/REPRODUCE.md)及[报告初稿](../docs/E8阶段三报告初稿.md)是当前入口。比较保留各自来源协议，formal=false；E6 I48与1.15定向验证继续按原版独立引用。DecisionEpisode v4、方法协议与Benchmark分别版本化。
 
 当前活动链路是：
 
@@ -87,7 +87,7 @@ Judge按完整base路径追加 `/chat/completions`，不再固定腾讯地址。
 | `rule-result-v3` / `rule-run-manifest-v3` | v4 确定性规则、源码 bundle 摘要与 Hard Gate |
 | `judge-result-v3` / `judge-run-manifest-v3` | 盲化结构化 Judge、一次修复与 formal 继承 |
 | `aggregate-result-v3` / Track/Manifest v3 | 纯确定性 Rule-first 聚合与源码摘要 |
-| `evaluation-protocol-release-v1` | 活动候选Protocol1.14及历史版本分别绑定组件 |
+| `evaluation-protocol-release-v1` | 活动Protocol1.16及历史版本分别绑定组件 |
 | `benchmark-release-manifest-v1` | 固定 Benchmark Case/资源/partition/协议摘要 |
 | `trusted-benchmark-registry-v1` | 仓库固定的生产信任根；旧E6与新版E6分项登记 |
 | `source-bundle-manifest-v1` | 四个活动执行组件的保守来源包摘要 |
@@ -118,7 +118,7 @@ JSON/SHA-256 和自摘要。独立 Schema Lock 覆盖全部生成 Schema；即�
 `legacy_execution_disabled`。包级公共 API 只暴露当前 `run_active_runtime`、
 `evaluate_active_rules`、`evaluate_active_judges` 与 `aggregate_active_results`。
 
-以下冻结1.13示例需先检出`35e77cf`，不能直接用于1.14候选。`decisionbench-v1.13-regression/engineering` 将旧v4工程Case原内容重新绑定到1.13，
+以下冻结1.13示例需先检出`35e77cf`，不能直接用于活动1.16；E7命令见顶部链接。`decisionbench-v1.13-regression/engineering` 将旧v4工程Case原内容重新绑定到1.13，
 包含故意的错误动作和Provider Failure，预期保留失败终态及非零退出码；不作为模型能力实验。
 以下命令在干净仓外副本和项目锁定依赖中执行，输出使用临时目录。旧v4绑定只供其历史源码执行：
 
@@ -323,7 +323,7 @@ v4 Collector/Exporter 对未登记生产事实继续保留明确分类问题并�
 
 E4 已完成 48 Primary、24 Calibration 及 8 来源的 AI 内容裁决、绑定重建和最终回归；E5 必需实验已完成且最低方法目标达标。
 历史真实批次仍为 45 Episode + 3 Failure，候选保持探索身份，复核记录不计作独立人类一致性。
-E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。E7/E8未开展。 版本和完整分母见[最终档案](artifacts/e6-completion-20260909/README.md)。
+E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归档已完成。最终Protocol1.13 / I48固定源码35e77cf：48槽位、47 Episode、1 RuntimeFailure、41有效Judge、6 Judge错误，formal=false。H48保留Protocol1.9原版结果（48槽位、46 Episode、2 RuntimeFailure、44有效Judge、2 Judge错误），不混算。 旧版本与全部失败保留；审核者为主AI，不冒充独立人类审核。该段为E6归档快照；E7比较与E8本地材料现已完成，见顶部入口。 版本和完整分母见[最终档案](artifacts/e6-completion-20260909/README.md)。
 原人工审核由主AI执行并计入完成；扩展AI对齐统计、精确反事实、完整对抗安全扩展及E7/E8按实际进度记录，不等待真人。
 固定响应和 engineering 聚合不证明 Judge 标签正确或 Hy3 能力。已授权协议试跑只证明有限样例可执行，
 尚未统计完整 14 类真实遵循率；下一轮调用继续复用原预算，不能自动把探索记录升级为正式数据。发布治理细节见

@@ -1,0 +1,24 @@
+{
+  "version": "e7-final-validation-v1",
+  "recompute_source_commit": "e8c3e2d",
+  "product_regressions": {
+    "passed": 62,
+    "source_commit": "22bfd40",
+    "log": "regressions.log"
+  },
+  "final_protocol_schema_comparison_regressions": {
+    "passed": 35,
+    "source_commit": "e8c3e2d",
+    "log": "final-e7-tests.log",
+    "command": "pytest -q evaluation/tests/test_e6_release_versions.py evaluation/tests/test_e312_release_governance.py evaluation/tests/test_protocol_schemas.py evaluation/tests/test_e7_comparison.py"
+  },
+  "mini_receipt": "fresh-mini/receipt.json",
+  "fixed_slots": 90,
+  "reviewed_slot_bindings_verified": 90,
+  "raw_attempt_records_verified": 90,
+  "raw_responses_equal_judge_results": 86,
+  "independent_score_arithmetic_checks": 86,
+  "pending_semantic_reviews": 0,
+  "historical_artifact_files_unchanged": 221,
+  "history_budget_prefix_unchanged": true
+}

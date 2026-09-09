@@ -1,0 +1,40 @@
+{
+  "version": "e7-method-design-v1",
+  "frozen_before_calls": true,
+  "source_runtime_sha256": "d99b16b5d63d8ac473c50f54a48d6e5d36eb7d221aeb9284004f1a516a57f9d1",
+  "case_ids": [
+    "calibration-c02-p-good",
+    "calibration-c02-p-mild",
+    "calibration-c02-p-severe",
+    "calibration-c03-i-good",
+    "calibration-c03-i-mild",
+    "calibration-c03-i-severe",
+    "calibration-c05-a-good",
+    "calibration-c05-a-mild",
+    "calibration-c05-a-severe",
+    "calibration-c07-r-good",
+    "calibration-c07-r-mild",
+    "calibration-c07-r-severe"
+  ],
+  "repeats_per_case_per_method": 2,
+  "judge_methods": {
+    "baseline": "bf06d36 / 1.15",
+    "candidate": "848dbb8 / 1.16"
+  },
+  "order": [
+    "baseline-r1",
+    "candidate-r1",
+    "candidate-r2",
+    "baseline-r2"
+  ],
+  "expected_slots": 48,
+  "failure_policy": "one attempt per slot, at most one existing structural repair, no transport recovery; null remains null",
+  "metrics": [
+    "per-dimension level",
+    "pass agreement across repetitions",
+    "score population SD",
+    "Good/Mild/Severe ordering",
+    "refusal D1 false attribution versus genuine false execution claim detection"
+  ],
+  "labels": "existing four triplets are seen calibration; no product improvement inference"
+}
