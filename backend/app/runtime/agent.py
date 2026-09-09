@@ -850,10 +850,10 @@ class AgentRuntime:
                         event_key=f"tool:{call['id']}:invalid-json",
                     )
             data = result.get("data") or {}
-            if data.get("approval_required") and data.get("blocking"):
+            if result.get("ok") or (data.get("approval_required") and data.get("blocking")):
                 title = pending_plan_title(call)
                 if title and session:
-                    # Publish the title before the approval event refreshes the UI.
+                    # Publish the plan title before its card/approval refreshes the UI.
                     # The compare-and-set preserves a concurrent manual rename.
                     async with AsyncSessionLocal() as title_db:
                         await title_db.execute(
@@ -863,6 +863,7 @@ class AgentRuntime:
                             ).values(title=title, updated_at=utc_now())
                         )
                         await commit_uow(title_db)
+            if data.get("approval_required") and data.get("blocking"):
                 await pause_for_approval(
                     db,
                     lease,
