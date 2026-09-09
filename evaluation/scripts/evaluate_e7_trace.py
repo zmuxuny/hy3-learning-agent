@@ -14,6 +14,30 @@ from learning_agent_eval.runtime_metadata import git_worktree_clean, dependency_
 from learning_agent_eval.e3_io import current_git_commit
 
 
+def verify_bundle(terminal, episode, rule, reference, runtime, rules):
+    """Join immutable evidence, including self-consistent but substituted objects."""
+    identity = terminal['artifact_id']
+    episode_hash = decision_episode_digest(episode)
+    rule_hash = rule_result_digest(rule)
+    reference_hash = judge_reference_digest(reference)
+    conditions = [
+        terminal['artifact_sha256'] == episode['provenance']['episode_sha256'] == episode_hash,
+        terminal['case_spec_sha256'] == episode['case_spec_sha256'] == rule['case_spec_sha256'],
+        identity == episode['episode_id'] == rule['episode_id'],
+        terminal['track'] == episode['track'],
+        episode['judge_reference_sha256'] == rule['judge_reference_sha256'] == reference['reference_sha256'] == reference_hash,
+        rule['result_sha256'] == rules['rule_result_digests'][identity] == rule_hash,
+        rule['episode_sha256'] == rules['input_episode_digests'][identity] == episode_hash,
+        rules['input_reference_digests'][identity] == reference_hash,
+        rule['input_runtime_manifest_sha256'] == runtime['manifest_sha256'],
+        terminal['runtime_run_id'] == episode['provenance']['runtime_run_id'] == runtime['runtime_run_id'] == rule['runtime_run_id'],
+    ]
+    for key in ('evaluation_protocol_release_id', 'evaluation_protocol_release_sha256', 'benchmark_release_id', 'benchmark_release_sha256'):
+        conditions.append(episode['provenance'][key] == runtime[key] == rule[key] == rules[key])
+    if not all(conditions):
+        raise ValueError('trace_bundle_linkage_invalid')
+
+
 def score(run: Path, output: Path, ledger: Path, ids: set[str] | None = None):
     if output.exists():
         raise FileExistsError(output)
@@ -38,7 +62,7 @@ def score(run: Path, output: Path, ledger: Path, ids: set[str] | None = None):
             assert decision_episode_digest(e)==e['provenance']['episode_sha256']
             assert rule_result_digest(rule)==rule['result_sha256']
             assert judge_reference_digest(ref)==ref['reference_sha256']
-            assert rule['episode_sha256']==e['provenance']['episode_sha256']
+            verify_bundle(terminal,e,rule,ref,runtime,rules)
             result,repaired=_evaluate_one_v3(episode=e,rule_result=rule,reference=ref,rule_manifest=rules,
                 judge_mode='real',provider=provider,selection_mode='adhoc_filter',git_commit=current_git_commit(),
                 worktree_clean=True,dependency_digest=dependency_lock_sha256(),dependency_lock_verified=True,
