@@ -19,8 +19,9 @@ def save(fig,name,layout=True):
 tracks=['planning','intervention','assessment','revision'];names=['学习规划','主动介入','成果验收','计划调整'];dims=['事实内容','学习目标','行动时机','用户控制','结果可用','行动适度','解释步骤']
 app=rows('application-human');x=np.arange(4);fig,ax=plt.subplots(figsize=(10,4.5))
 automatic=[np.mean([float(r['automatic_score']) for r in app if r['track']==t]) for t in tracks];human=[np.mean([float(r['human_score']) for r in app if r['track']==t]) for t in tracks]
-ax.bar(x-.18,automatic,.36,label='自动评分',color='#a7b2c2');ax.bar(x+.18,human,.36,label='固定人工参考',color='#416b9c')
-for i,v in enumerate(human):ax.text(i+.18,v+1,f'{v:.1f}',ha='center')
+automatic_bars=ax.bar(x-.18,automatic,.36,label='自动评分',color='#a7b2c2')
+human_bars=ax.bar(x+.18,human,.36,label='固定人工参考',color='#416b9c')
+for bars in (automatic_bars,human_bars):ax.bar_label(bars,fmt='%.1f',padding=3)
 ax.set(xticks=x,xticklabels=names,ylim=(0,112),ylabel='最终分均值 / 100',title='48份真实应用输出：自动评分与人工参考');ax.legend(loc='lower left');ax.grid(axis='y',alpha=.15);ax.set_axisbelow(True);save(fig,'application-results')
 
 data=np.array([[np.mean([int(r['human_D'+str(i)]) for r in app if r['track']==t]) for i in range(1,8)] for t in tracks]);fig,ax=plt.subplots(figsize=(11,3.5));im=ax.imshow(data,vmin=0,vmax=2,cmap='Blues',aspect='auto')

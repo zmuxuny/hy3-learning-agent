@@ -258,18 +258,30 @@ L 702.43 288.626375
 " style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_12">
-    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="163.935806" y="68.648161" transform="rotate(-0 163.935806 68.648161)">92.0</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="106.342845" y="58.397759" transform="rotate(-0 106.342845 58.397759)">95.0</text>
    </g>
    <g id="text_13">
-    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="323.916256" y="50.218086" transform="rotate(-0 323.916256 50.218086)">99.8</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="266.323294" y="50.513235" transform="rotate(-0 266.323294 50.513235)">98.3</text>
    </g>
    <g id="text_14">
-    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="483.896706" y="52.682" transform="rotate(-0 483.896706 52.682)">98.8</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="426.303744" y="46.570973" transform="rotate(-0 426.303744 46.570973)">100.0</text>
    </g>
    <g id="text_15">
-    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="643.877155" y="61.25642" transform="rotate(-0 643.877155 61.25642)">95.1</text>
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="586.284194" y="46.570973" transform="rotate(-0 586.284194 46.570973)">100.0</text>
    </g>
    <g id="text_16">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="163.935806" y="65.49383" transform="rotate(-0 163.935806 65.49383)">92.0</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="323.916256" y="47.063756" transform="rotate(-0 323.916256 47.063756)">99.8</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="483.896706" y="49.52767" transform="rotate(-0 483.896706 49.52767)">98.8</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="643.877155" y="58.102089" transform="rotate(-0 643.877155 58.102089)">95.1</text>
+   </g>
+   <g id="text_20">
     <text style="font-size: 13.2px; font-family: 'Noto Sans CJK JP'; text-anchor: middle" x="375.11" y="17.706375" transform="rotate(-0 375.11 17.706375)">48份真实应用输出：自动评分与人工参考</text>
    </g>
    <g id="legend_1">
@@ -294,7 +306,7 @@ L 57.69 251.731687
 z
 " style="fill: #a7b2c2"/>
     </g>
-    <g id="text_17">
+    <g id="text_21">
      <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: start" x="88.49" y="259.431687" transform="rotate(-0 88.49 259.431687)">自动评分</text>
     </g>
     <g id="patch_15">
@@ -305,7 +317,7 @@ L 57.69 268.506687
 z
 " style="fill: #416b9c"/>
     </g>
-    <g id="text_18">
+    <g id="text_22">
      <text style="font-size: 11px; font-family: 'Noto Sans CJK JP'; text-anchor: start" x="88.49" y="276.206687" transform="rotate(-0 88.49 276.206687)">固定人工参考</text>
     </g>
    </g>
