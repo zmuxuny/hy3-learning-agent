@@ -13,7 +13,7 @@
 
 ## Demo
 
-[![点击封面，在线观看学习助手与评测108秒Demo](assets/demo/stage3/cover.png)](https://zmuxuny.github.io/hy3-learning-agent/#demo)
+https://github.com/user-attachments/assets/c9193cc8-d6fb-4aab-a2d8-6b01633f598f
 
 [▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)
 
