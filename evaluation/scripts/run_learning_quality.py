@@ -33,11 +33,17 @@ def complete_stage(provider,request,e,validate,identity,stage,checkpoint):
         checkpoint(attempts)
     return None,attempts
 
-def run(suite,output,ledger,ids=None,repeats=1,method_version='learning-quality-8',repeat_indices=None):
+def run(suite,output,ledger,ids=None,repeats=1,method_version='learning-quality-9',repeat_indices=None):
     from learning_agent_eval import learning_quality as method
     stage_audit_request = audit_request
     if method_version == 'learning-quality-9':
         from learning_agent_eval import learning_quality_v9 as method
+        stage_audit_request = method.audit_request
+    elif method_version == 'learning-quality-10':
+        from learning_agent_eval import learning_quality_v10 as method
+        stage_audit_request = method.audit_request
+    elif method_version == 'learning-quality-11':
+        from learning_agent_eval import learning_quality_v11 as method
         stage_audit_request = method.audit_request
     elif method_version != 'learning-quality-8':
         raise ValueError('unsupported quality method')
@@ -65,7 +71,14 @@ def run(suite,output,ledger,ids=None,repeats=1,method_version='learning-quality-
                 row['status']='in_progress'
                 if audit is not None:
                     row['content_audit']=audit
-                    rating,attempts=complete_stage(provider,method.request_for(e,audit),e,method.validate_rating,identity,'rating',lambda a:checkpoint('rating',a))
+                    challenge=None
+                    if hasattr(method,'challenge_request'):
+                        challenge,attempts=complete_stage(provider,method.challenge_request(e),e,method.validate_challenge,identity,'challenge',lambda a:checkpoint('challenge',a))
+                        if challenge is not None:row['condition_challenge']=challenge
+                    rating=None
+                    if not hasattr(method,'challenge_request') or challenge is not None:
+                        request=method.request_for(e,audit,challenge) if hasattr(method,'challenge_request') else method.request_for(e,audit)
+                        rating,attempts=complete_stage(provider,request,e,method.validate_rating,identity,'rating',lambda a:checkpoint('rating',a))
                     if rating is not None:
                         row.update(status='complete',rating=rating,effective_dimensions=method.effective_levels(rating,e),undo_version_facts=undo_version_facts(e),exponential_facts=exponential_facts(e),schedule_facts=schedule_facts(e),**method.aggregate(rating,e))
                         if hasattr(method, 'reconciliation_result'):
@@ -78,7 +91,7 @@ def run(suite,output,ledger,ids=None,repeats=1,method_version='learning-quality-
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--suite',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--budget-ledger',type=Path,required=True);p.add_argument('--case-id',action='append');p.add_argument('--repeats',type=int,default=1)
-    p.add_argument('--method',choices=['learning-quality-8','learning-quality-9'],default='learning-quality-8')
+    p.add_argument('--method',choices=['learning-quality-8','learning-quality-9','learning-quality-10','learning-quality-11'],default='learning-quality-9')
     p.add_argument('--repeat-index',type=int,action='append',help='Restrict to declared repeat indices for failure-only recovery');a=p.parse_args()
     if a.repeats<1:p.error('repeats must be positive')
     if a.repeat_index and any(i<1 or i>a.repeats for i in a.repeat_index):p.error('repeat index outside declared range')

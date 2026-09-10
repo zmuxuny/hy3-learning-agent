@@ -1,0 +1,5071 @@
+{
+  "ledger_path": "/root/.local/state/learning-travel/e4-hy3-20260905-osj4FCZZ-budget.json",
+  "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+  "charged_micro_cny": 8753900,
+  "requests": [
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-i:repeat:1:audit:1",
+      "charged_micro_cny": 36432,
+      "input_limit": 68752,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-i",
+      "status": "settled",
+      "ticket": 2599,
+      "token_usage": {
+        "completion_tokens": 4421,
+        "prompt_tokens": 18748,
+        "total_tokens": 23169
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-r:repeat:1:audit:1",
+      "charged_micro_cny": 42447,
+      "input_limit": 68979,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-r",
+      "status": "settled",
+      "ticket": 2600,
+      "token_usage": {
+        "completion_tokens": 5940,
+        "prompt_tokens": 18687,
+        "total_tokens": 24627
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-p:repeat:1:audit:1",
+      "charged_micro_cny": 63707,
+      "input_limit": 105494,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-p",
+      "status": "settled",
+      "ticket": 2601,
+      "token_usage": {
+        "completion_tokens": 9069,
+        "prompt_tokens": 27431,
+        "total_tokens": 36500
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-a:repeat:1:audit:1",
+      "charged_micro_cny": 55189,
+      "input_limit": 74512,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-a",
+      "status": "settled",
+      "ticket": 2602,
+      "token_usage": {
+        "completion_tokens": 8595,
+        "prompt_tokens": 20809,
+        "total_tokens": 29404
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-i:repeat:1:audit:2",
+      "charged_micro_cny": 37064,
+      "input_limit": 68752,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-i",
+      "status": "settled",
+      "ticket": 2603,
+      "token_usage": {
+        "completion_tokens": 4579,
+        "prompt_tokens": 18748,
+        "total_tokens": 23327
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-r:repeat:1:rating:1",
+      "charged_micro_cny": 37508,
+      "input_limit": 76875,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-r",
+      "status": "settled",
+      "ticket": 2604,
+      "token_usage": {
+        "completion_tokens": 4268,
+        "prompt_tokens": 20436,
+        "total_tokens": 24704
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-i:repeat:1:rating:1",
+      "charged_micro_cny": 37320,
+      "input_limit": 76840,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-i",
+      "status": "settled",
+      "ticket": 2605,
+      "token_usage": {
+        "completion_tokens": 4187,
+        "prompt_tokens": 20572,
+        "total_tokens": 24759
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-a:repeat:1:rating:1",
+      "charged_micro_cny": 41022,
+      "input_limit": 83369,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-a",
+      "status": "settled",
+      "ticket": 2606,
+      "token_usage": {
+        "completion_tokens": 4544,
+        "prompt_tokens": 22846,
+        "total_tokens": 27390
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i02-a:repeat:1:audit:1",
+      "charged_micro_cny": 51328,
+      "input_limit": 86069,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i02-a",
+      "status": "settled",
+      "ticket": 2607,
+      "token_usage": {
+        "completion_tokens": 6830,
+        "prompt_tokens": 24008,
+        "total_tokens": 30838
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i02-i:repeat:1:audit:1",
+      "charged_micro_cny": 30460,
+      "input_limit": 45201,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i02-i",
+      "status": "settled",
+      "ticket": 2608,
+      "token_usage": {
+        "completion_tokens": 4719,
+        "prompt_tokens": 11584,
+        "total_tokens": 16303
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i02-p:repeat:1:audit:1",
+      "charged_micro_cny": 61978,
+      "input_limit": 105417,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i02-p",
+      "status": "settled",
+      "ticket": 2609,
+      "token_usage": {
+        "completion_tokens": 8469,
+        "prompt_tokens": 28102,
+        "total_tokens": 36571
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i01-p:repeat:1:rating:1",
+      "charged_micro_cny": 50508,
+      "input_limit": 126790,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i01-p",
+      "status": "settled",
+      "ticket": 2610,
+      "token_usage": {
+        "completion_tokens": 4428,
+        "prompt_tokens": 32796,
+        "total_tokens": 37224
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i02-a:repeat:1:rating:1",
+      "charged_micro_cny": 50505,
+      "input_limit": 94677,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i02-a",
+      "status": "settled",
+      "ticket": 2611,
+      "token_usage": {
+        "completion_tokens": 6123,
+        "prompt_tokens": 26013,
+        "total_tokens": 32136
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i02-i:repeat:1:rating:1",
+      "charged_micro_cny": 27376,
+      "input_limit": 52886,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i02-i",
+      "status": "settled",
+      "ticket": 2612,
+      "token_usage": {
+        "completion_tokens": 3525,
+        "prompt_tokens": 13276,
+        "total_tokens": 16801
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i02-r:repeat:1:audit:1",
+      "charged_micro_cny": 34285,
+      "input_limit": 61918,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i02-r",
+      "status": "settled",
+      "ticket": 2613,
+      "token_usage": {
+        "completion_tokens": 4556,
+        "prompt_tokens": 16061,
+        "total_tokens": 20617
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i03-a:repeat:1:audit:1",
+      "charged_micro_cny": 44734,
+      "input_limit": 81396,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i03-a",
+      "status": "settled",
+      "ticket": 2614,
+      "token_usage": {
+        "completion_tokens": 5616,
+        "prompt_tokens": 22270,
+        "total_tokens": 27886
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i03-i:repeat:1:audit:1",
+      "charged_micro_cny": 51235,
+      "input_limit": 44243,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i03-i",
+      "status": "settled",
+      "ticket": 2615,
+      "token_usage": {
+        "completion_tokens": 9961,
+        "prompt_tokens": 11391,
+        "total_tokens": 21352
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i02-r:repeat:1:rating:1",
+      "charged_micro_cny": 37348,
+      "input_limit": 69924,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i02-r",
+      "status": "settled",
+      "ticket": 2616,
+      "token_usage": {
+        "completion_tokens": 4879,
+        "prompt_tokens": 17832,
+        "total_tokens": 22711
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i03-a:repeat:1:rating:1",
+      "charged_micro_cny": 49840,
+      "input_limit": 90259,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i03-a",
+      "status": "settled",
+      "ticket": 2617,
+      "token_usage": {
+        "completion_tokens": 6386,
+        "prompt_tokens": 24296,
+        "total_tokens": 30682
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i03-p:repeat:1:audit:1",
+      "charged_micro_cny": 48540,
+      "input_limit": 103029,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i03-p",
+      "status": "settled",
+      "ticket": 2618,
+      "token_usage": {
+        "completion_tokens": 5305,
+        "prompt_tokens": 27320,
+        "total_tokens": 32625
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i02-p:repeat:1:rating:1",
+      "charged_micro_cny": 50337,
+      "input_limit": 125837,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i02-p",
+      "status": "settled",
+      "ticket": 2619,
+      "token_usage": {
+        "completion_tokens": 4275,
+        "prompt_tokens": 33237,
+        "total_tokens": 37512
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i03-r:repeat:1:audit:1",
+      "charged_micro_cny": 46941,
+      "input_limit": 68761,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i03-r",
+      "status": "settled",
+      "ticket": 2620,
+      "token_usage": {
+        "completion_tokens": 7194,
+        "prompt_tokens": 18165,
+        "total_tokens": 25359
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i03-i:repeat:1:rating:1",
+      "charged_micro_cny": 25062,
+      "input_limit": 52803,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i03-i",
+      "status": "settled",
+      "ticket": 2621,
+      "token_usage": {
+        "completion_tokens": 2932,
+        "prompt_tokens": 13334,
+        "total_tokens": 16266
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i03-r:repeat:1:rating:1",
+      "charged_micro_cny": 31240,
+      "input_limit": 76913,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i03-r",
+      "status": "settled",
+      "ticket": 2622,
+      "token_usage": {
+        "completion_tokens": 2820,
+        "prompt_tokens": 19960,
+        "total_tokens": 22780
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i03-p:repeat:1:rating:1",
+      "charged_micro_cny": 57228,
+      "input_limit": 111333,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i03-p",
+      "status": "settled",
+      "ticket": 2623,
+      "token_usage": {
+        "completion_tokens": 7017,
+        "prompt_tokens": 29160,
+        "total_tokens": 36177
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i04-a:repeat:1:audit:1",
+      "charged_micro_cny": 53534,
+      "input_limit": 79062,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i04-a",
+      "status": "settled",
+      "ticket": 2624,
+      "token_usage": {
+        "completion_tokens": 7987,
+        "prompt_tokens": 21586,
+        "total_tokens": 29573
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i04-i:repeat:1:audit:1",
+      "charged_micro_cny": 37603,
+      "input_limit": 69356,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i04-i",
+      "status": "settled",
+      "ticket": 2625,
+      "token_usage": {
+        "completion_tokens": 4695,
+        "prompt_tokens": 18823,
+        "total_tokens": 23518
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i04-p:repeat:1:audit:1",
+      "charged_micro_cny": 47139,
+      "input_limit": 81613,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i04-p",
+      "status": "settled",
+      "ticket": 2626,
+      "token_usage": {
+        "completion_tokens": 6604,
+        "prompt_tokens": 20723,
+        "total_tokens": 27327
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i04-i:repeat:1:rating:1",
+      "charged_micro_cny": 33324,
+      "input_limit": 77390,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i04-i",
+      "status": "settled",
+      "ticket": 2627,
+      "token_usage": {
+        "completion_tokens": 3181,
+        "prompt_tokens": 20600,
+        "total_tokens": 23781
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i04-a:repeat:1:rating:1",
+      "charged_micro_cny": 46229,
+      "input_limit": 87758,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i04-a",
+      "status": "settled",
+      "ticket": 2628,
+      "token_usage": {
+        "completion_tokens": 5669,
+        "prompt_tokens": 23553,
+        "total_tokens": 29222
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i04-p:repeat:1:rating:1",
+      "charged_micro_cny": 49443,
+      "input_limit": 90017,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i04-p",
+      "status": "settled",
+      "ticket": 2629,
+      "token_usage": {
+        "completion_tokens": 6720,
+        "prompt_tokens": 22563,
+        "total_tokens": 29283
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i04-r:repeat:1:audit:1",
+      "charged_micro_cny": 34544,
+      "input_limit": 62564,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i04-r",
+      "status": "settled",
+      "ticket": 2630,
+      "token_usage": {
+        "completion_tokens": 4525,
+        "prompt_tokens": 16444,
+        "total_tokens": 20969
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i05-a:repeat:1:audit:1",
+      "charged_micro_cny": 37151,
+      "input_limit": 108086,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i05-a",
+      "status": "settled",
+      "ticket": 2631,
+      "token_usage": {
+        "completion_tokens": 4014,
+        "prompt_tokens": 21095,
+        "total_tokens": 25109
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i05-i:repeat:1:audit:1",
+      "charged_micro_cny": 40165,
+      "input_limit": 68721,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i05-i",
+      "status": "settled",
+      "ticket": 2632,
+      "token_usage": {
+        "completion_tokens": 5344,
+        "prompt_tokens": 18789,
+        "total_tokens": 24133
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i04-r:repeat:1:rating:1",
+      "charged_micro_cny": 35465,
+      "input_limit": 70595,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i04-r",
+      "status": "settled",
+      "ticket": 2633,
+      "token_usage": {
+        "completion_tokens": 4310,
+        "prompt_tokens": 18225,
+        "total_tokens": 22535
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i05-p:repeat:1:audit:1",
+      "charged_micro_cny": 65021,
+      "input_limit": 117734,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i05-p",
+      "status": "settled",
+      "ticket": 2634,
+      "token_usage": {
+        "completion_tokens": 8307,
+        "prompt_tokens": 31793,
+        "total_tokens": 40100
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i05-r:repeat:1:audit:1",
+      "charged_micro_cny": 42306,
+      "input_limit": 69155,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i05-r",
+      "status": "settled",
+      "ticket": 2635,
+      "token_usage": {
+        "completion_tokens": 5881,
+        "prompt_tokens": 18782,
+        "total_tokens": 24663
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i05-i:repeat:1:rating:1",
+      "charged_micro_cny": 48873,
+      "input_limit": 76798,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i05-i",
+      "status": "settled",
+      "ticket": 2636,
+      "token_usage": {
+        "completion_tokens": 7074,
+        "prompt_tokens": 20577,
+        "total_tokens": 27651
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i06-a:repeat:1:audit:1",
+      "charged_micro_cny": 61517,
+      "input_limit": 123831,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i06-a",
+      "status": "settled",
+      "ticket": 2637,
+      "token_usage": {
+        "completion_tokens": 6343,
+        "prompt_tokens": 36145,
+        "total_tokens": 42488
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i05-r:repeat:1:rating:1",
+      "charged_micro_cny": 39615,
+      "input_limit": 78365,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i05-r",
+      "status": "settled",
+      "ticket": 2638,
+      "token_usage": {
+        "completion_tokens": 4698,
+        "prompt_tokens": 20823,
+        "total_tokens": 25521
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i05-a:repeat:1:rating:1",
+      "charged_micro_cny": 52953,
+      "input_limit": 116600,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i05-a",
+      "status": "settled",
+      "ticket": 2639,
+      "token_usage": {
+        "completion_tokens": 5051,
+        "prompt_tokens": 32749,
+        "total_tokens": 37800
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i06-i:repeat:1:audit:1",
+      "charged_micro_cny": 36740,
+      "input_limit": 46895,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i06-i",
+      "status": "settled",
+      "ticket": 2640,
+      "token_usage": {
+        "completion_tokens": 6152,
+        "prompt_tokens": 12132,
+        "total_tokens": 18284
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i06-p:repeat:1:audit:1",
+      "charged_micro_cny": 66112,
+      "input_limit": 120356,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i06-p",
+      "status": "settled",
+      "ticket": 2641,
+      "token_usage": {
+        "completion_tokens": 8318,
+        "prompt_tokens": 32840,
+        "total_tokens": 41158
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i06-a:repeat:1:rating:1",
+      "charged_micro_cny": 58563,
+      "input_limit": 134031,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i06-a",
+      "status": "settled",
+      "ticket": 2642,
+      "token_usage": {
+        "completion_tokens": 5009,
+        "prompt_tokens": 38527,
+        "total_tokens": 43536
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i05-p:repeat:1:rating:1",
+      "charged_micro_cny": 59481,
+      "input_limit": 138222,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i05-p",
+      "status": "settled",
+      "ticket": 2643,
+      "token_usage": {
+        "completion_tokens": 5644,
+        "prompt_tokens": 36905,
+        "total_tokens": 42549
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i06-i:repeat:1:rating:1",
+      "charged_micro_cny": 27359,
+      "input_limit": 55476,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i06-i",
+      "status": "settled",
+      "ticket": 2644,
+      "token_usage": {
+        "completion_tokens": 3327,
+        "prompt_tokens": 14051,
+        "total_tokens": 17378
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i06-r:repeat:1:audit:1",
+      "charged_micro_cny": 39528,
+      "input_limit": 81633,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i06-r",
+      "status": "settled",
+      "ticket": 2645,
+      "token_usage": {
+        "completion_tokens": 4287,
+        "prompt_tokens": 22380,
+        "total_tokens": 26667
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i06-r:repeat:1:rating:1",
+      "charged_micro_cny": 42705,
+      "input_limit": 89708,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i06-r",
+      "status": "settled",
+      "ticket": 2646,
+      "token_usage": {
+        "completion_tokens": 4633,
+        "prompt_tokens": 24173,
+        "total_tokens": 28806
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i07-a:repeat:1:audit:1",
+      "charged_micro_cny": 42928,
+      "input_limit": 82245,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i07-a",
+      "status": "settled",
+      "ticket": 2647,
+      "token_usage": {
+        "completion_tokens": 5016,
+        "prompt_tokens": 22864,
+        "total_tokens": 27880
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i07-i:repeat:1:audit:1",
+      "charged_micro_cny": 40151,
+      "input_limit": 71065,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i07-i",
+      "status": "settled",
+      "ticket": 2648,
+      "token_usage": {
+        "completion_tokens": 5088,
+        "prompt_tokens": 19799,
+        "total_tokens": 24887
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i07-a:repeat:1:rating:1",
+      "charged_micro_cny": 42460,
+      "input_limit": 90496,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i07-a",
+      "status": "settled",
+      "ticket": 2649,
+      "token_usage": {
+        "completion_tokens": 4419,
+        "prompt_tokens": 24784,
+        "total_tokens": 29203
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i07-i:repeat:1:rating:1",
+      "charged_micro_cny": 34425,
+      "input_limit": 78893,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i07-i",
+      "status": "settled",
+      "ticket": 2650,
+      "token_usage": {
+        "completion_tokens": 3211,
+        "prompt_tokens": 21581,
+        "total_tokens": 24792
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i07-p:repeat:1:audit:1",
+      "charged_micro_cny": 68680,
+      "input_limit": 106359,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i07-p",
+      "status": "settled",
+      "ticket": 2651,
+      "token_usage": {
+        "completion_tokens": 9722,
+        "prompt_tokens": 29792,
+        "total_tokens": 39514
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i07-r:repeat:1:audit:1",
+      "charged_micro_cny": 52654,
+      "input_limit": 78074,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i07-r",
+      "status": "settled",
+      "ticket": 2652,
+      "token_usage": {
+        "completion_tokens": 7881,
+        "prompt_tokens": 21130,
+        "total_tokens": 29011
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i06-p:repeat:1:rating:1",
+      "charged_micro_cny": 57010,
+      "input_limit": 143141,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i06-p",
+      "status": "settled",
+      "ticket": 2653,
+      "token_usage": {
+        "completion_tokens": 4538,
+        "prompt_tokens": 38858,
+        "total_tokens": 43396
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i08-a:repeat:1:audit:1",
+      "charged_micro_cny": 37806,
+      "input_limit": 62508,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i08-a",
+      "status": "settled",
+      "ticket": 2654,
+      "token_usage": {
+        "completion_tokens": 5284,
+        "prompt_tokens": 16670,
+        "total_tokens": 21954
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i07-r:repeat:1:rating:1",
+      "charged_micro_cny": 37819,
+      "input_limit": 87413,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i07-r",
+      "status": "settled",
+      "ticket": 2655,
+      "token_usage": {
+        "completion_tokens": 3614,
+        "prompt_tokens": 23363,
+        "total_tokens": 26977
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i08-a:repeat:1:rating:1",
+      "charged_micro_cny": 38039,
+      "input_limit": 70794,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i08-a",
+      "status": "settled",
+      "ticket": 2656,
+      "token_usage": {
+        "completion_tokens": 4876,
+        "prompt_tokens": 18535,
+        "total_tokens": 23411
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i08-i:repeat:1:audit:1",
+      "charged_micro_cny": 44599,
+      "input_limit": 44790,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i08-i",
+      "status": "settled",
+      "ticket": 2657,
+      "token_usage": {
+        "completion_tokens": 8262,
+        "prompt_tokens": 11551,
+        "total_tokens": 19813
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i08-p:repeat:1:audit:1",
+      "charged_micro_cny": 46923,
+      "input_limit": 85998,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i08-p",
+      "status": "settled",
+      "ticket": 2658,
+      "token_usage": {
+        "completion_tokens": 6392,
+        "prompt_tokens": 21355,
+        "total_tokens": 27747
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i08-r:repeat:1:audit:1",
+      "charged_micro_cny": 34387,
+      "input_limit": 61472,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i08-r",
+      "status": "settled",
+      "ticket": 2659,
+      "token_usage": {
+        "completion_tokens": 4592,
+        "prompt_tokens": 16019,
+        "total_tokens": 20611
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i08-p:repeat:1:rating:1",
+      "charged_micro_cny": 36684,
+      "input_limit": 94558,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i08-p",
+      "status": "settled",
+      "ticket": 2660,
+      "token_usage": {
+        "completion_tokens": 3362,
+        "prompt_tokens": 23236,
+        "total_tokens": 26598
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i08-r:repeat:1:rating:1",
+      "charged_micro_cny": 33044,
+      "input_limit": 70009,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i08-r",
+      "status": "settled",
+      "ticket": 2661,
+      "token_usage": {
+        "completion_tokens": 3773,
+        "prompt_tokens": 17952,
+        "total_tokens": 21725
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i07-p:repeat:1:rating:1",
+      "charged_micro_cny": 52843,
+      "input_limit": 126156,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i07-p",
+      "status": "settled",
+      "ticket": 2662,
+      "token_usage": {
+        "completion_tokens": 4417,
+        "prompt_tokens": 35175,
+        "total_tokens": 39592
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i09-a:repeat:1:audit:1",
+      "charged_micro_cny": 42235,
+      "input_limit": 84446,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i09-a",
+      "status": "settled",
+      "ticket": 2663,
+      "token_usage": {
+        "completion_tokens": 4653,
+        "prompt_tokens": 23623,
+        "total_tokens": 28276
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i09-i:repeat:1:audit:1",
+      "charged_micro_cny": 34881,
+      "input_limit": 44732,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i09-i",
+      "status": "settled",
+      "ticket": 2664,
+      "token_usage": {
+        "completion_tokens": 5885,
+        "prompt_tokens": 11341,
+        "total_tokens": 17226
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i08-i:repeat:1:rating:1",
+      "charged_micro_cny": 27852,
+      "input_limit": 53139,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i08-i",
+      "status": "settled",
+      "ticket": 2665,
+      "token_usage": {
+        "completion_tokens": 3617,
+        "prompt_tokens": 13384,
+        "total_tokens": 17001
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i09-a:repeat:1:rating:1",
+      "charged_micro_cny": 54023,
+      "input_limit": 93188,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i09-a",
+      "status": "settled",
+      "ticket": 2666,
+      "token_usage": {
+        "completion_tokens": 7099,
+        "prompt_tokens": 25627,
+        "total_tokens": 32726
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i09-p:repeat:1:audit:1",
+      "charged_micro_cny": 45562,
+      "input_limit": 102093,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i09-p",
+      "status": "settled",
+      "ticket": 2667,
+      "token_usage": {
+        "completion_tokens": 6727,
+        "prompt_tokens": 18654,
+        "total_tokens": 25381
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i09-i:repeat:1:rating:1",
+      "charged_micro_cny": 24830,
+      "input_limit": 52997,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i09-i",
+      "status": "settled",
+      "ticket": 2668,
+      "token_usage": {
+        "completion_tokens": 2906,
+        "prompt_tokens": 13206,
+        "total_tokens": 16112
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i09-r:repeat:1:audit:1",
+      "charged_micro_cny": 42173,
+      "input_limit": 69554,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i09-r",
+      "status": "settled",
+      "ticket": 2669,
+      "token_usage": {
+        "completion_tokens": 5915,
+        "prompt_tokens": 18513,
+        "total_tokens": 24428
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i10-a:repeat:1:audit:1",
+      "charged_micro_cny": 50623,
+      "input_limit": 88460,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i10-a",
+      "status": "settled",
+      "ticket": 2670,
+      "token_usage": {
+        "completion_tokens": 6371,
+        "prompt_tokens": 25139,
+        "total_tokens": 31510
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i10-i:repeat:1:audit:1",
+      "charged_micro_cny": 48791,
+      "input_limit": 76660,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i10-i",
+      "status": "settled",
+      "ticket": 2671,
+      "token_usage": {
+        "completion_tokens": 7032,
+        "prompt_tokens": 20663,
+        "total_tokens": 27695
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i09-r:repeat:1:rating:1",
+      "charged_micro_cny": 35093,
+      "input_limit": 77749,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i09-r",
+      "status": "settled",
+      "ticket": 2672,
+      "token_usage": {
+        "completion_tokens": 3681,
+        "prompt_tokens": 20369,
+        "total_tokens": 24050
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i10-a:repeat:1:rating:1",
+      "charged_micro_cny": 44399,
+      "input_limit": 97154,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i10-a",
+      "status": "settled",
+      "ticket": 2673,
+      "token_usage": {
+        "completion_tokens": 4309,
+        "prompt_tokens": 27163,
+        "total_tokens": 31472
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i10-i:repeat:1:rating:1",
+      "charged_micro_cny": 41374,
+      "input_limit": 84575,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i10-i",
+      "status": "settled",
+      "ticket": 2674,
+      "token_usage": {
+        "completion_tokens": 4738,
+        "prompt_tokens": 22422,
+        "total_tokens": 27160
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i10-p:repeat:1:audit:1",
+      "charged_micro_cny": 61319,
+      "input_limit": 105818,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i10-p",
+      "status": "settled",
+      "ticket": 2675,
+      "token_usage": {
+        "completion_tokens": 8157,
+        "prompt_tokens": 28691,
+        "total_tokens": 36848
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i10-r:repeat:1:audit:1",
+      "charged_micro_cny": 40173,
+      "input_limit": 69336,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i10-r",
+      "status": "settled",
+      "ticket": 2676,
+      "token_usage": {
+        "completion_tokens": 5483,
+        "prompt_tokens": 18241,
+        "total_tokens": 23724
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i11-a:repeat:1:audit:1",
+      "charged_micro_cny": 46510,
+      "input_limit": 93388,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i11-a",
+      "status": "settled",
+      "ticket": 2677,
+      "token_usage": {
+        "completion_tokens": 5338,
+        "prompt_tokens": 25158,
+        "total_tokens": 30496
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i09-p:repeat:1:rating:1",
+      "charged_micro_cny": 54228,
+      "input_limit": 122000,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i09-p",
+      "status": "settled",
+      "ticket": 2678,
+      "token_usage": {
+        "completion_tokens": 5396,
+        "prompt_tokens": 32644,
+        "total_tokens": 38040
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i10-r:repeat:1:rating:1",
+      "charged_micro_cny": 34240,
+      "input_limit": 77162,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i10-r",
+      "status": "settled",
+      "ticket": 2679,
+      "token_usage": {
+        "completion_tokens": 3564,
+        "prompt_tokens": 19984,
+        "total_tokens": 23548
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i11-a:repeat:1:rating:1",
+      "charged_micro_cny": 41433,
+      "input_limit": 102185,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i11-a",
+      "status": "settled",
+      "ticket": 2680,
+      "token_usage": {
+        "completion_tokens": 3573,
+        "prompt_tokens": 27141,
+        "total_tokens": 30714
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i11-i:repeat:1:audit:1",
+      "charged_micro_cny": 36661,
+      "input_limit": 70961,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i11-i",
+      "status": "settled",
+      "ticket": 2681,
+      "token_usage": {
+        "completion_tokens": 4352,
+        "prompt_tokens": 19253,
+        "total_tokens": 23605
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i10-p:repeat:1:rating:1",
+      "charged_micro_cny": 52017,
+      "input_limit": 125390,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i10-p",
+      "status": "settled",
+      "ticket": 2682,
+      "token_usage": {
+        "completion_tokens": 4577,
+        "prompt_tokens": 33709,
+        "total_tokens": 38286
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i11-i:repeat:1:rating:1",
+      "charged_micro_cny": 33779,
+      "input_limit": 79114,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i11-i",
+      "status": "settled",
+      "ticket": 2683,
+      "token_usage": {
+        "completion_tokens": 3180,
+        "prompt_tokens": 21059,
+        "total_tokens": 24239
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i11-p:repeat:1:audit:1",
+      "charged_micro_cny": 40336,
+      "input_limit": 72593,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i11-p",
+      "status": "settled",
+      "ticket": 2684,
+      "token_usage": {
+        "completion_tokens": 5458,
+        "prompt_tokens": 18504,
+        "total_tokens": 23962
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i11-r:repeat:1:audit:1",
+      "charged_micro_cny": 43472,
+      "input_limit": 70074,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i11-r",
+      "status": "settled",
+      "ticket": 2685,
+      "token_usage": {
+        "completion_tokens": 6205,
+        "prompt_tokens": 18652,
+        "total_tokens": 24857
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i12-a:repeat:1:audit:1",
+      "charged_micro_cny": 56560,
+      "input_limit": 113493,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i12-a",
+      "status": "settled",
+      "ticket": 2686,
+      "token_usage": {
+        "completion_tokens": 6201,
+        "prompt_tokens": 31756,
+        "total_tokens": 37957
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i11-p:repeat:1:rating:1",
+      "charged_micro_cny": 34119,
+      "input_limit": 81321,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i11-p",
+      "status": "settled",
+      "ticket": 2687,
+      "token_usage": {
+        "completion_tokens": 3444,
+        "prompt_tokens": 20343,
+        "total_tokens": 23787
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i12-i:repeat:1:audit:1",
+      "charged_micro_cny": 44163,
+      "input_limit": 46200,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i12-i",
+      "status": "settled",
+      "ticket": 2688,
+      "token_usage": {
+        "completion_tokens": 8060,
+        "prompt_tokens": 11923,
+        "total_tokens": 19983
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i11-r:repeat:1:rating:1",
+      "charged_micro_cny": 41682,
+      "input_limit": 79207,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i11-r",
+      "status": "settled",
+      "ticket": 2689,
+      "token_usage": {
+        "completion_tokens": 5242,
+        "prompt_tokens": 20714,
+        "total_tokens": 25956
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i12-p:repeat:1:audit:1",
+      "charged_micro_cny": 79142,
+      "input_limit": 123976,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i12-p",
+      "status": "settled",
+      "ticket": 2690,
+      "token_usage": {
+        "completion_tokens": 11478,
+        "prompt_tokens": 33230,
+        "total_tokens": 44708
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i12-r:repeat:1:audit:1",
+      "charged_micro_cny": 44298,
+      "input_limit": 89945,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i12-r",
+      "status": "settled",
+      "ticket": 2691,
+      "token_usage": {
+        "completion_tokens": 5003,
+        "prompt_tokens": 24286,
+        "total_tokens": 29289
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i12-r:repeat:1:rating:1",
+      "charged_micro_cny": 44463,
+      "input_limit": 98988,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i12-r",
+      "status": "settled",
+      "ticket": 2692,
+      "token_usage": {
+        "completion_tokens": 4537,
+        "prompt_tokens": 26315,
+        "total_tokens": 30852
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i12-i:repeat:1:rating:1",
+      "charged_micro_cny": 30234,
+      "input_limit": 55019,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i12-i",
+      "status": "settled",
+      "ticket": 2693,
+      "token_usage": {
+        "completion_tokens": 4102,
+        "prompt_tokens": 13826,
+        "total_tokens": 17928
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-1:repeat:1:audit:1",
+      "charged_micro_cny": 25069,
+      "input_limit": 10287,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-1",
+      "status": "settled",
+      "ticket": 2694,
+      "token_usage": {
+        "completion_tokens": 5897,
+        "prompt_tokens": 1481,
+        "total_tokens": 7378
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i12-a:repeat:1:rating:1",
+      "charged_micro_cny": 62649,
+      "input_limit": 122677,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i12-a",
+      "status": "settled",
+      "ticket": 2695,
+      "token_usage": {
+        "completion_tokens": 7182,
+        "prompt_tokens": 33921,
+        "total_tokens": 41103
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-2:repeat:1:audit:1",
+      "charged_micro_cny": 26842,
+      "input_limit": 10251,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-2",
+      "status": "settled",
+      "ticket": 2696,
+      "token_usage": {
+        "completion_tokens": 6342,
+        "prompt_tokens": 1474,
+        "total_tokens": 7816
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "formal-i12-p:repeat:1:rating:1",
+      "charged_micro_cny": 65760,
+      "input_limit": 145549,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "formal-i12-p",
+      "status": "settled",
+      "ticket": 2697,
+      "token_usage": {
+        "completion_tokens": 6736,
+        "prompt_tokens": 38816,
+        "total_tokens": 45552
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-1:repeat:1:rating:1",
+      "charged_micro_cny": 27351,
+      "input_limit": 17625,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-1",
+      "status": "settled",
+      "ticket": 2698,
+      "token_usage": {
+        "completion_tokens": 6070,
+        "prompt_tokens": 3071,
+        "total_tokens": 9141
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-2:repeat:1:rating:1",
+      "charged_micro_cny": 26693,
+      "input_limit": 18655,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-2",
+      "status": "settled",
+      "ticket": 2699,
+      "token_usage": {
+        "completion_tokens": 5851,
+        "prompt_tokens": 3289,
+        "total_tokens": 9140
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-3:repeat:1:audit:1",
+      "charged_micro_cny": 19257,
+      "input_limit": 10184,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-3",
+      "status": "settled",
+      "ticket": 2700,
+      "token_usage": {
+        "completion_tokens": 4451,
+        "prompt_tokens": 1453,
+        "total_tokens": 5904
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-1:repeat:1:audit:1",
+      "charged_micro_cny": 22391,
+      "input_limit": 10382,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-1",
+      "status": "settled",
+      "ticket": 2701,
+      "token_usage": {
+        "completion_tokens": 5210,
+        "prompt_tokens": 1551,
+        "total_tokens": 6761
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-1:repeat:2:audit:1",
+      "charged_micro_cny": 25861,
+      "input_limit": 10287,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-1",
+      "status": "settled",
+      "ticket": 2702,
+      "token_usage": {
+        "completion_tokens": 6095,
+        "prompt_tokens": 1481,
+        "total_tokens": 7576
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-2:repeat:2:audit:1",
+      "charged_micro_cny": 23618,
+      "input_limit": 10251,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-2",
+      "status": "settled",
+      "ticket": 2703,
+      "token_usage": {
+        "completion_tokens": 5536,
+        "prompt_tokens": 1474,
+        "total_tokens": 7010
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-3:repeat:1:rating:1",
+      "charged_micro_cny": 28792,
+      "input_limit": 17327,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-3",
+      "status": "settled",
+      "ticket": 2704,
+      "token_usage": {
+        "completion_tokens": 6456,
+        "prompt_tokens": 2968,
+        "total_tokens": 9424
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-1:repeat:1:rating:1",
+      "charged_micro_cny": 17144,
+      "input_limit": 17842,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-1",
+      "status": "settled",
+      "ticket": 2705,
+      "token_usage": {
+        "completion_tokens": 3478,
+        "prompt_tokens": 3232,
+        "total_tokens": 6710
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-1:repeat:2:rating:1",
+      "charged_micro_cny": 17219,
+      "input_limit": 17846,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-1",
+      "status": "settled",
+      "ticket": 2706,
+      "token_usage": {
+        "completion_tokens": 3525,
+        "prompt_tokens": 3119,
+        "total_tokens": 6644
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-1:repeat:2:audit:1",
+      "charged_micro_cny": 25367,
+      "input_limit": 10382,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-1",
+      "status": "settled",
+      "ticket": 2707,
+      "token_usage": {
+        "completion_tokens": 5954,
+        "prompt_tokens": 1551,
+        "total_tokens": 7505
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-2:repeat:2:rating:1",
+      "charged_micro_cny": 19596,
+      "input_limit": 17505,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-2",
+      "status": "settled",
+      "ticket": 2708,
+      "token_usage": {
+        "completion_tokens": 4144,
+        "prompt_tokens": 3020,
+        "total_tokens": 7164
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-1:repeat:3:audit:1",
+      "charged_micro_cny": 30997,
+      "input_limit": 10287,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-1",
+      "status": "settled",
+      "ticket": 2709,
+      "token_usage": {
+        "completion_tokens": 7379,
+        "prompt_tokens": 1481,
+        "total_tokens": 8860
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-3:repeat:2:audit:1",
+      "charged_micro_cny": 25249,
+      "input_limit": 10184,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-3",
+      "status": "settled",
+      "ticket": 2710,
+      "token_usage": {
+        "completion_tokens": 5949,
+        "prompt_tokens": 1453,
+        "total_tokens": 7402
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-1:repeat:2:rating:1",
+      "charged_micro_cny": 20820,
+      "input_limit": 17576,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-1",
+      "status": "settled",
+      "ticket": 2711,
+      "token_usage": {
+        "completion_tokens": 4422,
+        "prompt_tokens": 3132,
+        "total_tokens": 7554
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-2:repeat:3:audit:1",
+      "charged_micro_cny": 23622,
+      "input_limit": 10251,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-2",
+      "status": "settled",
+      "ticket": 2712,
+      "token_usage": {
+        "completion_tokens": 5537,
+        "prompt_tokens": 1474,
+        "total_tokens": 7011
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-1:repeat:3:rating:1",
+      "charged_micro_cny": 17959,
+      "input_limit": 17998,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-1",
+      "status": "settled",
+      "ticket": 2713,
+      "token_usage": {
+        "completion_tokens": 3701,
+        "prompt_tokens": 3155,
+        "total_tokens": 6856
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-1:repeat:3:audit:1",
+      "charged_micro_cny": 30491,
+      "input_limit": 10382,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-1",
+      "status": "settled",
+      "ticket": 2714,
+      "token_usage": {
+        "completion_tokens": 7235,
+        "prompt_tokens": 1551,
+        "total_tokens": 8786
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-2:repeat:3:rating:1",
+      "charged_micro_cny": 23492,
+      "input_limit": 17556,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-2",
+      "status": "settled",
+      "ticket": 2715,
+      "token_usage": {
+        "completion_tokens": 5112,
+        "prompt_tokens": 3044,
+        "total_tokens": 8156
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-3:repeat:2:rating:1",
+      "charged_micro_cny": 23542,
+      "input_limit": 17138,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-3",
+      "status": "settled",
+      "ticket": 2716,
+      "token_usage": {
+        "completion_tokens": 5152,
+        "prompt_tokens": 2934,
+        "total_tokens": 8086
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-2:repeat:1:audit:1",
+      "charged_micro_cny": 35449,
+      "input_limit": 10329,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-2",
+      "status": "settled",
+      "ticket": 2717,
+      "token_usage": {
+        "completion_tokens": 8480,
+        "prompt_tokens": 1529,
+        "total_tokens": 10009
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-1:repeat:3:rating:1",
+      "charged_micro_cny": 18413,
+      "input_limit": 18731,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-1",
+      "status": "settled",
+      "ticket": 2718,
+      "token_usage": {
+        "completion_tokens": 3742,
+        "prompt_tokens": 3445,
+        "total_tokens": 7187
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-3:repeat:3:audit:1",
+      "charged_micro_cny": 28909,
+      "input_limit": 10184,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-3",
+      "status": "settled",
+      "ticket": 2719,
+      "token_usage": {
+        "completion_tokens": 6864,
+        "prompt_tokens": 1453,
+        "total_tokens": 8317
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-3:repeat:1:audit:1",
+      "charged_micro_cny": 12826,
+      "input_limit": 10225,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-3",
+      "status": "settled",
+      "ticket": 2720,
+      "token_usage": {
+        "completion_tokens": 2840,
+        "prompt_tokens": 1466,
+        "total_tokens": 4306
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-3:repeat:1:rating:1",
+      "charged_micro_cny": 28070,
+      "input_limit": 17368,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-3",
+      "status": "settled",
+      "ticket": 2721,
+      "token_usage": {
+        "completion_tokens": 6276,
+        "prompt_tokens": 2966,
+        "total_tokens": 9242
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-1:repeat:1:audit:1",
+      "charged_micro_cny": 16175,
+      "input_limit": 10154,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-1",
+      "status": "settled",
+      "ticket": 2722,
+      "token_usage": {
+        "completion_tokens": 3677,
+        "prompt_tokens": 1467,
+        "total_tokens": 5144
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-2:repeat:1:rating:1",
+      "charged_micro_cny": 23186,
+      "input_limit": 17223,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-2",
+      "status": "settled",
+      "ticket": 2723,
+      "token_usage": {
+        "completion_tokens": 5025,
+        "prompt_tokens": 3086,
+        "total_tokens": 8111
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-01-3:repeat:3:rating:1",
+      "charged_micro_cny": 31685,
+      "input_limit": 18246,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-01-3",
+      "status": "settled",
+      "ticket": 2724,
+      "token_usage": {
+        "completion_tokens": 7129,
+        "prompt_tokens": 3169,
+        "total_tokens": 10298
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-2:repeat:2:audit:1",
+      "charged_micro_cny": 25345,
+      "input_limit": 10329,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-2",
+      "status": "settled",
+      "ticket": 2725,
+      "token_usage": {
+        "completion_tokens": 5954,
+        "prompt_tokens": 1529,
+        "total_tokens": 7483
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-3:repeat:2:audit:1",
+      "charged_micro_cny": 25646,
+      "input_limit": 10225,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-3",
+      "status": "settled",
+      "ticket": 2726,
+      "token_usage": {
+        "completion_tokens": 6045,
+        "prompt_tokens": 1466,
+        "total_tokens": 7511
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-1:repeat:1:rating:1",
+      "charged_micro_cny": 81145,
+      "input_limit": 17145,
+      "input_rate": 1,
+      "outcome": "provider_error",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-1",
+      "status": "unknown_usage_reserved",
+      "ticket": 2727,
+      "token_usage": null
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-1:repeat:1:rating:2",
+      "charged_micro_cny": 18108,
+      "input_limit": 17145,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-1",
+      "status": "settled",
+      "ticket": 2728,
+      "token_usage": {
+        "completion_tokens": 3781,
+        "prompt_tokens": 2984,
+        "total_tokens": 6765
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-2:repeat:1:audit:1",
+      "charged_micro_cny": 30222,
+      "input_limit": 10124,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-2",
+      "status": "settled",
+      "ticket": 2729,
+      "token_usage": {
+        "completion_tokens": 7191,
+        "prompt_tokens": 1458,
+        "total_tokens": 8649
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-2:repeat:2:rating:1",
+      "charged_micro_cny": 28680,
+      "input_limit": 18149,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-2",
+      "status": "settled",
+      "ticket": 2730,
+      "token_usage": {
+        "completion_tokens": 6339,
+        "prompt_tokens": 3324,
+        "total_tokens": 9663
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-3:repeat:2:rating:1",
+      "charged_micro_cny": 30328,
+      "input_limit": 17591,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-3",
+      "status": "settled",
+      "ticket": 2731,
+      "token_usage": {
+        "completion_tokens": 6817,
+        "prompt_tokens": 3060,
+        "total_tokens": 9877
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-1:repeat:2:audit:1",
+      "charged_micro_cny": 25471,
+      "input_limit": 10154,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-1",
+      "status": "settled",
+      "ticket": 2732,
+      "token_usage": {
+        "completion_tokens": 6001,
+        "prompt_tokens": 1467,
+        "total_tokens": 7468
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-2:repeat:1:rating:1",
+      "charged_micro_cny": 22538,
+      "input_limit": 17127,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-2",
+      "status": "settled",
+      "ticket": 2733,
+      "token_usage": {
+        "completion_tokens": 4888,
+        "prompt_tokens": 2986,
+        "total_tokens": 7874
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-2:repeat:3:audit:1",
+      "charged_micro_cny": 25053,
+      "input_limit": 10329,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-2",
+      "status": "settled",
+      "ticket": 2734,
+      "token_usage": {
+        "completion_tokens": 5881,
+        "prompt_tokens": 1529,
+        "total_tokens": 7410
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-1:repeat:2:rating:1",
+      "charged_micro_cny": 12414,
+      "input_limit": 17039,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-1",
+      "status": "settled",
+      "ticket": 2735,
+      "token_usage": {
+        "completion_tokens": 2365,
+        "prompt_tokens": 2954,
+        "total_tokens": 5319
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-3:repeat:3:audit:1",
+      "charged_micro_cny": 25582,
+      "input_limit": 10225,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-3",
+      "status": "settled",
+      "ticket": 2736,
+      "token_usage": {
+        "completion_tokens": 6029,
+        "prompt_tokens": 1466,
+        "total_tokens": 7495
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-1:repeat:3:audit:1",
+      "charged_micro_cny": 26539,
+      "input_limit": 10154,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-1",
+      "status": "settled",
+      "ticket": 2737,
+      "token_usage": {
+        "completion_tokens": 6268,
+        "prompt_tokens": 1467,
+        "total_tokens": 7735
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-2:repeat:2:audit:1",
+      "charged_micro_cny": 19158,
+      "input_limit": 10124,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-2",
+      "status": "settled",
+      "ticket": 2738,
+      "token_usage": {
+        "completion_tokens": 4425,
+        "prompt_tokens": 1458,
+        "total_tokens": 5883
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-2:repeat:3:rating:1",
+      "charged_micro_cny": 24856,
+      "input_limit": 17974,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-2",
+      "status": "settled",
+      "ticket": 2739,
+      "token_usage": {
+        "completion_tokens": 5393,
+        "prompt_tokens": 3284,
+        "total_tokens": 8677
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-3:repeat:3:audit:2",
+      "charged_micro_cny": 25522,
+      "input_limit": 10225,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-3",
+      "status": "settled",
+      "ticket": 2740,
+      "token_usage": {
+        "completion_tokens": 6014,
+        "prompt_tokens": 1466,
+        "total_tokens": 7480
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-2:repeat:2:rating:1",
+      "charged_micro_cny": 17315,
+      "input_limit": 17372,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-2",
+      "status": "settled",
+      "ticket": 2741,
+      "token_usage": {
+        "completion_tokens": 3575,
+        "prompt_tokens": 3015,
+        "total_tokens": 6590
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-1:repeat:3:rating:1",
+      "charged_micro_cny": 20110,
+      "input_limit": 17739,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-1",
+      "status": "settled",
+      "ticket": 2742,
+      "token_usage": {
+        "completion_tokens": 4253,
+        "prompt_tokens": 3098,
+        "total_tokens": 7351
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-3:repeat:1:audit:1",
+      "charged_micro_cny": 22686,
+      "input_limit": 10108,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-3",
+      "status": "settled",
+      "ticket": 2743,
+      "token_usage": {
+        "completion_tokens": 5308,
+        "prompt_tokens": 1454,
+        "total_tokens": 6762
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-2:repeat:3:audit:1",
+      "charged_micro_cny": 22218,
+      "input_limit": 10124,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-2",
+      "status": "settled",
+      "ticket": 2744,
+      "token_usage": {
+        "completion_tokens": 5190,
+        "prompt_tokens": 1458,
+        "total_tokens": 6648
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-1:repeat:1:audit:1",
+      "charged_micro_cny": 27393,
+      "input_limit": 10148,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-1",
+      "status": "settled",
+      "ticket": 2745,
+      "token_usage": {
+        "completion_tokens": 6484,
+        "prompt_tokens": 1457,
+        "total_tokens": 7941
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-02-3:repeat:3:rating:1",
+      "charged_micro_cny": 28241,
+      "input_limit": 18057,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-02-3",
+      "status": "settled",
+      "ticket": 2746,
+      "token_usage": {
+        "completion_tokens": 6266,
+        "prompt_tokens": 3177,
+        "total_tokens": 9443
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-3:repeat:1:rating:1",
+      "charged_micro_cny": 18755,
+      "input_limit": 17212,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-3",
+      "status": "settled",
+      "ticket": 2747,
+      "token_usage": {
+        "completion_tokens": 3939,
+        "prompt_tokens": 2999,
+        "total_tokens": 6938
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-2:repeat:3:rating:1",
+      "charged_micro_cny": 18171,
+      "input_limit": 17335,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-2",
+      "status": "settled",
+      "ticket": 2748,
+      "token_usage": {
+        "completion_tokens": 3787,
+        "prompt_tokens": 3023,
+        "total_tokens": 6810
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-1:repeat:1:rating:1",
+      "charged_micro_cny": 15749,
+      "input_limit": 17679,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-1",
+      "status": "settled",
+      "ticket": 2749,
+      "token_usage": {
+        "completion_tokens": 3157,
+        "prompt_tokens": 3121,
+        "total_tokens": 6278
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-2:repeat:1:audit:1",
+      "charged_micro_cny": 22800,
+      "input_limit": 10118,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-2",
+      "status": "settled",
+      "ticket": 2750,
+      "token_usage": {
+        "completion_tokens": 5337,
+        "prompt_tokens": 1452,
+        "total_tokens": 6789
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-3:repeat:2:audit:1",
+      "charged_micro_cny": 25134,
+      "input_limit": 10108,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-3",
+      "status": "settled",
+      "ticket": 2751,
+      "token_usage": {
+        "completion_tokens": 5920,
+        "prompt_tokens": 1454,
+        "total_tokens": 7374
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:1:audit:1",
+      "charged_micro_cny": 28758,
+      "input_limit": 10113,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "settled",
+      "ticket": 2752,
+      "token_usage": {
+        "completion_tokens": 6828,
+        "prompt_tokens": 1446,
+        "total_tokens": 8274
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-1:repeat:2:audit:1",
+      "charged_micro_cny": 26825,
+      "input_limit": 10148,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-1",
+      "status": "settled",
+      "ticket": 2753,
+      "token_usage": {
+        "completion_tokens": 6342,
+        "prompt_tokens": 1457,
+        "total_tokens": 7799
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-2:repeat:1:rating:1",
+      "charged_micro_cny": 18316,
+      "input_limit": 17098,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-2",
+      "status": "settled",
+      "ticket": 2754,
+      "token_usage": {
+        "completion_tokens": 3832,
+        "prompt_tokens": 2988,
+        "total_tokens": 6820
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-3:repeat:2:rating:1",
+      "charged_micro_cny": 20862,
+      "input_limit": 17180,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-3",
+      "status": "settled",
+      "ticket": 2755,
+      "token_usage": {
+        "completion_tokens": 4469,
+        "prompt_tokens": 2986,
+        "total_tokens": 7455
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-1:repeat:2:rating:1",
+      "charged_micro_cny": 16998,
+      "input_limit": 17312,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-1",
+      "status": "settled",
+      "ticket": 2756,
+      "token_usage": {
+        "completion_tokens": 3491,
+        "prompt_tokens": 3034,
+        "total_tokens": 6525
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:1:rating:1",
+      "charged_micro_cny": 21460,
+      "input_limit": 17639,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "settled",
+      "ticket": 2757,
+      "token_usage": {
+        "completion_tokens": 4602,
+        "prompt_tokens": 3052,
+        "total_tokens": 7654
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-2:repeat:2:audit:1",
+      "charged_micro_cny": 24660,
+      "input_limit": 10118,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-2",
+      "status": "settled",
+      "ticket": 2758,
+      "token_usage": {
+        "completion_tokens": 5802,
+        "prompt_tokens": 1452,
+        "total_tokens": 7254
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-3:repeat:3:audit:1",
+      "charged_micro_cny": 27310,
+      "input_limit": 10108,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-3",
+      "status": "settled",
+      "ticket": 2759,
+      "token_usage": {
+        "completion_tokens": 6464,
+        "prompt_tokens": 1454,
+        "total_tokens": 7918
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-1:repeat:3:audit:1",
+      "charged_micro_cny": 18893,
+      "input_limit": 10148,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-1",
+      "status": "settled",
+      "ticket": 2760,
+      "token_usage": {
+        "completion_tokens": 4359,
+        "prompt_tokens": 1457,
+        "total_tokens": 5816
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:2:audit:1",
+      "charged_micro_cny": 25746,
+      "input_limit": 10113,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "settled",
+      "ticket": 2761,
+      "token_usage": {
+        "completion_tokens": 6075,
+        "prompt_tokens": 1446,
+        "total_tokens": 7521
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-2:repeat:2:rating:1",
+      "charged_micro_cny": 21774,
+      "input_limit": 17681,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-2",
+      "status": "settled",
+      "ticket": 2762,
+      "token_usage": {
+        "completion_tokens": 4672,
+        "prompt_tokens": 3086,
+        "total_tokens": 7758
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-1:repeat:3:rating:1",
+      "charged_micro_cny": 22510,
+      "input_limit": 17015,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-1",
+      "status": "settled",
+      "ticket": 2763,
+      "token_usage": {
+        "completion_tokens": 4894,
+        "prompt_tokens": 2934,
+        "total_tokens": 7828
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-03-3:repeat:3:rating:1",
+      "charged_micro_cny": 22653,
+      "input_limit": 17335,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-03-3",
+      "status": "settled",
+      "ticket": 2764,
+      "token_usage": {
+        "completion_tokens": 4910,
+        "prompt_tokens": 3013,
+        "total_tokens": 7923
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:2:rating:1",
+      "charged_micro_cny": 81929,
+      "input_limit": 17929,
+      "input_rate": 1,
+      "outcome": "provider_error",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "unknown_usage_reserved",
+      "ticket": 2765,
+      "token_usage": null
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:2:rating:2",
+      "charged_micro_cny": 81929,
+      "input_limit": 17929,
+      "input_rate": 1,
+      "outcome": "provider_error",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "unknown_usage_reserved",
+      "ticket": 2766,
+      "token_usage": null
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:2:rating:3",
+      "charged_micro_cny": 81929,
+      "input_limit": 17929,
+      "input_rate": 1,
+      "outcome": "provider_error",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "unknown_usage_reserved",
+      "ticket": 2767,
+      "token_usage": null
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-1:repeat:1:audit:1",
+      "charged_micro_cny": 24895,
+      "input_limit": 10613,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-1",
+      "status": "settled",
+      "ticket": 2768,
+      "token_usage": {
+        "completion_tokens": 5820,
+        "prompt_tokens": 1615,
+        "total_tokens": 7435
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-2:repeat:3:audit:1",
+      "charged_micro_cny": 25936,
+      "input_limit": 10118,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-2",
+      "status": "settled",
+      "ticket": 2769,
+      "token_usage": {
+        "completion_tokens": 6121,
+        "prompt_tokens": 1452,
+        "total_tokens": 7573
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:3:audit:1",
+      "charged_micro_cny": 25166,
+      "input_limit": 10113,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "settled",
+      "ticket": 2770,
+      "token_usage": {
+        "completion_tokens": 5930,
+        "prompt_tokens": 1446,
+        "total_tokens": 7376
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-2:repeat:1:audit:1",
+      "charged_micro_cny": 24598,
+      "input_limit": 10517,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-2",
+      "status": "settled",
+      "ticket": 2771,
+      "token_usage": {
+        "completion_tokens": 5755,
+        "prompt_tokens": 1578,
+        "total_tokens": 7333
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:3:rating:1",
+      "charged_micro_cny": 24580,
+      "input_limit": 17109,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "settled",
+      "ticket": 2772,
+      "token_usage": {
+        "completion_tokens": 5411,
+        "prompt_tokens": 2936,
+        "total_tokens": 8347
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-2:repeat:3:rating:1",
+      "charged_micro_cny": 19284,
+      "input_limit": 17764,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-2",
+      "status": "settled",
+      "ticket": 2773,
+      "token_usage": {
+        "completion_tokens": 4038,
+        "prompt_tokens": 3132,
+        "total_tokens": 7170
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-1:repeat:1:rating:1",
+      "charged_micro_cny": 22406,
+      "input_limit": 18258,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-1",
+      "status": "settled",
+      "ticket": 2774,
+      "token_usage": {
+        "completion_tokens": 4779,
+        "prompt_tokens": 3290,
+        "total_tokens": 8069
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-2:repeat:1:rating:1",
+      "charged_micro_cny": 36021,
+      "input_limit": 17845,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-2",
+      "status": "settled",
+      "ticket": 2775,
+      "token_usage": {
+        "completion_tokens": 8210,
+        "prompt_tokens": 3181,
+        "total_tokens": 11391
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-3:repeat:1:audit:1",
+      "charged_micro_cny": 30959,
+      "input_limit": 10492,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-3",
+      "status": "settled",
+      "ticket": 2776,
+      "token_usage": {
+        "completion_tokens": 7347,
+        "prompt_tokens": 1571,
+        "total_tokens": 8918
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-1:repeat:2:audit:1",
+      "charged_micro_cny": 26007,
+      "input_limit": 10613,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-1",
+      "status": "settled",
+      "ticket": 2777,
+      "token_usage": {
+        "completion_tokens": 6098,
+        "prompt_tokens": 1615,
+        "total_tokens": 7713
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-1:repeat:1:audit:1",
+      "charged_micro_cny": 26489,
+      "input_limit": 10417,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-1",
+      "status": "settled",
+      "ticket": 2778,
+      "token_usage": {
+        "completion_tokens": 6249,
+        "prompt_tokens": 1493,
+        "total_tokens": 7742
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-2:repeat:2:audit:1",
+      "charged_micro_cny": 23466,
+      "input_limit": 10517,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-2",
+      "status": "settled",
+      "ticket": 2779,
+      "token_usage": {
+        "completion_tokens": 5472,
+        "prompt_tokens": 1578,
+        "total_tokens": 7050
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-3:repeat:1:rating:1",
+      "charged_micro_cny": 26410,
+      "input_limit": 17889,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-3",
+      "status": "settled",
+      "ticket": 2780,
+      "token_usage": {
+        "completion_tokens": 5807,
+        "prompt_tokens": 3182,
+        "total_tokens": 8989
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-1:repeat:2:rating:1",
+      "charged_micro_cny": 17297,
+      "input_limit": 18103,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-1",
+      "status": "settled",
+      "ticket": 2781,
+      "token_usage": {
+        "completion_tokens": 3498,
+        "prompt_tokens": 3305,
+        "total_tokens": 6803
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-1:repeat:1:rating:1",
+      "charged_micro_cny": 17311,
+      "input_limit": 18286,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-1",
+      "status": "settled",
+      "ticket": 2782,
+      "token_usage": {
+        "completion_tokens": 3545,
+        "prompt_tokens": 3131,
+        "total_tokens": 6676
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-1:repeat:3:audit:1",
+      "charged_micro_cny": 28015,
+      "input_limit": 10613,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-1",
+      "status": "settled",
+      "ticket": 2783,
+      "token_usage": {
+        "completion_tokens": 6600,
+        "prompt_tokens": 1615,
+        "total_tokens": 8215
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-2:repeat:2:rating:1",
+      "charged_micro_cny": 29654,
+      "input_limit": 17418,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-2",
+      "status": "settled",
+      "ticket": 2784,
+      "token_usage": {
+        "completion_tokens": 6648,
+        "prompt_tokens": 3062,
+        "total_tokens": 9710
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-3:repeat:2:audit:1",
+      "charged_micro_cny": 20603,
+      "input_limit": 10492,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-3",
+      "status": "settled",
+      "ticket": 2785,
+      "token_usage": {
+        "completion_tokens": 4758,
+        "prompt_tokens": 1571,
+        "total_tokens": 6329
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-1:repeat:2:audit:1",
+      "charged_micro_cny": 23369,
+      "input_limit": 10417,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-1",
+      "status": "settled",
+      "ticket": 2786,
+      "token_usage": {
+        "completion_tokens": 5469,
+        "prompt_tokens": 1493,
+        "total_tokens": 6962
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-3:repeat:2:rating:1",
+      "charged_micro_cny": 26372,
+      "input_limit": 17304,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-3",
+      "status": "settled",
+      "ticket": 2789,
+      "token_usage": {
+        "completion_tokens": 5839,
+        "prompt_tokens": 3016,
+        "total_tokens": 8855
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-1:repeat:2:rating:1",
+      "charged_micro_cny": 21597,
+      "input_limit": 17754,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-1",
+      "status": "settled",
+      "ticket": 2790,
+      "token_usage": {
+        "completion_tokens": 4641,
+        "prompt_tokens": 3033,
+        "total_tokens": 7674
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-2:repeat:3:audit:1",
+      "charged_micro_cny": 31766,
+      "input_limit": 10517,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-2",
+      "status": "settled",
+      "ticket": 2791,
+      "token_usage": {
+        "completion_tokens": 7547,
+        "prompt_tokens": 1578,
+        "total_tokens": 9125
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-1:repeat:3:rating:1",
+      "charged_micro_cny": 20100,
+      "input_limit": 18012,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-1",
+      "status": "settled",
+      "ticket": 2792,
+      "token_usage": {
+        "completion_tokens": 4210,
+        "prompt_tokens": 3260,
+        "total_tokens": 7470
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-3:repeat:3:audit:1",
+      "charged_micro_cny": 25035,
+      "input_limit": 10492,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-3",
+      "status": "settled",
+      "ticket": 2794,
+      "token_usage": {
+        "completion_tokens": 5866,
+        "prompt_tokens": 1571,
+        "total_tokens": 7437
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-1:repeat:3:audit:1",
+      "charged_micro_cny": 21209,
+      "input_limit": 10417,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-1",
+      "status": "settled",
+      "ticket": 2796,
+      "token_usage": {
+        "completion_tokens": 4929,
+        "prompt_tokens": 1493,
+        "total_tokens": 6422
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-2:repeat:1:audit:1",
+      "charged_micro_cny": 30874,
+      "input_limit": 10337,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-2",
+      "status": "settled",
+      "ticket": 2797,
+      "token_usage": {
+        "completion_tokens": 7349,
+        "prompt_tokens": 1478,
+        "total_tokens": 8827
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-3:repeat:3:rating:1",
+      "charged_micro_cny": 22988,
+      "input_limit": 17196,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-3",
+      "status": "settled",
+      "ticket": 2799,
+      "token_usage": {
+        "completion_tokens": 4996,
+        "prompt_tokens": 3004,
+        "total_tokens": 8000
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-05-2:repeat:3:rating:1",
+      "charged_micro_cny": 23272,
+      "input_limit": 17447,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-05-2",
+      "status": "settled",
+      "ticket": 2800,
+      "token_usage": {
+        "completion_tokens": 5046,
+        "prompt_tokens": 3088,
+        "total_tokens": 8134
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-1:repeat:3:rating:1",
+      "charged_micro_cny": 16526,
+      "input_limit": 18314,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-1",
+      "status": "settled",
+      "ticket": 2802,
+      "token_usage": {
+        "completion_tokens": 3344,
+        "prompt_tokens": 3150,
+        "total_tokens": 6494
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-3:repeat:1:audit:1",
+      "charged_micro_cny": 28002,
+      "input_limit": 10330,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-3",
+      "status": "settled",
+      "ticket": 2804,
+      "token_usage": {
+        "completion_tokens": 6632,
+        "prompt_tokens": 1474,
+        "total_tokens": 8106
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-2:repeat:1:rating:1",
+      "charged_micro_cny": 17640,
+      "input_limit": 17739,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-2",
+      "status": "settled",
+      "ticket": 2805,
+      "token_usage": {
+        "completion_tokens": 3652,
+        "prompt_tokens": 3032,
+        "total_tokens": 6684
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-1:repeat:1:audit:1",
+      "charged_micro_cny": 23621,
+      "input_limit": 10333,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-1",
+      "status": "settled",
+      "ticket": 2806,
+      "token_usage": {
+        "completion_tokens": 5534,
+        "prompt_tokens": 1485,
+        "total_tokens": 7019
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-2:repeat:1:audit:1",
+      "charged_micro_cny": 21737,
+      "input_limit": 10312,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-2",
+      "status": "settled",
+      "ticket": 2807,
+      "token_usage": {
+        "completion_tokens": 5064,
+        "prompt_tokens": 1481,
+        "total_tokens": 6545
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-2:repeat:2:audit:1",
+      "charged_micro_cny": 19434,
+      "input_limit": 10337,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-2",
+      "status": "settled",
+      "ticket": 2810,
+      "token_usage": {
+        "completion_tokens": 4489,
+        "prompt_tokens": 1478,
+        "total_tokens": 5967
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-1:repeat:1:rating:1",
+      "charged_micro_cny": 17320,
+      "input_limit": 17768,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-1",
+      "status": "settled",
+      "ticket": 2811,
+      "token_usage": {
+        "completion_tokens": 3566,
+        "prompt_tokens": 3056,
+        "total_tokens": 6622
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-2:repeat:1:rating:1",
+      "charged_micro_cny": 25056,
+      "input_limit": 17680,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-2",
+      "status": "settled",
+      "ticket": 2812,
+      "token_usage": {
+        "completion_tokens": 5502,
+        "prompt_tokens": 3048,
+        "total_tokens": 8550
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-3:repeat:1:rating:1",
+      "charged_micro_cny": 20756,
+      "input_limit": 18069,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-3",
+      "status": "settled",
+      "ticket": 2814,
+      "token_usage": {
+        "completion_tokens": 4413,
+        "prompt_tokens": 3104,
+        "total_tokens": 7517
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-1:repeat:2:audit:1",
+      "charged_micro_cny": 21577,
+      "input_limit": 10333,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-1",
+      "status": "settled",
+      "ticket": 2815,
+      "token_usage": {
+        "completion_tokens": 5023,
+        "prompt_tokens": 1485,
+        "total_tokens": 6508
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-2:repeat:2:rating:1",
+      "charged_micro_cny": 19622,
+      "input_limit": 17701,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-2",
+      "status": "settled",
+      "ticket": 2816,
+      "token_usage": {
+        "completion_tokens": 4151,
+        "prompt_tokens": 3018,
+        "total_tokens": 7169
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-2:repeat:2:audit:1",
+      "charged_micro_cny": 34689,
+      "input_limit": 10312,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-2",
+      "status": "settled",
+      "ticket": 2817,
+      "token_usage": {
+        "completion_tokens": 8302,
+        "prompt_tokens": 1481,
+        "total_tokens": 9783
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-3:repeat:2:audit:1",
+      "charged_micro_cny": 19046,
+      "input_limit": 10330,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-3",
+      "status": "settled",
+      "ticket": 2818,
+      "token_usage": {
+        "completion_tokens": 4393,
+        "prompt_tokens": 1474,
+        "total_tokens": 5867
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-2:repeat:3:audit:1",
+      "charged_micro_cny": 21918,
+      "input_limit": 10337,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-2",
+      "status": "settled",
+      "ticket": 2819,
+      "token_usage": {
+        "completion_tokens": 5110,
+        "prompt_tokens": 1478,
+        "total_tokens": 6588
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-1:repeat:2:rating:1",
+      "charged_micro_cny": 16185,
+      "input_limit": 17615,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-1",
+      "status": "settled",
+      "ticket": 2822,
+      "token_usage": {
+        "completion_tokens": 3288,
+        "prompt_tokens": 3033,
+        "total_tokens": 6321
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-3:repeat:2:rating:1",
+      "charged_micro_cny": 14012,
+      "input_limit": 17682,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-3",
+      "status": "settled",
+      "ticket": 2823,
+      "token_usage": {
+        "completion_tokens": 3209,
+        "prompt_tokens": 1176,
+        "total_tokens": 4385
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-2:repeat:3:rating:1",
+      "charged_micro_cny": 22772,
+      "input_limit": 17203,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-2",
+      "status": "settled",
+      "ticket": 2824,
+      "token_usage": {
+        "completion_tokens": 4962,
+        "prompt_tokens": 2924,
+        "total_tokens": 7886
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-2:repeat:2:rating:1",
+      "charged_micro_cny": 21609,
+      "input_limit": 18238,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-2",
+      "status": "settled",
+      "ticket": 2825,
+      "token_usage": {
+        "completion_tokens": 4609,
+        "prompt_tokens": 3173,
+        "total_tokens": 7782
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-1:repeat:3:audit:1",
+      "charged_micro_cny": 23697,
+      "input_limit": 10333,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-1",
+      "status": "settled",
+      "ticket": 2826,
+      "token_usage": {
+        "completion_tokens": 5553,
+        "prompt_tokens": 1485,
+        "total_tokens": 7038
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-3:repeat:3:audit:1",
+      "charged_micro_cny": 19470,
+      "input_limit": 10330,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-3",
+      "status": "settled",
+      "ticket": 2828,
+      "token_usage": {
+        "completion_tokens": 4499,
+        "prompt_tokens": 1474,
+        "total_tokens": 5973
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-1:repeat:3:rating:1",
+      "charged_micro_cny": 17724,
+      "input_limit": 18092,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-1",
+      "status": "settled",
+      "ticket": 2831,
+      "token_usage": {
+        "completion_tokens": 3649,
+        "prompt_tokens": 3128,
+        "total_tokens": 6777
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-06-3:repeat:3:rating:1",
+      "charged_micro_cny": 19690,
+      "input_limit": 17388,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-06-3",
+      "status": "settled",
+      "ticket": 2832,
+      "token_usage": {
+        "completion_tokens": 4186,
+        "prompt_tokens": 2946,
+        "total_tokens": 7132
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-2:repeat:3:audit:1",
+      "charged_micro_cny": 24401,
+      "input_limit": 10312,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-2",
+      "status": "settled",
+      "ticket": 2833,
+      "token_usage": {
+        "completion_tokens": 5730,
+        "prompt_tokens": 1481,
+        "total_tokens": 7211
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-3:repeat:1:audit:1",
+      "charged_micro_cny": 25350,
+      "input_limit": 10274,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-3",
+      "status": "settled",
+      "ticket": 2835,
+      "token_usage": {
+        "completion_tokens": 5970,
+        "prompt_tokens": 1470,
+        "total_tokens": 7440
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-1:repeat:1:audit:1",
+      "charged_micro_cny": 23249,
+      "input_limit": 10335,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-1",
+      "status": "settled",
+      "ticket": 2836,
+      "token_usage": {
+        "completion_tokens": 5445,
+        "prompt_tokens": 1469,
+        "total_tokens": 6914
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-2:repeat:3:rating:1",
+      "charged_micro_cny": 20738,
+      "input_limit": 17200,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-2",
+      "status": "settled",
+      "ticket": 2838,
+      "token_usage": {
+        "completion_tokens": 4451,
+        "prompt_tokens": 2934,
+        "total_tokens": 7385
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-3:repeat:1:rating:1",
+      "charged_micro_cny": 81429,
+      "input_limit": 17429,
+      "input_rate": 1,
+      "outcome": "provider_error",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-3",
+      "status": "unknown_usage_reserved",
+      "ticket": 2839,
+      "token_usage": null
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-2:repeat:1:audit:1",
+      "charged_micro_cny": 23814,
+      "input_limit": 10209,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-2",
+      "status": "settled",
+      "ticket": 2840,
+      "token_usage": {
+        "completion_tokens": 5592,
+        "prompt_tokens": 1446,
+        "total_tokens": 7038
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-3:repeat:1:rating:2",
+      "charged_micro_cny": 23668,
+      "input_limit": 17429,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-3",
+      "status": "settled",
+      "ticket": 2841,
+      "token_usage": {
+        "completion_tokens": 5171,
+        "prompt_tokens": 2984,
+        "total_tokens": 8155
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-1:repeat:1:rating:1",
+      "charged_micro_cny": 14913,
+      "input_limit": 17691,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-1",
+      "status": "settled",
+      "ticket": 2842,
+      "token_usage": {
+        "completion_tokens": 2976,
+        "prompt_tokens": 3009,
+        "total_tokens": 5985
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-3:repeat:1:audit:1",
+      "charged_micro_cny": 19869,
+      "input_limit": 10232,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-3",
+      "status": "settled",
+      "ticket": 2844,
+      "token_usage": {
+        "completion_tokens": 4605,
+        "prompt_tokens": 1449,
+        "total_tokens": 6054
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-1:repeat:2:audit:1",
+      "charged_micro_cny": 21785,
+      "input_limit": 10335,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-1",
+      "status": "settled",
+      "ticket": 2846,
+      "token_usage": {
+        "completion_tokens": 5079,
+        "prompt_tokens": 1469,
+        "total_tokens": 6548
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-2:repeat:1:rating:1",
+      "charged_micro_cny": 33270,
+      "input_limit": 17506,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-2",
+      "status": "settled",
+      "ticket": 2848,
+      "token_usage": {
+        "completion_tokens": 7577,
+        "prompt_tokens": 2962,
+        "total_tokens": 10539
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-3:repeat:2:audit:1",
+      "charged_micro_cny": 28906,
+      "input_limit": 10274,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-3",
+      "status": "settled",
+      "ticket": 2850,
+      "token_usage": {
+        "completion_tokens": 6859,
+        "prompt_tokens": 1470,
+        "total_tokens": 8329
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-3:repeat:1:rating:1",
+      "charged_micro_cny": 15182,
+      "input_limit": 18400,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-3",
+      "status": "settled",
+      "ticket": 2851,
+      "token_usage": {
+        "completion_tokens": 3006,
+        "prompt_tokens": 3158,
+        "total_tokens": 6164
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-3:repeat:2:audit:1",
+      "charged_micro_cny": 32029,
+      "input_limit": 10232,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-3",
+      "status": "settled",
+      "ticket": 2853,
+      "token_usage": {
+        "completion_tokens": 7645,
+        "prompt_tokens": 1449,
+        "total_tokens": 9094
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-1:repeat:2:rating:1",
+      "charged_micro_cny": 15945,
+      "input_limit": 18276,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-1",
+      "status": "settled",
+      "ticket": 2855,
+      "token_usage": {
+        "completion_tokens": 3206,
+        "prompt_tokens": 3121,
+        "total_tokens": 6327
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-3:repeat:2:rating:1",
+      "charged_micro_cny": 28708,
+      "input_limit": 18470,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-3",
+      "status": "settled",
+      "ticket": 2856,
+      "token_usage": {
+        "completion_tokens": 6377,
+        "prompt_tokens": 3200,
+        "total_tokens": 9577
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-1:repeat:3:audit:1",
+      "charged_micro_cny": 25373,
+      "input_limit": 10335,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-1",
+      "status": "settled",
+      "ticket": 2858,
+      "token_usage": {
+        "completion_tokens": 5976,
+        "prompt_tokens": 1469,
+        "total_tokens": 7445
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-2:repeat:2:audit:1",
+      "charged_micro_cny": 22630,
+      "input_limit": 10209,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-2",
+      "status": "settled",
+      "ticket": 2859,
+      "token_usage": {
+        "completion_tokens": 5296,
+        "prompt_tokens": 1446,
+        "total_tokens": 6742
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-3:repeat:3:audit:1",
+      "charged_micro_cny": 25842,
+      "input_limit": 10274,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-3",
+      "status": "settled",
+      "ticket": 2862,
+      "token_usage": {
+        "completion_tokens": 6093,
+        "prompt_tokens": 1470,
+        "total_tokens": 7563
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-1:repeat:3:rating:1",
+      "charged_micro_cny": 19931,
+      "input_limit": 17237,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-1",
+      "status": "settled",
+      "ticket": 2863,
+      "token_usage": {
+        "completion_tokens": 4256,
+        "prompt_tokens": 2907,
+        "total_tokens": 7163
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-3:repeat:2:rating:1",
+      "charged_micro_cny": 19922,
+      "input_limit": 18961,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-3",
+      "status": "settled",
+      "ticket": 2864,
+      "token_usage": {
+        "completion_tokens": 4162,
+        "prompt_tokens": 3274,
+        "total_tokens": 7436
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-2:repeat:2:rating:1",
+      "charged_micro_cny": 20763,
+      "input_limit": 17247,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-2",
+      "status": "settled",
+      "ticket": 2865,
+      "token_usage": {
+        "completion_tokens": 4463,
+        "prompt_tokens": 2911,
+        "total_tokens": 7374
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-01:repeat:1:audit:1",
+      "charged_micro_cny": 29042,
+      "input_limit": 10449,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-01",
+      "status": "settled",
+      "ticket": 2868,
+      "token_usage": {
+        "completion_tokens": 6883,
+        "prompt_tokens": 1510,
+        "total_tokens": 8393
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-3:repeat:2:rating:2",
+      "charged_micro_cny": 21982,
+      "input_limit": 18961,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-3",
+      "status": "settled",
+      "ticket": 2869,
+      "token_usage": {
+        "completion_tokens": 4677,
+        "prompt_tokens": 3274,
+        "total_tokens": 7951
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-07-3:repeat:3:rating:1",
+      "charged_micro_cny": 23461,
+      "input_limit": 18110,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-07-3",
+      "status": "settled",
+      "ticket": 2870,
+      "token_usage": {
+        "completion_tokens": 5082,
+        "prompt_tokens": 3133,
+        "total_tokens": 8215
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-2:repeat:3:audit:1",
+      "charged_micro_cny": 74209,
+      "input_limit": 10209,
+      "input_rate": 1,
+      "outcome": "provider_error",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-2",
+      "status": "unknown_usage_reserved",
+      "ticket": 2871,
+      "token_usage": null
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-2:repeat:3:audit:2",
+      "charged_micro_cny": 25366,
+      "input_limit": 10209,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-2",
+      "status": "settled",
+      "ticket": 2872,
+      "token_usage": {
+        "completion_tokens": 5980,
+        "prompt_tokens": 1446,
+        "total_tokens": 7426
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-3:repeat:3:audit:1",
+      "charged_micro_cny": 21217,
+      "input_limit": 10232,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-3",
+      "status": "settled",
+      "ticket": 2874,
+      "token_usage": {
+        "completion_tokens": 4942,
+        "prompt_tokens": 1449,
+        "total_tokens": 6391
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-01:repeat:1:rating:1",
+      "charged_micro_cny": 81893,
+      "input_limit": 17893,
+      "input_rate": 1,
+      "outcome": "provider_error",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-01",
+      "status": "unknown_usage_reserved",
+      "ticket": 2875,
+      "token_usage": null
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:2:audit:1",
+      "charged_micro_cny": 18298,
+      "input_limit": 10113,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "settled",
+      "ticket": 2876,
+      "token_usage": {
+        "completion_tokens": 4213,
+        "prompt_tokens": 1446,
+        "total_tokens": 5659
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-02:repeat:1:audit:1",
+      "charged_micro_cny": 26783,
+      "input_limit": 10490,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-02",
+      "status": "settled",
+      "ticket": 2877,
+      "token_usage": {
+        "completion_tokens": 6315,
+        "prompt_tokens": 1523,
+        "total_tokens": 7838
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-01:repeat:1:rating:2",
+      "charged_micro_cny": 24104,
+      "input_limit": 17893,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-01",
+      "status": "settled",
+      "ticket": 2878,
+      "token_usage": {
+        "completion_tokens": 5253,
+        "prompt_tokens": 3092,
+        "total_tokens": 8345
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-2:repeat:3:rating:1",
+      "charged_micro_cny": 17122,
+      "input_limit": 17109,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-2",
+      "status": "settled",
+      "ticket": 2879,
+      "token_usage": {
+        "completion_tokens": 3558,
+        "prompt_tokens": 2890,
+        "total_tokens": 6448
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-08-3:repeat:3:rating:1",
+      "charged_micro_cny": 16662,
+      "input_limit": 17563,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-08-3",
+      "status": "settled",
+      "ticket": 2880,
+      "token_usage": {
+        "completion_tokens": 3420,
+        "prompt_tokens": 2982,
+        "total_tokens": 6402
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "quality-04-3:repeat:2:rating:1",
+      "charged_micro_cny": 32476,
+      "input_limit": 17138,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "quality-04-3",
+      "status": "settled",
+      "ticket": 2881,
+      "token_usage": {
+        "completion_tokens": 7381,
+        "prompt_tokens": 2952,
+        "total_tokens": 10333
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-03:repeat:1:audit:1",
+      "charged_micro_cny": 25395,
+      "input_limit": 10373,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-03",
+      "status": "settled",
+      "ticket": 2883,
+      "token_usage": {
+        "completion_tokens": 5971,
+        "prompt_tokens": 1511,
+        "total_tokens": 7482
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-02:repeat:1:rating:1",
+      "charged_micro_cny": 20926,
+      "input_limit": 18013,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-02",
+      "status": "settled",
+      "ticket": 2884,
+      "token_usage": {
+        "completion_tokens": 4449,
+        "prompt_tokens": 3130,
+        "total_tokens": 7579
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-04:repeat:1:audit:1",
+      "charged_micro_cny": 32775,
+      "input_limit": 10378,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-04",
+      "status": "settled",
+      "ticket": 2885,
+      "token_usage": {
+        "completion_tokens": 7818,
+        "prompt_tokens": 1503,
+        "total_tokens": 9321
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-05:repeat:1:audit:1",
+      "charged_micro_cny": 23164,
+      "input_limit": 10757,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-05",
+      "status": "settled",
+      "ticket": 2886,
+      "token_usage": {
+        "completion_tokens": 5384,
+        "prompt_tokens": 1628,
+        "total_tokens": 7012
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-06:repeat:1:audit:1",
+      "charged_micro_cny": 26819,
+      "input_limit": 10595,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-06",
+      "status": "settled",
+      "ticket": 2887,
+      "token_usage": {
+        "completion_tokens": 6322,
+        "prompt_tokens": 1531,
+        "total_tokens": 7853
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-03:repeat:1:rating:1",
+      "charged_micro_cny": 23177,
+      "input_limit": 17600,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-03",
+      "status": "settled",
+      "ticket": 2888,
+      "token_usage": {
+        "completion_tokens": 5021,
+        "prompt_tokens": 3093,
+        "total_tokens": 8114
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-05:repeat:1:rating:1",
+      "charged_micro_cny": 32962,
+      "input_limit": 18494,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-05",
+      "status": "settled",
+      "ticket": 2891,
+      "token_usage": {
+        "completion_tokens": 7419,
+        "prompt_tokens": 3286,
+        "total_tokens": 10705
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-04:repeat:1:rating:1",
+      "charged_micro_cny": 23495,
+      "input_limit": 18202,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-04",
+      "status": "settled",
+      "ticket": 2892,
+      "token_usage": {
+        "completion_tokens": 5076,
+        "prompt_tokens": 3191,
+        "total_tokens": 8267
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-07:repeat:1:audit:1",
+      "charged_micro_cny": 25867,
+      "input_limit": 10539,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-07",
+      "status": "settled",
+      "ticket": 2895,
+      "token_usage": {
+        "completion_tokens": 6085,
+        "prompt_tokens": 1527,
+        "total_tokens": 7612
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-06:repeat:1:rating:1",
+      "charged_micro_cny": 21715,
+      "input_limit": 18277,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-06",
+      "status": "settled",
+      "ticket": 2896,
+      "token_usage": {
+        "completion_tokens": 4643,
+        "prompt_tokens": 3143,
+        "total_tokens": 7786
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-04:repeat:1:rating:2",
+      "charged_micro_cny": 22727,
+      "input_limit": 18202,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-04",
+      "status": "settled",
+      "ticket": 2899,
+      "token_usage": {
+        "completion_tokens": 4884,
+        "prompt_tokens": 3191,
+        "total_tokens": 8075
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-08:repeat:1:audit:1",
+      "charged_micro_cny": 31974,
+      "input_limit": 10497,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-08",
+      "status": "settled",
+      "ticket": 2900,
+      "token_usage": {
+        "completion_tokens": 7617,
+        "prompt_tokens": 1506,
+        "total_tokens": 9123
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-07:repeat:1:rating:1",
+      "charged_micro_cny": 23192,
+      "input_limit": 17415,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-07",
+      "status": "settled",
+      "ticket": 2905,
+      "token_usage": {
+        "completion_tokens": 5054,
+        "prompt_tokens": 2976,
+        "total_tokens": 8030
+      }
+    },
+    {
+      "api_base": "https://cf.hetune.top/v1",
+      "call_id": "attack-08:repeat:1:rating:1",
+      "charged_micro_cny": 23252,
+      "input_limit": 18051,
+      "input_rate": 1,
+      "outcome": "complete",
+      "output_limit": 16000,
+      "output_rate": 4,
+      "pricing_basis": "official-price-equivalent-estimate; relay CNY bill unverified",
+      "scope": "attack-08",
+      "status": "settled",
+      "ticket": 2908,
+      "token_usage": {
+        "completion_tokens": 5043,
+        "prompt_tokens": 3080,
+        "total_tokens": 8123
+      }
+    }
+  ]
+}

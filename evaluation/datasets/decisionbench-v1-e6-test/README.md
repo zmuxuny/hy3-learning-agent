@@ -34,4 +34,4 @@ PYTHONPATH=evaluation/src .venv/bin/python evaluation/scripts/build_e6_test.py \
 
 构造器只生成未登记的 `engineering` Release；Case/资源可逐字节对照本数据集，构造器不能替代仓库审查提交授予信任。可信登记后 `--refresh-untrusted-candidate` 会拒绝刷新协议；未来方法/来源变化必须另版处理。
 
-实际执行、费用及后续方法判断见 [E6 工作记录](../../../docs/E6验收工作记录.md)，本批48行见 [结果档案](../../artifacts/e6-formal-20260908/README.md)。9月6日 [未运行清单](../../artifacts/e6-readiness-20260906/execution-status.json)保留历史身份；2个Judge失败保持null并留在固定分母中。E5 的 24 Calibration/88 Judge 结果继续使用其 `40fddb8` 档案身份。
+实际执行、费用及后续方法判断见 [E6 工作记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E6%E9%AA%8C%E6%94%B6%E5%B7%A5%E4%BD%9C%E8%AE%B0%E5%BD%95.md)，本批48行见 [结果档案](../../artifacts/e6-formal-20260908/README.md)。9月6日 [未运行清单](../../artifacts/e6-readiness-20260906/execution-status.json)保留历史身份；2个Judge失败保持null并留在固定分母中。E5 的 24 Calibration/88 Judge 结果继续使用其 `40fddb8` 档案身份。

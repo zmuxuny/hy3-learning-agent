@@ -99,4 +99,4 @@ E3_ROOT="$(mktemp -d)"
   --output "$E3_ROOT/aggregates"
 ```
 
-以上命令显式回放 legacy v2 路径。活动 v3 入口、过滤参数与 real 双重 opt-in 说明见 [`../../README.md`](../../README.md)，精确回归结果见 [`../../../docs/STATUS.md`](../../../docs/STATUS.md)。本目录随仓库使用 MIT License。
+以上命令显式回放 legacy v2 路径。活动 v3 入口、过滤参数与 real 双重 opt-in 说明见 [`../../README.md`](../../README.md)，精确回归结果见 [`../../../docs/STATUS.md`](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/STATUS.md)。本目录随仓库使用 MIT License。

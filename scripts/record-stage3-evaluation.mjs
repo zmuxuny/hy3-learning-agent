@@ -1,4 +1,4 @@
-// Re-record the archived results with the current presentation palette. No API calls.
+// Record the final verified results viewer. No API calls.
 import {readFile, writeFile, mkdir, rename, rm} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
@@ -6,13 +6,8 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from '../frontend/node_modules/playwright-core/index.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const target=path.join(root,'assets/demo/stage3');
-const archive='evaluation/artifacts/decisionbench-study-20260910';
-const original=await readFile(path.join(root,archive,'viewer.html'),'utf8');
-const colors={'#f6f8f5':'#f7f8fa','#21352e':'#283343','#cddbd2':'#d8dee7','#52645b':'#647185','#bbcfc1':'#c4cfdd','#246655':'#315f91','#d6e0d9':'#dce2ea','#f1f5f1':'#f3f5f8','#dfe7e0':'#dce2ea','#627269':'#647185'};
-let html=original;
-for(const [a,b] of Object.entries(colors))html=html.replaceAll(a,b);
-html=html.replace('<title>',`<base href="../../../${archive}/"><title>`);
-await writeFile(path.join(target,'viewer.html'),html);
+const archive='evaluation/artifacts/decisionbench-final-method-20260910';
+const html=await readFile(path.join(target,'viewer.html'),'utf8');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/root/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome',args:['--no-sandbox']});
 const checks=[];
@@ -45,6 +40,6 @@ await rm(videoDir,{recursive:true});await browser.close();
 await writeFile(path.join(target,'sources/evaluation-demo-markers.json'),JSON.stringify(markers,null,2)+'\n');
 const manifestPath=path.join(target,'timeline.json');const manifest=JSON.parse(await readFile(manifestPath));
 manifest.source_sha256['sources/evaluation.webm']=hash(await readFile(path.join(target,'sources/evaluation.webm')));
-manifest.evaluation_presentation={source_archive:archive,source_viewer_sha256:hash(original),viewer_sha256:hash(html),figure_sha256:hash(await readFile(path.join(root,'assets/stage3/discrimination.png'))),palette:'navy / neutral white',recording_script:'scripts/record-stage3-evaluation.mjs',viewport_checks:checks};
+manifest.evaluation_presentation={source_archive:archive,summary_sha256:hash(await readFile(path.join(root,archive,'automatic/summary.json'))),viewer_sha256:hash(html),figure_sha256:hash(await readFile(path.join(root,'assets/stage3/discrimination.png'))),palette:'navy / neutral white',recording_script:'scripts/record-stage3-evaluation.mjs',viewport_checks:checks};
 await writeFile(manifestPath,JSON.stringify(manifest,null,2)+'\n');
 console.log('Evaluation recorded; 8 viewport/tab checks passed.');

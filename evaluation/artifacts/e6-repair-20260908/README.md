@@ -2,7 +2,7 @@
 
 从 `fix/evaluation-audit-readiness@c83c0ef` 接续。已实施产品和方法修复、多版 Development/Calibration、新 G01–G12 测试冻结登记及全批运行。**新版为48 Episode、33有效Judge、15失败；15通过、18不通过、15无分，formal=false。** 正式能力资格未通过，不能将自审、离线验证或高原始分替代它。开发和审计均为AI，一名可复用第二AI参与内容/治理复核，无独立人类盲审。
 
-旧E5实验固定 `40fddb8`；首批E6固定 `b0b0d02`（48/46/2，formal=false），[原档案](../e6-formal-20260908/README.md)及旧Release不覆盖。完整执行预设和逐版修复见[工作记录](../../../docs/E6新版修复与验证记录.md)。G家族在本轮方法决定结束后才编写、复核、冻结；它们现已见，后续不能冒充新版本未见测试。F01–F12始终是已见回归。
+旧E5实验固定 `40fddb8`；首批E6固定 `b0b0d02`（48/46/2，formal=false），[原档案](../e6-formal-20260908/README.md)及旧Release不覆盖。完整执行预设和逐版修复见[工作记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E6%E6%96%B0%E7%89%88%E4%BF%AE%E5%A4%8D%E4%B8%8E%E9%AA%8C%E8%AF%81%E8%AE%B0%E5%BD%95.md)。G家族在本轮方法决定结束后才编写、复核、冻结；它们现已见，后续不能冒充新版本未见测试。F01–F12始终是已见回归。
 
 ## 实际修改与验证来源
 

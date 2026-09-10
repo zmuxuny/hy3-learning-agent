@@ -1,0 +1,14 @@
+{
+  "method": "learning-quality-9",
+  "method_sha256": "b473189f42564de0401fe93aa1a9d2db30757ed002ebdde2322b932fbf8248b3",
+  "total": 36,
+  "valid": 36,
+  "no_score": 0,
+  "original_errors": 20,
+  "normal_total": 18,
+  "normal_passed": 18,
+  "defect_total": 18,
+  "defect_failed": 18,
+  "condition_error_identified": 18,
+  "reviewed_slots": 36
+}

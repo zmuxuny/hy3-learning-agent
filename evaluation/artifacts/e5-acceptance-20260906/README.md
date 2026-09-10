@@ -20,8 +20,8 @@ Assessment 两个 Mild 五轮均被误评为 100；Planning C01/C02 Mild 结论�
 | [收尾检查](closure-checks.json) | 文档链接、原账本摘要、服务停止、私有状态权限及已清理的本轮临时路径 |
 | [费用](budget-summary.json) | 原账本与本轮每个 ticket 归属；余额用整数微元计算后展示 |
 | [公开检查](archive-validation.json) | 627 份结构化记录隐私检查、实际密钥零命中、历史账本未变、三个源码快照绑定 |
-| [工作记录](../../../docs/E5验收工作记录.md) | 完整“问题—影响—修改文件与行为—验证—剩余缺口”、连续体验与第三阶段余项 |
-| [S06 机制记录](../../../docs/S06机制修复记录.md) | 历史可确认事实、独立反例、修复与归因边界 |
+| [工作记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E5%E9%AA%8C%E6%94%B6%E5%B7%A5%E4%BD%9C%E8%AE%B0%E5%BD%95.md) | 完整“问题—影响—修改文件与行为—验证—剩余缺口”、连续体验与第三阶段余项 |
+| [S06 机制记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/S06%E6%9C%BA%E5%88%B6%E4%BF%AE%E5%A4%8D%E8%AE%B0%E5%BD%95.md) | 历史可确认事实、独立反例、修复与归因边界 |
 
 ## 压缩包布局与版本
 

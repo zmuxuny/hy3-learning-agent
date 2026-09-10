@@ -1,0 +1,40 @@
+{
+  "base_commit": "1295254e2f8f792da30eb331cb2d0ea12437fa0b",
+  "purpose": "Relocate published documents to repository root; link removed internal notes to their historical Git version. Preserve all original model evidence and scores.",
+  "original_files": {
+    "evaluation/artifacts/decisionbench-study-20260910/README.md": "597cb9718f8c0d5bf1244168eadd4bffd85fa7e0997ff2f289ef84c05b0d794b",
+    "evaluation/artifacts/decisionbench-study-20260910/SHA256SUMS.json": "a9a32f2eaccfabd1d7821b3c00d00d16d1851cb3805dfaba1d966583b8d1556b",
+    "evaluation/artifacts/decisionbench-study-20260910/verification/README.md": "32d45700c4e9b513e950870159d06510913111520ee2728a3f166c10185bd9e9",
+    "evaluation/artifacts/e4-acceptance-20260906/README.md": "a6b03506fff2cc179a8ada1697dd3434b40a5cfef09bb187c146c891dfda6847",
+    "evaluation/artifacts/e4-candidate-20260905/README.md": "c603f1d95884069fdcc193167f15dc34141159173c733eed7ff6c275dfe9b135",
+    "evaluation/artifacts/e4-handoff-20260905/README.md": "7d8278715f637f7dbe120211d5e65471ad03d9c49b15b632a9649244a76e271a",
+    "evaluation/artifacts/e5-acceptance-20260906/README.md": "95f14b7fe9e9a507f2bf6d2cc0908aa8f89db6572472c996aabce98d64fcc284",
+    "evaluation/artifacts/e6-formal-20260908/README.md": "eb5b31187dd277b143c87f34a4c45610e7b493ed4693bd5ba176ab30d520c442",
+    "evaluation/artifacts/e6-provider-20260908/README.md": "2589defa7ff5ca6a63d5983967e81303a4c43719517faef43014979279d08e4b",
+    "evaluation/artifacts/e6-readiness-20260906/README.md": "32702bb708130246cd828843604ff1c2d3c6ae50faa0620f6cc1893508f34f3e",
+    "evaluation/artifacts/e6-repair-20260908/README.md": "7fab727ec94756adbc2cc943ad10f733a6cf3b48bf1bb3191ad3a53a8e5b646d",
+    "evaluation/artifacts/e7-comparison-20260909/README.md": "ba7654c6677acb5fab3d51155ddccb98ab0a6f214caa07759a035cd31dc7f00d"
+  },
+  "updated_files": {
+    "evaluation/artifacts/decisionbench-study-20260910/README.md": "a0766578a47bf44642ebb2e6766087dec2f35e8f347d2217567f2488f7fef8b2",
+    "evaluation/artifacts/decisionbench-study-20260910/SHA256SUMS.json": "b8c78d0bb529a0c918a4a1bb1706afb896a01f9ff5540a2cb11ad98b2c99ef5b",
+    "evaluation/artifacts/decisionbench-study-20260910/verification/README.md": "05299c5200e171587fa4c700d437c1b77e77d8e71e03305124452dff29af3958",
+    "evaluation/artifacts/e4-acceptance-20260906/README.md": "762280144a4e3590d8ff8d644054db1a663d02305162bca87b017b6d61e62c60",
+    "evaluation/artifacts/e4-candidate-20260905/README.md": "db3ef1a51d590c063a2bf1e55c427619a7956ef24337dd39fcb25b9c36ab9b27",
+    "evaluation/artifacts/e4-handoff-20260905/README.md": "b619d1efb7026b4daa2ea41770330c8f62df1a5dcc680cd51e98940d35b09d20",
+    "evaluation/artifacts/e5-acceptance-20260906/README.md": "9bacaa28bee2d9bc9c540164ab98227d68913121d9dcf3051c294820ab19e425",
+    "evaluation/artifacts/e6-formal-20260908/README.md": "b9128bcc4d91348dc4d84aae66cf1a2ded2258750f77e11c5a7eddfe8b7ca910",
+    "evaluation/artifacts/e6-provider-20260908/README.md": "eb289f2914d152f72f93d51dd9f48044252773c2ffbb0af0e7ab5663b6908536",
+    "evaluation/artifacts/e6-readiness-20260906/README.md": "b3cfb5307f888e665260a1bc1060836043f27057194ff81f4309872be416c962",
+    "evaluation/artifacts/e6-repair-20260908/README.md": "6a445306b5c2b3aeeffbb3be71a2bdcb1cef8be61fc5081106d7edfdae99d911",
+    "evaluation/artifacts/e7-comparison-20260909/README.md": "c804c4a935fb538d33f6fc30e9d3a7ea70aaf954b9468630029f4f43b2b25302"
+  },
+  "moved_public_documents": {
+    "docs/第三阶段项目与评测报告.md": "第三阶段项目与评测报告.md",
+    "docs/第三阶段项目与评测报告.pdf": "第三阶段项目与评测报告.pdf",
+    "docs/第三阶段项目与评测报告.html": "第三阶段项目与评测报告.html",
+    "docs/学习决策评测方法.md": "学习决策评测方法.md",
+    "docs/腾讯犀牛鸟开源实习第三阶段项目方案.md": "腾讯犀牛鸟开源实习第三阶段项目方案.md",
+    "docs/第三阶段提交材料清单.md": "第三阶段交付说明.md"
+  }
+}

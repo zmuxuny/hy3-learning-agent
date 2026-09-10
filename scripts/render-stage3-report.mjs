@@ -5,9 +5,11 @@ import {fileURLToPath} from 'node:url';
 import MarkdownIt from '../frontend/node_modules/markdown-it/dist/markdown-it.mjs';
 import {chromium} from '../frontend/node_modules/playwright-core/index.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const input=path.join(root,'docs/第三阶段项目与评测报告.md');
-const out=process.argv[2] ? path.resolve(process.argv[2]) : path.join(root,'docs');await mkdir(out,{recursive:true});
+const input=path.join(root,'第三阶段项目与评测报告.md');
+const out=process.argv[2] ? path.resolve(process.argv[2]) : root;await mkdir(out,{recursive:true});
 let content=new MarkdownIt({html:false,linkify:true}).render(await readFile(input,'utf8'));
+content=content.replace(/<p>(<img[^>]+>)<\/p>\s*<p><em>(图[\s\S]*?)<\/em><\/p>/g,
+  '<figure>$1<figcaption>$2</figcaption></figure>');
 for(const match of [...content.matchAll(/src="([^"]+)"/g)]){
   const source=path.resolve(path.dirname(input),match[1]);const ext=path.extname(source).slice(1);const bytes=await readFile(source);
   content=content.replace(match[0],`src="data:image/${ext==='svg'?'svg+xml':ext};base64,${bytes.toString('base64')}"`);
@@ -17,7 +19,7 @@ content=content.replace(/href="([^"#][^"]*)"/g,(whole,href)=>{
  const target=path.relative(root,path.resolve(path.dirname(input),href));return `href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/${encodeURI(target)}"`;
 });
 const html=`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Learning Agent · Hy3 — 项目与评测报告</title><style>
-*{box-sizing:border-box}body{font-family:"Noto Sans CJK SC","Noto Sans CJK JP",sans-serif;color:#283343;background:#fff;margin:36px auto;max-width:930px;padding:0 30px;font-size:16px;line-height:1.8}h1{font-size:30px;line-height:1.5;color:#203d63;margin:0 0 15px}h2{font-size:23px;color:#203d63;margin:36px 0 12px;border-bottom:1px solid #d8dee7;padding-bottom:8px;break-after:avoid}h3{font-size:18px;margin-top:24px;break-after:avoid}p{margin:12px 0}a{color:#315f91;text-decoration:none}img{display:block;max-width:100%;max-height:490px;object-fit:contain;margin:20px auto 8px}table{break-inside:avoid;border-collapse:collapse;width:100%;font-size:13px;line-height:1.65;margin:16px 0}th{background:#eef2f7;color:#203d63;text-align:left}th,td{padding:8px;border-bottom:1px solid #dce2ea;vertical-align:top}tr{break-inside:avoid}code{font-family:monospace;background:#f3f5f8;padding:0 3px;overflow-wrap:anywhere}em{font-style:normal;color:#5d6878;font-size:13px}strong{font-weight:700} @media print{body{margin:0;padding:0;font-size:10.5pt;line-height:1.65}h1{font-size:24pt}h2{font-size:17pt;margin-top:24px}h3{font-size:13pt}table{font-size:9pt}img{max-height:75mm}a{color:inherit}p{orphans:3;widows:3}}
+*{box-sizing:border-box}body{font-family:"Noto Sans CJK SC","Noto Sans CJK JP",sans-serif;color:#283343;background:#fff;margin:36px auto;max-width:930px;padding:0 30px;font-size:16px;line-height:1.8}h1{font-size:30px;line-height:1.5;color:#203d63;margin:0 0 15px}h2{font-size:23px;color:#203d63;margin:36px 0 12px;border-bottom:1px solid #d8dee7;padding-bottom:8px;break-after:avoid}h3{font-size:18px;margin-top:24px;break-after:avoid}h4{break-after:avoid}figure{margin:18px 0;break-inside:avoid}figcaption{color:#5d6878;font-size:13px;line-height:1.65}p{margin:12px 0}a{color:#315f91;text-decoration:none}img{display:block;max-width:100%;max-height:490px;object-fit:contain;margin:20px auto 8px}table{break-inside:auto;border-collapse:collapse;width:100%;font-size:13px;line-height:1.65;margin:16px 0}th{background:#eef2f7;color:#203d63;text-align:left}th,td{padding:8px;border-bottom:1px solid #dce2ea;vertical-align:top}thead{display:table-header-group}tr{break-inside:avoid}code{font-family:monospace;background:#f3f5f8;padding:0 3px;overflow-wrap:anywhere}em{font-style:normal;color:#5d6878;font-size:13px}strong{font-weight:700} @media print{body{margin:0;padding:0;font-size:10.5pt;line-height:1.65}h1{font-size:24pt}h2{font-size:17pt;margin-top:24px}h3{font-size:13pt}table{font-size:9pt}img{max-height:95mm}figure:first-of-type img{max-height:110mm}figcaption{font-size:9pt}a{color:inherit}p{orphans:3;widows:3}}
 </style><body>${content}</body></html>`;
 const htmlPath=path.join(out,'第三阶段项目与评测报告.html');await writeFile(htmlPath,html);
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/root/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome',args:['--no-sandbox']});

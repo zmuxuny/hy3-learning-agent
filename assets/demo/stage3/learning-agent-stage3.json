@@ -42,7 +42,7 @@
       "source": "sources/evaluation.webm",
       "start": 0,
       "duration": 40,
-      "caption": "首轮评测：原始证据、开发复核与有效性实验",
+      "caption": "评测：原始证据、七维判断与有效性实验",
       "video_start": 52,
       "video_end": 92
     },
@@ -53,5 +53,5 @@
       "video_end": 108
     }
   ],
-  "sha256": "889035c8748b83ca3c46226f71d535579051d930b6c0651fabb9f87b037944b2"
+  "sha256": "d8ac4ac66e8ec488f16af578e6ac619b282c011052a8b0969f372d8e3d09ac8f"
 }

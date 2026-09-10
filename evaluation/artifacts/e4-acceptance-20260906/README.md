@@ -1,6 +1,6 @@
 # E4 内容验收与回归证据
 
-本轮从 `a875ea0` 继续，在 `946d735` 完成 48 Primary、24 Calibration、8 来源的 AI 逐例裁决，以及 8 组三档区分判断。`4c9a632` 随后修正一处并发通知测试对立即成功的假设，产品/评测执行源码不变。复核身份为 `delegated_ai_reviewer`；没有独立人类标注或方法有效性实验。当前输入与裁决见 [候选包](../../datasets/decisionbench-v1-candidate/README.md)，验收与方案结论见 [E4 工作记录](../../../docs/E4验收工作记录.md)。
+本轮从 `a875ea0` 继续，在 `946d735` 完成 48 Primary、24 Calibration、8 来源的 AI 逐例裁决，以及 8 组三档区分判断。`4c9a632` 随后修正一处并发通知测试对立即成功的假设，产品/评测执行源码不变。复核身份为 `delegated_ai_reviewer`；没有独立人类标注或方法有效性实验。当前输入与裁决见 [候选包](../../datasets/decisionbench-v1-candidate/README.md)，验收与方案结论见 [E4 工作记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E4%E9%AA%8C%E6%94%B6%E5%B7%A5%E4%BD%9C%E8%AE%B0%E5%BD%95.md)。
 
 | 证据 | 内容 |
 | --- | --- |

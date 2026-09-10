@@ -1,0 +1,11 @@
+{
+  "source_commit": "ed73ce14e88825a0c2828f5e42dab0fb5927e08d",
+  "method": "learning-quality-11",
+  "development_cases": [
+    "formal-i10-p",
+    "formal-i11-r"
+  ],
+  "repeats": 3,
+  "purpose": "Known content misses plus two known normal/attribution controls; development only, not unseen effectiveness evidence",
+  "selection": "First valid; max3 transport/format attempts per stage; no score based retries"
+}

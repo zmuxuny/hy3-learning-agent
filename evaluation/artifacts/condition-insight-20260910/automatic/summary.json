@@ -1,0 +1,26 @@
+{
+  "reviewed_slots": 24,
+  "valid": 24,
+  "no_score": 0,
+  "original_errors": 2,
+  "diagnostic": {
+    "automatic_probe": {
+      "scores": [
+        100,
+        100,
+        100
+      ],
+      "identified": 0,
+      "failed": 0
+    },
+    "verified_counterexample": {
+      "scores": [
+        69,
+        85,
+        85
+      ],
+      "identified": 3,
+      "failed": 1
+    }
+  }
+}

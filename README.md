@@ -4,7 +4,7 @@
 
 ### 一个持续理解学习状态、主动判断并推动目标完成的个人学习 Agent
 
-[项目与评测报告](docs/第三阶段项目与评测报告.md) · [108秒Demo](assets/demo/stage3/learning-agent-stage3.mp4) · [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md) · [演示页（已发布版本）](https://zmuxuny.github.io/hy3-learning-agent/)
+[项目与评测报告](第三阶段项目与评测报告.md) · [第三阶段交付总览](第三阶段交付说明.md) · [108秒Demo](assets/demo/stage3/learning-agent-stage3.mp4) · [演示页（已发布版本）](https://zmuxuny.github.io/hy3-learning-agent/)
 
 评测材料已补充[新场景严重失败验证](evaluation/artifacts/decisionbench-severe-validation-20260910/README.md)和[双人人工确认](evaluation/artifacts/human-confirmation-20260910/README.md)：新增72次评分中，严重36/36识别、正常36/36通过。
 
@@ -18,7 +18,7 @@ Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩
 
 ## 核心体验
 
-| 能力 | Hy3 如何工作 | 用户获得什么 |
+| 能力 | Hy3的处理方式 | 用户可见结果 |
 | --- | --- | --- |
 | 目标澄清与规划 | 围绕基础、期限、时间预算和期望作品提出高信息量问题，生成可讨论、可修改、可采用的计划提案 | 从模糊愿望走向一条真正可执行的学习路径 |
 | 资源调研与教学 | 搜索、打开并核验课程与资料，结合当前任务提供讲解和练习 | 资源与目标、难度和阶段相匹配 |
@@ -53,13 +53,23 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 架构图提供 [draw.io 可编辑源文件](assets/proposal/architecture/learning-agent-system-architecture.drawio) 与 [PNG 版本](assets/proposal/architecture/learning-agent-system-architecture.png)。
 
-## 第三阶段：应用与场景化评测
+## 第三阶段产出
 
-学习决策评测集（DecisionBench）覆盖学习规划、主动介入、成果验收和计划调整。每次评价读取用户要求、助手内容、工具结果和状态变化，按事实、目标、时机、约束、可用性、适度性与解释七维评分，再逐例复核。
+第三阶段同时交付学习助手应用、场景化评测及有效性实验。评测输入覆盖学习规划、主动介入、成果验收和计划调整，读取用户要求、完整助手内容、工具结果与状态变化，评价事实、目标、时机、约束、可用性、适度性与解释。
 
-已完成48个真实应用场景、24份三档输出各3次评分，以及8份评分操纵对抗。三档严格排序22/24组；同输出加权分标准差均值4.56；8份对抗输出均未通过。应用复核46例通过、2例未通过，完整保留自动评分、内容问题与原始失败。
+以下文档均位于仓库根目录。报告正文说明应用与方法，附录完整列出评测集；数据和结果链接可进一步核对每一项证据。
 
-[图文分析报告](docs/第三阶段项目与评测报告.md)（[PDF](docs/第三阶段项目与评测报告.pdf) / [HTML](docs/第三阶段项目与评测报告.html)） · [评测方法](docs/学习决策评测方法.md) · [数据集](evaluation/datasets/README.md) · [完整结果与复算](evaluation/artifacts/decisionbench-study-20260910/README.md) · [提交材料](docs/第三阶段提交材料清单.md)
+| 产出 | 文件与内容 |
+| --- | --- |
+| 项目与评测分析报告 | [第三阶段项目与评测报告.md](第三阶段项目与评测报告.md) · [PDF](第三阶段项目与评测报告.pdf) · [HTML](第三阶段项目与评测报告.html)：用户场景、应用实现、方法、具体用例、实验与典型发现 |
+| 评估方法说明 | [学习决策评测方法.md](学习决策评测方法.md)：评价对象、七维判据、权重、核验、评分及复核流程 |
+| 完整评测集目录 | [评测用例目录.md](评测用例目录.md)：116份输入材料的具体条件、构造差异、难度和逐项文件链接 |
+| 任务书交付索引 | [第三阶段交付说明.md](第三阶段交付说明.md)：五类产出、完整结果表和复现入口 |
+| 样本与评测脚本 | [DecisionBench数据集](evaluation/datasets/decisionbench-learning-v1/README.md) · [评测运行说明](evaluation/README.md)：48个应用输入、24份三档输出、8份操纵输出、24份正常与严重对照及12份条件对照 |
+| 实验结果与数据 | [统一方法实验](evaluation/artifacts/decisionbench-final-method-20260910/README.md) · [条件验证](evaluation/artifacts/condition-validation-20260910/README.md) · [卷积案例分析](evaluation/artifacts/condition-insight-20260910/README.md) · [人工标注对齐](evaluation/artifacts/human-confirmation-20260910/README.md)：全部请求、响应、逐例结果与复算 |
+| 产品与评测Demo | [108秒视频](assets/demo/stage3/learning-agent-stage3.mp4)：目标输入、计划审阅及采用、典型证据与评测验证 |
+
+主体实验包含200个评分位置：48份真实应用输出、24份三档输出、8份操纵输出、24份正常与严重对照。三档严格排序23/24组，重复加权分标准差均值3.70，操纵误通过1/8；应用人工参考46通过、2未通过。正常与严重对照中，严重36/36识别且未通过、正常36/36通过。另有12份条件材料各评3次，以及卷积案例的固定依据诊断。各项分母、原始响应和逐项复核均随结果表提供。
 
 ## Demo
 
@@ -69,7 +79,6 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 视频同时展示真实目标输入、提案验收细则、用户采用和计划工作区，以及完整决策证据、典型内容问题、三档判别和重复一致性结果。浏览器保持完整视口，字幕位于画面外边距；模型与网络等待已剪去。
 
-此前92.6秒产品体验视频按原始来源保留在`assets/demo/learning-agent-hy3-demo.mp4`；当前第三阶段提交使用上面的108秒成片。
 
 ## 快速开始
 
@@ -83,7 +92,7 @@ cp .env.example .env
 ./scripts/start.sh
 ```
 
-打开 <http://127.0.0.1:8000>，首次设置向导会验证模型连接并创建第一条 Session。也可以提前在 `.env` 中配置：
+打开 <http://127.0.0.1:8000>，首次设置向导会验证模型连接并创建第一条会话。也可以提前在 `.env` 中配置：
 
 ```dotenv
 OPENAI_API_KEY=你的密钥
@@ -103,14 +112,17 @@ npm run dev
 ```bash
 source .venv/bin/activate
 pytest -q
-python -m learning_agent_eval validate-dataset --dataset evaluation/datasets/decisionbench-v1
+result_output=$(mktemp -d /tmp/learning-agent-results-XXXXXX)
+PYTHONPATH=evaluation/src:backend python evaluation/scripts/summarize_final_method.py \
+  --archive evaluation/artifacts/decisionbench-final-method-20260910 --output "$result_output/automatic"
+diff -r evaluation/artifacts/decisionbench-final-method-20260910/automatic "$result_output/automatic"
 npm --prefix frontend test
 npm --prefix frontend run build
 python scripts/check_doc_links.py .
 python scripts/release-gate.py --repository . --format json
 ```
 
-测试覆盖持久化迁移、事务与副作用、Runtime 恢复、学习证据、上下文与记忆、主动介入、安全边界、前端状态对账、响应式浏览器路径和首次设置。详细结果与复现入口见[当前状态](docs/STATUS.md)。
+测试覆盖持久化迁移、事务与副作用、Runtime 恢复、学习证据、上下文与记忆、主动介入、安全边界、前端状态对账、响应式浏览器路径和首次设置。详细结果与复现入口见[第三阶段交付说明](第三阶段交付说明.md)。
 
 ## 数据与安全
 
@@ -120,22 +132,14 @@ python scripts/release-gate.py --repository . --format json
 - 外部内容始终作为不可信输入处理；没有可信沙箱 Provider 时，代码执行能力不会开放。
 - 低风险数据库操作保留审计与撤销信息，外部发送通过耐久 Outbox 记录意图和结果。
 
-## 项目文档
+## 产品与技术文档
 
-- [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md)
-- [第三阶段评测实施方案](docs/腾讯犀牛鸟开源实习第三阶段评测实施方案.md)
-- [离线评测包与 E0 运行说明](evaluation/README.md)
-- [E7验收与接续](docs/E7工作与验收记录.md)
-- [阶段三报告初稿](docs/E8阶段三报告初稿.md)
-- [案例、Demo台本与提交清单](docs/E8案例与展示材料.md)
-- [第三阶段开发交接（历史）](docs/第三阶段开发交接.md)
-- [产品定义](docs/PRODUCT.md)
-- [系统架构与上下文](docs/ARCHITECTURE.md)
-- [Harness 完整性标准](docs/HARNESS.md)
+- [产品功能与使用边界](docs/PRODUCT.md)
+- [系统架构与数据流](docs/ARCHITECTURE.md)
 - [工具与权限协议](docs/TOOL_PROTOCOL.md)
-- [安全与部署边界](SECURITY.md)
-- [路线图](docs/ROADMAP.md)
-- [当前状态](docs/STATUS.md)
+- [邮件渠道配置](docs/EMAIL.md)
+- [安全与部署说明](SECURITY.md)
+- [已提交的第三阶段项目方案](腾讯犀牛鸟开源实习第三阶段项目方案.md)
 
 ## License
 

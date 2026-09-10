@@ -7,7 +7,7 @@
 # Evaluation Release Assets
 
 本目录是 Evaluation Protocol Release 1.0 的仓库固定信任根，不是可由 CLI 指定的配置目录。
-设计与边界见 [`../../docs/E3.1.2正式评测准入与版本治理.md`](../../docs/E3.1.2正式评测准入与版本治理.md)。
+设计与边界见 [`../../docs/E3.1.2正式评测准入与版本治理.md`](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E3.1.2%E6%AD%A3%E5%BC%8F%E8%AF%84%E6%B5%8B%E5%87%86%E5%85%A5%E4%B8%8E%E7%89%88%E6%9C%AC%E6%B2%BB%E7%90%86.md)。
 
 这里的信任边界来自经审查的代码与 Git 版本。普通 Git 文件中的 hash lock 是回归与一致性约束，不能证明文件不可被共同篡改，也不能密码学证明远端模型实际执行过某段代码。活动制品另核对 Git 对象中的来源包，Provider Attestation 仍只提供可审计归因。
 
@@ -38,7 +38,7 @@ Release 和 engineering Benchmark 绑定，同时拒绝历史 Schema/锁漂移�
 且一旦出现任何可信注册项便先验失败。
 
 E6 的48个新测试输入已完成AI内容/资源/隐私/数量/Split审核，并使用状态 `released` 的
-`benchmark-release-manifest-v1` 随本地冻结审查提交加入生产注册表。该登记不是公开发布或能力结果；运行尚未开始，见 [E6记录](../../docs/E6验收工作记录.md)。完成可信注册后，任何
+`benchmark-release-manifest-v1` 随本地冻结审查提交加入生产注册表。该登记不是公开发布或能力结果；运行尚未开始，见 [E6记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E6%E9%AA%8C%E6%94%B6%E5%B7%A5%E4%BD%9C%E8%AE%B0%E5%BD%95.md)。完成可信注册后，任何
 协议或来源变更都必须创建新的 Protocol Release 与活动锁，不能更新 Release 1.0 或历史锁。
 测试注册表只能通过明确的
 test-only Python seam 注入，生产 CLI 不提供对应参数或环境变量。

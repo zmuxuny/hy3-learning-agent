@@ -112,4 +112,4 @@ E311_ROOT="$(mktemp -d)"
 本套件不代表正式 Benchmark Release、真实用户、真实 Provider 身份的密码学证明、真实 Hy3 表现、评测有效性实验、
 人工一致性、正式 Dataset Split、Baseline/Candidate 回归、最终报告、Case、Demo 或 Release。
 这些仍属于 E4–E8，必须另行授权和实施。发布与版本治理见
-[`../../../docs/E3.1.2正式评测准入与版本治理.md`](../../../docs/E3.1.2正式评测准入与版本治理.md)。
+[`../../../docs/E3.1.2正式评测准入与版本治理.md`](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E3.1.2%E6%AD%A3%E5%BC%8F%E8%AF%84%E6%B5%8B%E5%87%86%E5%85%A5%E4%B8%8E%E7%89%88%E6%9C%AC%E6%B2%BB%E7%90%86.md)。

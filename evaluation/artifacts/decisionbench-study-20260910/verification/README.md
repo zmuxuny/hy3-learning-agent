@@ -6,6 +6,6 @@
 
 初轮失败、独立复现和修复验证保留在[回归修复记录](regression-repairs.json)及相应文本日志中。新源码的[独立复算](independent-recompute.json)与归档表格逐字节一致；[典型案例分数](report-case-scores.json)与PDF正文已经核对。
 
-应用布局检查、展示页与播放检查为实际浏览器记录。实验和Demo的最终累计费用见[账本摘要](budget-at-delivery.json)。两份已提交方案原文保持不变，具体差异见[方案核对](../../../../docs/第三阶段方案落实差异.md)。
+应用布局检查、展示页与播放检查为实际浏览器记录。实验和Demo的最终累计费用见[账本摘要](budget-at-delivery.json)。两份已提交方案原文保持不变，具体差异见[方案核对](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/%E7%AC%AC%E4%B8%89%E9%98%B6%E6%AE%B5%E6%96%B9%E6%A1%88%E8%90%BD%E5%AE%9E%E5%B7%AE%E5%BC%82.md)。
 
 [本地合并记录](local-merge.json)与[清理记录](cleanup.json)保存交付收尾状态。开发分支保留，远端推送、发布和比赛提交由作者后续决定。

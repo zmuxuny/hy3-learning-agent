@@ -1,0 +1,143 @@
+{
+  "method": "learning-quality-9",
+  "method_sha256": "b473189f42564de0401fe93aa1a9d2db30757ed002ebdde2322b932fbf8248b3",
+  "total": 200,
+  "valid": 200,
+  "no_score": 0,
+  "passed": 123,
+  "failed": 77,
+  "severe_total": 68,
+  "severe_critical_failed": 66,
+  "good_total": 60,
+  "good_passed": 60,
+  "original_errors": 3,
+  "parts": {
+    "application": {
+      "total": 48,
+      "valid": 48,
+      "no_score": 0,
+      "passed": 48,
+      "failed": 0,
+      "severe_total": 0,
+      "severe_critical_failed": 0,
+      "good_total": 0,
+      "good_passed": 0,
+      "original_errors": 0
+    },
+    "quality": {
+      "total": 72,
+      "valid": 72,
+      "no_score": 0,
+      "passed": 38,
+      "failed": 34,
+      "severe_total": 24,
+      "severe_critical_failed": 23,
+      "good_total": 24,
+      "good_passed": 24,
+      "original_errors": 1
+    },
+    "adversarial": {
+      "total": 8,
+      "valid": 8,
+      "no_score": 0,
+      "passed": 1,
+      "failed": 7,
+      "severe_total": 8,
+      "severe_critical_failed": 7,
+      "good_total": 0,
+      "good_passed": 0,
+      "original_errors": 0
+    },
+    "new_scenarios": {
+      "total": 72,
+      "valid": 72,
+      "no_score": 0,
+      "passed": 36,
+      "failed": 36,
+      "severe_total": 36,
+      "severe_critical_failed": 36,
+      "good_total": 36,
+      "good_passed": 36,
+      "original_errors": 2
+    }
+  },
+  "discrimination": {
+    "total": 24,
+    "valid": 24,
+    "strict_raw": 23,
+    "strict_final": 23,
+    "good_above_severe": 23
+  },
+  "repetition": {
+    "quality": {
+      "complete_outputs": 24,
+      "raw_sd": 3.6963282997588056,
+      "final_sd": 3.368115921638508,
+      "outcome_agreement": 0.9722222222222222,
+      "dimension_vector_agreement": 0.75
+    },
+    "new_scenarios": {
+      "complete_outputs": 24,
+      "raw_sd": 2.0492372304759368,
+      "final_sd": 1.6793786053180504,
+      "outcome_agreement": 1.0,
+      "dimension_vector_agreement": 0.8055555555555556
+    }
+  },
+  "automatic_human": {
+    "valid": 48,
+    "outcome_matches": 46,
+    "dimensions": [
+      {
+        "dimension": "D1",
+        "name": "事实与内容正确性",
+        "valid": 48,
+        "agreement": 0.8333333333333334,
+        "quadratic_kappa": 0.44303797468354433
+      },
+      {
+        "dimension": "D2",
+        "name": "学习目标与需求",
+        "valid": 48,
+        "agreement": 0.9583333333333334,
+        "quadratic_kappa": 0.0
+      },
+      {
+        "dimension": "D3",
+        "name": "行动选择与时机",
+        "valid": 48,
+        "agreement": 0.9791666666666666,
+        "quadratic_kappa": 0.0
+      },
+      {
+        "dimension": "D4",
+        "name": "约束与用户控制",
+        "valid": 48,
+        "agreement": 1.0,
+        "quadratic_kappa": null
+      },
+      {
+        "dimension": "D5",
+        "name": "结果可用性",
+        "valid": 48,
+        "agreement": 0.9375,
+        "quadratic_kappa": 0.0
+      },
+      {
+        "dimension": "D6",
+        "name": "行动适度与副作用",
+        "valid": 48,
+        "agreement": 1.0,
+        "quadratic_kappa": 1.0
+      },
+      {
+        "dimension": "D7",
+        "name": "解释与下一步",
+        "valid": 48,
+        "agreement": 0.9375,
+        "quadratic_kappa": 0.0
+      }
+    ]
+  },
+  "reviewed_slots": 200
+}

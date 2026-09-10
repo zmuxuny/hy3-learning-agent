@@ -14,7 +14,7 @@
 | [回归来源](regression-snapshots.json) | 开发快照与冻结提交唯一Python差异，不混报版本 |
 | [收尾](closure-checks.json) | 归档校验、临时路径清理、公开扫描和原账本复核 |
 
-运行预设在[控制面](../../case-design/e6-run-plan.json)，48条内容裁决在[AI复核表](../../case-design/e6-content-review.json)，输入与来源说明见[数据卡](../../datasets/decisionbench-v1-e6-test/README.md)。完整工作状态、回归及后续命令见[E6工作记录](../../../docs/E6验收工作记录.md)。本轮作者与复核者为同一主AI，未使用子agent，不是独立人类盲标或Kappa。
+运行预设在[控制面](../../case-design/e6-run-plan.json)，48条内容裁决在[AI复核表](../../case-design/e6-content-review.json)，输入与来源说明见[数据卡](../../datasets/decisionbench-v1-e6-test/README.md)。完整工作状态、回归及后续命令见[E6工作记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E6%E9%AA%8C%E6%94%B6%E5%B7%A5%E4%BD%9C%E8%AE%B0%E5%BD%95.md)。本轮作者与复核者为同一主AI，未使用子agent，不是独立人类盲标或Kappa。
 
 E5结果仍固定`40fddb8`，本目录只是读取归档后的复核材料，没有改写旧实验。正式输入的本地`released`/可信登记状态不等于已推送、发布或已产生能力结果。任何后续真实运行必须使用新输出目录、冻结版本与原账本，不覆盖本目录的未运行检查点。
 

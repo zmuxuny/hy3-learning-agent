@@ -1,138 +1,26 @@
-# Agent 工具与运行协议
+# 工具与权限协议
 
-> 状态说明（2026-08-31）：H2–H8 已验收工具事务、Run/Queue/child 恢复、Evidence/Competency、Context/Intervention、安全、前端投影与发布工程，87 个登记缺陷均已关闭。第三阶段评测可以读取这些可观察事实，但 E0 不修改本协议或生产 Runtime；M15–M20 不在本阶段范围，真人采用验证尚未执行。当前事实见 [`STATUS.md`](STATUS.md)。
+Hy3通过登记的工具读取材料、形成提案或执行操作。工具调用包含结构化参数；返回结果说明实际成功、失败、待批准或被规则拦截的情况。模型声明与实际效果分别记录。
 
-## 设计原则
+## 工具分工
 
-工具是 Agent 的基础系统调用：输入输出类型明确、能力正交、结果可观察。当前实现为工具注册输入/输出 Schema 与 H2 effect kind，并通过 `GET /api/v1/settings/tools` 暴露；Evidence/Competency 已使用具名嵌套模型并在每层拒绝 extra fields。高层流程由 Hy3 规划；H2/H3 已统一工具事务与 Run 状态机，H5/H6 已统一触发来源、Intervention、耐久信任与后端权限边界。
+| 类型 | 典型用途 | 行为要求与实现位置 |
+| --- | --- | --- |
+| 状态读取 | 查看计划、任务、记忆和学习证据 | 返回当前数据及来源；[tools](../backend/app/tools/) |
+| 规划与提案 | 创建可审阅的学习路径 | 新提案等待用户决定；[planning.py](../backend/app/tools/planning.py) |
+| 学习与验收 | 处理任务、提交材料及反馈 | 依据任务要求和可见证据记录结论；[learning.py](../backend/app/tools/learning.py) |
+| 资源访问 | 搜索、读取网页与工作区材料 | 区分外部材料和可信用户指令；[web.py](../backend/app/tools/web.py)、[workspace.py](../backend/app/tools/workspace.py) |
+| 记忆操作 | 保存与更新学习事实 | 保留来源和确认关系；[memory.py](../backend/app/tools/memory.py) |
+| 外部投递 | 发送站内或已配置渠道的消息 | 检查授权、频率、免打扰并记录实际投递；[notifications](../backend/app/notifications/)、[outbox.py](../backend/app/outbox.py) |
 
-## 48 个已注册工具
+## 执行与记录
 
-`GET /api/v1/settings/tools` 对每个工具返回正式 `input_schema`、`output_schema`、`effect_kind`、`idempotent` 与 `blocking`。`blocking=true` 表示该工具在特定 Guard 条件下可能暂停 Run；是否阻塞仍由本次触发来源、操作字段和审批状态决定。
+工具注册表与参数契约分别位于[registry.py](../backend/app/tools/registry.py)和[contracts.py](../backend/app/tools/contracts.py)。运行器读取工具返回，继续推理或形成最终反馈。需要批准时保存待处理状态，不能把计划中的动作记成已经执行。
 
-H2 固定四类执行协议：
+数据库修改记录具体操作与版本；撤销恢复旧业务值，但版本计数继续增加。外部发送记录意图与实际结果，用于处理重复触发或中断后的状态核对。失败和被拦截的尝试同样是可观察记录。
 
-| `effect_kind` | 当前数量 | 执行协议 |
-| --- | ---: | --- |
-| `pure_read` | 14 | 只读取调用者快照；不创建含糊写意图 |
-| `database_write` | 21 | 短 CAS claim 后，在一个 UoW 原子提交领域状态、Operation/Evidence/Event 与 invocation 结果 |
-| `external_read` | 7 | provider/HTTP/embedding/child report 等等待不持有 SQLite writer；结果再以短事务归档 |
-| `external_write` | 6 | 先提交 durable outbox intent，再由独立 dispatcher 执行 SMTP/Web Push/workspace/subprocess 并写 receipt |
+## 评测中的使用
 
-SQLite 写协调器会在嵌套 savepoint 前显式建立 physical outer transaction，防止 release 最外层 savepoint 时提前提交。仅 claim/CAS、事件和 receipt 等 DB-only 可重放短回调使用有界退避；整个工具 handler 不会因 `database is locked` 被盲目重跑。
+评测同时检查助手尝试了什么以及实际发生了什么。例如，重复通知被拦截表示没有产生第二次投递，但仍可在行动适度上记录多余尝试。工具成功也不能替代内容正确性检查：一次验收写入成功，仍可能接受了实际失败的作品。
 
-### 计划共创与学习位置
-
-| 工具 | 作用 |
-| --- | --- |
-| `planning_intake_get` / `planning_intake_update` | 读取或保存已确认事实、1–3 个结构化问题和 AI 的充分性判断 |
-| `planning_delegate` | 把最多三个只读规划调查分给独立子 Run，并 join 结论 |
-| `plan_proposal_create` | 保存等待用户采用的完整计划提案，不直接创建正式 Plan |
-
-### 通用受限子 Agent
-
-| 工具 | 作用 |
-| --- | --- |
-| `subagent_spawn` | 启动一个只读受限子 Run；可指定工具白名单，但 v1 只会授予只读能力 |
-| `subagent_status` / `subagent_join` | 查询子 Run 状态/输出；join 等待子 Run 结束并返回结构化报告 |
-| `subagent_cancel` | 取消由当前 Run 发起的子 Run |
-| `study_state_get` | 读取带计划版本的当前阶段/任务、下一步、证据、阻塞、逾期、复习和近期提交快照 |
-
-子 Agent 使用 stable action key/index 派生 child ID，并在 model wait 前保存 Context、messages 与 checkpoint。H3 已让 planning 与通用 child 复用统一 lease/checkpoint/retry/finalize 状态机；终态与父 completion 同事务投影或幂等修复，model/tool/network/elapsed/token/cost 预算与主 Run 共享语义。
-
-### 状态与计划
-
-| 工具 | 作用 |
-| --- | --- |
-| `profile_get` | 读取个人画像、免打扰和游戏化状态 |
-| `plan_list` / `plan_get` | 读取全部计划或焦点计划完整结构 |
-| `plan_create` / `plan_patch` | `plan_create` 仅保留为无 Session 的底层能力且同样执行正式计划完整性校验；对话必须走 Intake → Proposal → 用户采用；`plan_patch` 可撤销地修改正式计划 |
-| `stage_create` / `task_create` / `task_patch` | 增加阶段/任务，更新任务状态、证据、时间和复习 |
-| `learning_event_list` | 检索不可变学习事件 |
-| `resource_list` | 按课程、教程、实验、难度和推荐理由读取计划资源 |
-
-### 提交、考核与复习
-
-| 工具 | 作用 |
-| --- | --- |
-| `submission_create` / `submission_get` / `submission_list` | 保存并读取文字、文件、代码或链接证据 |
-| `submission_check` | 保存检查项、分数和反馈；通过后完成任务并更新 XP |
-| `quiz_create` / `quiz_get` / `quiz_grade` | 创建测验、读取 Rubric、证据化评分 |
-| `review_schedule` / `review_resolve` | 安排下一次复习或主动抽查；完成、延后或取消既有复习，并保留可撤销操作记录 |
-
-### 上下文与记忆
-
-| 工具 | 作用 |
-| --- | --- |
-| `memory_search` | 按 BM25 + 本地 SimHash 混合相关性、作用域、层、置信度和时间检索确认记忆，并返回 `score_breakdown` 分数分解 |
-| `memory_propose` | 创建等待用户确认的长期记忆候选；相同内容强化原记录，`supersedes_id` 用于提出可追溯纠正 |
-| `memory_maintain` | 过期短期记忆、带原因归档旧情节、持久化本地向量并刷新计划摘要 |
-
-### 网页、文件、代码和日历
-
-| 工具 | 作用 |
-| --- | --- |
-| `web_search` / `web_open` | 通过可替换 Provider（DuckDuckGo 主源 + Bing 备选源）搜索公开资料；主源失败/超时/空结果时自动降级并带 `fallback_used`；逐跳固定 public IP、保留 Host/SNI、复核 peer，并限制 wire/decoded bytes、总时限和精确 MIME；结果均为 `external_untrusted` |
-| `resource_save` | 把核验过的具体课程、教程、实验或参考资料保存到计划；记录来源、难度、语言、摘要和适配理由，并支持撤销 |
-| `file_list` / `file_read` / `file_write` | 读取工作区时产生耐久 `external_untrusted` 结果；写入先持久化 outbox intent，再以原子替换、fsync、hash receipt 发布 |
-| `code_execute` | 已安装契约但当前不可用：没有 capability-attested sandbox Provider 时不进入模型 surface，直接调用和旧 subprocess outbox 也失败关闭；内部 host runner 不是安全容器 |
-| `calendar_list` / `calendar_create` / `calendar_patch` | 读取、创建和调整个人学习日历 |
-
-### V2 技能图与证据
-
-| 工具 | 作用 |
-| --- | --- |
-| `competency_create` | 创建明确命名的技能/概念节点；不会根据标题相似度自动合并 |
-| `competency_link` | 将技能映射到计划、任务或已策展资源，区分 targets / teaches / assesses / covers |
-| `competency_edge` | 建立技能关系；`prerequisite` 与 `part_of` 会做环检测 |
-| `competency_graph_get` / `competency_get` | 读取计划范围或单个技能图节点与映射 |
-| `evidence_list` | 按计划、任务或技能读取不可变证据观察，并保留 Artifact 来源引用 |
-
-### 通信
-
-| 工具 | 作用 |
-| --- | --- |
-| `notification_send` | 原子写入连续 Session/站内收件箱，并为可选浏览器或 SMTP 渠道分别建立 outbox action；返回 `session_id` 供追溯 |
-
-SMTP/IMAP 回复令牌和站内深链已由 H5 统一为 durable Intervention 协议：活动 Run target、多渠道唯一 canonical message、归档计划只读回执与 IMAP UID/UIDVALIDITY ack 均通过并发、重启和 SIGKILL 门禁。H7 已把权威 Intervention ID 投影到 open/list、composer、Queue、重载和深链，并完成真实浏览器对账。
-
-## 统一结果与运行事件
-
-```json
-{
-  "ok": true,
-  "data": {
-    "operation_id": "uuid",
-    "undo_available": true
-  }
-}
-```
-
-成功数据通过具名 Output Schema，错误使用稳定 typed envelope。H2 执行协调器先从已校验参数生成 canonical request digest，并把它与 stable action key 分开：同键同内容精确重放，同键异内容返回 `idempotency_conflict`。ToolInvocation 用短事务 CAS claim、claim token/version/expiry 围栏旧执行者；数据库写在一个 UoW 中提交领域对象、Operation、Evidence、LearningEvent、RunEvent 与 invocation 结果，外部读/写等待不持有 writer。
-
-外部写在领域 UoW 中只建立 outbox intent。dispatcher 独立 claim action、调用 transport、再写唯一 receipt；外部可能已经接受但 receipt 未提交时，action/invocation/notification 进入 `needs_reconciliation` 并禁止盲重放。workspace action 可以比较目标 hash 自动恢复；SMTP、Web Push 与 subprocess 只能等待人工或 provider 对账。稳定错误还包括可重试的 `database_busy`、`invocation_claim_lost` 与不可自动重放的 `needs_reconciliation`。
-
-对用户可见的目标轨迹包括：
-
-```text
-run.started → context.built → assistant.status
-→ tool.started → tool.completed
-→ subagent.started / subagent.completed
-→ approval.required / operation.committed / notification.sent
-→ assistant.message → run.completed
-```
-
-审批暂停/恢复现在把 decision、answer、note、decided_at、ToolInvocation identity 与 checkpoint 原子持久化；拒绝不会在重启后默认批准，二次中断与 current-tool 边界保留上一份可信 checkpoint。缺失或无法证明的 legacy 审批进入 `needs_reconciliation`。
-
-`idempotent` 由数据库约束、canonical digest、CAS claim 与 fenced finalization 强制；H2-TXN-002/003 和 H4-EVID-006 已关闭。H3 进一步让 child 与主 Run 共享并持久化 model/tool/time/network/token/cost 预算及耗尽 reason。
-
-私有思维链不写入事件；TokenHub 要求的 `reasoning_content` 只在同一 Run 的模型轮次间回填。
-
-## 权限与撤销
-
-- 目标上 `plan_id` 必须由后端强制且不依赖 Prompt；Competency edge/link 已由 H4 从数据库解析真实 scope，Context link 的计划隔离已由 H5 验收。
-- Session 内的计划创建只能写提案；提案采用 API 幂等地物化正式计划，未采用时数据库中不存在对应 Plan。
-- `spawn/status/join/cancel` 与执行层只读白名单已接入统一 durable child 状态机；终态父事件、重试和预算对应的 H3-RUN-008–011 均已关闭。
-- 核心任务的目标门槛是可验证 Evidence；H4 eligibility Guard 已限制自由文本/self-report/checkbox 的阶段上限，并保证一次 submission/quiz/task 行为只有一份 primary observation。
-- 删除、全局长期记忆和后台改变最终目标需要用户确认；阻塞型审批会暂停 Run 等待批准/拒绝，候选式确认只生成候选不中断运行。
-- `Operation` 的数据库 undo 使用 CAS，workspace undo 先提交 outbox intent 并以 forward hash 拒绝覆盖后续用户修改；H2-TXN-008 已关闭。H4 进一步让 Evidence undo 追加 amendment/invalidation 控制事实，并在图节点 undo 前执行 dependency preflight、revision mutation 与 `RESTRICT` FK backstop。
+七维判据及相关例子见[学习决策评测方法](../学习决策评测方法.md)，运行与数据流见[系统架构](ARCHITECTURE.md)。

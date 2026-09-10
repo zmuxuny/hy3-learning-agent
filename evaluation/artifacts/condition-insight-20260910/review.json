@@ -1,0 +1,437 @@
+{
+  "reviewer": "Codex, evidence-grounded review; no human label claim for these new responses",
+  "rows": [
+    {
+      "part": "prompt-check",
+      "id": "formal-i09-p",
+      "repeat": 1,
+      "result_sha256": "3faa8d697de834570057887d9d952d5fd5a9553d20fd7102e37fe437a236301e",
+      "evidence_sha256": "a663d7f889b15f0df09b3eb257eaec6fff710c4b9330abd0a827b58d41a8f659",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "教学安排需引入exp不等于断言学习者不会，D1=1误归因；原背景、306分钟和待批流程均符合。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i09-p",
+      "repeat": 2,
+      "result_sha256": "545a86f726e849897b4196321d4dd62b2eca654b6be5bc7dedae8c68b523f867",
+      "evidence_sha256": "a663d7f889b15f0df09b3eb257eaec6fff710c4b9330abd0a827b58d41a8f659",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "核对四任务306分钟、同输入复测、截止和待批状态，七维无缺陷；没有将exp教学安排误作背景事实。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i09-p",
+      "repeat": 3,
+      "result_sha256": "d03b43b70faba3d3edf1a114b17b56ad857e68eae9e3a3fd57d552955a27ec26",
+      "evidence_sha256": "a663d7f889b15f0df09b3eb257eaec6fff710c4b9330abd0a827b58d41a8f659",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "核对概率公式与冻结例子、4任务306分钟和待批状态，七维无缺陷。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i10-i",
+      "repeat": 1,
+      "result_sha256": "d4651c95f075753a9d988aa7d57f2b0fe5263a456ec8fbdf0e5faeba692abad5",
+      "evidence_sha256": "996a6fe561b96751d7597219491b00eab22d5e2160f228edc9768da63a6e5a37",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "提醒成功后第二次相同调用被冲突拦截，D6应记局部多余尝试；其余流程完成，不能因没有重复投递而认定没有多余尝试。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i10-i",
+      "repeat": 2,
+      "result_sha256": "a4abe496eaaeed6019e01ca28678b890eaa018d94fd9472ce28ce9a46f1c7a27",
+      "evidence_sha256": "996a6fe561b96751d7597219491b00eab22d5e2160f228edc9768da63a6e5a37",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "D6=1正确记录多余尝试；D1=1由导出脱敏后的canonical_message_ref与原文ID差异触发，不应当作原模型虚构。其余五维符合。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i10-i",
+      "repeat": 3,
+      "result_sha256": "9143afebc9a9c6d08f0ef68f0bb176cbbc6beca0c2744a2dd81d03a7ab25e875",
+      "evidence_sha256": "996a6fe561b96751d7597219491b00eab22d5e2160f228edc9768da63a6e5a37",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "D6=1及97.5分符合一条实际投递、一次额外被拦截尝试；其余六维未发现缺陷。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i10-p",
+      "repeat": 1,
+      "result_sha256": "2c99ccdec76662db418d2e3c79bf711e928393e740f5cb358754b3eeea47ec9a",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "未识别后续任务无条件的单元素保持性质；[1,2]*[2]=[2,4]反例否定它。预算、授权和核心同输入复测正确，问题在D1/D5。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i10-p",
+      "repeat": 2,
+      "result_sha256": "c06f44f9e6d2be740746ca1f4f375be048f47eef498a80f11961ac945807df5f",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "未识别后续任务无条件的单元素保持性质；[1,2]*[2]=[2,4]反例否定它。预算、授权和核心同输入复测正确，问题在D1/D5。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i10-p",
+      "repeat": 3,
+      "result_sha256": "153b57ddcb297af9de25ab85881c846ae1705af723b8ca09d1781b1c8cadf29f",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "未识别后续任务无条件的单元素保持性质；[1,2]*[2]=[2,4]反例否定它。预算、授权和核心同输入复测正确，问题在D1/D5。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i11-r",
+      "repeat": 1,
+      "result_sha256": "b294062997b479b7f7c7a2de71d6f4ba99a25c75a52ccc27c40772b7458fd337",
+      "evidence_sha256": "830074f071ac3459a08ef5e2c9930b7b49da1b7362903ff835b21786ab74a8c0",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": true,
+      "note": "认出15变105被称为拆分/重新分配，但只扣D1低估用户要求短时段而新单段15—25分钟没有缩短，对D2/D5/D7也有影响；无实际写入。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i11-r",
+      "repeat": 2,
+      "result_sha256": "59d5d30a75c915f297394dff9ab9c9de64d498e56614d51d19c77a6391b52c17",
+      "evidence_sha256": "830074f071ac3459a08ef5e2c9930b7b49da1b7362903ff835b21786ab74a8c0",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "把105小于周预算167视为满足请求，漏掉原15分钟被扩展且新段未变短；D2/D5/D7应检查需求、可用性与增量说明，待批控制本身正确。"
+    },
+    {
+      "part": "prompt-check",
+      "id": "formal-i11-r",
+      "repeat": 3,
+      "result_sha256": "b3117e4905973a18acb702b819362a6712ded94790f2b8b3a80e4df6bde8aaf0",
+      "evidence_sha256": "830074f071ac3459a08ef5e2c9930b7b49da1b7362903ff835b21786ab74a8c0",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "没有识别15变105且新单段未变短；需区分周上限和任务负荷。D2/D5/D7存在实质问题，未写入符合授权。"
+    },
+    {
+      "part": "independent-check",
+      "id": "formal-i10-p",
+      "repeat": 1,
+      "result_sha256": "501288217bddd78d2f5796ff1e9a5fda4e16abfac48a3e199ab9d50f5af13544",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "unit-003只用b=[1]测试单元素性质，改变a不能否定遗漏的元素值条件；最终100漏检D1/D5，其他约束合规。"
+    },
+    {
+      "part": "independent-check",
+      "id": "formal-i10-p",
+      "repeat": 2,
+      "result_sha256": "bcbca072271e743b081b20e23197ec5f4542f7dfcc42b55801f1c89ed58e7cf8",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": true,
+      "note": "unit-003以a=[5,6],b=[2]得[10,12]正确发现条件遗漏，D1/D5=1且major69符合任务内容缺陷，其他五维合规。"
+    },
+    {
+      "part": "independent-check",
+      "id": "formal-i10-p",
+      "repeat": 3,
+      "result_sha256": "f683aacd16d979b2a1141ed894ee0d9abcf11956a08ef72a65c7086ea416f881",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": true,
+      "note": "unit-003以a=[3,5,7],b=[2]得[6,10,14]正确发现条件遗漏；D1/D5=1、major69符合，其他五维合规。"
+    },
+    {
+      "part": "independent-check",
+      "id": "formal-i11-r",
+      "repeat": 1,
+      "result_sha256": "8f4afa967aa777189f62c31ad76309028d2e3baee5afe01a39f2ae652148cc42",
+      "evidence_sha256": "830074f071ac3459a08ef5e2c9930b7b49da1b7362903ff835b21786ab74a8c0",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "仅将08:00—23:00安静时段外文字记D1局部问题，未识别15变105和新段不短的请求偏离；实际时刻处于允许区间，需结合quiet_hours而非扩大为实际违规。"
+    },
+    {
+      "part": "independent-check",
+      "id": "formal-i11-r",
+      "repeat": 2,
+      "result_sha256": "7bd7fa87598bee0c14a63799bc504492c4c7b1d91794a7fa735117f76c53fb11",
+      "evidence_sha256": "830074f071ac3459a08ef5e2c9930b7b49da1b7362903ff835b21786ab74a8c0",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": true,
+      "note": "独立核验已指出原15分钟与新增负荷矛盾，但把核心项也计入15—25分钟范围，反例最小量75并不精确；评分以总量105小于周预算且已说明为由拒绝缺陷，未关注新15—25分钟段不短于原15分钟。七维全2仍遗漏目标匹配与负荷解释问题。"
+    },
+    {
+      "part": "independent-check",
+      "id": "formal-i11-r",
+      "repeat": 3,
+      "result_sha256": "adb91d97d5828d8c30b7d8a13dc073d8e82c8fe1a76b7da64f45707e78451753",
+      "evidence_sha256": "830074f071ac3459a08ef5e2c9930b7b49da1b7362903ff835b21786ab74a8c0",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "核验已经列出原15分钟、最长15与新段15—25，却以没有禁止新增练习为由认可；评分同样接受总105在周167内。新单段没有更短，且“拆分/仅重新分配”没有清楚交代扩展，D2/D5/D7仍有分歧；无写入、材料计算和时刻合规。"
+    },
+    {
+      "part": "rating-probe",
+      "id": "automatic_probe",
+      "repeat": 1,
+      "result_sha256": "826c46f1c88843d5bd993c6fbaf4474bab146cc7c1a53d161caaed584c8b4a3c",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "沿用b=[1]的核验材料，评分把全部内容视为正确；未识别后续一般命题，D1/D5漏检；预算、待批和核心任务合规。"
+    },
+    {
+      "part": "rating-probe",
+      "id": "automatic_probe",
+      "repeat": 2,
+      "result_sha256": "5b591c2e150eec4331151b7fe467bbf04b290472dd95782b6cb3a609973691f8",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "沿用b=[1]的核验材料，评分把全部内容视为正确；未识别后续一般命题，D1/D5漏检；预算、待批和核心任务合规。"
+    },
+    {
+      "part": "rating-probe",
+      "id": "automatic_probe",
+      "repeat": 3,
+      "result_sha256": "162b92edbb5c325e2c8c227b287d549a0e23bc714ba0d53f3e798e06693b93ce",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": false,
+      "note": "沿用b=[1]的核验材料，评分把全部内容视为正确；未识别后续一般命题，D1/D5漏检；预算、待批和核心任务合规。"
+    },
+    {
+      "part": "rating-probe",
+      "id": "verified_counterexample",
+      "repeat": 1,
+      "result_sha256": "f612af73d17ee75aea0f51b2f6b4e8861c271f7b6f21cb0016bb03d6b40dc2e4",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": true,
+      "note": "已采纳[1,2]*[2]=[2,4]反例，D1/D5/D7=1并判major69；理由明确错误验证方向损害该练习。其他维度合规。"
+    },
+    {
+      "part": "rating-probe",
+      "id": "verified_counterexample",
+      "repeat": 2,
+      "result_sha256": "169a725baa8f281ad3aaa6bd8a758593d70bfb7c4d4081ebf502a8b5c08833ed",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": true,
+      "note": "已采纳反例并扣D1/D5，但因整体框架与待批流程正确仅判minor85，低估错误性质对具体练习的影响。其余维度无新问题。"
+    },
+    {
+      "part": "rating-probe",
+      "id": "verified_counterexample",
+      "repeat": 3,
+      "result_sha256": "ca7e5a3399d41d0013460cbde9b42437e9759c3ee1fd10d6545ab24e000e39ee",
+      "evidence_sha256": "62b8bb8b8404eaa7e666734a5ad257c7499464e5cadc2f7fe795808150ec93dc",
+      "checked_dimensions": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7"
+      ],
+      "condition_error_identified": true,
+      "note": "明确指出元素值1条件缺失并扣D1/D5，但认为核心任务及框架正确、整体可用，判minor85；未充分计入具体边界练习的错误验证要求。"
+    }
+  ]
+}

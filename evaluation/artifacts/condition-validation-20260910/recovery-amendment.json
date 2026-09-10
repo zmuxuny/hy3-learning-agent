@@ -1,0 +1,14 @@
+{
+  "recorded_at": "2026-09-10T06:26:02.337993+00:00",
+  "authorization": "作者：api不太稳定，你多试试",
+  "scope": "Only invalid positions; identical method/input/repeat; retain first valid and all failed attempts. No score-dependent reruns.",
+  "additional_cycles": 3,
+  "cooldown_seconds": 30,
+  "result_batches": [
+    "runs",
+    "recovery",
+    "recovery-2",
+    "recovery-3",
+    "recovery-4"
+  ]
+}

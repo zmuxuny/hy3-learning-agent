@@ -16,6 +16,6 @@
 
 新站公开的是倍率，实际人民币换算未确认；以上暂沿用输入1/输出4元每百万token作为官方价格等价估算，非账户实扣。代码支持小数费率，每次请求冻结费率、接口和依据；未知usage继续保留预留。没有为了本次接口切换重跑整批E6。
 
-[完整证据包](provider-evidence.tar.gz)保存两次回归、所有探测（含失败）、运行源码脚本、Episode/Rules/Judge、Judge尝试和账本前后快照；[文件摘要](evidence-manifest.json)、[核验结果](checks.json)可复核。E6待办与具体反例见[接续提示词](../../../docs/E6接续提示词.md)，旧修复批次见[原档案](../e6-repair-20260908/README.md)。开发与本次审计均为主AI。
+[完整证据包](provider-evidence.tar.gz)保存两次回归、所有探测（含失败）、运行源码脚本、Episode/Rules/Judge、Judge尝试和账本前后快照；[文件摘要](evidence-manifest.json)、[核验结果](checks.json)可复核。E6待办与具体反例见[接续提示词](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E6%E6%8E%A5%E7%BB%AD%E6%8F%90%E7%A4%BA%E8%AF%8D.md)，旧修复批次见[原档案](../e6-repair-20260908/README.md)。开发与本次审计均为主AI。
 
 本轮仓外副本、pytest临时库及探测目录已归档后清理，见[清理回执](cleanup.json)。仅本地提交，不推送、不发布。

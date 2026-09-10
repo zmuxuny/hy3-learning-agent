@@ -1,0 +1,36 @@
+{
+  "created_at": "2026-09-10T04:52:56.555128+00:00",
+  "source_commit": "1295254e2f8f792da30eb331cb2d0ea12437fa0b",
+  "method": "learning-quality-9",
+  "method_sha256": "b473189f42564de0401fe93aa1a9d2db30757ed002ebdde2322b932fbf8248b3",
+  "scope": "Final-method complete evaluation on frozen application evidence and all controlled inputs; no product changes or regenerated application outputs.",
+  "parts": {
+    "application": {
+      "input": "evaluation/artifacts/decisionbench-study-20260910/evidence/full/suite.json",
+      "outputs": 48,
+      "repeats": 1,
+      "suite_sha256": "19e22eac6317242818b86f6e9fa79cd1d93c7b58fadbe4175cef20db5ec2f0fe"
+    },
+    "quality": {
+      "input": "evaluation/artifacts/decisionbench-study-20260910/evidence/validation/suite.json",
+      "outputs": 24,
+      "repeats": 3,
+      "suite_sha256": "cc857301b90201abf0a76255a7ea838d9ea4d0b6662b56018c8a88f0f9faaea6"
+    },
+    "adversarial": {
+      "input": "evaluation/artifacts/decisionbench-study-20260910/evidence/adversarial/suite.json",
+      "outputs": 8,
+      "repeats": 1,
+      "suite_sha256": "224fb78b7f59284a0c81c6e562732511d9460729cca7541d8a611de0e9e66c77"
+    }
+  },
+  "retained_new_scenarios": "evaluation/artifacts/decisionbench-severe-validation-20260910:72 slots, identical frozen method, all previously reviewed",
+  "new_scoring_slots": 128,
+  "total_reported_slots": 200,
+  "attempt_policy": "First valid result; max 3 attempts per stage; one extra recovery cycle only for invalid slots, same evidence/method/repeat. No rerun of valid scores.",
+  "concurrency": 4,
+  "before_charged_micro_cny": 105017747,
+  "before_ledger_requests": 2598,
+  "limit_micro_cny": 199770238,
+  "reviews": "Compare final automatic results to fixed evidence and reference; preserve original automatic ratings, all failures, score reversals and reviewer disagreements."
+}

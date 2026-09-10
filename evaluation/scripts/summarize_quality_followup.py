@@ -9,25 +9,33 @@ from learning_agent_eval.canonical import sha256_digest,canonical_json_bytes
 from learning_agent_eval.validator import resolve_evidence_path
 
 
-def verify_result(document,spec,e):
+def verify_result(document,spec,e,method_override=None):
+    method = method_override or globals()['method']
     assert document['method_sha256']==method.METHOD_SHA256
     assert document['method']==method.METHOD
     for row in document['rows']:
         assert row['id']==spec['id'] and row['evidence_sha256']==sha256_digest(e)
         if 'result_sha256' in row:
             assert sha256_digest({k:v for k,v in row.items() if k!='result_sha256'})==row['result_sha256']
-        for stage in ('audit','rating'):
+        for stage in ('audit','challenge','rating'):
             attempts=row.get(stage+'_attempts',[])
-            request=method.audit_request(e,old.reading_view,old.catalog) if stage=='audit' else method.request_for(e,row.get('content_audit'))
+            if stage=='challenge':
+                if not hasattr(method,'challenge_request'):
+                    assert not attempts
+                    continue
+                request=method.challenge_request(e)
+            elif stage=='audit':request=method.audit_request(e,old.reading_view,old.catalog)
+            elif hasattr(method,'challenge_request'):request=method.request_for(e,row.get('content_audit'),row.get('condition_challenge'))
+            else:request=method.request_for(e,row.get('content_audit'))
             for n,a in enumerate(attempts,1):
                 assert a['number']==n
                 req={**request,'_budget_call_id':f"{spec['id']}:repeat:{row['repeat']}:{stage}:{n}"}
                 assert sha256_digest(req)==a['request_sha256']
                 if a['status']=='complete':
                     assert n==len(attempts)
-                    validate=audit.validate if stage=='audit' else method.validate_rating
+                    validate=audit.validate if stage=='audit' else method.validate_challenge if stage=='challenge' else method.validate_rating
                     assert validate(json.loads(a['reply']['content']),e)==a['payload']
-                    assert row['content_audit' if stage=='audit' else 'rating']==a['payload']
+                    assert row[{'audit':'content_audit','challenge':'condition_challenge','rating':'rating'}[stage]]==a['payload']
         if row['status']=='complete':
             for k,v in method.aggregate(row['rating'],e).items():assert row[k]==v
             assert row['effective_dimensions']==method.effective_levels(row['rating'],e)

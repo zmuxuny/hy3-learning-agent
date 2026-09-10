@@ -65,7 +65,7 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python evaluation/scripts/check_e4_candidate
 
 历史`63be8da`真实Primary批次永久保留45 Episode + 3 RuntimeFailure；旧Calibration的泄漏反例及`df8e8e7`修复后24 Episode也保留原身份。
 本次经内容修订的48个输入尚未形成新的真实批次，不能把旧输出绑定为当前Case的结果。
-当前24个受控输入的Runtime/Rules验收与最终源码回归见 [E4验收记录](../../../docs/E4验收工作记录.md)。
+当前24个受控输入的Runtime/Rules验收与最终源码回归见 [E4验收记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E4%E9%AA%8C%E6%94%B6%E5%B7%A5%E4%BD%9C%E8%AE%B0%E5%BD%95.md)。
 
 E4完成内容与工程验收后暂停。E5只使用Development/Calibration验证方法；正式协议和Benchmark在方法稳定后冻结/登记，
 E6使用另行准备的未参与调优测试家族执行正式Primary。当前数据不证明实际采用、长期学习提升或Hy3正式能力。

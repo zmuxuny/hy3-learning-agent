@@ -10,7 +10,7 @@
 | 内容核验开发样本 | [三档构造输出](learning-quality-validation-v1/README.md)及历史真实轨迹 | 已用于发现评测漏检，属于开发证据 |
 | 最终方法验证样本 | [24份三档输出](decisionbench-learning-v1/method-validation/README.md)与[8份对抗输出](decisionbench-learning-v1/adversarial/README.md) | 检验好中差排序、重复评分和对抗输出；构造输出不计作真实应用运行 |
 
-## 旧目录为什么有不同版本号
+## 历史目录与用途
 
 此前将软件协议版本与实验批次写进了数据目录名。这些名字表示不同用途和冻结时间，不能按版本数字大小挑选“最好的数据集”。历史文件被原实验清单按路径和摘要引用，继续保留供复算。
 
@@ -23,10 +23,14 @@
 | decisionbench-v1.15-validation | 工程补修后的定向验证输入 | 历史验证 |
 | e6-repair-development-* | 开发时的错误复现与边界用例 | 历史开发 |
 | e7-development、e7-method-controls、e7-test-* | 暂停的产品版本比较及其开发对照 | 历史保留，当前报告不使用产品比较结论 |
-| learning-quality-validation-v1 | 内容质量方法的首轮构造样本 | 已见开发样本，不再称独立测试 |
+| learning-quality-validation-v1 | 内容质量方法的开发样本 | 已见开发样本，不再称独立测试 |
 
 历史结果入口位于 [artifacts](../artifacts)。每个实验以自己的输入清单、源码提交和方法摘要确定身份。当前交付采用有明确用途的目录名，不继续把工程协议版本当作数据集名称。
 
-## 新增方法验证扩展（2026-09-10）
+## 正常与严重错误对照
 
-[新场景中的严重失败识别](decisionbench-learning-v1/extensions/severe-validation-20260910/README.md)位于统一数据入口的extensions中：12族24份输出，72次评分已完成，独立于原48/24/8。具体场景在方法冻结后构造，原有场景及结果保留。
+[新场景中的严重失败识别](decisionbench-learning-v1/extensions/severe-validation-20260910/README.md)位于统一数据入口的extensions中：12个场景各有正常与严重输出，共24份，评分72次；与48份应用输入、24份三档输出、8份操纵输出共同构成104份输入、200次评分的最终实验。具体场景在方法冻结后构造。
+
+## 条件适用范围验证
+
+[条件核验对照](decisionbench-learning-v1/extensions/condition-validation-20260910/README.md)包含6组成对材料、12份输出，各评3次，检验平方与开方、升序拼接、整除、准确率合并、任务单段长度及负荷变化。与主体104份输入合计116份；主体200个评分位置与条件专项36个位置分别汇总，方法相同。

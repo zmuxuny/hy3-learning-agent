@@ -298,14 +298,21 @@ def current_git_commit() -> str:
             git_dir = (dot_git.parent / line.removeprefix("gitdir: ")).resolve()
         else:
             git_dir = dot_git
+        common_file = git_dir / "commondir"
+        common_dir = (
+            (git_dir / common_file.read_text(encoding="utf-8").strip()).resolve()
+            if common_file.is_file() else git_dir
+        )
         head = (git_dir / "HEAD").read_text(encoding="utf-8").strip()
         if head.startswith("ref: "):
             ref = head.removeprefix("ref: ")
             ref_path = git_dir / ref
+            if not ref_path.is_file():
+                ref_path = common_dir / ref
             if ref_path.is_file():
                 head = ref_path.read_text(encoding="utf-8").strip()
             else:
-                packed = git_dir / "packed-refs"
+                packed = common_dir / "packed-refs"
                 matches = [
                     line.split(" ", 1)[0]
                     for line in packed.read_text(encoding="utf-8").splitlines()

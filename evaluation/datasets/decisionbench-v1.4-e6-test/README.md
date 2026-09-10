@@ -8,6 +8,6 @@
 
 本测试冻结协议为Evaluation Protocol Release 1.4，Benchmark为`decisionbench-v1.4-e6-test-release`，已登记仓库信任根。源码在`1f1f35f`提交后从干净仓外副本运行；完整固定顺序、预算、参数及失败保留策略见[运行预设](../../case-design/e6-repair-run-plan.json)。每Case一个终态，禁止替换失败或以过滤恢复正式资格。保留合法审批，Benchmark不自动批准；实际批准续跑另在隔离产品体验验证。
 
-登记仅确认输入和协议身份。正式结果与剩余缺陷见[E6新版记录](../../../docs/E6新版修复与验证记录.md)，不能用本数据卡或内容自审宣称能力验收通过。旧E6的48 Episode、46有效Judge/2失败、formal=false不覆盖。
+登记仅确认输入和协议身份。正式结果与剩余缺陷见[E6新版记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E6%E6%96%B0%E7%89%88%E4%BF%AE%E5%A4%8D%E4%B8%8E%E9%AA%8C%E8%AF%81%E8%AE%B0%E5%BD%95.md)，不能用本数据卡或内容自审宣称能力验收通过。旧E6的48 Episode、46有效Judge/2失败、formal=false不覆盖。
 
 本次运行完成48 Episode/33有效Judge/15失败，formal=false。活动源码后续另有1.5离线候选；该G家族现已见，不是后续版本的未见测试。

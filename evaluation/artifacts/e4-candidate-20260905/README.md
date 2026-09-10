@@ -6,7 +6,7 @@
 - `63be8da` 的 24 Calibration 是受控作者输出。扩展检查发现画像文字中含 Calibration 场景族 ID，因此该批不能用于正式 Judge 校准；初次有限标识扫描漏掉了此问题。
 - `df8e8e7` 从模型可见输入中移除控制 logical_id，重新离线导出 24 Calibration，0 Failure；模型上下文和 Judge 投影的场景族前缀检查均通过。Good/Mild 的 Rule Gate 为 0/8，Severe 为 8/8；这不证明真实 Judge 能正确排序。
 - 72 个 Case 的业务输入、资源、Mutation/Split 内容没有改写；重新绑定的仅是 Protocol/Benchmark Manifest。48 Primary 未重跑，未据其结果调优 Agent/Oracle/Judge。
-- 72 行独立人工复核均 pending。详细修复、限制和两份方案的复核见 [E4 收口记录](../../../docs/E4候选数据收口与方案复核.md)。
+- 72 行独立人工复核均 pending。详细修复、限制和两份方案的复核见 [E4 收口记录](https://github.com/zmuxuny/hy3-learning-agent/blob/1295254e2f8f792da30eb331cb2d0ea12437fa0b/docs/E4%E5%80%99%E9%80%89%E6%95%B0%E6%8D%AE%E6%94%B6%E5%8F%A3%E4%B8%8E%E6%96%B9%E6%A1%88%E5%A4%8D%E6%A0%B8.md)。
 
 ## 文件
 
