@@ -33,12 +33,19 @@ def complete_stage(provider,request,e,validate,identity,stage,checkpoint):
         checkpoint(attempts)
     return None,attempts
 
-def run(suite,output,ledger,ids=None,repeats=1):
+def run(suite,output,ledger,ids=None,repeats=1,method_version='learning-quality-8'):
+    from learning_agent_eval import learning_quality as method
+    stage_audit_request = audit_request
+    if method_version == 'learning-quality-9':
+        from learning_agent_eval import learning_quality_v9 as method
+        stage_audit_request = method.audit_request
+    elif method_version != 'learning-quality-8':
+        raise ValueError('unsupported quality method')
     if output.exists():raise FileExistsError(output)
     if not git_worktree_clean() or dependency_environment_reason_codes():raise ValueError('frozen clean source and locked dependencies required')
     specs=json.loads(suite.read_text());output.mkdir(parents=True)
     provider=QualityProvider(budget_ledger=ledger,scope=output.name)
-    manifest={'method':METHOD,'method_sha256':METHOD_SHA256,'source_commit':current_git_commit(),
+    manifest={'method':method.METHOD,'method_sha256':method.METHOD_SHA256,'source_commit':current_git_commit(),
         'suite_sha256':sha256_digest(specs),'attempt_policy':{'max_attempts_per_stage':MAX_ATTEMPTS,'selection':'first valid; retry only transport/format failure; no score-dependent retry'},'rows':[]}
     def save():
         p=output/'results.json';tmp=output/'results.pending';tmp.write_bytes(canonical_json_bytes(manifest));tmp.replace(p)
@@ -53,13 +60,15 @@ def run(suite,output,ledger,ids=None,repeats=1):
                 row.update(status='in_progress',evidence_sha256=spec['evidence_sha256'])
                 def checkpoint(stage,attempts):row[stage+'_attempts']=attempts;save()
                 identity=f"{spec['id']}:repeat:{rep}"
-                audit,attempts=complete_stage(provider,audit_request(e,reading_view,catalog),e,validate_audit,identity,'audit',lambda a:checkpoint('audit',a))
+                audit,attempts=complete_stage(provider,stage_audit_request(e,reading_view,catalog),e,validate_audit,identity,'audit',lambda a:checkpoint('audit',a))
                 row['status']='in_progress'
                 if audit is not None:
                     row['content_audit']=audit
-                    rating,attempts=complete_stage(provider,request_for(e,audit),e,validate_rating,identity,'rating',lambda a:checkpoint('rating',a))
+                    rating,attempts=complete_stage(provider,method.request_for(e,audit),e,method.validate_rating,identity,'rating',lambda a:checkpoint('rating',a))
                     if rating is not None:
-                        row.update(status='complete',rating=rating,effective_dimensions=effective_levels(rating,e),undo_version_facts=undo_version_facts(e),exponential_facts=exponential_facts(e),schedule_facts=schedule_facts(e),**aggregate(rating,e))
+                        row.update(status='complete',rating=rating,effective_dimensions=method.effective_levels(rating,e),undo_version_facts=undo_version_facts(e),exponential_facts=exponential_facts(e),schedule_facts=schedule_facts(e),**method.aggregate(rating,e))
+                        if hasattr(method, 'reconciliation_result'):
+                            row.update(method.reconciliation_result(rating,e))
                 if row['status']=='in_progress':row['status']='judge_error'
                 row['result_sha256']=sha256_digest(row)
             save();print(row['id'],rep,row['status'],row.get('score'),flush=True)
@@ -67,6 +76,7 @@ def run(suite,output,ledger,ids=None,repeats=1):
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--suite',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
-    p.add_argument('--budget-ledger',type=Path,required=True);p.add_argument('--case-id',action='append');p.add_argument('--repeats',type=int,default=1);a=p.parse_args()
+    p.add_argument('--budget-ledger',type=Path,required=True);p.add_argument('--case-id',action='append');p.add_argument('--repeats',type=int,default=1)
+    p.add_argument('--method',choices=['learning-quality-8','learning-quality-9'],default='learning-quality-8');a=p.parse_args()
     if a.repeats<1:p.error('repeats must be positive')
-    run(a.suite,a.output,a.budget_ledger,a.case_id,a.repeats)
+    run(a.suite,a.output,a.budget_ledger,a.case_id,a.repeats,a.method)
