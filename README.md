@@ -11,6 +11,14 @@
 
 [项目与评测报告](第三阶段项目与评测报告.md) · [第三阶段交付总览](第三阶段交付说明.md) · [在线观看108秒Demo](https://zmuxuny.github.io/hy3-learning-agent/#demo)
 
+## Demo
+
+[![点击封面，在线观看学习助手与评测108秒Demo](assets/demo/stage3/cover.png)](https://zmuxuny.github.io/hy3-learning-agent/#demo)
+
+[▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)
+
+视频依次展示真实目标输入、计划审阅与采用，以及评测流程、错误验收识别案例和质量对照结果。全片无声，采用统一画框与渐变转场；产品片段完整保留浏览器视口，说明文字位于画面外边距。
+
 Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩展为贯穿目标、计划、执行、验收与调整的持续学习伙伴。
 
 用户可以从一句并不完整的目标开始，例如：“我有 C++ 基础，希望两个月内学会 CUDA，并完成一个矩阵乘优化项目。”Hy3 会澄清真正影响路径的条件、调研并核验资源、提出可审阅的计划；当学习开始后，它继续跟踪任务与证据、验收成果，并根据新的学习事实选择保持安静、教学、抽查、提醒或调整计划。
@@ -79,15 +87,6 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 质量对照实验的24组分数比较中，23组按正确、局部缺陷、严重错误的顺序依次降分。我们还检查了追加满分指令后是否误判、能否区分正常与严重行为，以及是否发现条件遗漏和工作量矛盾。各项材料如何构造、评分次数如何计算、结果说明什么，见[报告第四、五章](第三阶段项目与评测报告.md#4-实验安排与测试材料)。学习助手48项任务的表现则见第六章，自动评分与人工参考同时列出。
 
 直接核对应用实验的数据：[48例参考标签 application.csv](交付材料/人工标注/application.csv) · [48例自动与人工对照 application-human.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/application-human.csv) · [200次主体评分 cases.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/cases.csv)。各文件的记录数、字段含义与原始证据查找方式见[关键数据文件索引](第三阶段交付说明.md#关键数据文件索引)。
-
-## Demo
-
-[![点击封面，在线观看学习助手与评测108秒Demo](assets/demo/stage3/cover.png)](https://zmuxuny.github.io/hy3-learning-agent/#demo)
-
-[▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)
-
-视频依次展示真实目标输入、计划审阅与采用，以及评测流程、错误验收识别案例和质量对照结果。全片无声，采用统一画框与渐变转场；产品片段完整保留浏览器视口，说明文字位于画面外边距。
-
 
 ## 快速开始
 
