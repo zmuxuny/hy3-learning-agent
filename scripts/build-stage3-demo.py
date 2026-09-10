@@ -14,6 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 FONT = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
 BOLD = '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
+# TTC defaults to the Japanese face; index 2 is Noto Sans CJK Simplified Chinese.
+FONT_INDEX = 2
 NAVY, INK, MUTED, LINE = '#203d63', '#283343', '#647185', '#dce3ec'
 
 
@@ -22,7 +24,7 @@ def digest(path):
 
 
 def label(draw, xy, text, size=36, color=INK, bold=False, limit=1700):
-    font = ImageFont.truetype(BOLD if bold else FONT, size)
+    font = ImageFont.truetype(BOLD if bold else FONT, size, index=FONT_INDEX)
     assert draw.textbbox((0, 0), text, font=font)[2] <= limit, text
     draw.text(xy, text, font=font, fill=color)
 

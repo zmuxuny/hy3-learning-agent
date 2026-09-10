@@ -8,10 +8,16 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const input=path.join(root,'第三阶段项目与评测报告.md');
 const out=process.argv[2] ? path.resolve(process.argv[2]) : root;await mkdir(out,{recursive:true});
 let content=new MarkdownIt({html:false,linkify:true}).render(await readFile(input,'utf8'));
+// The logo remains a normal image in Markdown; the report gives it a compact masthead.
+content=content.replace(/<p>(<img src="assets\/brand\/learning-agent-logo\.svg"[^>]*>)<\/p>/,
+  '<div class="report-brand">$1</div>');
+content=content.replace(/<p>(2026腾讯犀牛鸟[\s\S]*?)<\/p>/,
+  '<p class="report-meta">$1</p>');
 // Keep headings addressable and give dense case tables room for readable filenames.
 content=content.replace(/<h([1-6])>([\s\S]*?)<\/h\1>/g,(_,level,label)=>{
  const id=label.replace(/<[^>]*>/g,'').toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu,'').replace(/\s/g,'-');
- return `<h${level} id="${id}">${label}</h${level}>`;
+ const display=level==='1' ? label.replace('：', '：<br>') : label;
+ return `<h${level} id="${id}">${display}</h${level}>`;
 });
 content=content.replace(/<table>([\s\S]*?)<\/table>/g,(_,body)=>{
  const headers=[...body.matchAll(/<th[^>]*>(.*?)<\/th>/g)].map(m=>m[1]);
@@ -28,7 +34,11 @@ content=content.replace(/<table>([\s\S]*?)<\/table>/g,(_,body)=>{
  return `<table${small?' class="keep-table"':''}>${cols}${body}</table>`;
 });
 content=content.replace(/<p>(<img[^>]+>)<\/p>\s*<p><em>(图[\s\S]*?)<\/em><\/p>/g,
-  (_,img,caption)=>`<figure${/evaluation-(method-flow|experiment-map)/.test(img)?' class="flow-figure"':''}>${img}<figcaption>${caption}</figcaption></figure>`);
+  (_,img,caption)=>{
+    const titleEnd=caption.indexOf('。')+1;
+    const formatted=`<span class="figure-title">${caption.slice(0,titleEnd)}</span>${caption.slice(titleEnd)}`;
+    return `<figure${/evaluation-(method-flow|experiment-map)/.test(img)?' class="flow-figure"':''}>${img}<figcaption>${formatted}</figcaption></figure>`;
+  });
 for(const match of [...content.matchAll(/src="([^"]+)"/g)]){
   const source=path.resolve(path.dirname(input),match[1]);const ext=path.extname(source).slice(1);const bytes=await readFile(source);
   content=content.replace(match[0],`src="data:image/${ext==='svg'?'svg+xml':ext};base64,${bytes.toString('base64')}"`);
@@ -39,8 +49,14 @@ content=content.replace(/href="([^"#][^"]*)"/g,(whole,href)=>{
  if(decoded.startsWith(path.basename(input)+'#'))return `href="#${decoded.split('#')[1]}"`;
  const target=path.relative(root,path.resolve(path.dirname(input),decoded));return `href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/${encodeURI(target)}"`;
 });
-const html=`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Learning Agent · Hy3 — 项目与评测报告</title><style>
-*{box-sizing:border-box}body{font-family:"Noto Sans CJK SC","Noto Sans CJK JP",sans-serif;color:#283343;background:#fff;margin:36px auto;max-width:930px;padding:0 30px;font-size:16px;line-height:1.8}h1{font-size:30px;line-height:1.5;color:#203d63;margin:0 0 15px}h2{font-size:23px;color:#203d63;margin:36px 0 12px;border-bottom:1px solid #d8dee7;padding-bottom:8px;break-after:avoid}h3{font-size:18px;margin-top:24px;break-after:avoid}h4{break-after:avoid}figure{margin:18px 0;break-inside:avoid}figcaption{color:#5d6878;font-size:13px;line-height:1.65}p{margin:12px 0}a{color:#315f91;text-decoration:underline;text-decoration-color:#8ba3bf;text-underline-offset:3px}img{display:block;max-width:100%;max-height:490px;object-fit:contain;margin:20px auto 8px}table{break-inside:auto;border-collapse:collapse;width:100%;font-size:13px;line-height:1.65;margin:16px 0}th{background:#eef2f7;color:#203d63;text-align:left}th,td{padding:8px;border-bottom:1px solid #dce2ea;vertical-align:top}thead{display:table-header-group}tr{break-inside:avoid}td,th{overflow-wrap:anywhere}table.keep-table{break-inside:avoid}code{font-family:monospace;background:#f3f5f8;padding:0 3px;overflow-wrap:anywhere}em{font-style:normal;color:#5d6878;font-size:13px}strong{font-weight:700} @media print{body{margin:0;padding:0;font-size:10.5pt;line-height:1.65}h1{font-size:24pt}h2{font-size:17pt;margin-top:24px}h3{font-size:13pt}table{font-size:9pt}img{max-height:95mm}figure:first-of-type img{max-height:110mm}figure.flow-figure img{max-height:135mm}figcaption{font-size:9pt}a{color:#315f91}p{orphans:3;widows:3}}
+const html=`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Learning Agent · Hy3 — 项目与评测报告</title><style>
+*{box-sizing:border-box}body{font-family:"Noto Sans CJK SC","Noto Sans CJK JP",sans-serif;color:#283343;background:#fff;margin:36px auto;max-width:930px;padding:0 30px;font-size:16px;line-height:1.8}h1{font-size:30px;line-height:1.5;color:#203d63;margin:0 0 15px}h2{font-size:23px;color:#203d63;margin:36px 0 12px;border-bottom:1px solid #d8dee7;padding-bottom:8px;break-after:avoid}h3{font-size:18px;margin-top:24px;break-after:avoid}h4{break-after:avoid}figure{margin:18px 0;break-inside:avoid}figcaption{color:#5d6878;font-size:13px;line-height:1.65}p{margin:12px 0}a{color:#315f91;text-decoration:underline;text-decoration-color:#8ba3bf;text-underline-offset:3px}img{display:block;max-width:100%;max-height:490px;object-fit:contain;margin:20px auto 8px}table{break-inside:auto;border-collapse:collapse;width:100%;font-size:13px;line-height:1.65;margin:16px 0}th{background:#eef2f7;color:#203d63;text-align:left}th,td{padding:8px;border-bottom:1px solid #dce2ea;vertical-align:top}thead{display:table-header-group}tr{break-inside:avoid}td,th{overflow-wrap:anywhere}table.keep-table{break-inside:avoid}code{font-family:monospace;background:#f3f5f8;padding:0 3px;overflow-wrap:anywhere}em{font-style:normal;color:#5d6878;font-size:13px}strong{font-weight:700;color:#203d63}
+.report-brand{margin:0 0 18px;break-after:avoid}.report-brand img{width:320px;max-height:none;margin:0}
+.report-meta{color:#687386;font-size:13px;line-height:1.65;margin:0 0 22px}
+h4{font-size:16px;line-height:1.5;color:#203d63;margin:22px 0 8px;break-after:avoid}
+.figure-title{display:block;color:#203d63;font-weight:700;margin-bottom:5px}
+@media(max-width:650px){body{padding:0 18px;margin:24px auto}h1{font-size:25px}.report-brand img{width:260px}table{font-size:12px}}
+@media print{body{margin:0;padding:0;font-size:10.5pt;line-height:1.65}h1{font-size:24pt}h2{font-size:17pt;margin-top:24px}h3{font-size:13pt}h4{font-size:11pt;margin-top:18px}.report-brand{margin-bottom:12px}.report-brand img{width:68mm;height:auto}.report-meta{font-size:9pt;margin-bottom:16px}table{font-size:9pt}img{max-height:95mm}figure:first-of-type img{max-height:110mm}figure.flow-figure img{max-height:135mm}figcaption{font-size:9pt}a{color:#315f91}p{orphans:3;widows:3}}
 </style><body>${content}</body></html>`;
 const htmlPath=path.join(out,'第三阶段项目与评测报告.html');await writeFile(htmlPath,html);
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/root/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome',args:['--no-sandbox']});

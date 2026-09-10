@@ -62,7 +62,13 @@
     "palette": "navy / neutral white",
     "viewer_sha256": "267207884e1454db2e18eeb47164d3835c3418eb512fe88ddecb58e7f368493e",
     "figure_sha256": "779962bcf66014a2db9379b6e0e2a113aebc829908539d752a96a02b19c50d4b",
-    "case": "B15 / quality-05-3"
+    "case": "B15 / quality-05-3",
+    "typeface": {
+      "family": "Noto Sans CJK SC",
+      "regular": "NotoSansCJK-Regular.ttc",
+      "bold": "NotoSansCJK-Bold.ttc",
+      "collection_index": 2
+    }
   },
   "summary_sha256": "0002052cd60994070e992f3b51efec353662a9e621e864c89f619f7078d38c47",
   "condition_evidence_archive": "evaluation/artifacts/condition-validation-20260910",
