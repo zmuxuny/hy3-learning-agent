@@ -1,0 +1,13 @@
+{
+  "markdown_relative_links": "passed",
+  "secret_scan": "passed after staging presentation changes",
+  "targeted_tests": 20,
+  "independent_automatic_recomputation": "4 files byte-identical",
+  "old_archive_integrity": "419 files unchanged",
+  "new_inputs": "26 files byte-identical to dataset extension",
+  "external_project_plan": "approved snapshot matches current file",
+  "product_code": "backend and frontend unchanged from ea10ec0",
+  "remaining_micro_cny": 94752491,
+  "new_charged_micro_cny": 9340409,
+  "remote_actions": []
+}

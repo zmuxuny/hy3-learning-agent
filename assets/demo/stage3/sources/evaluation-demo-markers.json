@@ -1,18 +1,18 @@
 [
   {
     "name": "case",
-    "seconds": 1.003
+    "seconds": 0
   },
   {
     "name": "dimensions",
-    "seconds": 12.239
+    "seconds": 11.157
   },
   {
     "name": "validation",
-    "seconds": 18.848
+    "seconds": 18.179
   },
   {
     "name": "tracks",
-    "seconds": 33.341
+    "seconds": 34.541
   }
 ]

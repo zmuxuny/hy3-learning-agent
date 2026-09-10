@@ -1,6 +1,6 @@
 {
   "report_pages": 10,
-  "report_sha256": "6c2a560e28e66a3d9687e8add418d140bde930f594cf8c272aa57de629ca77e0",
+  "report_sha256": "076eb551fd5a3760d054d27d56330f605b743b6d71a97ec95d5f84254b56232a",
   "demo": {
     "duration": 108.0,
     "width": 1920,
@@ -56,9 +56,68 @@
         "video_end": 108
       }
     ],
-    "sha256": "a20be318671f1edd4035ae396dd241329ac29b6d6c83c234f192a0d846a9d37e"
+    "sha256": "889035c8748b83ca3c46226f71d535579051d930b6c0651fabb9f87b037944b2"
   },
-  "visual_review": "All 10 PDF pages inspected; updated closing and caption frame inspected; original complete viewport sources unchanged.",
+  "visual_review": "All 10 PDF pages inspected; final 60s, 77s and 98s video frames checked; complete 1440x900 viewport retained, captions outside viewport.",
   "input_regeneration": "26 files byte-identical",
-  "human_and_rule_replay": "byte-identical recomputation"
+  "human_and_rule_replay": "byte-identical recomputation",
+  "palette": "navy / neutral white",
+  "evaluation_presentation": {
+    "source_archive": "evaluation/artifacts/decisionbench-study-20260910",
+    "source_viewer_sha256": "c2473c7d95f28b4440e9a48373c5e553460b55fd9449fc93d1f592f7ae3636b9",
+    "viewer_sha256": "2d86969e7389ed9355e22d1027e48cba85ace50accaebb873822210414ed43ce",
+    "palette": "navy / neutral white",
+    "recording_script": "scripts/record-stage3-evaluation.mjs",
+    "viewport_checks": [
+      {
+        "width": 375,
+        "tab": "app-tab",
+        "client": 375,
+        "scroll": 375
+      },
+      {
+        "width": 375,
+        "tab": "method-tab",
+        "client": 375,
+        "scroll": 375
+      },
+      {
+        "width": 768,
+        "tab": "app-tab",
+        "client": 768,
+        "scroll": 768
+      },
+      {
+        "width": 768,
+        "tab": "method-tab",
+        "client": 768,
+        "scroll": 768
+      },
+      {
+        "width": 1280,
+        "tab": "app-tab",
+        "client": 1280,
+        "scroll": 1280
+      },
+      {
+        "width": 1280,
+        "tab": "method-tab",
+        "client": 1280,
+        "scroll": 1280
+      },
+      {
+        "width": 1440,
+        "tab": "app-tab",
+        "client": 1440,
+        "scroll": 1440
+      },
+      {
+        "width": 1440,
+        "tab": "method-tab",
+        "client": 1440,
+        "scroll": 1440
+      }
+    ],
+    "figure_sha256": "f017723da7cc33848066eaec7829162b3973ea8da26b289522faea7794a9e549"
+  }
 }

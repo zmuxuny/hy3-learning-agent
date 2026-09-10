@@ -1,0 +1,14 @@
+{
+  "source_commit": "15f4279d2364c12d3c62bf23720fcdce2ba3bb3d",
+  "isolated_source_clean_before_tests": true,
+  "targeted_tests": "....................                                                     [100%]\n20 passed in 0.81s",
+  "automatic_files_byte_identical": [
+    "cases.csv",
+    "tracks.csv",
+    "dimensions.csv",
+    "summary.json"
+  ],
+  "old_archive_files_verified": 419,
+  "dataset_input_files_verified": 26,
+  "product_backend_frontend_unchanged_since": "ea10ec0"
+}

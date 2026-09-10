@@ -9,16 +9,16 @@ ROOT=Path(__file__).resolve().parents[1]
 FONT='/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
 BOLD='/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
 def slide(path,title,lines):
-    im=Image.new('RGB',(1920,1080),'#f5f8f4');d=ImageDraw.Draw(im)
-    d.text((135,90),'Learning Agent · Hy3 / 个人活动作品',font=ImageFont.truetype(FONT,28),fill='#586e62')
-    d.text((130,185),title,font=ImageFont.truetype(BOLD,57),fill='#244f41')
+    im=Image.new('RGB',(1920,1080),'#f7f8fa');d=ImageDraw.Draw(im)
+    d.text((135,90),'Learning Agent · Hy3 / 个人活动作品',font=ImageFont.truetype(FONT,28),fill='#647185')
+    d.text((130,185),title,font=ImageFont.truetype(BOLD,57),fill='#203d63')
     y=335
     for line in lines:
         font=ImageFont.truetype(FONT,39)
         assert d.textbbox((0,0),line,font=font)[2]<1670,line
-        d.text((135,y),line,font=font,fill='#263a30');y+=108
-    d.line((135,932,1785,932),fill='#bfcfc4',width=2)
-    d.text((135,962),'任务一：面向真实场景的应用 + 自定义评测 + 实验验证',font=ImageFont.truetype(FONT,29),fill='#596e62');im.save(path)
+        d.text((135,y),line,font=font,fill='#283343');y+=108
+    d.line((135,932,1785,932),fill='#d4dce6',width=2)
+    d.text((135,962),'任务一：面向真实场景的应用 + 自定义评测 + 实验验证',font=ImageFont.truetype(FONT,29),fill='#647185');im.save(path)
 def ff(*args):subprocess.run(['ffmpeg','-v','error','-y',*map(str,args)],check=True)
 def build(manifest,output):
     m=json.loads(manifest.read_text());base=manifest.parent
@@ -46,7 +46,7 @@ def build(manifest,output):
             if s['type']=='clip':
                 caption=tmp/f'{i}.txt';caption.write_text(s['caption'])
                 # Scale the entire 1440x900 viewport; captions occupy the added top margin.
-                vf=f"scale=1600:1000,pad=1920:1080:160:80:white,tpad=stop_mode=clone:stop_duration=2,drawtext=fontfile={FONT}:textfile={caption}:x=160:y=20:fontsize=32:fontcolor=0x244f41"
+                vf=f"scale=1600:1000,pad=1920:1080:160:80:white,tpad=stop_mode=clone:stop_duration=2,drawtext=fontfile={FONT}:textfile={caption}:x=160:y=20:fontsize=32:fontcolor=0x203d63"
                 ff('-ss',s['start'],'-i',base/s['source'],'-vf',vf,*common,dest)
             else:
                 img=tmp/f'{i}.png';slide(img,*pages[s['type']]);ff('-loop','1','-i',img,*common,dest)
