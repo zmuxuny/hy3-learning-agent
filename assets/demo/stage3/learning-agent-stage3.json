@@ -1,4 +1,5 @@
 {
+  "video_file": "第三阶段Demo.mp4",
   "duration": 108.0,
   "width": 1920,
   "height": 1080,
@@ -17,47 +18,53 @@
   "timeline": [
     {
       "type": "intro",
-      "duration": 8,
+      "duration": 4,
       "video_start": 0,
-      "video_end": 8
+      "video_end": 4
     },
     {
       "type": "clip",
       "source": "sources/goal.webm",
       "start": 1,
-      "duration": 8,
-      "caption": "应用：给出作品目标、时间预算与学习材料",
-      "video_start": 8,
-      "video_end": 16
+      "duration": 6,
+      "caption": "提出目标：一周完成目录统计工具，每天30分钟",
+      "video_start": 4,
+      "video_end": 10
     },
     {
       "type": "clip",
       "source": "sources/application.webm",
       "start": 2,
-      "duration": 26,
-      "caption": "应用：审阅任务与验收要求，采用后进入计划工作区",
-      "video_start": 16,
-      "video_end": 42
+      "duration": 22,
+      "caption": "审阅任务与验收要求，采用后进入学习计划",
+      "video_start": 10,
+      "video_end": 32
     },
     {
-      "type": "method",
-      "duration": 18,
-      "video_start": 42,
-      "video_end": 60
+      "type": "clip",
+      "source": "sources/proactive.webm",
+      "start": 1,
+      "duration": 30,
+      "caption": "主动支持：后台发现任务临近截止，提醒先完成前置练习",
+      "video_start": 32,
+      "video_end": 62
     },
     {
-      "type": "case",
-      "duration": 24,
-      "video_start": 60,
-      "video_end": 84
+      "type": "clip",
+      "source": "sources/evaluation-walkthrough.webm",
+      "start": 1,
+      "duration": 38,
+      "chapter": 2,
+      "caption": "评测：展开实际案例的情境与评分依据，再查看固定质量对照结果",
+      "video_start": 62,
+      "video_end": 100
     },
     {
-      "type": "results",
-      "duration": 24,
-      "video_start": 84,
+      "type": "closing",
+      "duration": 8,
+      "video_start": 100,
       "video_end": 108
     }
   ],
-  "sha256": "8cfbaffa7763066d2747926f898878d3024d5e076703308d4a1107d6cad0a7ed",
-  "video_file": "第三阶段Demo.mp4"
+  "sha256": "e2dfd10f93ec8c68d6ef0406a9ee4bdff31d7b0e5e76277d038051dba58a8632"
 }

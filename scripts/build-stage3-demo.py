@@ -69,6 +69,12 @@ def page(kind, summary, case, triplets):
             label(d, (150, y), name, 34, NAVY, True)
             label(d, (355, y), detail, 34)
         label(d, (150, 955), '接下来：一周完成目录文件统计工具', 29, MUTED)
+    elif kind == 'closing':
+        heading(d, '让学习持续推进，让决策有据可评', '产品：目标规划、主动支持、成果验收与计划调整')
+        label(d, (150, 440), '应用实验：48项任务，记录助手的实际决策', 40, NAVY, True)
+        label(d, (150, 565), '方法验证：固定质量对照，23 / 24组排序正确', 40, NAVY, True)
+        label(d, (150, 710), '报告、测试用例与实验数据均在仓库中提供。', 34)
+        label(d, (150, 900), 'github.com/zmuxuny/hy3-learning-agent', 32, MUTED)
     elif kind == 'method':
         heading(d, '评价助手的一次完整决策', '关键决策片段（Episode）：从请求触发，到回复、操作或等待结果')
         label(d, (150, 365), '证据：用户条件、助手内容、工具结果、操作前后状态', 36, NAVY)
@@ -138,6 +144,9 @@ def build(manifest, output):
         assert digest(base / p) == h, p
     for p, h in m['presentation_sources_sha256'].items():
         assert digest(ROOT / p) == h, p
+    proactive = m.get('proactive_presentation')
+    if proactive:
+        assert digest(base / proactive['evidence_archive']) == proactive['sha256']
     archive = ROOT / m['evidence_archive'] / 'automatic'
     assert digest(archive / 'summary.json') == m['summary_sha256']
     summary = json.loads((archive / 'summary.json').read_text())
@@ -161,7 +170,7 @@ def build(manifest, output):
             common = ['-an', '-t', duration, '-r', '25', '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p']
             if s['type'] == 'clip':
                 background = tmp / f'{i}.png'
-                frame(1, s['caption']).save(background)
+                frame(s.get('chapter', 1), s['caption']).save(background)
                 # Preserve every pixel of the entire browser viewport at its original size.
                 vf = '[1:v]scale=1440:900,setsar=1,tpad=stop_mode=clone:stop_duration=2[v];[0:v][v]overlay=240:140:shortest=1'
                 ff('-loop', '1', '-i', background, '-ss', s['start'], '-i', base / s['source'], '-filter_complex_threads', '1', '-filter_complex', vf, *common, dest)

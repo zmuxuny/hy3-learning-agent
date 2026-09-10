@@ -17,58 +17,110 @@
   "segments": [
     {
       "type": "intro",
-      "duration": 8
+      "duration": 4
     },
     {
       "type": "clip",
       "source": "sources/goal.webm",
       "start": 1,
-      "duration": 8,
-      "caption": "应用：给出作品目标、时间预算与学习材料"
+      "duration": 6,
+      "caption": "提出目标：一周完成目录统计工具，每天30分钟"
     },
     {
       "type": "clip",
       "source": "sources/application.webm",
       "start": 2,
-      "duration": 26,
-      "caption": "应用：审阅任务与验收要求，采用后进入计划工作区"
+      "duration": 22,
+      "caption": "审阅任务与验收要求，采用后进入学习计划"
     },
     {
-      "type": "method",
-      "duration": 18
+      "type": "clip",
+      "source": "sources/proactive.webm",
+      "start": 1,
+      "duration": 30,
+      "caption": "主动支持：后台发现任务临近截止，提醒先完成前置练习"
     },
     {
-      "type": "case",
-      "duration": 24
+      "type": "clip",
+      "source": "sources/evaluation-walkthrough.webm",
+      "start": 1,
+      "duration": 38,
+      "chapter": 2,
+      "caption": "评测：展开实际案例的情境与评分依据，再查看固定质量对照结果"
     },
     {
-      "type": "results",
-      "duration": 24
+      "type": "closing",
+      "duration": 8
     }
   ],
   "source_sha256": {
     "sources/application.webm": "4c7737f4bebf2ee9f488feea06aa9a6c3e804d304ffa15240b24442108262fd1",
     "sources/goal.webm": "d4c8ff582aeeeb967f4b8a43740ab8eb0f3e35d5c508189fe0605d0e8d47b093",
-    "sources/evaluation.webm": "7132e01ac05322ccc50975f52b56e6060ebd9add055212ef3634ced67ede084f"
+    "sources/evaluation.webm": "7132e01ac05322ccc50975f52b56e6060ebd9add055212ef3634ced67ede084f",
+    "sources/evaluation-walkthrough.webm": "b87066edb78c1ab3f0feb5c1c59d8b5cca44a10710309b814df2015b3107948a",
+    "sources/proactive.webm": "f994b52799d64d7b9b33695b178c18159ea5062ec076c3e9262b48b8333a997f"
   },
   "extension_evidence_archive": "evaluation/artifacts/decisionbench-severe-validation-20260910",
   "extension_summary_sha256": "d8fb519fd3c13c80731af75e0d4de90ea801c4499045564a32e30fd05046c6d7",
   "human_confirmation_archive": "evaluation/artifacts/human-confirmation-20260910",
   "human_confirmation_sha256": "9c43cb803f79872076482368c1070145753e12a94e22cbb0f4df5b5c5b12fa84",
   "evaluation_presentation": {
-    "type": "fixed evidence and result panels",
     "source_archive": "evaluation/artifacts/decisionbench-final-method-20260910",
-    "builder": "scripts/build-stage3-demo.py",
-    "palette": "navy / neutral white",
-    "viewer_sha256": "267207884e1454db2e18eeb47164d3835c3418eb512fe88ddecb58e7f368493e",
+    "summary_sha256": "0002052cd60994070e992f3b51efec353662a9e621e864c89f619f7078d38c47",
+    "viewer_sha256": "8b9cfcb46996c8dc8a03e8c5b83a2d62f74ed4ca333c190d3e8962bc0398b295",
     "figure_sha256": "779962bcf66014a2db9379b6e0e2a113aebc829908539d752a96a02b19c50d4b",
-    "case": "B15 / quality-05-3",
-    "typeface": {
-      "family": "Noto Sans CJK SC",
-      "regular": "NotoSansCJK-Regular.ttc",
-      "bold": "NotoSansCJK-Bold.ttc",
-      "collection_index": 2
-    }
+    "palette": "navy / neutral white",
+    "recording_script": "scripts/record-stage3-evaluation.mjs",
+    "viewport_checks": [
+      {
+        "width": 375,
+        "tab": "app-tab",
+        "client": 375,
+        "scroll": 375
+      },
+      {
+        "width": 375,
+        "tab": "method-tab",
+        "client": 375,
+        "scroll": 375
+      },
+      {
+        "width": 768,
+        "tab": "app-tab",
+        "client": 768,
+        "scroll": 768
+      },
+      {
+        "width": 768,
+        "tab": "method-tab",
+        "client": 768,
+        "scroll": 768
+      },
+      {
+        "width": 1280,
+        "tab": "app-tab",
+        "client": 1280,
+        "scroll": 1280
+      },
+      {
+        "width": 1280,
+        "tab": "method-tab",
+        "client": 1280,
+        "scroll": 1280
+      },
+      {
+        "width": 1440,
+        "tab": "app-tab",
+        "client": 1440,
+        "scroll": 1440
+      },
+      {
+        "width": 1440,
+        "tab": "method-tab",
+        "client": 1440,
+        "scroll": 1440
+      }
+    ]
   },
   "summary_sha256": "0002052cd60994070e992f3b51efec353662a9e621e864c89f619f7078d38c47",
   "condition_evidence_archive": "evaluation/artifacts/condition-validation-20260910",
@@ -79,5 +131,13 @@
     "evaluation/artifacts/decisionbench-final-method-20260910/automatic/cases.csv": "4e3e80237cbb9b65c7cd50cf28169737fdb9e6a23a911491eb788b06e76cc70e",
     "evaluation/artifacts/decisionbench-final-method-20260910/automatic/triplets.csv": "f6658ddfcfbcec18950dc2e0576684124a39b45914c07955965035dc62ef29fb",
     "evaluation/datasets/decisionbench-learning-v1/method-validation/evidence/quality-05-3.json": "4fa086fdfbd326ea6e124b5b198d574b2064c1610847e9f7783ad57e5a6ef796"
+  },
+  "proactive_presentation": {
+    "source_commit": "7867946",
+    "run_id": "4a121a2a-9bbd-4d50-b1d7-ccaac21dbf1b",
+    "trigger": "heartbeat",
+    "fixture": "isolated synthetic learner state",
+    "evidence_archive": "proactive-evidence.tar.gz",
+    "sha256": "bba6633de33a7b5eacab26b7e105d58c2e128c8817a0279dba29b8607e50bb9c"
   }
 }

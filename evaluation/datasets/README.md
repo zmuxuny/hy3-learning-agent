@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | decisionbench-v1、v1-candidate | 最初的48个决策输入与24个质量校准设计 | 历史设计及来源 |
 | decisionbench-v3-engineering、v4-engineering | 用于检查隔离、记录与规则的工程测试 | 软件回归，不是产品能力榜单 |
-| decisionbench-v1.*-regression | 对应某版评测协议的校准和工程回归 | 旧实验复算；1.17是当前工程协议候选 |
+| decisionbench-v1.*-regression | 对应某版评测协议的校准和工程回归 | 旧实验复算；1.18是当前工程协议候选 |
 | decisionbench-*-e6-test、*-e6-final-test | 此前冻结的真实应用实验输入 | 历史运行来源；1.13的48个输入被当前应用集显式复用 |
 | decisionbench-v1.15-validation | 工程补修后的定向验证输入 | 历史验证 |
 | e6-repair-development-* | 开发时的错误复现与边界用例 | 历史开发 |
