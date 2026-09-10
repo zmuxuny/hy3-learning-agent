@@ -14,7 +14,7 @@ Learning Agent由Vue工作台、FastAPI服务、Hy3决策运行器和SQLite学�
 
 | 组件 | 负责的内容 | 实现位置 |
 | --- | --- | --- |
-| 前端工作台 | 对话、计划、收件箱、学习记忆、设置与运行状态 | [frontend/src/views](../frontend/src/views/)、[stores](../frontend/src/stores/) |
+| 前端工作台 | 对话、计划、收件箱、学习记忆、设置与运行状态 | [frontend/src/components](../frontend/src/components/)、[stores](../frontend/src/stores/) |
 | 决策运行器 | 模型调用、工具循环、等待批准、停止与恢复 | [runtime/agent.py](../backend/app/runtime/agent.py)、[checkpoints.py](../backend/app/runtime/checkpoints.py) |
 | 上下文与来源 | 按当前任务组织事实、材料与来源 | [context/assembler.py](../backend/app/context/assembler.py)、[provenance.py](../backend/app/context/provenance.py) |
 | 学习工具 | 提案、任务、提交证据、提醒与修改 | [tools](../backend/app/tools/) |
