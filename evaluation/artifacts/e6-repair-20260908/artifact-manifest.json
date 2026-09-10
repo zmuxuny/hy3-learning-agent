@@ -7,8 +7,8 @@
   "files": [
     {
       "relative_path": "README.md",
-      "size_bytes": 11294,
-      "sha256": "7fab727ec94756adbc2cc943ad10f733a6cf3b48bf1bb3191ad3a53a8e5b646d"
+      "size_bytes": 11445,
+      "sha256": "c3d3c07cc47065cb07efdbd576b54bfdf08ea20392627cd0e78176a851cd8d28"
     },
     {
       "relative_path": "archive-verification.json",

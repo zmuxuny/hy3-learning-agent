@@ -13,7 +13,7 @@
 | 1.2 / `2e7a4db` | 核心任务强制证据完整性；弃权规则与包络分层；Planning D3/D5锚点分开 | Dev7例4通过3 Gate；第二个88次校准；真实批准后1 pending Proposal/0 Plan、5核心均需证据 |
 | 1.3 / `1ae8cd2` | 写工具Schema接收模型自己生成的原生行动数组，原参数保留，交给业务Guard前只剥离评测字段；memory_search纯读；ready intake继续提案 | 已见Dev7/7无Gate、7/7真实Judge全维2；14模型轮，3原生写声明，0推断声明；保留待审批 |
 | 1.4 / `c25da44` | Assessment允许引用已定义的同一失败测试及预期，不能用通过输入替代复测 | 固定20次Assessment与6次时区对照全部满足预设，0失败/repair；并非又跑88次 |
-| 冻结1.4 / `1f1f35f` | 方法决定后建立G家族，双AI复核、冻结登记并干净提交，按48固定分母运行 | 本页新版批次；新暴露问题保留，未事后改分 |
+| 冻结1.4 / `1f1f35f` | 方法决定后建立G家族，逐项内容检查、冻结登记并干净提交，按48固定分母运行 | 本页新版批次；新暴露问题保留，未事后改分 |
 | 候选1.5 / `3d20c8b` | shared-json最小共享长度512→256、证据路径enum共享引用；输入超限改为typed错误，不混成通用拒绝 | 仓外45 passed；79请求完整证据/路径/展开Schema等价，8超限→0，最大188971≤196608；仅离线，未登记新Benchmark/未真实复测 |
 
 两版完整Calibration均88/88、0最终Judge失败：
@@ -57,7 +57,7 @@ Judge 48条终态中33次真实请求成功，无结构修复、输出截断、�
 
 ## 版本与预算
 
-新正式Runtime固定干净 `1f1f35f04aff5c2c83f69a1ceb98b4d80d7f3fd6`；Protocol1.4 SHA `c2896364c4fd9ca4e293c0f8c3175ff5cd24e482cecc9cd2f7ff55c0f4dc6cd2`，Benchmark SHA `38a10334eca4be947633696c5c4ae4e13edde7119313a2a18bbaf9be88fa3fbf`。预调用的方法决定见[method-readiness.json](method-readiness.json)，冻结运行计划、输入纠正、双AI复核、注册表与完整源码快照均在包内；原1.0–1.4不可变资产保全。
+新正式Runtime固定干净 `1f1f35f04aff5c2c83f69a1ceb98b4d80d7f3fd6`；Protocol1.4 SHA `c2896364c4fd9ca4e293c0f8c3175ff5cd24e482cecc9cd2f7ff55c0f4dc6cd2`，Benchmark SHA `38a10334eca4be947633696c5c4ae4e13edde7119313a2a18bbaf9be88fa3fbf`。预调用的方法决定见[method-readiness.json](method-readiness.json)，冻结运行计划、输入纠正、逐项内容检查、注册表与完整源码快照均在包内；原1.0–1.4不可变资产保全。
 
 活动源码现为未登记的Protocol1.5候选，SHA `18077001e25e46d236cd11fded5015b980dbb24d5094876b560b6b85c13107d7`。[候选离线验证](candidate-v5-verification.json)使用冻结1.4与候选1.5实际实现重建同79请求，逐条完整盲化文档、展开Schema、路径目录摘要一致。对应8个失败中最小新版请求需预留0.225624元，大于余额0.216953元，故真实候选复测0次。
 

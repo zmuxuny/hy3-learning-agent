@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "viewport": {
     "width": 1440,
     "height": 900
@@ -35,18 +35,15 @@
     },
     {
       "type": "method",
-      "duration": 10
+      "duration": 18
     },
     {
-      "type": "clip",
-      "source": "sources/evaluation.webm",
-      "start": 0,
-      "duration": 40,
-      "caption": "评测：原始证据、七维判断与有效性实验"
+      "type": "case",
+      "duration": 24
     },
     {
-      "type": "closing",
-      "duration": 16
+      "type": "results",
+      "duration": 24
     }
   ],
   "source_sha256": {
@@ -59,64 +56,22 @@
   "human_confirmation_archive": "evaluation/artifacts/human-confirmation-20260910",
   "human_confirmation_sha256": "427af404135b078ca0bec75a57b9d502872c4d8283a56033543c69a39276e235",
   "evaluation_presentation": {
+    "type": "fixed evidence and result panels",
     "source_archive": "evaluation/artifacts/decisionbench-final-method-20260910",
-    "summary_sha256": "0002052cd60994070e992f3b51efec353662a9e621e864c89f619f7078d38c47",
-    "viewer_sha256": "c388cd6784eb78290295dfc9d4efa5542b8ebb556f996a0bb95d71edac901760",
-    "figure_sha256": "1308b35bf1edbb2d09dbbb475c71753ad3f1459e8fd9d445f57414e869446397",
+    "builder": "scripts/build-stage3-demo.py",
     "palette": "navy / neutral white",
-    "recording_script": "scripts/record-stage3-evaluation.mjs",
-    "viewport_checks": [
-      {
-        "width": 375,
-        "tab": "app-tab",
-        "client": 375,
-        "scroll": 375
-      },
-      {
-        "width": 375,
-        "tab": "method-tab",
-        "client": 375,
-        "scroll": 375
-      },
-      {
-        "width": 768,
-        "tab": "app-tab",
-        "client": 768,
-        "scroll": 768
-      },
-      {
-        "width": 768,
-        "tab": "method-tab",
-        "client": 768,
-        "scroll": 768
-      },
-      {
-        "width": 1280,
-        "tab": "app-tab",
-        "client": 1280,
-        "scroll": 1280
-      },
-      {
-        "width": 1280,
-        "tab": "method-tab",
-        "client": 1280,
-        "scroll": 1280
-      },
-      {
-        "width": 1440,
-        "tab": "app-tab",
-        "client": 1440,
-        "scroll": 1440
-      },
-      {
-        "width": 1440,
-        "tab": "method-tab",
-        "client": 1440,
-        "scroll": 1440
-      }
-    ]
+    "viewer_sha256": "267207884e1454db2e18eeb47164d3835c3418eb512fe88ddecb58e7f368493e",
+    "figure_sha256": "779962bcf66014a2db9379b6e0e2a113aebc829908539d752a96a02b19c50d4b",
+    "case": "B15 / quality-05-3"
   },
   "summary_sha256": "0002052cd60994070e992f3b51efec353662a9e621e864c89f619f7078d38c47",
   "condition_evidence_archive": "evaluation/artifacts/condition-validation-20260910",
-  "condition_summary_sha256": "11baac9bec8c8cbef524856b01b654ce495664e6c8e3f18e8daad18ab3469c4e"
+  "condition_summary_sha256": "11baac9bec8c8cbef524856b01b654ce495664e6c8e3f18e8daad18ab3469c4e",
+  "transition_seconds": 0.6,
+  "presentation_sources_sha256": {
+    "assets/brand/learning-agent-mark.png": "09f24dfdebc2946032809476ea022e35f7d789aab39a4a0add9c2036d872c7b6",
+    "evaluation/artifacts/decisionbench-final-method-20260910/automatic/cases.csv": "4e3e80237cbb9b65c7cd50cf28169737fdb9e6a23a911491eb788b06e76cc70e",
+    "evaluation/artifacts/decisionbench-final-method-20260910/automatic/triplets.csv": "f6658ddfcfbcec18950dc2e0576684124a39b45914c07955965035dc62ef29fb",
+    "evaluation/datasets/decisionbench-learning-v1/method-validation/evidence/quality-05-3.json": "4fa086fdfbd326ea6e124b5b198d574b2064c1610847e9f7783ad57e5a6ef796"
+  }
 }

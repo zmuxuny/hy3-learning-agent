@@ -1,8 +1,7 @@
 # E4 经复核候选数据
 
 当前入口包含 48 Primary、24 Calibration、8 个来源 Case、资源、Split/Mutation 清单与摘要绑定的逐例裁决。
-80 条内容裁决和 8 组三档判断见 [AI 复核记录](content-review.json)，72 行索引见 [复核表](review-worksheet.csv)。
-复核身份为 `delegated_ai_reviewer`，作者与复核者可能共享模型和上下文。
+80 条内容裁决和 8 组三档判断见 [内容检查记录](content-review.json)，72 行索引见 [复核表](review-worksheet.csv)。
 阅读 [Dataset Card](DATASET_CARD.md) 了解构造、历史运行及正式使用边界。
 
 `primary/` 和 `calibration/` 是当前协议下独立可验证的 Case Suite；运行输出另存。

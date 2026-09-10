@@ -2,10 +2,18 @@
   "duration": 108.0,
   "width": 1920,
   "height": 1080,
+  "audio": false,
   "viewport": {
     "width": 1440,
     "height": 900
   },
+  "viewport_placement": {
+    "x": 240,
+    "y": 140,
+    "width": 1440,
+    "height": 900
+  },
+  "transition_seconds": 0.6,
   "timeline": [
     {
       "type": "intro",
@@ -33,25 +41,22 @@
     },
     {
       "type": "method",
-      "duration": 10,
+      "duration": 18,
       "video_start": 42,
-      "video_end": 52
+      "video_end": 60
     },
     {
-      "type": "clip",
-      "source": "sources/evaluation.webm",
-      "start": 0,
-      "duration": 40,
-      "caption": "评测：原始证据、七维判断与有效性实验",
-      "video_start": 52,
-      "video_end": 92
+      "type": "case",
+      "duration": 24,
+      "video_start": 60,
+      "video_end": 84
     },
     {
-      "type": "closing",
-      "duration": 16,
-      "video_start": 92,
+      "type": "results",
+      "duration": 24,
+      "video_start": 84,
       "video_end": 108
     }
   ],
-  "sha256": "5745f6cbfa3e9ed415de9f0006a8d293b34d65d724152c03bb9bcd254548463d"
+  "sha256": "7ef6034d3ef4ab38073301adc78f84d90f98eef683429efaa6dd48d47c616fa7"
 }

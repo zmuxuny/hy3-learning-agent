@@ -13,8 +13,9 @@ OUT=ROOT/'assets/stage3'
 font_manager.fontManager.addfont('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc')
 plt.rcParams.update({'font.family':'Noto Sans CJK JP','font.size':11,'axes.spines.top':False,'axes.spines.right':False,'svg.fonttype':'none','svg.hashsalt':'learning-agent-final-method','figure.facecolor':'white'})
 def rows(name):return list(csv.DictReader((A/(name+'.csv')).open()))
-def save(fig,name):
-    fig.tight_layout();fig.savefig(OUT/(name+'.png'),dpi=180,bbox_inches='tight');svg=OUT/(name+'.svg');fig.savefig(svg,bbox_inches='tight',metadata={'Date':None});svg.write_text('\n'.join(s.rstrip() for s in svg.read_text().splitlines())+'\n');plt.close(fig)
+def save(fig,name,layout=True):
+    if layout:fig.tight_layout()
+    fig.savefig(OUT/(name+'.png'),dpi=180,bbox_inches='tight');svg=OUT/(name+'.svg');fig.savefig(svg,bbox_inches='tight',metadata={'Date':None});svg.write_text('\n'.join(s.rstrip() for s in svg.read_text().splitlines())+'\n');plt.close(fig)
 tracks=['planning','intervention','assessment','revision'];names=['学习规划','主动介入','成果验收','计划调整'];dims=['事实内容','学习目标','行动时机','用户控制','结果可用','行动适度','解释步骤']
 app=rows('application-human');x=np.arange(4);fig,ax=plt.subplots(figsize=(10,4.5))
 automatic=[np.mean([float(r['automatic_score']) for r in app if r['track']==t]) for t in tracks];human=[np.mean([float(r['human_score']) for r in app if r['track']==t]) for t in tracks]
@@ -28,13 +29,45 @@ for i in range(4):
     for j in range(7):ax.text(j,i,f'{data[i,j]:.2f}',ha='center',va='center',color='white' if data[i,j]>1.5 else '#283343')
 fig.colorbar(im,ax=ax,pad=.02);save(fig,'dimension-results')
 
-tr=rows('triplets');groups=sorted({r['group'] for r in tr});group_names=['CSV复习','二分查找','提醒冷却','跨夜免打扰','去重验收','配置验收','预算调整','旧稿恢复'];fig,ax=plt.subplots(figsize=(12,5));x=np.arange(8)
-for shift,key,label,color in [(-.24,'good','优质','#416b9c'),(0,'mild','局部缺陷','#d8ac63'),(.24,'severe','严重缺陷','#b36c6c')]:
-    vals=[[float(r[key]) for r in tr if r['group']==g and r[key]!=''] for g in groups];ax.bar(x+shift,[np.mean(v) if v else np.nan for v in vals],.23,label=label,color=color)
-    for i,v in enumerate(vals):ax.scatter([i+shift]*len(v),v,s=20,facecolors='white',edgecolors='#283343',zorder=4)
-correct=sum(r['strict_raw']=='True' for r in tr);ax.set(xticks=x,xticklabels=group_names,ylim=(0,115),ylabel='加权分 / 100（严重度限制前）',title=f'三档判别：8个场景各评3次，严格排序{correct}/24组');ax.legend(ncol=3,loc='upper right',fontsize=10);ax.grid(axis='y',alpha=.15);ax.set_axisbelow(True);save(fig,'discrimination')
+tr=rows('triplets');groups=sorted({r['group'] for r in tr})
+group_names=['CSV复习截止','二分查找练习','提醒冷却余时','跨夜免打扰','去重函数验收','配置解析验收','预算调整撤销','旧计划恢复']
+repeat_colors=['#315f91','#81a6cd','#bd8743']
+fig,axes=plt.subplots(2,4,figsize=(13,6.8),sharex=True,sharey=True)
+for i,(g,ax) in enumerate(zip(groups,axes.flat)):
+    for j,r in enumerate(sorted([r for r in tr if r['group']==g],key=lambda r:int(r['repeat']))):
+        ys=[float(r[k]) for k in ['good','mild','severe']]
+        ax.plot(np.arange(3)+(j-1)*.035,ys,'o-',color=repeat_colors[j],label=f'第{j+1}次评分',lw=1.7,ms=5,alpha=.9)
+    ax.set_title(f'B{i*3+1:02d}—B{i*3+3:02d}  {group_names[i]}',fontsize=11,pad=10)
+    ax.set(xticks=[0,1,2],xticklabels=['正确处理','局部缺陷','严重错误'],ylim=(-4,112),xlim=(-.22,2.22),yticks=[0,25,50,75,100])
+    ax.tick_params(axis='x',labelbottom=True,labelsize=9);ax.grid(axis='y',alpha=.18);ax.set_axisbelow(True)
+    if i%4==0:ax.set_ylabel('加权分 / 100')
+    if i==3:
+        ax.scatter([1.965],[100],s=110,facecolors='none',edgecolors='#ac4c4c',lw=1.7,zorder=5)
+        ax.annotate('100分：未区分严重错误',xy=(1.965,100),xytext=(.25,48),fontsize=8.5,color='#934444',arrowprops=dict(arrowstyle='->',color='#934444',lw=.8))
+fig.legend(*axes[0,0].get_legend_handles_labels(),loc='upper center',bbox_to_anchor=(.5,1.035),ncol=3,frameon=False)
+save(fig,'discrimination')
 
-st=[r for r in rows('stability') if r['part']=='quality'];fig,ax=plt.subplots(figsize=(11,4));ax.bar(np.arange(24),[float(r['raw_sd']) if r['raw_sd'] else np.nan for r in st],color=[{'good':'#416b9c','mild':'#d8ac63','severe':'#b36c6c'}[r['condition']] for r in st]);ax.set(xticks=np.arange(1,24,3),xticklabels=group_names,ylabel='三次加权分的总体标准差',title='相同输出的评分波动：每组三柱为优质、局部缺陷、严重缺陷');ax.grid(axis='y',alpha=.15);ax.set_axisbelow(True);save(fig,'repeat-stability')
+st=[r for r in rows('stability') if r['part']=='quality']
+fig,(ax,zero)=plt.subplots(2,1,figsize=(12,5.7),sharex=True,gridspec_kw={'height_ratios':[7,1],'hspace':.10})
+colors={'good':'#416b9c','mild':'#c3964f','severe':'#b36c6c'}
+for j,(condition,label) in enumerate([('good','正确处理'),('mild','局部缺陷'),('severe','严重错误')]):
+    for i,g in enumerate(groups):
+        r=next(r for r in st if r['id']==g+'-'+str(j+1));v=float(r['raw_sd']);xx=i+(j-1)*.22
+        if v>0:
+            ax.vlines(xx,1,v,color=colors[condition],alpha=.35,lw=1.5)
+            ax.scatter(xx,v,color=colors[condition],s=44,zorder=4)
+        else:zero.scatter(xx,0,color=colors[condition],s=44,zorder=4)
+    ax.scatter([],[],color=colors[condition],s=44,label=label)
+ax.set_yscale('log');ax.set_ylim(1,60);ax.set_yticks([1,2,5,10,20,50],[1,2,5,10,20,50]);ax.minorticks_off()
+ax.set_ylabel('三次评分的标准差 / 分（对数刻度）')
+ax.grid(axis='y',alpha=.2);ax.set_axisbelow(True);ax.tick_params(axis='x',bottom=False,labelbottom=False)
+ax.legend(loc='upper right',ncol=3,frameon=False)
+outlier=next(float(r['raw_sd']) for r in st if r['id']=='quality-04-3')
+ax.annotate(f'B12 严重错误：{outlier:.2f}分\n三次评分为100、35、22.5',xy=(3.22,outlier),xytext=(4.1,26),fontsize=11,color='#934444',arrowprops=dict(arrowstyle='->',color='#934444',lw=1))
+zero.set(ylim=(-.6,.6),yticks=[0],yticklabels=['0'],xticks=range(8),xticklabels=group_names,xlim=(-.6,7.6))
+zero.tick_params(axis='x',labelsize=10,length=0,pad=10);zero.set_ylabel('三次相同',rotation=0,labelpad=30,va='center',fontsize=10)
+zero.set_facecolor('#f4f6f9');zero.spines['bottom'].set_visible(False);zero.spines['left'].set_visible(False)
+save(fig,'repeat-stability',layout=False)
 
 alignment=rows('human-alignment');fig,ax=plt.subplots(figsize=(10,4.5));vals=[float(r['agreement'])*100 for r in alignment];ax.barh(dims[::-1],vals[::-1],color='#416b9c',height=.6)
 for i,v in enumerate(vals[::-1]):ax.text(v+1,i,f'{v:.1f}%',va='center',fontsize=12)
