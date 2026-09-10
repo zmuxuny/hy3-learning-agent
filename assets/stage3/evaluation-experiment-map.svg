@@ -4,7 +4,7 @@
 <g font-family="Noto Sans CJK SC, Noto Sans CJK JP, sans-serif">
 <text x="30" y="44" font-size="32" font-weight="700" fill="#203d63" text-anchor="start">评测材料与实验安排</text>
 <text x="30" y="84" font-size="24" font-weight="700" fill="#203d63" text-anchor="start">材料来源</text>
-<text x="330" y="84" font-size="24" font-weight="700" fill="#203d63" text-anchor="start">每类实验如何构造材料</text>
+<text x="330" y="84" font-size="24" font-weight="700" fill="#203d63" text-anchor="start">材料构造与重复安排</text>
 <text x="920" y="84" font-size="24" font-weight="700" fill="#203d63" text-anchor="start">完整评分次数</text>
 <rect x="30" y="112" width="225" height="108" rx="8" fill="#ffffff" stroke="#c5d0de" stroke-width="1.5"/>
 <text x="142.5" y="149" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">实际应用任务</text>

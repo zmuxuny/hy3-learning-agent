@@ -11,7 +11,7 @@
 <rect x="430" y="120" width="300" height="170" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
 <text x="580.0" y="157" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">② 证据整理与规则预检</text>
 <text x="580.0" y="197" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">保留原文与来源位置</text>
-<text x="580.0" y="230" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">比较日期、数值和测试</text>
+<text x="580.0" y="230" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">提取断言与可计算证据</text>
 <rect x="830" y="120" width="300" height="170" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
 <text x="980.0" y="157" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">③ Hy3内容核验</text>
 <text x="980.0" y="197" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">核对具体断言与条件</text>
