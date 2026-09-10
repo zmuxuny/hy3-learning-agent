@@ -1,5 +1,4 @@
 """A separate, source-bound examination of task propositions and workload claims."""
-import re
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from .canonical import canonical_json
