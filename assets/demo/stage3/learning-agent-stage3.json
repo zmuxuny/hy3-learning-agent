@@ -18,9 +18,9 @@
   "timeline": [
     {
       "type": "intro",
-      "duration": 4,
+      "duration": 2,
       "video_start": 0,
-      "video_end": 4
+      "video_end": 2
     },
     {
       "type": "clip",
@@ -28,16 +28,16 @@
       "start": 1,
       "duration": 6,
       "caption": "提出目标：一周完成目录统计工具，每天30分钟",
-      "video_start": 4,
-      "video_end": 10
+      "video_start": 2,
+      "video_end": 8
     },
     {
       "type": "clip",
       "source": "sources/application.webm",
       "start": 2,
-      "duration": 22,
+      "duration": 24,
       "caption": "审阅任务与验收要求，采用后进入学习计划",
-      "video_start": 10,
+      "video_start": 8,
       "video_end": 32
     },
     {
@@ -66,5 +66,5 @@
       "video_end": 108
     }
   ],
-  "sha256": "e2dfd10f93ec8c68d6ef0406a9ee4bdff31d7b0e5e76277d038051dba58a8632"
+  "sha256": "184388c392b50d98a298d77439f9f35427ac7202112063f3d82144f492bf69f5"
 }
