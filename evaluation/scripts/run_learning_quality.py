@@ -39,6 +39,9 @@ def run(suite,output,ledger,ids=None,repeats=1,method_version='learning-quality-
     if method_version == 'learning-quality-9':
         from learning_agent_eval import learning_quality_v9 as method
         stage_audit_request = method.audit_request
+    elif method_version == 'learning-quality-10':
+        from learning_agent_eval import learning_quality_v10 as method
+        stage_audit_request = method.audit_request
     elif method_version != 'learning-quality-8':
         raise ValueError('unsupported quality method')
     if output.exists():raise FileExistsError(output)
@@ -78,7 +81,7 @@ def run(suite,output,ledger,ids=None,repeats=1,method_version='learning-quality-
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--suite',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--budget-ledger',type=Path,required=True);p.add_argument('--case-id',action='append');p.add_argument('--repeats',type=int,default=1)
-    p.add_argument('--method',choices=['learning-quality-8','learning-quality-9'],default='learning-quality-8')
+    p.add_argument('--method',choices=['learning-quality-8','learning-quality-9','learning-quality-10'],default='learning-quality-8')
     p.add_argument('--repeat-index',type=int,action='append',help='Restrict to declared repeat indices for failure-only recovery');a=p.parse_args()
     if a.repeats<1:p.error('repeats must be positive')
     if a.repeat_index and any(i<1 or i>a.repeats for i in a.repeat_index):p.error('repeat index outside declared range')
