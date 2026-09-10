@@ -63,6 +63,12 @@ def page(kind, summary, case, triplets):
         im.paste(mark, (1450, 330), mark)
         label(d, (150, 245), '从学习目标，到持续行动', 72, NAVY, True)
         label(d, (150, 375), '持续理解学习状态，主动推动目标完成', 38, MUTED)
+        for y, name, detail in [(540, '理解目标', '结合基础、时间和作品要求提出计划'),
+                                (645, '推进学习', '审阅采用、执行任务、提交作品与调整'),
+                                (750, '评价决策', '核对内容、行动与实际效果，验证评分方法')]:
+            label(d, (150, y), name, 34, NAVY, True)
+            label(d, (355, y), detail, 34)
+        label(d, (150, 955), '接下来：一周完成目录文件统计工具', 29, MUTED)
     elif kind == 'closing':
         heading(d, '让学习持续推进，让决策有据可评', '产品：目标规划、主动支持、成果验收与计划调整')
         label(d, (150, 440), '应用实验：48项任务，记录助手的实际决策', 40, NAVY, True)
