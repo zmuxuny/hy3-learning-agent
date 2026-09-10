@@ -42,5 +42,16 @@ const html=`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Learn
 </style><body>${content}</body></html>`;
 const htmlPath=path.join(out,'第三阶段项目与评测报告.html');await writeFile(htmlPath,html);
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/root/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome',args:['--no-sandbox']});
-const page=await browser.newPage({viewport:{width:1080,height:1400}});await page.goto('file://'+htmlPath);await page.evaluate(()=>document.fonts.ready);await page.pdf({path:path.join(out,'第三阶段项目与评测报告.pdf'),format:'A4',printBackground:true,margin:{top:'14mm',bottom:'17mm',left:'15mm',right:'15mm'},displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="font-size:9px;color:#687386;width:100%;text-align:center">Learning Agent · Hy3 · 个人活动作品　<span class="pageNumber"></span> / <span class="totalPages"></span></div>'});
+const page=await browser.newPage({viewport:{width:1080,height:1400}});await page.goto('file://'+htmlPath);await page.evaluate(()=>document.fonts.ready);
+// PDF destination names have tighter limits than HTML IDs. Keep the portable
+// HTML anchors, and use short names for the otherwise identical PDF rendering.
+await page.evaluate(()=>{
+ const ids=new Map();
+ document.querySelectorAll('[id]').forEach((el,i)=>{const id=`section-${i+1}`;ids.set(el.id,id);el.id=id;});
+ document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  const target=decodeURIComponent(a.getAttribute('href').slice(1));
+  if(ids.has(target))a.setAttribute('href','#'+ids.get(target));
+ });
+});
+await page.pdf({path:path.join(out,'第三阶段项目与评测报告.pdf'),format:'A4',printBackground:true,margin:{top:'14mm',bottom:'17mm',left:'15mm',right:'15mm'},displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="font-size:9px;color:#687386;width:100%;text-align:center">Learning Agent · Hy3 · 个人活动作品　<span class="pageNumber"></span> / <span class="totalPages"></span></div>'});
 await page.screenshot({path:path.join(out,'report-preview.png'),fullPage:false});await browser.close();console.log('report rendered',out);
