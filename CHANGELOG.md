@@ -1,5 +1,11 @@
 # Changelog
 
+## 第三阶段交付文档 · 2026-09-10
+
+- 按产品定位、技术架构、学习流程与实际案例重写产品介绍，说明基于持续学习状态的主动支持。
+- 明确关键决策片段的组成、七维判据、规则与Hy3评审的完整流程，以及双人人工标注的验证用途。
+- 同步方法说明、报告HTML/PDF与Demo，重绘评估流程和实验安排图，保留116项用例索引及原始实验结果。
+
 ## Unreleased · H8 engineering freeze
 
 ### First run and release engineering

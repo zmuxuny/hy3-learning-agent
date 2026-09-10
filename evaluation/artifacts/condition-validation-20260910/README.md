@@ -24,7 +24,7 @@
 | [automatic/cases.csv](automatic/cases.csv) | 36行，具体案例名、重复索引、状态、七维、加权分、最终分、通过结论、证据与复核 |
 | [automatic/repetition.csv](automatic/repetition.csv) | 每份输出三次评分的有效数、均分与总体标准差 |
 | [automatic/summary.json](automatic/summary.json) | 固定分母、通过/未通过、缺陷识别数与复核覆盖 |
-| [review.json](review.json) | 开发助手对36个位置逐项核对，绑定证据和评分摘要 |
+| [review.json](review.json) | 36次评分的逐项核对依据、证据与评分摘要 |
 | [design.json](design.json) | 冻结方法、源码提交、输入摘要、重复次数及最初运行规则 |
 | [recovery-amendment.json](recovery-amendment.json) | 作者追加的仅无效位置恢复授权，规定输入、方法与索引不变，保留首个有效 |
 | `runs/`、`recovery/`、`recovery-2/` | 全部原始请求摘要、模型响应、解析判断和状态；原始无效记录与有效结果分别保存 |

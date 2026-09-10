@@ -25,7 +25,7 @@ def build(manifest,output):
     for p,h in m['source_sha256'].items():assert hashlib.sha256((base/p).read_bytes()).hexdigest()==h
     pages={
       'intro':('从学习目标，到有依据的下一步',['面向编程自学者：计划、作品反馈与过程支持。','Hy3理解条件并调用工具，用户审阅后采用计划。','评测同时核查建议内容、行动效果与用户控制。']),
-      'method':('评价一次决策，需要看到完整证据',['用户要求 + 助手内容 + 工具结果 + 前后状态','七维：事实、目标、时机、约束、可用性、适度、解释','内容核验与程序检查 → 自动评分 → 逐例复核','接下来：两周卷积学习计划里的边界条件遗漏。']),
+      'method':('评价一次决策，需要看到完整证据',['用户要求 + 助手内容 + 工具结果 + 前后状态','七维：事实、目标、时机、约束、可用性、适度、解释','规则核对 → Hy3内容核验与七维评分 → 汇总结果','接下来：两周卷积学习计划里的边界条件遗漏。']),
       'closing':('应用、数据与评价依据一起交付',[])}
     summary_path=ROOT/m['evidence_archive']/'automatic/summary.json'
     assert hashlib.sha256(summary_path.read_bytes()).hexdigest()==m['summary_sha256']

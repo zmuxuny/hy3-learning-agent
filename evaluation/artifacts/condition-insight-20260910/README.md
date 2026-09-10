@@ -22,7 +22,7 @@
 | --- | --- |
 | [automatic/cases.csv](automatic/cases.csv) | 24行，含18次核验尝试和6次固定依据诊断；状态、分数、七维、具体复核意见 |
 | [automatic/summary.json](automatic/summary.json) | 24个位置均有效；固定依据诊断的分数、认出错误数、未通过数 |
-| [review.json](review.json) | 开发助手对全部24个位置的证据检查；原始状态与最终判断分别保存 |
+| [review.json](review.json) | 全部24次评分对应的证据检查结果；原始状态与最终判断分别保存 |
 | `prompt-check/` | 提示核验的设计、12份原始评分及日志；方法源码提交7636e12 |
 | `independent-check/` | 独立核验的设计、6个位置的原始评分及日志；方法源码提交ed73ce1，包含原始响应与仅无效位置恢复 |
 | [rating-probe/design.json](rating-probe/design.json) | 原始证据摘要、固定内容核验、两种独立核验依据、直接计算结果、重复次数 |

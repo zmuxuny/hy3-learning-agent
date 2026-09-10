@@ -52,7 +52,7 @@
   "source_sha256": {
     "sources/application.webm": "4c7737f4bebf2ee9f488feea06aa9a6c3e804d304ffa15240b24442108262fd1",
     "sources/goal.webm": "d4c8ff582aeeeb967f4b8a43740ab8eb0f3e35d5c508189fe0605d0e8d47b093",
-    "sources/evaluation.webm": "a26cf68a639cad3955ee41cd20b3efb845b7658db95143ea68caf8a02cdf2338"
+    "sources/evaluation.webm": "7132e01ac05322ccc50975f52b56e6060ebd9add055212ef3634ced67ede084f"
   },
   "extension_evidence_archive": "evaluation/artifacts/decisionbench-severe-validation-20260910",
   "extension_summary_sha256": "d8fb519fd3c13c80731af75e0d4de90ea801c4499045564a32e30fd05046c6d7",
@@ -61,7 +61,7 @@
   "evaluation_presentation": {
     "source_archive": "evaluation/artifacts/decisionbench-final-method-20260910",
     "summary_sha256": "0002052cd60994070e992f3b51efec353662a9e621e864c89f619f7078d38c47",
-    "viewer_sha256": "18bed076c3d3fd0b033ef5e3a25fdd28eb0f6bdf1bd182d3b01b9bdcce893d81",
+    "viewer_sha256": "c388cd6784eb78290295dfc9d4efa5542b8ebb556f996a0bb95d71edac901760",
     "figure_sha256": "1308b35bf1edbb2d09dbbb475c71753ad3f1459e8fd9d445f57414e869446397",
     "palette": "navy / neutral white",
     "recording_script": "scripts/record-stage3-evaluation.mjs",
