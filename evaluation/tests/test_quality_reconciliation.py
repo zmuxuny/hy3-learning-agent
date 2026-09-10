@@ -47,3 +47,11 @@ def test_nonexact_or_optional_tests_are_outside_rule_scope():
 def test_frozen_old_method_remains_identical():
     assert old.METHOD_SHA256 == 'd466be9949cdd60abf4b93e00cadcd72f760b2b3f1281a00f7040fe030257640'
     assert new.METHOD_SHA256 != old.METHOD_SHA256
+
+
+def test_exact_json_comparison_preserves_numeric_values_and_boolean_types():
+    e, r = data()
+    e['state_before']['tests'] = [{'expected': {'a': [1, 2]}, 'actual': {'a': [1.0, 2.0]}}]
+    assert new.aggregate(r, e)['score'] == 100
+    e['state_before']['tests'] = [{'expected': True, 'actual': 1}]
+    assert new.aggregate(r, e)['score'] == 39
