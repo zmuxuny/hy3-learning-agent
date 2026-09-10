@@ -54,7 +54,7 @@
   "extension_evidence_archive": "evaluation/artifacts/decisionbench-severe-validation-20260910",
   "extension_summary_sha256": "d8fb519fd3c13c80731af75e0d4de90ea801c4499045564a32e30fd05046c6d7",
   "human_confirmation_archive": "evaluation/artifacts/human-confirmation-20260910",
-  "human_confirmation_sha256": "8e31a7cd7401f815bc81402ca1d0156bad689536f93085046e164ececc4467e3",
+  "human_confirmation_sha256": "9c43cb803f79872076482368c1070145753e12a94e22cbb0f4df5b5c5b12fa84",
   "evaluation_presentation": {
     "type": "fixed evidence and result panels",
     "source_archive": "evaluation/artifacts/decisionbench-final-method-20260910",

@@ -796,8 +796,8 @@ h4{font-size:16px;line-height:1.5;color:#203d63;margin:22px 0 8px;break-after:av
 <p>完整判别、稳定性和对抗数据见<a href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/evaluation/artifacts/decisionbench-final-method-20260910/README.md">统一方法实验档案</a>。</p>
 <h3 id="54-人工标注与自动评分的对齐">5.4 人工标注与自动评分的对齐</h3>
 <p>这项比较区分两个对象：两位人工使用同一判据时是否给出一致标签，以及自动评分是否接近人工标签。前者反映本批人工标注的一致程度，后者反映自动方法与人工判断的差异。</p>
-<p>两位标注者分别对48个应用案例给出七维等级及决策评分是否达标的结论，形成两份原始标注。协商前，<strong>336个维度等级中329个相同，逐维一致率为97.92%；48例的达标结论全部相同，一致率为100%</strong>。其中41例七维全部相同，另外7例各有一个维度相差一级，分歧涉及学习目标、行动时机和行动适度。</p>
-<p>两位标注者讨论后共同认可czy的标注，将其作为最终人工参考。后续自动与人工的比较均使用这份协商后的参考标签。两份原始标注、逐项差异与最终参考集中保存在<a href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/%E4%BA%A4%E4%BB%98%E6%9D%90%E6%96%99/%E4%BA%BA%E5%B7%A5%E6%A0%87%E6%B3%A8/README.md">交付材料／人工标注</a>，协商前的结果与最终参考分别保存。</p>
+<p>两位标注者分别对48个应用案例给出七维等级及决策评分是否达标的结论，形成两份标注表。协商前，<strong>336个维度等级中329个相同，逐维一致率为97.92%；48例的达标结论全部相同，一致率为100%</strong>。其中41例七维全部相同，另外7例各有一个维度相差一级，分歧涉及学习目标、行动时机和行动适度。</p>
+<p>两位标注者讨论后共同认可czy的标注，将其作为最终人工参考。后续自动与人工的比较均使用这份协商后的参考标签。两份标注表、逐项差异与最终参考集中保存在<a href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/%E4%BA%A4%E4%BB%98%E6%9D%90%E6%96%99/%E4%BA%BA%E5%B7%A5%E6%A0%87%E6%B3%A8/README.md">交付材料／人工标注</a>，协商前的结果与最终参考分别保存。</p>
 <p>逐项一致率是“双方给出相同等级或结论的数量÷比较总数”：逐维比较的分母为48×7＝336，达标结论比较的分母为48。</p>
 <p>48个应用案例有完整可复算的七维数值，自动评分与人工在“评分是否达标”上<strong>判断相同的有46例，占95.8%</strong>。事实内容、学习目标、结果可用性与解释维度的一致率分别为83.3%、95.8%、93.8%、93.8%；行动时机为97.9%，用户控制与行动适度均为100%。</p>
 <p>在行动适度与副作用维度，<strong>自动评分与人工参考的二次加权Kappa为1.000</strong>：双方对47例给出2级、对1例给出1级，逐例判断全部相同。这表明评测器在本批材料中对行动是否适度的判断与人工参考一致。</p>
@@ -1085,7 +1085,7 @@ h4{font-size:16px;line-height:1.5;color:#203d63;margin:22px 0 8px;break-after:av
 </tr>
 <tr>
 <td>产品与评测演示</td>
-<td><a href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/assets/demo/stage3/learning-agent-stage3.mp4">108秒Demo</a>、<a href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/assets/demo/stage3/README.md">素材与复建</a></td>
+<td><a href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/%E7%AC%AC%E4%B8%89%E9%98%B6%E6%AE%B5Demo.mp4">108秒Demo</a>、<a href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/assets/demo/stage3/README.md">素材与复建</a></td>
 </tr>
 </tbody>
 </table>

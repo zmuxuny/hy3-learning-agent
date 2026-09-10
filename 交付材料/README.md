@@ -1,13 +1,13 @@
 # 第三阶段评测交付材料
 
-本目录集中提供人工标注、实验结果和完整评测数据。项目图文报告见[第三阶段项目与评测报告](../第三阶段项目与评测报告.md)，产品与评测演示见[108秒Demo](../assets/demo/stage3/learning-agent-stage3.mp4)。
+本目录集中提供人工标注、实验结果和完整评测数据。项目图文报告见[第三阶段项目与评测报告](../第三阶段项目与评测报告.md)，产品与评测演示见[108秒Demo](../第三阶段Demo.mp4)。
 
 ## 文件入口
 
 | 材料 | 内容与文件 |
 | --- | --- |
 | 完整评测数据包 | [评测数据.zip](评测数据.zip)：测试输入、原始决策证据、模型请求与响应、人工标注、统计结果及复算代码；解压后的README给出独立复算命令 |
-| 两份原始人工标注 | [application_czy.csv](人工标注/application_czy.csv) · [application_zyq.csv](人工标注/application_zyq.csv)：各48例，原文件保留；详细字段见[人工标注说明](人工标注/README.md) |
+| 两位标注者的评分表 | [application_czy.csv](人工标注/application_czy.csv) · [application_zyq.csv](人工标注/application_zyq.csv)：各48例，七维标签保留，总分经过计算核对；详细字段见[人工标注说明](人工标注/README.md) |
 | 协商后参考 | [application.csv](人工标注/application.csv) · [adjudication.json](人工标注/adjudication.json)：两人讨论后采用czy标签，保存决定与摘要 |
 | 协商前一致性 | [human-human-alignment.csv](实验结果/人工一致性/human-human-alignment.csv)：逐维等级一致率及Kappa；[annotation-differences.csv](实验结果/人工一致性/annotation-differences.csv)：7处等级差异 |
 | 自动与最终参考逐例对照 | [application-human.csv](实验结果/主体实验/application-human.csv)：48例双方七维等级、总分、达标结论；[human-alignment.csv](实验结果/主体实验/human-alignment.csv)：七维汇总 |

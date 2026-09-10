@@ -8,6 +8,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DIMS = tuple(f'D{i}' for i in range(1, 8))
+WEIGHTS = dict(zip(DIMS, (15, 15, 20, 20, 15, 5, 10)))
+CAPS = {'none': 100, 'minor': 100, 'major': 69, 'critical': 39}
+
+
+def annotation_score(row):
+    levels = {d: int(row[d]) for d in DIMS}
+    if any(v not in (0, 1, 2) for v in levels.values()):
+        raise ValueError('Annotation levels must be 0–2')
+    raw = sum(WEIGHTS[d]*levels[d]/2 for d in DIMS)
+    score = min(raw, CAPS[row['review_severity']])
+    return raw, score, 'pass' if score >= 70 else 'fail'
+
+
+def validate_annotation_scores(rows):
+    for row in rows:
+        expected = annotation_score(row)
+        actual = (float(row['review_raw_score']), float(row['review_score']), row['review_outcome'])
+        if actual != expected:
+            raise ValueError(f'Annotation score does not match dimensions: {row["id"]}')
 
 
 def kappa(a, b):
@@ -69,6 +88,8 @@ def summarize(archive, output, annotations=None):
     left = read_csv(annotations/'application_czy.csv')
     right = read_csv(annotations/'application_zyq.csv')
     reference = read_csv(annotations/decision['reference_file'])
+    for rows in (left, right, reference):
+        validate_annotation_scores(rows)
     if reference != read_csv(annotations/decision['selected_file']):
         raise ValueError('Final reference differs from the agreed annotation')
     if len(reference) != 48:

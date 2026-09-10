@@ -1,0 +1,8 @@
+id,name,original_raw_score,corrected_raw_score,original_score,corrected_score,original_outcome,corrected_outcome
+formal-i03-a,杨辉三角缺少证据,100,92.5,100,92.5,pass,pass
+formal-i03-i,午夜前的杨辉三角提醒,100,90.0,100,90.0,pass,pass
+formal-i05-i,空档中的全加器提醒,100,97.5,100,97.5,pass,pass
+formal-i05-r,全加器恢复旧业务值,100,90.0,100,90.0,pass,pass
+formal-i06-r,约瑟夫环单字段调整,100,92.5,100,92.5,pass,pass
+formal-i07-a,复数乘法实虚分离,100,97.5,100,97.5,pass,pass
+formal-i10-p,单元素卷积不等于恒等,77.5,67.5,69,67.5,fail,fail

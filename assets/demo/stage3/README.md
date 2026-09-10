@@ -1,6 +1,6 @@
-# 学习助手与评测：108秒Demo
+# 第三阶段Demo素材与复建
 
-[观看视频](learning-agent-stage3.mp4) · [封面](cover.png) · [逐段时间线](learning-agent-stage3.json) · [交互结果页](viewer.html)
+[观看视频](../../../第三阶段Demo.mp4) · [封面](cover.png) · [逐段时间线](learning-agent-stage3.json) · [交互结果页](viewer.html)
 
 视频为1920×1080、25fps、108秒，无音轨，同时展示真实Hy3学习规划操作和学习决策评测。应用片段包含作品目标、计划审阅、采用和任务工作区；评测部分依次说明完整决策的评分流程、错误验收识别案例，以及用固定质量对照检验评分方法的实验。
 
@@ -31,4 +31,6 @@ python scripts/build-final-study-viewer.py
 python scripts/build-stage3-demo.py
 ```
 
-`build-stage3-demo.py`按[timeline.json](timeline.json)验证素材与实验摘要，合成后检查时长和分辨率，输出视频及同名JSON。评测画面由已保存的结果生成，无需重新录制浏览器；完整108秒成片的时间和摘要见[视频清单](learning-agent-stage3.json)。
+最终视频位于仓库根目录`第三阶段Demo.mp4`；本目录保存素材、封面与视频清单。
+
+`build-stage3-demo.py`按[timeline.json](timeline.json)验证素材与实验摘要，合成后检查时长和分辨率，输出根目录视频并更新本目录的`learning-agent-stage3.json`。评测画面由已保存的结果生成，无需重新录制浏览器；完整108秒成片的时间和摘要见[视频清单](learning-agent-stage3.json)。

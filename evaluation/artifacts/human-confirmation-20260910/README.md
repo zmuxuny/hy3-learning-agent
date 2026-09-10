@@ -1,6 +1,8 @@
 # 双人人工标注与自动评分对齐
 
-两位标注者分别评价48个应用案例，给出七维等级和决策评分是否达标的结论。原始文件为[application_czy.csv](../../../交付材料/人工标注/application_czy.csv)和[application_zyq.csv](../../../交付材料/人工标注/application_zyq.csv)。讨论后，两人共同认可czy的标注，最终参考为[application.csv](../../../交付材料/人工标注/application.csv)，协商决定见[adjudication.json](../../../交付材料/人工标注/adjudication.json)。
+两位标注者分别评价48个应用案例，给出七维等级和决策评分是否达标的结论。两份评分表为[application_czy.csv](../../../交付材料/人工标注/application_czy.csv)和[application_zyq.csv](../../../交付材料/人工标注/application_zyq.csv)。讨论后，两人共同认可czy的标注，最终参考为[application.csv](../../../交付材料/人工标注/application.csv)，协商决定见[adjudication.json](../../../交付材料/人工标注/adjudication.json)。
+
+总分由七维等级及严重度上限计算。zyq上传表中的7行计算误差已更正，维度等级与达标结论未变；[计算对照](../../../交付材料/人工标注/score-corrections.csv)与[上传原件](../../../交付材料/人工标注/原始上传/application_zyq.csv)分别保存。
 
 ## 协商前的一致性
 

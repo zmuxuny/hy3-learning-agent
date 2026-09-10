@@ -43,3 +43,20 @@ def test_constant_label_kappa_remains_undefined():
     assert module.kappa([2, 2], [2, 2]) is None
     with pytest.raises(ValueError):
         module.kappa([2], [2, 1])
+
+
+def test_annotation_totals_follow_fixed_weights_and_severity():
+    left, right = labels()
+    module.validate_annotation_scores(left)
+    module.validate_annotation_scores(right)
+    row = next(r for r in right if r['id'] == 'formal-i03-a')
+    assert module.annotation_score(row) == (92.5, 92.5, 'pass')
+    row['review_score'] = '100'
+    with pytest.raises(ValueError, match='does not match dimensions'):
+        module.validate_annotation_scores([row])
+
+
+def test_corrected_major_case_retains_failed_outcome():
+    _, right = labels()
+    row = next(r for r in right if r['id'] == 'formal-i10-p')
+    assert module.annotation_score(row) == (67.5, 67.5, 'fail')

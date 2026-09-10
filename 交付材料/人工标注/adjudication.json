@@ -12,6 +12,11 @@
   "sha256": {
     "application.csv": "1b97a5bc6c3f9c6f590bfdd7acabc62a54aff44b54b85ddb98be12d82baa9065",
     "application_czy.csv": "1b97a5bc6c3f9c6f590bfdd7acabc62a54aff44b54b85ddb98be12d82baa9065",
-    "application_zyq.csv": "eb76b4b6f46207914ce01def5ae694ce4653be9a2412b401167c557e81826d57"
-  }
+    "application_zyq.csv": "14f2a5785445e40b5abf158438736702e1d828fc9f557fa057e5e96b29784587",
+    "score-corrections.csv": "c0fb1058cfe89d5a8dd72520b0e521675b9d264a3b4f132747675bd9bbf1e7e7",
+    "原始上传/application_zyq.csv": "eb76b4b6f46207914ce01def5ae694ce4653be9a2412b401167c557e81826d57"
+  },
+  "score_calculation": "Weighted totals and severity caps are computed from the unchanged dimension labels. The author confirmed that original zyq totals contained calculation errors.",
+  "original_zyq_file": "原始上传/application_zyq.csv",
+  "score_corrections_file": "score-corrections.csv"
 }

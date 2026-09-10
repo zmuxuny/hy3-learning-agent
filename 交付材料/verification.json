@@ -43,8 +43,12 @@
       ]
     }
   ],
-  "source_files_verified": 3180,
-  "environment": "extracted package; Python dependencies from project environment; no model calls",
+  "source_files_verified": 3182,
+  "environment": "extracted package; project Python dependencies; no model calls",
+  "score_corrections": {
+    "corrected_rows": 7,
+    "changed_outcomes": 0
+  },
   "independent_annotations": {
     "dimension_matches": 329,
     "dimension_slots": 336,

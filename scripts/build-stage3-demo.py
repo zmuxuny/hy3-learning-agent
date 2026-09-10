@@ -148,7 +148,7 @@ def build(manifest, output):
     assert evidence['state_after']['submission_status'] == 'accepted'
     triplets = [r for r in csv.DictReader((archive / 'triplets.csv').open()) if r['group'] == 'quality-05']
     output.parent.mkdir(parents=True, exist_ok=True)
-    page('intro', summary, case, triplets).save(output.parent / 'cover.png')
+    page('intro', summary, case, triplets).save(base / 'cover.png')
     with tempfile.TemporaryDirectory(prefix='stage3-video-') as directory:
         tmp = Path(directory)
         parts, timeline, seconds = [], [], 0
@@ -184,14 +184,14 @@ def build(manifest, output):
     assert len(info['streams']) == 1 and info['streams'][0]['codec_type'] == 'video'
     video = info['streams'][0]
     assert (video['width'], video['height']) == (1920, 1080)
-    report = dict(duration=duration, width=1920, height=1080, audio=False, viewport=m['viewport'], viewport_placement={'x': 240, 'y': 140, 'width': 1440, 'height': 900}, transition_seconds=transition, timeline=timeline, sha256=digest(output))
-    output.with_suffix('.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+    report = dict(video_file=output.name, duration=duration, width=1920, height=1080, audio=False, viewport=m['viewport'], viewport_placement={'x': 240, 'y': 140, 'width': 1440, 'height': 900}, transition_seconds=transition, timeline=timeline, sha256=digest(output))
+    (base / 'learning-agent-stage3.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print(duration, output)
 
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--manifest', type=Path, default=ROOT / 'assets/demo/stage3/timeline.json')
-    p.add_argument('--output', type=Path, default=ROOT / 'assets/demo/stage3/learning-agent-stage3.mp4')
+    p.add_argument('--output', type=Path, default=ROOT / '第三阶段Demo.mp4')
     a = p.parse_args()
     build(a.manifest, a.output)
