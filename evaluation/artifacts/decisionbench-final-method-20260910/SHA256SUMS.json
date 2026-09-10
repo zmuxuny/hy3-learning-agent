@@ -1,5 +1,5 @@
 {
-  "README.md": "510fa802b9c6dc4fa3e7d2987b7ef107780cc4d33432371c73faf9c51fabb8ba",
+  "README.md": "87da0ced4e6586ac3fd400728479975abbcc41cba7a9a7a60656cb3caff2c13e",
   "automatic/adversarial.csv": "a087a2c6faad1117eabe412854b45f0cfa3a7212b95393c0feee1991709922d9",
   "automatic/application-human.csv": "d2b64192b4b8e5fddee0a8a33b949a33c322ca35e224eba5184b0912a81ffaf0",
   "automatic/cases.csv": "4e3e80237cbb9b65c7cd50cf28169737fdb9e6a23a911491eb788b06e76cc70e",
@@ -177,5 +177,6 @@
   "runs/quality/quality-08-2/results.json": "f332df859a0995d67b5e4a7e5c4d3fe79f383c48a7493d1acf1003b371ce617e",
   "runs/quality/quality-08-2.log": "dc084d8d3bbaaf37fdaa22946fe6e82fe989e097b10a6aa9ff8143c852036e18",
   "runs/quality/quality-08-3/results.json": "3091399c4e8801af8e666579b9b6fb6d40bd0f443c1d58b159944d3b96ce41c3",
-  "runs/quality/quality-08-3.log": "750dc4caa61f0557fbe33672e23d5c5a98fd0c028f2b381fc7048968c1ee8893"
+  "runs/quality/quality-08-3.log": "750dc4caa61f0557fbe33672e23d5c5a98fd0c028f2b381fc7048968c1ee8893",
+  "verification.json": "943255f5659baebf6085ce42d9cecd072f7314dd038fab91fb84aaae79f42c52"
 }

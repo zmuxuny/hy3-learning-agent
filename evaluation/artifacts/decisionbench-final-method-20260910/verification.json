@@ -1,0 +1,112 @@
+{
+  "source_commit": "1586d1e6206808c7be1ffb32c2d117779c3f5251",
+  "environment": "clean shared Git clone; existing project Python environment; no model calls",
+  "checks": [
+    {
+      "archive": "evaluation/artifacts/decisionbench-final-method-20260910",
+      "command": [
+        "evaluation/scripts/summarize_final_method.py",
+        "--archive",
+        "/tmp/stage3-clean-final-verify/evaluation/artifacts/decisionbench-final-method-20260910",
+        "--output",
+        "/tmp/stage3-independent-recompute/decisionbench-final-method-20260910"
+      ],
+      "files": {
+        "adversarial.csv": "a087a2c6faad1117eabe412854b45f0cfa3a7212b95393c0feee1991709922d9",
+        "application-human.csv": "d2b64192b4b8e5fddee0a8a33b949a33c322ca35e224eba5184b0912a81ffaf0",
+        "cases.csv": "4e3e80237cbb9b65c7cd50cf28169737fdb9e6a23a911491eb788b06e76cc70e",
+        "dimensions.csv": "b0bf272109d9eeef9e2faeb9f7eb75ec7675074584bfa8cc783ff3c2b82770c3",
+        "human-alignment.csv": "ec47279ab844efc9612ec59e4ec1e4ba088052e2ec031f997c349833c84f8574",
+        "stability.csv": "a581951cbac9814b16979943dc300f9afe72886e7a455e1c138ae7ab8f14c099",
+        "summary.json": "0002052cd60994070e992f3b51efec353662a9e621e864c89f619f7078d38c47",
+        "tracks.csv": "86d0f6f728908aca081e4ccded30e4a3aacdb8b58c19be79e81057e42d3aec49",
+        "triplets.csv": "f6658ddfcfbcec18950dc2e0576684124a39b45914c07955965035dc62ef29fb"
+      },
+      "all_bytes_equal": true
+    },
+    {
+      "archive": "evaluation/artifacts/condition-validation-20260910",
+      "command": [
+        "evaluation/scripts/summarize_condition_validation.py",
+        "--archive",
+        "/tmp/stage3-clean-final-verify/evaluation/artifacts/condition-validation-20260910",
+        "--output",
+        "/tmp/stage3-independent-recompute/condition-validation-20260910"
+      ],
+      "files": {
+        "cases.csv": "8c62e33c9335a3ea9da416f4e69b97750030a7b3592766402321e0bca0e59acc",
+        "repetition.csv": "ec0c2ba93c100a48d2e676de9dd06d12bb5a61bd9ee0d35a9b2143734992da2a",
+        "summary.json": "11baac9bec8c8cbef524856b01b654ce495664e6c8e3f18e8daad18ab3469c4e"
+      },
+      "all_bytes_equal": true
+    },
+    {
+      "archive": "evaluation/artifacts/condition-insight-20260910",
+      "command": [
+        "evaluation/scripts/summarize_condition_insight.py",
+        "--archive",
+        "/tmp/stage3-clean-final-verify/evaluation/artifacts/condition-insight-20260910",
+        "--output",
+        "/tmp/stage3-independent-recompute/condition-insight-20260910"
+      ],
+      "files": {
+        "cases.csv": "4abef41307571b54c900ef9724843fa7d34970dfd796b6ec5f9b5c13eef97acb",
+        "summary.json": "e533912b270cf794301fc4178b54e9a1c5460008a5f167d9db474e5934a9dce6"
+      },
+      "all_bytes_equal": true
+    },
+    {
+      "archive": "evaluation/artifacts/decisionbench-severe-validation-20260910",
+      "command": [
+        "evaluation/scripts/summarize_quality_followup.py",
+        "--archive",
+        "/tmp/stage3-clean-final-verify/evaluation/artifacts/decisionbench-severe-validation-20260910",
+        "--output",
+        "/tmp/stage3-independent-recompute/decisionbench-severe-validation-20260910"
+      ],
+      "files": {
+        "cases.csv": "d68accb39d5ca09996f1dec0de34e38157f1c5923a30fab33deb1a21df70d120",
+        "dimensions.csv": "c0e489d2948bccab7f428270c06f1f55cca4cdc6228a005b3b0f9a5953358042",
+        "summary.json": "d8fb519fd3c13c80731af75e0d4de90ea801c4499045564a32e30fd05046c6d7",
+        "tracks.csv": "4451b19bd174ccbf894b54f5c6c3cc529d2d99a84b8783d50f5f436df5c5d8b2"
+      },
+      "all_bytes_equal": true
+    }
+  ],
+  "tests": {
+    "command": "PYTHONPATH=evaluation/src:evaluation/scripts:backend .venv/bin/python -m pytest evaluation/tests/test_git_source_context.py evaluation/tests/test_quality_reconciliation.py -q",
+    "passed": 11
+  },
+  "documentation_links": {
+    "command": "python scripts/check_doc_links.py",
+    "result": "passed"
+  },
+  "credential_check": {
+    "configured_secret_values_checked": 2,
+    "matches_in_tracked_files": 0
+  },
+  "report": {
+    "source_sha256": "7f0f393e90b6c540e44b16bae4143f54b2af04de8eca00c9033d662c1499bad6",
+    "html_sha256": "659bba41e127ea50a4859a6b2a871b62e2a2b3869f6bfdff0b7723818921fd88",
+    "pdf_sha256": "6961f7b24c970a1f94debc3fc685d7e5fac772ef4c654f6d4c40607ab82d9816",
+    "pages": 26,
+    "out_of_page_words": 0,
+    "visual_review": "All 26 pages reviewed using page renders; figures, captions and case tables checked."
+  },
+  "demo": {
+    "sha256": "d8ac4ac66e8ec488f16af578e6ac619b282c011052a8b0969f372d8e3d09ac8f",
+    "duration_seconds": 108,
+    "width": 1920,
+    "height": 1080,
+    "viewport_checks": 8,
+    "visual_review_seconds": [
+      14,
+      28,
+      39,
+      56,
+      76,
+      102
+    ],
+    "full_application_viewport_preserved": true
+  }
+}
