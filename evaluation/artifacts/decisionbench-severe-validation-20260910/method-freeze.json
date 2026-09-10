@@ -1,0 +1,6 @@
+{
+  "source_commit": "91bd043f8fa0894fca12a02ffe5c682a02cd7615",
+  "method_sha256": "b473189f42564de0401fe93aa1a9d2db30757ed002ebdde2322b932fbf8248b3",
+  "frozen_at": "2026-09-10T03:25:54.602911+00:00",
+  "rule": "No further method changes on upcoming new scenario validation; retain all failures and false positives."
+}

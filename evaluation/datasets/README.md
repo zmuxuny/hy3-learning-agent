@@ -26,3 +26,7 @@
 | learning-quality-validation-v1 | 内容质量方法的首轮构造样本 | 已见开发样本，不再称独立测试 |
 
 历史结果入口位于 [artifacts](../artifacts)。每个实验以自己的输入清单、源码提交和方法摘要确定身份。当前交付采用有明确用途的目录名，不继续把工程协议版本当作数据集名称。
+
+## 新增方法验证扩展（2026-09-10）
+
+[新场景中的严重失败识别](decisionbench-learning-v1/extensions/severe-validation-20260910/README.md)位于统一数据入口的extensions中：12族24份输出，72次评分已完成，独立于原48/24/8。具体场景在方法冻结后构造，原有场景及结果保留。

@@ -1,0 +1,5 @@
+track,total,valid,severe_slots,severe_failed,severe_identified_critical,good_slots,good_passed,good_false_fail,no_score
+planning,18,18,9,9,9,9,9,0,0
+intervention,18,18,9,9,9,9,9,0,0
+assessment,18,18,9,9,9,9,9,0,0
+revision,18,18,9,9,9,9,9,0,0

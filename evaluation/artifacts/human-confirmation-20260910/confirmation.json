@@ -1,0 +1,66 @@
+{
+  "confirmation_date": "2026-09-10",
+  "source": "author confirmation in conversation",
+  "author_statement": "两位标注者各自独立盲标全部128个评分位置，七个维度及通过结论逐项一致，且均与既有复核表一致。",
+  "coverage_slots": 128,
+  "human_human_agreement_reported": 1.0,
+  "original_review_notes_sha256": "2b764d0bea53f037dc0bd6147675fb45ea35e545d21efa830876165e0e95424b",
+  "provenance": "Existing AI review retained. Human agreement is author-attested; original human forms were not supplied. No reviewer identities or original forms synthesized.",
+  "quantitative_scope": "48 application cases with explicit seven-dimensional review values; 80 method/adversarial notes record findings, not revised numerical vectors, so do not reconstruct those vectors.",
+  "application": {
+    "cases": 48,
+    "dimensions": [
+      {
+        "dimension": "D1",
+        "n": 48,
+        "automatic_human_agreement": 0.8541666666666666,
+        "automatic_human_quadratic_kappa": 0.45945945945945943,
+        "human_human_quadratic_kappa": 1.0
+      },
+      {
+        "dimension": "D2",
+        "n": 48,
+        "automatic_human_agreement": 0.9583333333333334,
+        "automatic_human_quadratic_kappa": 0.0,
+        "human_human_quadratic_kappa": 1.0
+      },
+      {
+        "dimension": "D3",
+        "n": 48,
+        "automatic_human_agreement": 1.0,
+        "automatic_human_quadratic_kappa": null,
+        "human_human_quadratic_kappa": null
+      },
+      {
+        "dimension": "D4",
+        "n": 48,
+        "automatic_human_agreement": 1.0,
+        "automatic_human_quadratic_kappa": null,
+        "human_human_quadratic_kappa": null
+      },
+      {
+        "dimension": "D5",
+        "n": 48,
+        "automatic_human_agreement": 0.9375,
+        "automatic_human_quadratic_kappa": 0.0,
+        "human_human_quadratic_kappa": 1.0
+      },
+      {
+        "dimension": "D6",
+        "n": 48,
+        "automatic_human_agreement": 1.0,
+        "automatic_human_quadratic_kappa": 1.0,
+        "human_human_quadratic_kappa": 1.0
+      },
+      {
+        "dimension": "D7",
+        "n": 48,
+        "automatic_human_agreement": 0.9375,
+        "automatic_human_quadratic_kappa": 0.0,
+        "human_human_quadratic_kappa": 1.0
+      }
+    ],
+    "automatic_human_outcome_matches": 46,
+    "automatic_human_outcome_agreement": 0.9583333333333334
+  }
+}

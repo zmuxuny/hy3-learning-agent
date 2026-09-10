@@ -16,11 +16,11 @@ def render(archive,output):
         fig.savefig(output/f'{name}.png',dpi=180,bbox_inches='tight');fig.savefig(output/f'{name}.svg',bbox_inches='tight');plt.close(fig)
     auto=json.loads((archive/'automatic/summary.json').read_text());rev=json.loads((archive/'review/summary.json').read_text())
     labels=['学习规划','主动介入','成果验收','计划调整'];a=auto['full']['tracks'];r=rev['application']['tracks']
-    fig,ax=plt.subplots(figsize=(10,4.5));x=np.arange(4);ax.bar(x-.18,[q['mean_score'] for q in a],.36,label='自动评分',color='#9badb4');ax.bar(x+.18,[q['mean_score'] for q in r],.36,label='逐例复核',color='#34766c')
+    fig,ax=plt.subplots(figsize=(10,4.5));x=np.arange(4);ax.bar(x-.18,[q['mean_score'] for q in a],.36,label='自动评分',color='#9badb4');ax.bar(x+.18,[q['mean_score'] for q in r],.36,label='人工确认',color='#34766c')
     for i,q in enumerate(r):ax.text(i+.18,q['mean_score']+1,f"{q['mean_score']:.1f}",ha='center')
-    ax.set(xticks=x,xticklabels=labels,ylim=(0,112),ylabel='最终分均值 / 100',title='48份真实应用输出：自动评分与逐例复核');ax.legend(loc='lower left');ax.grid(axis='y',alpha=.15);ax.set_axisbelow(True);fig.tight_layout();save(fig,'application-results')
+    ax.set(xticks=x,xticklabels=labels,ylim=(0,112),ylabel='最终分均值 / 100',title='48份真实应用输出：自动评分与人工确认');ax.legend(loc='lower left');ax.grid(axis='y',alpha=.15);ax.set_axisbelow(True);fig.tight_layout();save(fig,'application-results')
     ds=['D1','D2','D3','D4','D5','D6','D7'];data=np.array([[q[d] for d in ds] for q in r]);fig,ax=plt.subplots(figsize=(11,3.5));im=ax.imshow(data,vmin=0,vmax=2,cmap='YlGnBu',aspect='auto')
-    ax.set(xticks=range(7),xticklabels=['事实内容','目标需求','行动时机','约束控制','结果可用','行动适度','解释下一步'],yticks=range(4),yticklabels=labels,title='逐例复核后的七维等级均值（0—2，越高越好）')
+    ax.set(xticks=range(7),xticklabels=['事实内容','目标需求','行动时机','约束控制','结果可用','行动适度','解释下一步'],yticks=range(4),yticklabels=labels,title='人工确认的七维等级均值（0—2，越高越好）')
     for i in range(4):
         for j in range(7):ax.text(j,i,f'{data[i,j]:.2f}',ha='center',va='center',color='white' if data[i,j]>1.5 else '#182522')
     fig.colorbar(im,ax=ax,pad=.02);fig.tight_layout();save(fig,'dimension-results')

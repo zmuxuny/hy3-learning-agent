@@ -1,0 +1,8 @@
+dimension,n,automatic_human_agreement,automatic_human_quadratic_kappa,human_human_quadratic_kappa
+D1,48,0.8541666666666666,0.45945945945945943,1.0
+D2,48,0.9583333333333334,0.0,1.0
+D3,48,1.0,,
+D4,48,1.0,,
+D5,48,0.9375,0.0,1.0
+D6,48,1.0,1.0,1.0
+D7,48,0.9375,0.0,1.0

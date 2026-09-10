@@ -1,0 +1,28 @@
+{
+  "method_sha256": "b473189f42564de0401fe93aa1a9d2db30757ed002ebdde2322b932fbf8248b3",
+  "method_freeze": {
+    "source_commit": "91bd043f8fa0894fca12a02ffe5c682a02cd7615",
+    "method_sha256": "b473189f42564de0401fe93aa1a9d2db30757ed002ebdde2322b932fbf8248b3",
+    "frozen_at": "2026-09-10T03:25:54.602911+00:00",
+    "rule": "No further method changes on upcoming new scenario validation; retain all failures and false positives."
+  },
+  "source_commit": "ca4f2dc",
+  "created_at": "2026-09-10T03:28:42.945100+00:00",
+  "suite_sha256": "e711d3b5e74ccbdb350129073bc5415de2da714443de0c969e61406bd628893c",
+  "labels_sha256": "b0ce101ccaab486a79a1cd90131d4a9dde96684524edbb935dfbe8b826271d23",
+  "repeats": 3,
+  "outputs": 24,
+  "families": 12,
+  "tracks": 4,
+  "total_slots": 72,
+  "severe_slots": 36,
+  "good_slots": 36,
+  "result_batches": [
+    "validation",
+    "validation-recovery"
+  ],
+  "selection": "first valid; retain all raw failures; no rerun of valid scores",
+  "recovery_policy": "One additional cycle only for slots with no valid rating, same method/input/repeat index, max 3 attempts each stage. Valid slots excluded.",
+  "primary_success": "36/36 severe outputs identified critical AND failed, 36/36 good controls pass; report no-score in fixed denominators",
+  "unseen_scope": "New literal scenarios and outputs constructed after method freeze; defect mechanisms deliberately related to development target, not unseen defect-type generalization; constructed by same developer, not an independent external test."
+}

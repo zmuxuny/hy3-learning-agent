@@ -42,7 +42,7 @@
       "source": "sources/evaluation.webm",
       "start": 0,
       "duration": 40,
-      "caption": "评测：查看已归档的原始证据、复核与有效性实验"
+      "caption": "首轮评测：原始证据、开发复核与有效性实验"
     },
     {
       "type": "closing",
@@ -53,5 +53,9 @@
     "sources/application.webm": "4c7737f4bebf2ee9f488feea06aa9a6c3e804d304ffa15240b24442108262fd1",
     "sources/goal.webm": "d4c8ff582aeeeb967f4b8a43740ab8eb0f3e35d5c508189fe0605d0e8d47b093",
     "sources/evaluation.webm": "ae3c3537e35395e6abdc1554820e203c28d67d974e79c25bd8a3fc030e6cce11"
-  }
+  },
+  "extension_evidence_archive": "evaluation/artifacts/decisionbench-severe-validation-20260910",
+  "extension_summary_sha256": "d8fb519fd3c13c80731af75e0d4de90ea801c4499045564a32e30fd05046c6d7",
+  "human_confirmation_archive": "evaluation/artifacts/human-confirmation-20260910",
+  "human_confirmation_sha256": "427af404135b078ca0bec75a57b9d502872c4d8283a56033543c69a39276e235"
 }

@@ -42,7 +42,7 @@
       "source": "sources/evaluation.webm",
       "start": 0,
       "duration": 40,
-      "caption": "评测：查看已归档的原始证据、复核与有效性实验",
+      "caption": "首轮评测：原始证据、开发复核与有效性实验",
       "video_start": 52,
       "video_end": 92
     },
@@ -53,5 +53,5 @@
       "video_end": 108
     }
   ],
-  "sha256": "eb07b087de4d8ffa4763f614231a7ae521d694480750ebad33001f48735369b3"
+  "sha256": "a20be318671f1edd4035ae396dd241329ac29b6d6c83c234f192a0d846a9d37e"
 }

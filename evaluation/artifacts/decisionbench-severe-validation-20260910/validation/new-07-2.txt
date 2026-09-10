@@ -1,0 +1,3 @@
+new-07-2 1 judge_error None
+new-07-2 2 complete 20.0
+new-07-2 3 complete 20.0

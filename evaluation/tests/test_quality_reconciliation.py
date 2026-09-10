@@ -55,3 +55,36 @@ def test_exact_json_comparison_preserves_numeric_values_and_boolean_types():
     assert new.aggregate(r, e)['score'] == 100
     e['state_before']['tests'] = [{'expected': True, 'actual': 1}]
     assert new.aggregate(r, e)['score'] == 39
+
+
+def test_recovery_runs_only_requested_repeat_and_keeps_method_identity(tmp_path, monkeypatch):
+    import json
+    from pathlib import Path
+    from dataclasses import make_dataclass
+    from learning_agent_eval.canonical import sha256_digest
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / 'scripts'))
+    import run_learning_quality as runner
+    from learning_agent_eval.quality_content_audit import CATEGORIES
+    e, r = data()
+    (tmp_path / 'e.json').write_text(json.dumps(e))
+    (tmp_path / 'suite.json').write_text(json.dumps([dict(id='case', track='assessment', kind='test',
+        evidence_file='e.json', evidence_sha256=sha256_digest(e))]))
+    calls = []
+    Reply = make_dataclass('Reply', [('status', str), ('content', str), ('finish_reason', str)])
+    class Provider:
+        def __init__(self, **kwargs):pass
+        def complete(self, request):
+            calls.append(request['_budget_call_id'])
+            payload = {'findings': [dict(category=c, claim='test', claim_ids=[], verdict='not_applicable',
+                verification='test', evidence_paths=['state_before']) for c in CATEGORIES]} if ':audit:' in calls[-1] else r
+            return Reply('completed', json.dumps(payload), 'stop')
+    monkeypatch.setattr(runner, 'QualityProvider', Provider)
+    monkeypatch.setattr(runner, 'git_worktree_clean', lambda: True)
+    monkeypatch.setattr(runner, 'dependency_environment_reason_codes', lambda: ())
+    monkeypatch.setattr(runner, 'current_git_commit', lambda: 'test-source')
+    result = runner.run(tmp_path/'suite.json', tmp_path/'out', tmp_path/'unused-ledger',
+                        repeats=3, method_version='learning-quality-9', repeat_indices=[2])
+    assert calls == ['case:repeat:2:audit:1', 'case:repeat:2:rating:1']
+    assert result['method_sha256'] == new.METHOD_SHA256
+    assert len(result['rows']) == 1 and result['rows'][0]['repeat'] == 2
+    assert result['rows'][0]['score'] == 39

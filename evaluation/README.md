@@ -343,3 +343,7 @@ E6修复、另版验证、新测试冻结登记、全批评测及主AI审核归�
 记录在 [`../docs/STATUS.md`](../docs/STATUS.md)。
 
 审计修复、原H07-R归因更正、正式统计口径与Git历史复现要求见[补修档案](artifacts/e6-audit-fixes-20260909/README.md)。当前候选可运行`PYTHONPATH=evaluation/src:backend .venv/bin/python evaluation/scripts/build_e6_repair_releases.py verify`检查绑定；旧测试不重新登记或回填。
+
+## 2026-09-10 方法补强与人工确认
+
+首轮128个评分位置已有作者确认的双人人工盲标，[人工确认及对齐统计](artifacts/human-confirmation-20260910/README.md)独立归档，历史AI记录不改身份。[新场景验证](artifacts/decisionbench-severe-validation-20260910/README.md)使用第9版内容核验与确定性证据对照。重跑时显式指定`run_learning_quality.py --method learning-quality-9`；默认第8版继续服务旧实验复现。新场景数据位于[统一数据入口的extensions](datasets/decisionbench-learning-v1/extensions/severe-validation-20260910/README.md)。

@@ -6,6 +6,8 @@
 
 [项目与评测报告](docs/第三阶段项目与评测报告.md) · [108秒Demo](assets/demo/stage3/learning-agent-stage3.mp4) · [第三阶段项目方案](docs/腾讯犀牛鸟开源实习第三阶段项目方案.md) · [演示页（已发布版本）](https://zmuxuny.github.io/hy3-learning-agent/)
 
+评测材料已补充[新场景严重失败验证](evaluation/artifacts/decisionbench-severe-validation-20260910/README.md)和[双人人工确认](evaluation/artifacts/human-confirmation-20260910/README.md)：新增72次评分中，严重36/36识别、正常36/36通过。
+
 Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩展为贯穿目标、计划、执行、验收与调整的持续学习伙伴。
 
 用户可以从一句并不完整的目标开始，例如：“我有 C++ 基础，希望两个月内学会 CUDA，并完成一个矩阵乘优化项目。”Hy3 会澄清真正影响路径的条件、调研并核验资源、提出可审阅的计划；当学习开始后，它继续跟踪任务与证据、验收成果，并根据新的学习事实选择保持安静、教学、抽查、提醒或调整计划。

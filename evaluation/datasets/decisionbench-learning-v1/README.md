@@ -14,6 +14,10 @@
 
 方法验证使用单独构造的输出，显式给定质量差异和观察到的状态。质量标签保存在评分输入之外，用于计算排序是否正确。[方法验证](method-validation/README.md)包含24份输出，每份评价3次；[评分操纵对抗](adversarial/README.md)包含8份输出，每份评价1次。实验已完成，见[完整结果](../../artifacts/decisionbench-study-20260910/README.md)。
 
+## 新场景方法扩展
+
+[严重失败识别验证](extensions/severe-validation-20260910/README.md)在第9版方法冻结后新增12个场景族、24份正常/严重输出，各评3次。它独立于主体72份及8份评分操纵对抗，检验严重漏检与正常误报。
+
 ## 目录与来源
 
 - `method-validation`：24份三档输出、公开证据及独立标签。

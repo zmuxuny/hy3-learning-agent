@@ -27,6 +27,16 @@ def build(manifest,output):
       'intro':('从学习目标，到有依据的下一步',['面向编程自学者：计划、作品反馈与过程支持。','Hy3理解条件并调用工具，用户审阅后采用计划。','我们也评价助手：建议正确吗？行动合适吗？']),
       'method':('评价一次决策，需要看到完整证据',['用户要求 + 助手内容 + 工具结果 + 前后状态','七维：事实、目标、时机、约束、可用性、适度、解释','内容核验与程序检查 → 自动评分 → 逐例复核','接下来：两周卷积学习计划里的边界条件遗漏。']),
       'closing':('应用、数据与评价依据一起交付',['48个真实应用场景：复核46通过、2未通过。','24份三档输出各评3次：严格排序22 / 24组。','加权分标准差均值4.56；评分操纵误通过0 / 8。','图文报告 · 原始结果与复核 · 数据集 · 离线复算','github.com/zmuxuny/hy3-learning-agent'])}
+    if 'extension_evidence_archive' in m:
+        summary_path=ROOT/m['extension_evidence_archive']/'automatic/summary.json'
+        assert hashlib.sha256(summary_path.read_bytes()).hexdigest()==m['extension_summary_sha256']
+        summary=json.loads(summary_path.read_text())
+        pages['closing']=('应用、数据与评价依据一起交付',[
+            '48个真实应用场景：人工确认46通过、2未通过。',
+            f"新增受控验证：严重{summary['severe_identified_critical']}/{summary['severe_slots']}识别，正常{summary['good_passed']}/{summary['good_slots']}通过。",
+            '双人人工盲标首轮128个位置，逐项一致。',
+            '首轮三档严格排序22/24；图文报告与完整结果可复算。',
+            'github.com/zmuxuny/hy3-learning-agent'])
     output.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='stage3-video-') as tmp:
         tmp=Path(tmp);parts=[];seconds=0;timeline=[]
