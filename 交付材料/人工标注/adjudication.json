@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-11",
+  "annotators": [
+    "czy",
+    "zyq"
+  ],
+  "scope": "48 application decision episodes, seven dimensions and decision outcome",
+  "decision": "After discussion, both annotators accepted czy labels as the final reference.",
+  "selected_file": "application_czy.csv",
+  "reference_file": "application.csv",
+  "confirmation_source": "project author instruction on 2026-09-11",
+  "sha256": {
+    "application.csv": "1b97a5bc6c3f9c6f590bfdd7acabc62a54aff44b54b85ddb98be12d82baa9065",
+    "application_czy.csv": "1b97a5bc6c3f9c6f590bfdd7acabc62a54aff44b54b85ddb98be12d82baa9065",
+    "application_zyq.csv": "eb76b4b6f46207914ce01def5ae694ce4653be9a2412b401167c557e81826d57"
+  }
+}

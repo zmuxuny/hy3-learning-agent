@@ -1,27 +1,28 @@
 # 双人人工标注与自动评分对齐
 
-两位标注者各自独立标注128条评价记录：48份应用记录各1次，24份质量对照材料各3次，共72次，以及8份评分操纵材料各1次。两人的七维等级及评分是否达标的结论逐项一致，人工一致率为100%。人工参考结果用于评价自动评分的可靠性。
+两位标注者分别评价48个应用案例，给出七维等级和决策评分是否达标的结论。原始文件为[application_czy.csv](../../../交付材料/人工标注/application_czy.csv)和[application_zyq.csv](../../../交付材料/人工标注/application_zyq.csv)。讨论后，两人共同认可czy的标注，最终参考为[application.csv](../../../交付材料/人工标注/application.csv)，协商决定见[adjudication.json](../../../交付材料/人工标注/adjudication.json)。
 
-`confirmation.json`保存作者对标注范围与结果的确认，以及对应标签文件的摘要。报告中的人工统计与这些已确认标签对应。
+## 协商前的一致性
 
-## 标签与对照文件
+| 比较对象 | 相同数量 | 一致率 |
+| --- | --- | --- |
+| 七维等级逐项比较 | 329 / 336（48例×7维） | 97.92% |
+| 每例七维全部相同 | 41 / 48 | 85.42% |
+| 决策评分是否达标 | 48 / 48 | 100% |
 
-| 文件 | 内容与用途 |
-| --- | --- |
-| [../decisionbench-study-20260910/review/application.csv](../decisionbench-study-20260910/review/application.csv) | 48个应用案例的参考标签；含案例`id`、名称、七维等级`D1`—`D7`（0—2）、参考总分`review_score`、达标结论`review_outcome`和判断说明`note` |
-| [../decisionbench-final-method-20260910/automatic/application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv) | 同一48例的最终自动评分与人工参考；按`id`对应，`automatic_`与`human_`列分别给出双方七维等级、总分和达标结论 |
-| [../decisionbench-final-method-20260910/automatic/human-alignment.csv](../decisionbench-final-method-20260910/automatic/human-alignment.csv) | 上述48例按七个维度汇总的一致率与二次加权Kappa |
-| [../decisionbench-study-20260910/review/reviews.csv](../decisionbench-study-20260910/review/reviews.csv) | 128条判断记录及说明；其中48条应用记录包含完整七维参考值 |
-| [confirmation.json](confirmation.json) | 人工标注范围、结果确认和参考文件摘要 |
+7处等级分歧分别涉及学习目标2处、行动时机3处、行动适度2处，均相差一级。逐维统计见[human-human-alignment.csv](human-human-alignment.csv)，逐项分歧见[annotation-differences.csv](annotation-differences.csv)，其中`left`表示czy，`right`表示zyq。
 
-## 自动评分与人工参考的比较
+## 自动评分与协商后参考的比较
 
-48份应用记录具有完整的七维数值，用于计算自动评分与人工参考的一致程度。最终方法的达标判断有46/48相同；逐维一致率及二次加权Kappa见[最终对齐表](../decisionbench-final-method-20260910/automatic/human-alignment.csv)。Kappa考虑双方等级分布带来的偶然一致，对相差两档的判断给予更大差异权重。其余质量对照和操纵材料的标注用于逐项判断核对。
+自动评分与最终参考在48例中的46例给出相同达标结论，一致率95.8%。[application-alignment.csv](application-alignment.csv)列出最终方法的七维一致率和二次加权Kappa；[application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv)并列双方每例的等级、总分和结论。[confirmation.json](confirmation.json)保存两份标注、最终参考的文件摘要及全部比较结果。
 
-本目录`application-alignment.csv`保留对应评分记录的数值比较。最终报告采用上面链接的统一方法结果。以下命令复算本目录的对齐记录：
+## 离线复算
+
+从仓库根目录执行，不调用模型。脚本按案例`id`对齐两份独立标注，核对协商决定与文件摘要，再分别计算协商前一致性及自动与最终参考的一致性。
 
 ```bash
 python evaluation/scripts/summarize_human_confirmation.py \
-  --archive evaluation/artifacts/decisionbench-study-20260910 \
+  --annotations 交付材料/人工标注 \
+  --archive evaluation/artifacts/decisionbench-final-method-20260910 \
   --output /tmp/human-confirmation-recompute
 ```

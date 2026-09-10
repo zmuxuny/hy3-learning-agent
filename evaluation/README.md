@@ -11,10 +11,10 @@
 | 数据集 | [DecisionBench](datasets/decisionbench-learning-v1/README.md)：应用场景、三档输出、评分操纵及正常/严重对照 |
 | 完整结果 | [统一方法实验档案](artifacts/decisionbench-final-method-20260910/README.md)：48份真实记录各1次、24份三种质量记录各3次、8份操纵记录各1次、24份正常/严重记录各3次，共200次评分及逐例七维、分组统计、原始响应与复算 |
 | 条件与案例诊断 | [36次条件验证](artifacts/condition-validation-20260910/README.md) · [卷积案例分析](artifacts/condition-insight-20260910/README.md)：输入条件、逐次核验与评分采纳 |
-| 人工参考 | [双人人工确认](artifacts/human-confirmation-20260910/README.md)：128个位置的覆盖确认；最终自动—人工数值见[对齐表](artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv) |
+| 人工参考 | [双人人工确认](artifacts/human-confirmation-20260910/README.md)：48例双人原始标注、协商决定与一致性统计；最终自动—人工数值见[对齐表](artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv) |
 | 分析报告 | [项目与评测报告](../第三阶段项目与评测报告.md)：产品、方法、实验、典型案例与完整评测集附录 |
 
-核对48例应用结果时，直接使用[参考标签 application.csv](artifacts/decisionbench-study-20260910/review/application.csv)和[自动与人工逐例对照 application-human.csv](artifacts/decisionbench-final-method-20260910/automatic/application-human.csv)，两表按`id`关联。参考表的`D1`—`D7`为0—2级参考值，`review_score`与`review_outcome`为参考总分及决策评分达标结论；对照表以`automatic_`和`human_`前缀并列最终自动值与参考值。全部关键数据的完整路径、规模和证据查找方式见[交付数据索引](../第三阶段交付说明.md#关键数据文件索引)。
+核对48例应用结果时，直接使用[参考标签 application.csv](../交付材料/人工标注/application.csv)和[自动与人工逐例对照 application-human.csv](artifacts/decisionbench-final-method-20260910/automatic/application-human.csv)，两表按`id`关联。参考表的`D1`—`D7`为0—2级参考值，`review_score`与`review_outcome`为参考总分及决策评分达标结论；对照表以`automatic_`和`human_`前缀并列最终自动值与参考值。全部关键数据的完整路径、规模和证据查找方式见[交付数据索引](../第三阶段交付说明.md#关键数据文件索引)。
 
 ## 评测流程
 

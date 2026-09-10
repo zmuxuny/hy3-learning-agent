@@ -1,0 +1,54 @@
+{
+  "checks": [
+    {
+      "script": "summarize_final_method.py",
+      "archive": "decisionbench-final-method-20260910",
+      "matched_files": [
+        "adversarial.csv",
+        "application-human.csv",
+        "cases.csv",
+        "dimensions.csv",
+        "human-alignment.csv",
+        "stability.csv",
+        "summary.json",
+        "tracks.csv",
+        "triplets.csv"
+      ]
+    },
+    {
+      "script": "summarize_condition_validation.py",
+      "archive": "condition-validation-20260910",
+      "matched_files": [
+        "cases.csv",
+        "repetition.csv",
+        "summary.json"
+      ]
+    },
+    {
+      "script": "summarize_condition_insight.py",
+      "archive": "condition-insight-20260910",
+      "matched_files": [
+        "cases.csv",
+        "summary.json"
+      ]
+    },
+    {
+      "script": "summarize_human_confirmation.py",
+      "archive": "human-confirmation-20260910",
+      "matched_files": [
+        "annotation-differences.csv",
+        "application-alignment.csv",
+        "confirmation.json",
+        "human-human-alignment.csv"
+      ]
+    }
+  ],
+  "source_files_verified": 3180,
+  "environment": "extracted package; Python dependencies from project environment; no model calls",
+  "independent_annotations": {
+    "dimension_matches": 329,
+    "dimension_slots": 336,
+    "outcome_matches": 48,
+    "cases": 48
+  }
+}

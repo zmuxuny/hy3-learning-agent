@@ -19,7 +19,7 @@
 
 | 文件 | 元信息与用途 |
 | --- | --- |
-| [../decisionbench-study-20260910/review/application.csv](../decisionbench-study-20260910/review/application.csv) | 48例应用参考标签；`D1`—`D7`为0—2级参考值，`review_score`为参考总分，`review_outcome`为决策评分达标结论，`note`为判断说明 |
+| [../../../交付材料/人工标注/application.csv](../../../交付材料/人工标注/application.csv) | 48例应用参考标签；`D1`—`D7`为0—2级参考值，`review_score`为参考总分，`review_outcome`为决策评分达标结论，`note`为判断说明 |
 | [automatic/application-human.csv](automatic/application-human.csv) | 同一48例的最终自动与人工逐例对照；按`id`关联参考标签，`automatic_`与`human_`分别标识双方七维等级、总分和结论 |
 | [cases.csv](automatic/cases.csv) | 200行；每行一个案例的一次评分。`part`为应用、三档、操纵或正常/严重对照；`repeat`为固定重复索引；`D1`—`D7`对应方法说明中的七维；同时保留加权分、最终分、严重度、通过结论及来源路径 |
 | [tracks.csv](automatic/tracks.csv) | 按数据部分和四类决策汇总，列有效、通过、未通过、无分与均分 |
@@ -38,7 +38,7 @@
 
 全部结果的方法摘要为`b473189f42564de0401fe93aa1a9d2db30757ed002ebdde2322b932fbf8248b3`。本档案128次评分的源码提交为`1295254e2f8f792da30eb331cb2d0ea12437fa0b`；其余72次已经使用相同方法、输入及请求结构，保留在[正常/严重对照原始档案](../decisionbench-severe-validation-20260910/README.md)，不重复调用。复算逐次验证方法一致及原始证据绑定。
 
-固定人工参考的来源见[人工确认档案](../human-confirmation-20260910/README.md)。两位人工独立标注128条参考记录；48份应用记录的完整七维标签用于计算本报告的自动—人工一致程度。
+固定人工参考的来源见[人工确认档案](../human-confirmation-20260910/README.md)。两位标注者独立评价48个应用案例，讨论后共同认可czy标签作为最终参考；两份原始标注和协商记录保存在[交付人工标注目录](../../../交付材料/人工标注/README.md)。自动—人工比较读取该目录的application.csv。
 
 ## 离线复算
 

@@ -1,0 +1,8 @@
+id,name,dimension,left,right
+formal-i03-a,杨辉三角缺少证据,D2,2,1
+formal-i06-r,约瑟夫环单字段调整,D2,2,1
+formal-i03-i,午夜前的杨辉三角提醒,D3,2,1
+formal-i05-r,全加器恢复旧业务值,D3,2,1
+formal-i10-p,单元素卷积不等于恒等,D3,2,1
+formal-i05-i,空档中的全加器提醒,D6,2,1
+formal-i07-a,复数乘法实虚分离,D6,2,1

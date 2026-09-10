@@ -55,6 +55,8 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 ## 第三阶段产出
 
+**评测材料统一下载与核对：[交付材料目录](交付材料/README.md)**，包含测试用例、原始决策证据、模型评分、两份人工标注、协商参考及一致性统计。
+
 第三阶段同时交付可运行的学习助手，以及检查其决策质量的评测方法。我们做了两类实验：让应用实际处理预先设置的学习任务，评价它的回复与操作；另行编写好坏不同的回复和操作记录，验证评测器能否辨别这些差异。
 
 应用实验有48项任务，规划、介入、验收、调整各12项，每项实际运行一次。评测器的质量对照实验选8个情境，每个编写正确处理、局部缺陷、严重错误三种版本，得到24份记录；每份固定材料评分3次，共72次，用来比较好坏顺序和重复评分的波动。
@@ -73,7 +75,7 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 质量对照实验的24组分数比较中，23组按正确、局部缺陷、严重错误的顺序依次降分。我们还检查了追加满分指令后是否误判、能否区分正常与严重行为，以及是否发现条件遗漏和工作量矛盾。各项材料如何构造、评分次数如何计算、结果说明什么，见[报告第四、五章](第三阶段项目与评测报告.md#4-实验安排与测试材料)。学习助手48项任务的表现则见第六章，自动评分与人工参考同时列出。
 
-直接核对应用实验的数据：[48例参考标签 application.csv](evaluation/artifacts/decisionbench-study-20260910/review/application.csv) · [48例自动与人工对照 application-human.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/application-human.csv) · [200次主体评分 cases.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/cases.csv)。各文件的记录数、字段含义与原始证据查找方式见[关键数据文件索引](第三阶段交付说明.md#关键数据文件索引)。
+直接核对应用实验的数据：[48例参考标签 application.csv](交付材料/人工标注/application.csv) · [48例自动与人工对照 application-human.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/application-human.csv) · [200次主体评分 cases.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/cases.csv)。各文件的记录数、字段含义与原始证据查找方式见[关键数据文件索引](第三阶段交付说明.md#关键数据文件索引)。
 
 ## Demo
 

@@ -44,7 +44,7 @@ def summarize(archive,output):
     scoring_method=importlib.import_module('learning_agent_eval.learning_quality_v'+version)
     assert design['method_sha256']==scoring_method.METHOD_SHA256
     load_study(OLD/'evidence')  # Validate the original application's source/evidence chain.
-    refs={r['id']:r for r in csv_rows(OLD/'review/application.csv')}
+    refs={r['id']:r for r in csv_rows(ROOT/'交付材料/人工标注/application.csv')}
     labels={r['id']:r for r in read(OLD/'evidence/validation/private-labels.json')}
     newlabels={r['id']:r for r in read(NEW/'inputs/private-labels.json')}
     conditionlabels={r['id']:r for r in read(ROOT/design['parts']['conditions']['labels'])} if 'conditions' in design['parts'] else {}
