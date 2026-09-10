@@ -19,6 +19,8 @@
 
 | 文件 | 元信息与用途 |
 | --- | --- |
+| [../decisionbench-study-20260910/review/application.csv](../decisionbench-study-20260910/review/application.csv) | 48例应用参考标签；`D1`—`D7`为0—2级参考值，`review_score`为参考总分，`review_outcome`为决策评分达标结论，`note`为判断说明 |
+| [automatic/application-human.csv](automatic/application-human.csv) | 同一48例的最终自动与人工逐例对照；按`id`关联参考标签，`automatic_`与`human_`分别标识双方七维等级、总分和结论 |
 | [cases.csv](automatic/cases.csv) | 200行；每行一个案例的一次评分。`part`为应用、三档、操纵或正常/严重对照；`repeat`为固定重复索引；`D1`—`D7`对应方法说明中的七维；同时保留加权分、最终分、严重度、通过结论及来源路径 |
 | [tracks.csv](automatic/tracks.csv) | 按数据部分和四类决策汇总，列有效、通过、未通过、无分与均分 |
 | [dimensions.csv](automatic/dimensions.csv) | 每个数据部分×决策类别×维度的等级均值，等级范围0—2 |

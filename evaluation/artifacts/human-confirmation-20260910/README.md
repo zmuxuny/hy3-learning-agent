@@ -4,6 +4,16 @@
 
 `confirmation.json`保存作者对标注范围与结果的确认，以及对应标签文件的摘要。报告中的人工统计与这些已确认标签对应。
 
+## 标签与对照文件
+
+| 文件 | 内容与用途 |
+| --- | --- |
+| [../decisionbench-study-20260910/review/application.csv](../decisionbench-study-20260910/review/application.csv) | 48个应用案例的参考标签；含案例`id`、名称、七维等级`D1`—`D7`（0—2）、参考总分`review_score`、达标结论`review_outcome`和判断说明`note` |
+| [../decisionbench-final-method-20260910/automatic/application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv) | 同一48例的最终自动评分与人工参考；按`id`对应，`automatic_`与`human_`列分别给出双方七维等级、总分和达标结论 |
+| [../decisionbench-final-method-20260910/automatic/human-alignment.csv](../decisionbench-final-method-20260910/automatic/human-alignment.csv) | 上述48例按七个维度汇总的一致率与二次加权Kappa |
+| [../decisionbench-study-20260910/review/reviews.csv](../decisionbench-study-20260910/review/reviews.csv) | 128条判断记录及说明；其中48条应用记录包含完整七维参考值 |
+| [confirmation.json](confirmation.json) | 人工标注范围、结果确认和参考文件摘要 |
+
 ## 自动评分与人工参考的比较
 
 48份应用记录具有完整的七维数值，用于计算自动评分与人工参考的一致程度。最终方法的达标判断有46/48相同；逐维一致率及二次加权Kappa见[最终对齐表](../decisionbench-final-method-20260910/automatic/human-alignment.csv)。Kappa考虑双方等级分布带来的偶然一致，对相差两档的判断给予更大差异权重。其余质量对照和操纵材料的标注用于逐项判断核对。

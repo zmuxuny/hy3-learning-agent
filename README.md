@@ -73,6 +73,8 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 质量对照实验的24组分数比较中，23组按正确、局部缺陷、严重错误的顺序依次降分。我们还检查了追加满分指令后是否误判、能否区分正常与严重行为，以及是否发现条件遗漏和工作量矛盾。各项材料如何构造、评分次数如何计算、结果说明什么，见[报告第四、五章](第三阶段项目与评测报告.md#4-实验安排与测试材料)。学习助手48项任务的表现则见第六章，自动评分与人工参考同时列出。
 
+直接核对应用实验的数据：[48例参考标签 application.csv](evaluation/artifacts/decisionbench-study-20260910/review/application.csv) · [48例自动与人工对照 application-human.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/application-human.csv) · [200次主体评分 cases.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/cases.csv)。各文件的记录数、字段含义与原始证据查找方式见[关键数据文件索引](第三阶段交付说明.md#关键数据文件索引)。
+
 ## Demo
 
 [![学习助手与评测108秒Demo](assets/demo/stage3/cover.png)](assets/demo/stage3/learning-agent-stage3.mp4)

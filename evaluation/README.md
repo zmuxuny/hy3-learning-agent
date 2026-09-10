@@ -14,6 +14,8 @@
 | 人工参考 | [双人人工确认](artifacts/human-confirmation-20260910/README.md)：128个位置的覆盖确认；最终自动—人工数值见[对齐表](artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv) |
 | 分析报告 | [项目与评测报告](../第三阶段项目与评测报告.md)：产品、方法、实验、典型案例与完整评测集附录 |
 
+核对48例应用结果时，直接使用[参考标签 application.csv](artifacts/decisionbench-study-20260910/review/application.csv)和[自动与人工逐例对照 application-human.csv](artifacts/decisionbench-final-method-20260910/automatic/application-human.csv)，两表按`id`关联。参考表的`D1`—`D7`为0—2级参考值，`review_score`与`review_outcome`为参考总分及决策评分达标结论；对照表以`automatic_`和`human_`前缀并列最终自动值与参考值。全部关键数据的完整路径、规模和证据查找方式见[交付数据索引](../第三阶段交付说明.md#关键数据文件索引)。
+
 ## 评测流程
 
 1. 在仓外源码副本、临时数据库与固定资源中运行应用场景，保存用户条件、完整输出、工具调用和前后状态。
