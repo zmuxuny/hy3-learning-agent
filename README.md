@@ -17,7 +17,7 @@ https://github.com/user-attachments/assets/c9193cc8-d6fb-4aab-a2d8-6b01633f598f
 
 [▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)
 
-视频依次展示目标输入、计划审阅与采用、后台发出的主动提醒，以及案例评分依据和质量对照结果。全片无声，采用统一画框与渐变转场；产品片段完整保留浏览器视口，说明文字位于画面外边距。
+视频依次展示目标输入、计划审阅与采用、后台发出的主动提醒，以及案例评分依据和质量对照结果。
 
 Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩展为贯穿目标、计划、执行、验收与调整的持续学习伙伴。
 
