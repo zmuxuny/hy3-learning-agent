@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="650" viewBox="0 0 1180 650" role="img" aria-label="学习助手记录如何得到评分和复核结果">
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9" fill="#71839b"/></marker></defs>
+<rect width="1180" height="650" fill="white"/>
+<g font-family="Noto Sans CJK SC, Noto Sans CJK JP, sans-serif">
+<text x="30" y="43" font-size="32" font-weight="700" fill="#203d63" text-anchor="start">从助手行为到质量评分</text>
+<text x="30" y="83" font-size="24" font-weight="400" fill="#536174" text-anchor="start">待评的是助手决策；核验和评分由另外两次Hy3调用完成。</text>
+<rect x="30" y="130" width="200" height="198" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="130.0" y="167" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">完整决策记录</text>
+<text x="130.0" y="207" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">用户要求与状态</text>
+<text x="130.0" y="240" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">助手回复与操作</text>
+<text x="130.0" y="273" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">工具与状态结果</text>
+<rect x="260" y="130" width="200" height="198" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="360.0" y="167" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">Hy3：内容核验</text>
+<text x="360.0" y="207" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">第一次模型调用</text>
+<text x="360.0" y="240" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">逐条核对原句</text>
+<text x="360.0" y="273" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">列出发现与证据</text>
+<rect x="490" y="130" width="200" height="198" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="590.0" y="167" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">Hy3：质量评分</text>
+<text x="590.0" y="207" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">第二次模型调用</text>
+<text x="590.0" y="240" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">按七维给0/1/2</text>
+<text x="590.0" y="273" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">说明理由与严重度</text>
+<rect x="720" y="130" width="200" height="198" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="820.0" y="167" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">程序：核对计算</text>
+<text x="820.0" y="207" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">执行明确证据规则</text>
+<text x="820.0" y="240" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">按权重计算分数</text>
+<text x="820.0" y="273" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">应用严重度上限</text>
+<rect x="950" y="130" width="200" height="198" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="1050.0" y="167" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">自动评分结果</text>
+<text x="1050.0" y="207" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">七维等级与理由</text>
+<text x="1050.0" y="240" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">最终分：0—100</text>
+<text x="1050.0" y="273" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">≥70记为评分达标</text>
+<polyline points="230,229 257,229" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="460,229 487,229" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="690,229 717,229" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="920,229 947,229" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="260" y="367" font-size="23" font-weight="400" fill="#536174" text-anchor="start">核验与评分都读取原始记录；程序计算结果也作为核验依据。</text>
+<polyline points="1050,328 1050,420 870,420 870,457" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="665" y="460" width="485" height="151" rx="8" fill="#ffffff" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="907.5" y="497" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">开发助手（AI）：逐次复核</text>
+<text x="907.5" y="537" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">回看原始记录，核对自动理由</text>
+<text x="907.5" y="570" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">保存同意或修订意见；原始自动评分保留</text>
+<rect x="30" y="460" width="580" height="151" rx="8" fill="#ffffff" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="320.0" y="497" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">两位人工：独立参考标注</text>
+<text x="320.0" y="537" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">按同一判据标注指定材料</text>
+<text x="320.0" y="570" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">与自动结果比较；覆盖范围见报告第5.4节</text>
+</g></svg>

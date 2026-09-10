@@ -9,7 +9,7 @@
 | 方法说明 | [学习决策评测方法](../学习决策评测方法.md)：评价单位、七维等级、核验、评分与复核 |
 | 完整用例目录 | [评测用例目录](../评测用例目录.md)：116份输入的具体条件、构造差异及精确文件链接 |
 | 数据集 | [DecisionBench](datasets/decisionbench-learning-v1/README.md)：应用场景、三档输出、评分操纵及正常/严重对照 |
-| 完整结果 | [统一方法实验档案](artifacts/decisionbench-final-method-20260910/README.md)：200次评分、逐例七维、分组统计、原始响应与复算 |
+| 完整结果 | [统一方法实验档案](artifacts/decisionbench-final-method-20260910/README.md)：48份真实记录各1次、24份三种质量记录各3次、8份操纵记录各1次、24份正常/严重记录各3次，共200次评分及逐例七维、分组统计、原始响应与复算 |
 | 条件与案例诊断 | [36次条件验证](artifacts/condition-validation-20260910/README.md) · [卷积案例分析](artifacts/condition-insight-20260910/README.md)：输入条件、逐次核验与评分采纳 |
 | 人工参考 | [双人人工确认](artifacts/human-confirmation-20260910/README.md)：128个位置的覆盖确认；最终自动—人工数值见[对齐表](artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv) |
 | 分析报告 | [项目与评测报告](../第三阶段项目与评测报告.md)：产品、方法、实验、典型案例与完整评测集附录 |
@@ -21,7 +21,7 @@
 3. 程序核对已覆盖的日期、数值、版本与精确测试规则，计算加权分、严重度限制后的最终分及通过结论。
 4. 逐例核对原始证据与自动理由，另存复核意见，生成逐例、逐维、逐类和有效性实验表。
 
-主体200个位置与条件专项36个位置均采用同一冻结方法，其执行参数为`learning-quality-9`；精确方法摘要与输入摘要保存在实验设计中。
+以上200次与条件检查的36次评分均采用同一固定方法，其执行参数为`learning-quality-9`；精确方法摘要与输入摘要保存在实验设计中。
 
 | 脚本 | 作用 |
 | --- | --- |

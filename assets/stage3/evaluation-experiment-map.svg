@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="660" viewBox="0 0 1180 660" role="img" aria-label="实验材料来源、记录份数和评分次数">
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9" fill="#71839b"/></marker></defs>
+<rect width="1180" height="660" fill="white"/>
+<g font-family="Noto Sans CJK SC, Noto Sans CJK JP, sans-serif">
+<text x="30" y="43" font-size="32" font-weight="700" fill="#203d63" text-anchor="start">实验材料与评分次数</text>
+<text x="30" y="83" font-size="24" font-weight="400" fill="#536174" text-anchor="start">一次评分＝完整审查一份记录；重复评分时，记录内容不变。</text>
+<rect x="30" y="118" width="290" height="130" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="175.0" y="155" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">测试学习助手</text>
+<text x="175.0" y="195" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">预设任务 → 应用实际运行</text>
+<text x="175.0" y="228" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">观察生成的回复和操作</text>
+<rect x="365" y="118" width="785" height="130" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="757.5" y="155" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">48项任务 → 48份真实记录 → 各评1次 → 48次评分</text>
+<text x="757.5" y="195" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">分析应用表现，并与人工参考比较</text>
+<polyline points="320,183 362,183" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="30" y="290" width="290" height="267" rx="8" fill="#eaf0f8" stroke="#c5d0de" stroke-width="1.5"/>
+<text x="175.0" y="327" font-size="25" font-weight="700" fill="#203d63" text-anchor="middle">验证评测器</text>
+<text x="175.0" y="367" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">编写质量差异明确的记录</text>
+<text x="175.0" y="400" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">把要求、回复和操作</text>
+<text x="175.0" y="433" font-size="22" font-weight="400" fill="#536174" text-anchor="middle">一起交给评测器评分</text>
+<rect x="365" y="290" width="785" height="59" rx="5" fill="#eaf0f8" stroke="#c5d0de"/>
+<text x="383" y="328" font-size="23" font-weight="700" fill="#203d63" text-anchor="start">三种质量</text>
+<text x="558" y="328" font-size="21" font-weight="400" fill="#536174" text-anchor="start">8个情境 × 3种版本 × 3次评分 ＝ 72次</text>
+<rect x="365" y="358" width="785" height="59" rx="5" fill="#eaf0f8" stroke="#c5d0de"/>
+<text x="383" y="396" font-size="23" font-weight="700" fill="#203d63" text-anchor="start">评分操纵</text>
+<text x="558" y="396" font-size="21" font-weight="400" fill="#536174" text-anchor="start">8份严重记录追加操纵文字 × 1次评分 ＝ 8次</text>
+<rect x="365" y="426" width="785" height="59" rx="5" fill="#eaf0f8" stroke="#c5d0de"/>
+<text x="383" y="464" font-size="23" font-weight="700" fill="#203d63" text-anchor="start">正常 / 严重</text>
+<text x="558" y="464" font-size="21" font-weight="400" fill="#536174" text-anchor="start">12个情境 × 2种版本 × 3次评分 ＝ 72次</text>
+<rect x="365" y="494" width="785" height="59" rx="5" fill="#eaf0f8" stroke="#c5d0de"/>
+<text x="383" y="532" font-size="23" font-weight="700" fill="#203d63" text-anchor="start">条件 / 工作量</text>
+<text x="558" y="532" font-size="21" font-weight="400" fill="#536174" text-anchor="start">6个情境 × 2种版本 × 3次评分 ＝ 36次</text>
+<polyline points="320,423 344,423 344,319 362,319" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="344,423 344,387 362,387" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="344,423 344,455 362,455" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="344,423 344,523 362,523" fill="none" stroke="#71839b" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="30" y="609" font-size="24" font-weight="700" fill="#203d63" text-anchor="start">共116份不同记录、236次评分。三种质量的排序和重复稳定性共用72次评分。</text>
+<text x="30" y="643" font-size="23" font-weight="400" fill="#536174" text-anchor="start">人工比较复用已有材料；具体案例诊断单列分析，不增加新的应用任务。</text>
+</g></svg>
