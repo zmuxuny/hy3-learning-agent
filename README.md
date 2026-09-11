@@ -11,9 +11,11 @@
 
 [项目与评测报告](第三阶段项目与评测报告.md) · [第三阶段交付总览](第三阶段交付说明.md) · [在线观看108秒Demo](https://zmuxuny.github.io/hy3-learning-agent/#demo)
 
-## Demo(视频较大，加载约2s)
+## Demo（完整 108 秒，任务要求不超过 120 秒）
 
-https://github.com/user-attachments/assets/c9193cc8-d6fb-4aab-a2d8-6b01633f598f
+<video controls preload="metadata" playsinline poster="https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/assets/demo/stage3/cover.png" width="960">
+  <source src="https://github.com/user-attachments/assets/c9193cc8-d6fb-4aab-a2d8-6b01633f598f" type="video/mp4" />
+</video>
 
 [▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)
 
