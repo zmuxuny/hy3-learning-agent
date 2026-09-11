@@ -1,0 +1,165 @@
+name: One-off report consistency sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/docs-kappa-sync-oneoff.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Patch report and consistency documentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # 1) Main report: only replace the two Kappa paragraphs in section 5.4.
+          report_path = Path("第三阶段项目与评测报告.md")
+          report = report_path.read_text(encoding="utf-8")
+          old_report = """在行动适度与副作用维度，**自动评分与人工参考的二次加权Kappa为1.000**：双方对47例给出2级、对1例给出1级，逐例判断全部相同。这表明评测器在本批材料中对行动是否适度的判断与人工参考一致。
+
+二次加权Kappa考虑双方等级分布带来的偶然一致，并对相差两档的分歧给予比相差一档更大的权重；1表示完全一致，0表示未超出由边际分布得到的偶然一致水平。用户控制维度双方对48例均给出2级，直接一致率为100%，但Kappa分母为0，记录为无定义。因此同时报告直接一致率与Kappa，并列出全部七个维度。
+"""
+          new_report = """本报告以**逐维等级的一致率**和**评分是否达标的一致率**作为人工对齐的主要结果，并结合逐例差异分析判断分歧发生在哪里。部分维度的标签高度集中在最高等级，因此依赖双方类别边际分布的校正统计量不适合作为这里的主结论；若脱离标签分布直接解读，反而容易把数据分布特性误读为评测方法质量。相关补充统计、计算方式以及为何会出现“直接一致率很高但校正值很低或无定义”的详细说明，统一保存在[人工参考档案](evaluation/artifacts/human-confirmation-20260910/README.md)。
+"""
+          if report.count(old_report) != 1:
+              raise SystemExit("expected report Kappa block not found exactly once")
+          report = report.replace(old_report, new_report, 1)
+          if "Kappa" in report or "kappa" in report:
+              raise SystemExit("main report still contains Kappa text")
+          report_path.write_text(report, encoding="utf-8")
+
+          # 2) Human-consistency archive: keep the raw statistic, but explain its interpretation in detail.
+          human_path = Path("evaluation/artifacts/human-confirmation-20260910/README.md")
+          human = human_path.read_text(encoding="utf-8")
+          old_human = """## 自动评分与协商后参考的比较
+
+自动评分与最终参考在48例中的46例给出相同达标结论，一致率95.8%。[application-alignment.csv](application-alignment.csv)列出最终方法的七维一致率和二次加权Kappa；[application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv)并列双方每例的等级、总分和结论。[confirmation.json](confirmation.json)保存两份标注、最终参考的文件摘要及全部比较结果。
+
+## 离线复算
+"""
+          new_human = """## 自动评分与协商后参考的比较
+
+自动评分与最终参考在48例中的46例给出相同达标结论，一致率为95.8%。逐维直接一致率分别为：事实与内容正确性83.3%、学习目标与需求95.8%、行动选择与时机97.9%、约束与用户控制100%、结果可用性93.8%、行动适度与副作用100%、解释与下一步93.8%。[application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv)并列双方每例的等级、总分和结论；[application-alignment.csv](application-alignment.csv)保留逐维直接一致率与二次加权Kappa；[confirmation.json](confirmation.json)保存两份标注、最终参考的文件摘要及全部比较结果。
+
+### 二次加权Kappa在本批数据中的含义与局限
+
+本档案**保留二次加权Kappa作为补充审计统计，但不把它作为本项目人工对齐的主指标**。这不是因为某个数值“不好看”而回避，而是因为本批48例的七维等级明显集中在最高档2级，多个维度的一方甚至完全没有类别变化。在这种近乎单类别、边际分布高度偏斜的数据上，Kappa回答的问题与“有多少条判断相同”并不相同，数值会被边际分布强烈影响。
+
+对0、1、2三级有序标签，二次加权Kappa可以直观写成 `κw = 1 - Do / De`：`Do`是双方实际观察到的、按等级距离平方加权后的分歧，`De`是只根据双方各自标签比例推导出的期望加权分歧。它关注的是“实际分歧比边际分布所隐含的分歧少了多少”，而不是简单的一致百分比。因此，当绝大多数样本都落在2级时，`De`会很小；如果一方始终给2级，另一方只有少数样本给1级，则实际分歧与按边际分布计算出的期望分歧可以相等，Kappa便得到0，即使双方绝大多数样本逐项相同。如果双方都始终给2级，则`Do=De=0`，分母没有可用于校正的变化量，Kappa反而无定义。
+
+本项目的实际数据正好展示了这一现象：
+
+| 自动评分 vs 最终人工参考 | 逐项相同 | 直接一致率 | 二次加权Kappa | 为什么会这样 |
+| --- | ---: | ---: | ---: | --- |
+| 学习目标与需求（D2） | 46 / 48 | 95.8% | 0.000 | 自动评分48例全部为2级，人工仅2例为1级；自动一侧没有类别方差 |
+| 行动选择与时机（D3） | 47 / 48 | 97.9% | 0.000 | 人工48例全部为2级，自动仅1例为1级；人工一侧没有类别方差 |
+| 约束与用户控制（D4） | 48 / 48 | 100% | 无定义 | 双方48例全部为2级，完全一致但没有任何边际变化可供校正 |
+| 结果可用性（D5） | 45 / 48 | 93.8% | 0.000 | 自动48例全部为2级，人工3例为1级；自动一侧没有类别方差 |
+| 行动适度与副作用（D6） | 48 / 48 | 100% | 1.000 | 双方都为47例2级、1例1级，而且逐例完全对齐，因此既有变化又完全一致 |
+| 解释与下一步（D7） | 45 / 48 | 93.8% | 0.000 | 自动48例全部为2级，人工3例为1级；自动一侧没有类别方差 |
+
+这组结果说明，**0并不等价于“双方只达到随机水平”，更不等价于“评测方法准确率为0”**。例如D3有47/48条逐项相同，却因为一方标签恒为2级而得到0；D4甚至48/48完全一致，却由于双方都没有类别变化而无定义。相反，D6同样是100%直接一致，因为双方都保留了一个1级样本，Kappa便为1。这里0、无定义和1的巨大差异，主要来自边际分布是否存在变化，而不是从93.8%到100%这几个维度之间存在同样巨大的实际判断差距。
+
+同样的现象也出现在**两位独立人工标注者之间**：行动选择与时机维度45/48一致，即93.75%，二次加权Kappa仍为0；约束与用户控制维度48/48完全一致，Kappa仍无定义。也就是说，这种低值或无定义并不是自动评测器特有的现象，而是当前高一致、低类别方差样本与该统计量相互作用的结果。[human-human-alignment.csv](human-human-alignment.csv)保留了完整数字。
+
+### 如何看待事实与内容维度的0.443
+
+事实与内容正确性（D1）与上述“单侧恒定”情况不同：自动与人工有40/48条等级相同，直接一致率为83.3%，二次加权Kappa为0.443。这个数字**不能解释成“方法只有44.3%准确”或“整体可靠性只有44.3%”**；它只是48个应用案例中、七个维度之一，在对边际分布进行校正后得到的一个有序等级一致性统计量。
+
+同时，我们也不使用“指标受分布影响”来掩盖D1的真实分歧。83.3%的直接一致率确实低于其他维度，8个不一致案例表明自动核验在事实条件、适用范围和部分内容判断上仍有改进空间；报告第6.2节对卷积条件遗漏的分析就是其中一个具体例子。因此，本项目的结论是两层的：**Kappa的低值不能被直接翻译成方法整体较差；但直接逐项分歧本身仍然需要逐例分析和改进。**
+
+### 本项目采用的报告方式
+
+基于上述标签分布，本项目在主报告中采用更直接、可解释且能与具体案例对应的指标：两位人工的逐项一致率与达标结论一致率、自动与最终人工参考的逐维直接一致率与达标结论一致率，并进一步列出具体分歧案例。二次加权Kappa及原始字段仍完整保留在本档案、CSV和JSON中，作为可复算的补充统计，而不作为主报告评价方法优劣的单一依据。
+
+因此，当前证据应读作：两位人工在336个维度判断中329个相同、48例达标结论全部相同；自动与最终人工参考的达标结论46/48相同，各维直接一致率为83.3%—100%。这些结果支持“整体判断高度接近、事实内容维度仍存在明确可分析的漏检”，而不能用某一个受边际分布影响的Kappa值概括整个方法。
+
+## 离线复算
+"""
+          if human.count(old_human) != 1:
+              raise SystemExit("expected human archive section not found exactly once")
+          human = human.replace(old_human, new_human, 1)
+          human_path.write_text(human, encoding="utf-8")
+
+          # 3) Delivery index: make the public index follow the report's presentation choice.
+          delivery_path = Path("第三阶段交付说明.md")
+          delivery = delivery_path.read_text(encoding="utf-8")
+          old_delivery = "| 自动与人工逐维一致性 | 7行，每行一个维度；包含48例的有效数量、等级一致率和二次加权Kappa | [evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv) |"
+          new_delivery = "| 自动与人工逐维一致性 | 7行，每行一个维度；包含48例的有效数量和等级一致率；补充校正统计及其适用性说明见人工一致性统计档案 | [evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv) · [人工一致性统计档案](evaluation/artifacts/human-confirmation-20260910/README.md) |"
+          if delivery.count(old_delivery) != 1:
+              raise SystemExit("expected delivery-index row not found exactly once")
+          delivery = delivery.replace(old_delivery, new_delivery, 1)
+          delivery_path.write_text(delivery, encoding="utf-8")
+
+          # 4) Unified-method archive: raw field remains, interpretation is delegated to the human-consistency archive.
+          method_path = Path("evaluation/artifacts/decisionbench-final-method-20260910/README.md")
+          method = method_path.read_text(encoding="utf-8")
+          old_method = "| [human-alignment.csv](automatic/human-alignment.csv) | 48个应用案例的逐维直接一致率与二次加权Kappa；无定义记空值 |"
+          new_method = "| [human-alignment.csv](automatic/human-alignment.csv) | 48个应用案例的逐维直接一致率；原始文件同时保留补充校正统计，无定义记空值，解释见[人工一致性统计档案](../human-confirmation-20260910/README.md) |"
+          if method.count(old_method) != 1:
+              raise SystemExit("expected unified-method file row not found exactly once")
+          method = method.replace(old_method, new_method, 1)
+          method_path.write_text(method, encoding="utf-8")
+
+          print("document patches applied")
+          PY
+
+      - name: Install report renderer dependencies
+        shell: bash
+        run: |
+          npm --prefix frontend ci
+          node frontend/node_modules/playwright-core/cli.js install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+
+      - name: Regenerate HTML and PDF report
+        shell: bash
+        run: |
+          CHROMIUM_PATH="$(node --input-type=module -e "import { chromium } from './frontend/node_modules/playwright-core/index.mjs'; console.log(chromium.executablePath())")"
+          CHROMIUM_PATH="$CHROMIUM_PATH" node scripts/render-stage3-report.mjs .
+
+      - name: Verify synchronized documents
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          report = Path("第三阶段项目与评测报告.md").read_text(encoding="utf-8")
+          html = Path("第三阶段项目与评测报告.html").read_text(encoding="utf-8")
+          archive = Path("evaluation/artifacts/human-confirmation-20260910/README.md").read_text(encoding="utf-8")
+          assert "Kappa" not in report and "kappa" not in report
+          assert "Kappa" not in html and "kappa" not in html
+          assert "二次加权Kappa在本批数据中的含义与局限" in archive
+          assert "95.8%" in archive and "97.9%" in archive and "0.443" in archive
+          assert Path("第三阶段项目与评测报告.pdf").stat().st_size > 10000
+          print("synchronization checks passed")
+          PY
+
+      - name: Commit synchronized outputs
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "第三阶段项目与评测报告.md" "第三阶段项目与评测报告.html" "第三阶段项目与评测报告.pdf" "evaluation/artifacts/human-confirmation-20260910/README.md" "evaluation/artifacts/decisionbench-final-method-20260910/README.md" "第三阶段交付说明.md"
+          if git diff --cached --quiet; then
+            echo "no changes to commit"
+          else
+            git commit -m "docs: clarify human agreement statistics"
+            git push origin HEAD:main
+          fi
