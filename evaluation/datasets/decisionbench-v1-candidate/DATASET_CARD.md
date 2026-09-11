@@ -2,7 +2,7 @@
 
 2026-09-06：48 Primary、24 Calibration 和 8 来源 Case 已逐例完成 AI 内容裁决，另有 8 组三档区分说明。
 复核与最终 Case/资源摘要绑定，身份为 `delegated_ai_reviewer`；作者与复核者可能共享模型及上下文。
-这项内容验收没有实施独立人类盲标、Kappa、真实 Judge 或方法有效性实验。
+这项内容验收没有实施独立人类盲标、真实 Judge 或方法有效性实验。
 两份 Benchmark Release 仍为 `engineering`，production registry 为空。
 
 ## 数据组成与来源

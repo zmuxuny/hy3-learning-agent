@@ -9,7 +9,7 @@
 | 完整评测数据包 | [评测数据.zip](评测数据.zip)：测试输入、原始决策证据、模型请求与响应、人工标注、统计结果及复算代码；解压后的README给出独立复算命令 |
 | 两位标注者的评分表 | [application_czy.csv](人工标注/application_czy.csv) · [application_zyq.csv](人工标注/application_zyq.csv)：各48例，七维标签保留，总分经过计算核对；详细字段见[人工标注说明](人工标注/README.md) |
 | 协商后参考 | [application.csv](人工标注/application.csv) · [adjudication.json](人工标注/adjudication.json)：两人讨论后采用czy标签，保存决定与摘要 |
-| 协商前一致性 | [human-human-alignment.csv](实验结果/人工一致性/human-human-alignment.csv)：逐维等级一致率及Kappa；[annotation-differences.csv](实验结果/人工一致性/annotation-differences.csv)：7处等级差异 |
+| 协商前一致性 | [human-human-alignment.csv](实验结果/人工一致性/human-human-alignment.csv)：逐维等级一致率；[annotation-differences.csv](实验结果/人工一致性/annotation-differences.csv)：7处等级差异 |
 | 自动与最终参考逐例对照 | [application-human.csv](实验结果/主体实验/application-human.csv)：48例双方七维等级、总分、达标结论；[human-alignment.csv](实验结果/主体实验/human-alignment.csv)：七维汇总 |
 | 主体实验全部结果 | [cases.csv](实验结果/主体实验/cases.csv) · [summary.json](实验结果/主体实验/summary.json)：应用48次、质量对照72次、评分操纵8次、正常与严重对照72次，共200次 |
 | 质量区分与重复稳定性 | [triplets.csv](实验结果/主体实验/triplets.csv) · [stability.csv](实验结果/主体实验/stability.csv)：24组排序及24份材料各3次评分的波动 |

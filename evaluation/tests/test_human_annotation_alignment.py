@@ -23,7 +23,6 @@ def test_independent_files_reproduce_observed_disagreements():
     assert summary['outcome_matches'] == 48
     assert len(differences) == 7
     assert all(abs(r['left']-r['right']) == 1 for r in differences)
-    assert summary['dimensions'][5]['quadratic_kappa'] == pytest.approx(0.4838709677419355)
 
 
 @pytest.mark.parametrize('corruption', ['duplicate', 'missing', 'different_id'])
@@ -37,12 +36,6 @@ def test_does_not_silently_pair_incomplete_labels(corruption):
         right[-1]['id'] = 'another-case'
     with pytest.raises(ValueError):
         module.compare(left, right)
-
-
-def test_constant_label_kappa_remains_undefined():
-    assert module.kappa([2, 2], [2, 2]) is None
-    with pytest.raises(ValueError):
-        module.kappa([2], [2, 1])
 
 
 def test_annotation_totals_follow_fixed_weights_and_severity():

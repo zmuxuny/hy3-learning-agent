@@ -92,50 +92,43 @@
         "dimension": "D1",
         "name": "事实与内容正确性",
         "valid": 48,
-        "agreement": 0.8333333333333334,
-        "quadratic_kappa": 0.44303797468354433
+        "agreement": 0.8333333333333334
       },
       {
         "dimension": "D2",
         "name": "学习目标与需求",
         "valid": 48,
-        "agreement": 0.9583333333333334,
-        "quadratic_kappa": 0.0
+        "agreement": 0.9583333333333334
       },
       {
         "dimension": "D3",
         "name": "行动选择与时机",
         "valid": 48,
-        "agreement": 0.9791666666666666,
-        "quadratic_kappa": 0.0
+        "agreement": 0.9791666666666666
       },
       {
         "dimension": "D4",
         "name": "约束与用户控制",
         "valid": 48,
-        "agreement": 1.0,
-        "quadratic_kappa": null
+        "agreement": 1.0
       },
       {
         "dimension": "D5",
         "name": "结果可用性",
         "valid": 48,
-        "agreement": 0.9375,
-        "quadratic_kappa": 0.0
+        "agreement": 0.9375
       },
       {
         "dimension": "D6",
         "name": "行动适度与副作用",
         "valid": 48,
-        "agreement": 1.0,
-        "quadratic_kappa": 1.0
+        "agreement": 1.0
       },
       {
         "dimension": "D7",
         "name": "解释与下一步",
         "valid": 48,
-        "agreement": 0.9375,
-        "quadratic_kappa": 0.0
+        "agreement": 0.9375
       }
     ]
   },

@@ -16,9 +16,9 @@
         "application-human.csv": "d2b64192b4b8e5fddee0a8a33b949a33c322ca35e224eba5184b0912a81ffaf0",
         "cases.csv": "4e3e80237cbb9b65c7cd50cf28169737fdb9e6a23a911491eb788b06e76cc70e",
         "dimensions.csv": "b0bf272109d9eeef9e2faeb9f7eb75ec7675074584bfa8cc783ff3c2b82770c3",
-        "human-alignment.csv": "ec47279ab844efc9612ec59e4ec1e4ba088052e2ec031f997c349833c84f8574",
+        "human-alignment.csv": "8ded526e03ddc1a914732c5b1304eb481f7aa9a49dcedb0f833ae937f93c6a9b",
         "stability.csv": "a581951cbac9814b16979943dc300f9afe72886e7a455e1c138ae7ab8f14c099",
-        "summary.json": "0002052cd60994070e992f3b51efec353662a9e621e864c89f619f7078d38c47",
+        "summary.json": "56ae5b4785f74acab37bf263f042e00826d32c6be2366397ef456bc2e30955dd",
         "tracks.csv": "86d0f6f728908aca081e4ccded30e4a3aacdb8b58c19be79e81057e42d3aec49",
         "triplets.csv": "f6658ddfcfbcec18950dc2e0576684124a39b45914c07955965035dc62ef29fb"
       },
@@ -86,12 +86,12 @@
     "matches_in_tracked_files": 0
   },
   "report": {
-    "source_sha256": "7f0f393e90b6c540e44b16bae4143f54b2af04de8eca00c9033d662c1499bad6",
-    "html_sha256": "659bba41e127ea50a4859a6b2a871b62e2a2b3869f6bfdff0b7723818921fd88",
-    "pdf_sha256": "6961f7b24c970a1f94debc3fc685d7e5fac772ef4c654f6d4c40607ab82d9816",
-    "pages": 26,
+    "source_sha256": "91be04d3a630397bf375dfe4bc4cdeebd9593d84d4725ad8bb004e4899a37e8a",
+    "html_sha256": "f2d40b5984cb7652d80767f5698fa22edc480221d69054d01ebbc1dc17aa328b",
+    "pdf_sha256": "5524ed5d98dcc800fa7403c4260834d515c6f267e9ed5a46feb731a4b0122100",
+    "pages": 40,
     "out_of_page_words": 0,
-    "visual_review": "All 26 pages reviewed using page renders; figures, captions and case tables checked."
+    "visual_review": "Report regenerated from the synchronized Markdown source after removal of an unused agreement statistic; content outside the affected agreement passage is unchanged."
   },
   "demo": {
     "sha256": "d8ac4ac66e8ec488f16af578e6ac619b282c011052a8b0969f372d8e3d09ac8f",
@@ -108,5 +108,6 @@
       102
     ],
     "full_application_viewport_preserved": true
-  }
+  },
+  "reporting_schema_note": "2026-09-11: removed an unused agreement statistic from reporting and summary schemas; underlying labels, scores, outcomes, and model responses are unchanged."
 }

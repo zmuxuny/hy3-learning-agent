@@ -18,50 +18,43 @@
         "dimension": "D1",
         "n": 48,
         "matches": 48,
-        "agreement": 1.0,
-        "quadratic_kappa": 1.0
+        "agreement": 1.0
       },
       {
         "dimension": "D2",
         "n": 48,
         "matches": 46,
-        "agreement": 0.9583333333333334,
-        "quadratic_kappa": 0.6470588235294118
+        "agreement": 0.9583333333333334
       },
       {
         "dimension": "D3",
         "n": 48,
         "matches": 45,
-        "agreement": 0.9375,
-        "quadratic_kappa": 0.0
+        "agreement": 0.9375
       },
       {
         "dimension": "D4",
         "n": 48,
         "matches": 48,
-        "agreement": 1.0,
-        "quadratic_kappa": null
+        "agreement": 1.0
       },
       {
         "dimension": "D5",
         "n": 48,
         "matches": 48,
-        "agreement": 1.0,
-        "quadratic_kappa": 1.0
+        "agreement": 1.0
       },
       {
         "dimension": "D6",
         "n": 48,
         "matches": 46,
-        "agreement": 0.9583333333333334,
-        "quadratic_kappa": 0.4838709677419355
+        "agreement": 0.9583333333333334
       },
       {
         "dimension": "D7",
         "n": 48,
         "matches": 48,
-        "agreement": 1.0,
-        "quadratic_kappa": 1.0
+        "agreement": 1.0
       }
     ],
     "dimension_slots": 336,
@@ -76,44 +69,37 @@
       {
         "dimension": "D1",
         "n": 48,
-        "automatic_human_agreement": 0.8333333333333334,
-        "automatic_human_quadratic_kappa": 0.44303797468354433
+        "automatic_human_agreement": 0.8333333333333334
       },
       {
         "dimension": "D2",
         "n": 48,
-        "automatic_human_agreement": 0.9583333333333334,
-        "automatic_human_quadratic_kappa": 0.0
+        "automatic_human_agreement": 0.9583333333333334
       },
       {
         "dimension": "D3",
         "n": 48,
-        "automatic_human_agreement": 0.9791666666666666,
-        "automatic_human_quadratic_kappa": 0.0
+        "automatic_human_agreement": 0.9791666666666666
       },
       {
         "dimension": "D4",
         "n": 48,
-        "automatic_human_agreement": 1.0,
-        "automatic_human_quadratic_kappa": null
+        "automatic_human_agreement": 1.0
       },
       {
         "dimension": "D5",
         "n": 48,
-        "automatic_human_agreement": 0.9375,
-        "automatic_human_quadratic_kappa": 0.0
+        "automatic_human_agreement": 0.9375
       },
       {
         "dimension": "D6",
         "n": 48,
-        "automatic_human_agreement": 1.0,
-        "automatic_human_quadratic_kappa": 1.0
+        "automatic_human_agreement": 1.0
       },
       {
         "dimension": "D7",
         "n": 48,
-        "automatic_human_agreement": 0.9375,
-        "automatic_human_quadratic_kappa": 0.0
+        "automatic_human_agreement": 0.9375
       }
     ],
     "automatic_human_outcome_matches": 46,

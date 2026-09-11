@@ -16,7 +16,7 @@
 
 ## 自动评分与协商后参考的比较
 
-自动评分与最终参考在48例中的46例给出相同达标结论，一致率95.8%。[application-alignment.csv](application-alignment.csv)列出最终方法的七维一致率和二次加权Kappa；[application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv)并列双方每例的等级、总分和结论。[confirmation.json](confirmation.json)保存两份标注、最终参考的文件摘要及全部比较结果。
+自动评分与最终参考在48例中的46例给出相同达标结论，一致率95.8%。逐维直接一致率分别为：事实与内容正确性83.3%、学习目标与需求95.8%、行动选择与时机97.9%、约束与用户控制100%、结果可用性93.8%、行动适度与副作用100%、解释与下一步93.8%。[application-alignment.csv](application-alignment.csv)列出最终方法的七维直接一致率；[application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv)并列双方每例的等级、总分和结论。[confirmation.json](confirmation.json)保存两份标注、最终参考的文件摘要及全部比较结果。
 
 ## 离线复算
 

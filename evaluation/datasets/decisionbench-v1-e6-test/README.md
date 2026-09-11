@@ -15,7 +15,7 @@
 
 资源均为自制合成材料；成功验收例直接给出题目输入和断言，缺证据例明确保留缺失。对抗文字保留在待评提交或不可信材料中。材料中的数值不是实际学习者或真实实验测量。所有实体为合成身份，资源限定 `learning.example.test`，通知使用隔离产品通知链；本批3条实际站内通知没有外部Outbox/Receipt，Recording Sink为0。
 
-构造源是 [家族设计](../../case-design/e6-family-design.json)，48 条逐例裁决在 [AI 内容复核](../../case-design/e6-content-review.json)。作者和复核者为同一主 AI、共享上下文；没有独立人类盲标或 Kappa。机械校验检查摘要、资源、覆盖、显式家族及完整输入重复，语义判断见各行裁决。F01/F02/F09 的具体证据补齐、F08 的已知周时间对齐均在冻结前完成，没有观察模型结果后改题。
+构造源是 [家族设计](../../case-design/e6-family-design.json)，48 条逐例裁决在 [AI 内容复核](../../case-design/e6-content-review.json)。作者和复核者为同一主 AI、共享上下文；没有独立人类盲标。机械校验检查摘要、资源、覆盖、显式家族及完整输入重复，语义判断见各行裁决。F01/F02/F09 的具体证据补齐、F08 的已知周时间对齐均在冻结前完成，没有观察模型结果后改题。
 
 [Benchmark](benchmark-release.json) 固定有序 Case、资源、lineage 与协议；[Suite](manifest.json) 与仓库 [production registry](../../releases/trusted-benchmark-registry-v1.json) 对齐。[9月6日运行预设](../../case-design/e6-run-plan.json)固定源代码边界、Agent/Judge配置、48分母、顺序及失败政策；实际采用调用前提交的[V2预设](../../artifacts/e6-formal-20260908/run-plan-v2.json)，只调整授权预算和开跑政策。`released` 表示本地版本化登记，不表示已推送、公开发布或正式实验已完成。
 

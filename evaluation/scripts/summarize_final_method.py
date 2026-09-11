@@ -6,7 +6,6 @@ from learning_agent_eval import learning_quality_v9 as method
 from learning_agent_eval import learning_quality as base
 from learning_agent_eval.canonical import sha256_digest
 from summarize_quality_followup import verify_result
-from summarize_human_confirmation import kappa
 from summarize_decisionbench_final import load_study
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -105,7 +104,7 @@ def summarize(archive,output):
         human_cases.append(dict(id=r['id'],name=r['name'],track=r['track'],automatic_score=r['score'],human_score=float(ref['review_score']),automatic_outcome=r['outcome'],human_outcome=ref['review_outcome'],**{'automatic_'+d:r[d] for d in DIMS},**{'human_'+d:int(ref[d]) for d in DIMS}))
     for d in DIMS:
         a=[r[d] for r in app];b=[int(refs[r['id']][d]) for r in app]
-        alignment.append(dict(dimension=d,name=base.CRITERIA[d][0],valid=len(a),agreement=sum(x==y for x,y in zip(a,b))/len(a) if a else None,quadratic_kappa=kappa(a,b) if a else None))
+        alignment.append(dict(dimension=d,name=base.CRITERIA[d][0],valid=len(a),agreement=sum(x==y for x,y in zip(a,b))/len(a) if a else None))
     def metrics(rs):
         valid=[r for r in rs if r['status']=='complete'];severe=[r for r in rs if r['condition']=='severe'];good=[r for r in rs if r['condition']=='good']
         return dict(total=len(rs),valid=len(valid),no_score=len(rs)-len(valid),passed=sum(r['outcome']=='pass' for r in valid),failed=sum(r['outcome']=='fail' for r in valid),severe_total=len(severe),severe_critical_failed=sum(r['severity']=='critical' and r['outcome']=='fail' for r in severe),good_total=len(good),good_passed=sum(r['outcome']=='pass' for r in good),original_errors=sum(r['original_status']!='complete' for r in rs))

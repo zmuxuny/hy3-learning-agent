@@ -3,7 +3,6 @@ import argparse
 import csv
 import hashlib
 import json
-from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -29,16 +28,6 @@ def validate_annotation_scores(rows):
             raise ValueError(f'Annotation score does not match dimensions: {row["id"]}')
 
 
-def kappa(a, b):
-    if not a or len(a) != len(b) or any(x not in (0, 1, 2) for x in [*a, *b]):
-        raise ValueError('Expected equally sized, nonempty 0–2 label vectors')
-    n = len(a)
-    ca, cb = Counter(a), Counter(b)
-    observed = sum((x-y)**2 for x, y in zip(a, b))/n
-    expected = sum(ca[x]*cb[y]*(x-y)**2 for x in range(3) for y in range(3))/(n*n)
-    return None if expected == 0 else 1-observed/expected
-
-
 def keyed(rows):
     result = {r['id']: r for r in rows}
     if len(result) != len(rows) or not result:
@@ -56,7 +45,7 @@ def compare(left, right, outcome_left='review_outcome', outcome_right='review_ou
         x = [int(a[i][d]) for i in ids]
         y = [int(b[i][d]) for i in ids]
         dimensions.append(dict(dimension=d, n=len(ids), matches=sum(u == v for u, v in zip(x, y)),
-                               agreement=sum(u == v for u, v in zip(x, y))/len(ids), quadratic_kappa=kappa(x, y)))
+                               agreement=sum(u == v for u, v in zip(x, y))/len(ids)))
         for i, u, v in zip(ids, x, y):
             if u != v:
                 differences.append(dict(id=i, name=a[i]['name'], dimension=d, left=u, right=v))
@@ -97,8 +86,8 @@ def summarize(archive, output, annotations=None):
     automatic = [r for r in read_csv(archive/'automatic/cases.csv') if r['part'] == 'application']
     human, differences = compare(left, right)
     aligned, _ = compare(automatic, reference, 'outcome')
-    metrics = [dict(dimension=r['dimension'], n=r['n'], automatic_human_agreement=r['agreement'],
-                    automatic_human_quadratic_kappa=r['quadratic_kappa']) for r in aligned['dimensions']]
+    metrics = [dict(dimension=r['dimension'], n=r['n'], automatic_human_agreement=r['agreement'])
+               for r in aligned['dimensions']]
     result = dict(confirmation_date=decision['date'], source='independent annotation files and author-confirmed adjudication',
                   annotation_files=decision['sha256'], reference_file='交付材料/人工标注/'+decision['reference_file'],
                   adjudication=decision['decision'], coverage_cases=len(reference),

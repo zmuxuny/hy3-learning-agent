@@ -2293,7 +2293,7 @@
     }
   ],
   "review_date": "2026-09-06",
-  "review_method": "AI逐例阅读48 Primary及24 Calibration的公开输入、运行seed、时间、资源、允许/禁止行动与Oracle；对8个来源逐组审查三档工具参数和说明。记录由同一Codex会话承担，可能共享作者模型与上下文，不是独立人类标注、Kappa或盲评。SHA只绑定已作出的内容裁决，不由校验器产生标签结论。",
+  "review_method": "AI逐例阅读48 Primary及24 Calibration的公开输入、运行seed、时间、资源、允许/禁止行动与Oracle；对8个来源逐组审查三档工具参数和说明。记录由同一Codex会话承担，可能共享作者模型与上下文，不是独立人类标注或盲评。SHA只绑定已作出的内容裁决，不由校验器产生标签结论。",
   "review_sha256": "a2f6aef02cae4457aa59ce4306f64ca2b821fbee9bb860732ad43f74257254cd",
   "reviewer_id": "codex-e4-content-review-20260906",
   "reviewer_role": "delegated_ai_reviewer",

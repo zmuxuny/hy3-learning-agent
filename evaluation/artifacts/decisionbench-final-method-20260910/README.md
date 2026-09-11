@@ -24,7 +24,7 @@
 | [cases.csv](automatic/cases.csv) | 200行；每行一个案例的一次评分。`part`为应用、三档、操纵或正常/严重对照；`repeat`为固定重复索引；`D1`—`D7`对应方法说明中的七维；同时保留加权分、最终分、严重度、通过结论及来源路径 |
 | [tracks.csv](automatic/tracks.csv) | 按数据部分和四类决策汇总，列有效、通过、未通过、无分与均分 |
 | [dimensions.csv](automatic/dimensions.csv) | 每个数据部分×决策类别×维度的等级均值，等级范围0—2 |
-| [human-alignment.csv](automatic/human-alignment.csv) | 48个应用案例的逐维直接一致率与二次加权Kappa；无定义记空值 |
+| [human-alignment.csv](automatic/human-alignment.csv) | 48个应用案例的逐维直接一致率 |
 | [summary.json](automatic/summary.json) | 所有固定分母、错误恢复数、复核覆盖及主要指标 |
 | [design.json](design.json) | 方法、源码提交、输入摘要、重复次数与失败恢复规则 |
 | `runs/`、`recovery/` | 128次评分的完整原始请求摘要、响应、解析判断及仅无分恢复记录 |

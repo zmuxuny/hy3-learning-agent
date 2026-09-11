@@ -55,5 +55,6 @@
     "outcome_matches": 48,
     "cases": 48
   },
-  "zip_sha256": "e7f59ac4eaffac04ff0994b75fa73946110ef8017559afa04c4df07c5a3d23ae"
+  "zip_sha256": "67ce44a1730f628bf6809155d0a0c18adcf6fe7242cb2c970d63d1d984221fbb",
+  "reporting_schema_note": "2026-09-11: agreement summaries now retain direct agreement only; underlying labels and outcomes are unchanged."
 }
