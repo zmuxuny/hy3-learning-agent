@@ -1,0 +1,250 @@
+name: One-off consistency metric cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/consistency-metric-cleanup-oneoff.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Remove unsuitable agreement metric from source and documentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import csv, io, json, re
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected exactly one match in {path!s}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          # Main report: change only the agreement-statistics passage in section 5.4.
+          replace_once(
+              '第三阶段项目与评测报告.md',
+              '''在行动适度与副作用维度，**自动评分与人工参考的二次加权Kappa为1.000**：双方对47例给出2级、对1例给出1级，逐例判断全部相同。这表明评测器在本批材料中对行动是否适度的判断与人工参考一致。\n\n二次加权Kappa考虑双方等级分布带来的偶然一致，并对相差两档的分歧给予比相差一档更大的权重；1表示完全一致，0表示未超出由边际分布得到的偶然一致水平。用户控制维度双方对48例均给出2级，直接一致率为100%，但Kappa分母为0，记录为无定义。因此同时报告直接一致率与Kappa，并列出全部七个维度。\n''',
+              '''本报告以**逐维等级一致率**和**评分是否达标的一致率**作为人工对齐的统计结果，并结合逐例差异分析判断分歧具体发生在哪里。\n'''
+          )
+
+          # Human-confirmation archive: report only directly interpretable agreement statistics.
+          replace_once(
+              'evaluation/artifacts/human-confirmation-20260910/README.md',
+              '''## 自动评分与协商后参考的比较\n\n自动评分与最终参考在48例中的46例给出相同达标结论，一致率95.8%。[application-alignment.csv](application-alignment.csv)列出最终方法的七维一致率和二次加权Kappa；[application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv)并列双方每例的等级、总分和结论。[confirmation.json](confirmation.json)保存两份标注、最终参考的文件摘要及全部比较结果。\n''',
+              '''## 自动评分与协商后参考的比较\n\n自动评分与最终参考在48例中的46例给出相同达标结论，一致率95.8%。逐维直接一致率分别为：事实与内容正确性83.3%、学习目标与需求95.8%、行动选择与时机97.9%、约束与用户控制100%、结果可用性93.8%、行动适度与副作用100%、解释与下一步93.8%。[application-alignment.csv](application-alignment.csv)列出最终方法的七维直接一致率；[application-human.csv](../decisionbench-final-method-20260910/automatic/application-human.csv)并列双方每例的等级、总分和结论。[confirmation.json](confirmation.json)保存两份标注、最终参考的文件摘要及全部比较结果。\n'''
+          )
+
+          # Public delivery/index descriptions.
+          replace_once(
+              '第三阶段交付说明.md',
+              '| 自动与人工逐维一致性 | 7行，每行一个维度；包含48例的有效数量、等级一致率和二次加权Kappa | [evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv) |',
+              '| 自动与人工逐维一致性 | 7行，每行一个维度；包含48例的有效数量和等级直接一致率 | [evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv) |'
+          )
+          replace_once(
+              'evaluation/artifacts/decisionbench-final-method-20260910/README.md',
+              '| [human-alignment.csv](automatic/human-alignment.csv) | 48个应用案例的逐维直接一致率与二次加权Kappa；无定义记空值 |',
+              '| [human-alignment.csv](automatic/human-alignment.csv) | 48个应用案例的逐维直接一致率 |'
+          )
+
+          # Earlier planning/historical text should not advertise an indicator that is not used by the final project.
+          replace_once(
+              '腾讯犀牛鸟开源实习第三阶段项目方案.md',
+              '| 人工一致性 | 自动评测是否接近独立评审 | 双人盲标、逐维二次加权Kappa、通过结论一致率 |',
+              '| 人工一致性 | 自动评测是否接近独立评审 | 双人盲标、逐维等级一致率、通过结论一致率 |'
+          )
+          replace_once(
+              'evaluation/datasets/decisionbench-v1-candidate/DATASET_CARD.md',
+              '这项内容验收没有实施独立人类盲标、Kappa、真实 Judge 或方法有效性实验。',
+              '这项内容验收没有实施独立人类盲标、真实 Judge 或方法有效性实验。'
+          )
+
+          # Remove the calculation from the two summarizers.
+          p = Path('evaluation/scripts/summarize_human_confirmation.py')
+          text = p.read_text(encoding='utf-8')
+          text = text.replace('from collections import Counter\n', '')
+          text, n = re.subn(r'\n\ndef kappa\(a, b\):.*?\n\ndef keyed\(rows\):', '\n\ndef keyed(rows):', text, flags=re.S)
+          if n != 1:
+              raise SystemExit('failed to remove agreement-correction function')
+          old = '''        dimensions.append(dict(dimension=d, n=len(ids), matches=sum(u == v for u, v in zip(x, y)),\n                               agreement=sum(u == v for u, v in zip(x, y))/len(ids), quadratic_kappa=kappa(x, y)))'''
+          new = '''        dimensions.append(dict(dimension=d, n=len(ids), matches=sum(u == v for u, v in zip(x, y)),\n                               agreement=sum(u == v for u, v in zip(x, y))/len(ids)))'''
+          if text.count(old) != 1:
+              raise SystemExit('failed to patch human-human dimensions')
+          text = text.replace(old, new, 1)
+          old = '''    metrics = [dict(dimension=r['dimension'], n=r['n'], automatic_human_agreement=r['agreement'],\n                    automatic_human_quadratic_kappa=r['quadratic_kappa']) for r in aligned['dimensions']]'''
+          new = '''    metrics = [dict(dimension=r['dimension'], n=r['n'], automatic_human_agreement=r['agreement'])\n               for r in aligned['dimensions']]'''
+          if text.count(old) != 1:
+              raise SystemExit('failed to patch automatic-human metrics')
+          text = text.replace(old, new, 1)
+          p.write_text(text, encoding='utf-8')
+
+          p = Path('evaluation/scripts/summarize_final_method.py')
+          text = p.read_text(encoding='utf-8')
+          if text.count('from summarize_human_confirmation import kappa\n') != 1:
+              raise SystemExit('unexpected final summarizer import')
+          text = text.replace('from summarize_human_confirmation import kappa\n', '', 1)
+          old = '''        alignment.append(dict(dimension=d,name=base.CRITERIA[d][0],valid=len(a),agreement=sum(x==y for x,y in zip(a,b))/len(a) if a else None,quadratic_kappa=kappa(a,b) if a else None))'''
+          new = '''        alignment.append(dict(dimension=d,name=base.CRITERIA[d][0],valid=len(a),agreement=sum(x==y for x,y in zip(a,b))/len(a) if a else None))'''
+          if text.count(old) != 1:
+              raise SystemExit('failed to patch final method alignment')
+          text = text.replace(old, new, 1)
+          p.write_text(text, encoding='utf-8')
+
+          # Remove any already-published metric columns/keys from archived CSV/JSON results.
+          for p in Path('.').rglob('*.csv'):
+              try:
+                  raw = p.read_text(encoding='utf-8-sig')
+              except UnicodeDecodeError:
+                  continue
+              reader = csv.DictReader(io.StringIO(raw))
+              if not reader.fieldnames:
+                  continue
+              doomed = [f for f in reader.fieldnames if 'kappa' in f.lower()]
+              if not doomed:
+                  continue
+              fields = [f for f in reader.fieldnames if f not in doomed]
+              rows = list(reader)
+              out = io.StringIO()
+              w = csv.DictWriter(out, fieldnames=fields, lineterminator='\n')
+              w.writeheader()
+              for row in rows:
+                  w.writerow({f: row.get(f, '') for f in fields})
+              p.write_text(out.getvalue(), encoding='utf-8')
+
+          def strip_keys(obj):
+              changed = False
+              if isinstance(obj, dict):
+                  out = {}
+                  for k, v in obj.items():
+                      if 'kappa' in str(k).lower():
+                          changed = True
+                          continue
+                      nv, ch = strip_keys(v)
+                      changed |= ch
+                      out[k] = nv
+                  return out, changed
+              if isinstance(obj, list):
+                  out = []
+                  for v in obj:
+                      nv, ch = strip_keys(v)
+                      changed |= ch
+                      out.append(nv)
+                  return out, changed
+              return obj, False
+
+          for p in Path('.').rglob('*.json'):
+              try:
+                  data = json.loads(p.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              clean, changed = strip_keys(data)
+              if changed:
+                  p.write_text(json.dumps(clean, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          print('source/document cleanup applied')
+          PY
+
+      - name: Install Python dependencies and regenerate consistency summaries
+        shell: bash
+        run: |
+          pip install -r backend/requirements-dev.txt -r evaluation/runtime-requirements.lock
+          rm -rf /tmp/human-confirmation-clean /tmp/final-method-clean
+          PYTHONPATH=evaluation/src:evaluation/scripts:backend python evaluation/scripts/summarize_human_confirmation.py \
+            --annotations 交付材料/人工标注 \
+            --archive evaluation/artifacts/decisionbench-final-method-20260910 \
+            --output /tmp/human-confirmation-clean
+          PYTHONPATH=evaluation/src:evaluation/scripts:backend python evaluation/scripts/summarize_final_method.py \
+            --archive evaluation/artifacts/decisionbench-final-method-20260910 \
+            --output /tmp/final-method-clean
+
+          cp /tmp/human-confirmation-clean/application-alignment.csv evaluation/artifacts/human-confirmation-20260910/application-alignment.csv
+          cp /tmp/human-confirmation-clean/human-human-alignment.csv evaluation/artifacts/human-confirmation-20260910/human-human-alignment.csv
+          cp /tmp/human-confirmation-clean/confirmation.json evaluation/artifacts/human-confirmation-20260910/confirmation.json
+          cp /tmp/final-method-clean/human-alignment.csv evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv
+          cp /tmp/final-method-clean/summary.json evaluation/artifacts/decisionbench-final-method-20260910/automatic/summary.json
+
+          cp evaluation/artifacts/human-confirmation-20260910/application-alignment.csv 交付材料/实验结果/人工一致性/application-alignment.csv
+          cp evaluation/artifacts/human-confirmation-20260910/human-human-alignment.csv 交付材料/实验结果/人工一致性/human-human-alignment.csv
+          cp evaluation/artifacts/human-confirmation-20260910/confirmation.json 交付材料/实验结果/人工一致性/confirmation.json
+          cp evaluation/artifacts/decisionbench-final-method-20260910/automatic/human-alignment.csv 交付材料/实验结果/主体实验/human-alignment.csv
+          cp evaluation/artifacts/decisionbench-final-method-20260910/automatic/summary.json 交付材料/实验结果/主体实验/summary.json
+
+      - name: Regenerate synchronized HTML and PDF
+        shell: bash
+        run: |
+          npm --prefix frontend ci
+          node frontend/node_modules/playwright-core/cli.js install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk poppler-utils
+          CHROMIUM_PATH="$(node --input-type=module -e "import { chromium } from './frontend/node_modules/playwright-core/index.mjs'; console.log(chromium.executablePath())")"
+          CHROMIUM_PATH="$CHROMIUM_PATH" node scripts/render-stage3-report.mjs .
+
+      - name: Remove this one-off workflow and verify repository is clean of the metric
+        shell: bash
+        run: |
+          rm -f .github/workflows/consistency-metric-cleanup-oneoff.yml
+          if git grep -I -ni -E 'kappa|二次加权|卡帕' -- .; then
+            echo 'Found obsolete metric references above.' >&2
+            exit 1
+          fi
+          pdftotext "第三阶段项目与评测报告.pdf" /tmp/stage3-report.txt
+          if grep -E -i 'kappa|二次加权|卡帕' /tmp/stage3-report.txt; then
+            echo 'PDF still contains obsolete metric text.' >&2
+            exit 1
+          fi
+          python - <<'PY'
+          import csv, json
+          from pathlib import Path
+          for p in Path('.').rglob('*.csv'):
+              try:
+                  with p.open(encoding='utf-8-sig', newline='') as f:
+                      fields = next(csv.reader(f), [])
+              except Exception:
+                  continue
+              assert not any('kappa' in x.lower() for x in fields), p
+          for p in Path('.').rglob('*.json'):
+              try:
+                  data = json.loads(p.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              def walk(x):
+                  if isinstance(x, dict):
+                      for k, v in x.items():
+                          assert 'kappa' not in str(k).lower(), (p, k)
+                          walk(v)
+                  elif isinstance(x, list):
+                      for v in x: walk(v)
+              walk(data)
+          print('metric removal verified')
+          PY
+          git diff --check
+          git status --short
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: remove unsuitable agreement metric"
+          git push origin HEAD:main
