@@ -80,7 +80,7 @@ jobs:
           )
           p = Path('腾讯犀牛鸟开源实习第三阶段项目方案.md')
           text = p.read_text(encoding='utf-8')
-          text, n = re.subn(r'^\| Hy3 Judge 与人工标签 Weighted Kappa \| ≥ 0\.60 \|\n', '', text, flags=re.M)
+          text, n = re.subn(r'^\| Hy3 Judge 与人工(?:标签)? Weighted Kappa \| ≥ 0\.60 \|\n', '', text, flags=re.M)
           if n != 1:
               raise SystemExit('expected project-plan target row not found exactly once')
           p.write_text(text, encoding='utf-8')
@@ -165,7 +165,7 @@ jobs:
                   x = x.replace('不是独立人类标注、Kappa或盲评', '不是独立人类标注或盲评')
                   x = x.replace('没有独立人类盲标或 Kappa', '没有独立人类盲标')
                   x = x.replace('双人盲标、逐维二次加权Kappa、通过结论一致率', '双人盲标、逐维等级一致率、通过结论一致率')
-                  x = re.sub(r'^\| Hy3 Judge 与人工标签 Weighted Kappa \| ≥ 0\.60 \|\n', '', x, flags=re.M)
+                  x = re.sub(r'^\| Hy3 Judge 与人工(?:标签)? Weighted Kappa \| ≥ 0\.60 \|\n', '', x, flags=re.M)
                   return x
               return x
 
