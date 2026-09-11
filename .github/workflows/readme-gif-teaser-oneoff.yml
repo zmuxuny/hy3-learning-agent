@@ -1,0 +1,83 @@
+name: One-off README GIF teaser
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/readme-gif-teaser-oneoff.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build compact README teaser GIF
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          mkdir -p assets/demo/stage3
+
+          # Four 2-second windows from the final 108s demo:
+          # goal input, plan review, proactive support, evaluation walkthrough.
+          ffmpeg -y -i "第三阶段Demo.mp4" \
+            -filter_complex "[0:v]trim=start=4:end=6,setpts=PTS-STARTPTS[v0]; \
+                             [0:v]trim=start=18:end=20,setpts=PTS-STARTPTS[v1]; \
+                             [0:v]trim=start=43:end=45,setpts=PTS-STARTPTS[v2]; \
+                             [0:v]trim=start=74:end=76,setpts=PTS-STARTPTS[v3]; \
+                             [v0][v1][v2][v3]concat=n=4:v=1:a=0,fps=8,scale=640:-2:flags=lanczos,split[s0][s1]; \
+                             [s0]palettegen=max_colors=128:stats_mode=diff[p]; \
+                             [s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
+            -loop 0 assets/demo/stage3/teaser.gif
+
+          size=$(stat -c%s assets/demo/stage3/teaser.gif)
+          echo "teaser bytes: $size"
+          # Stay comfortably below a typical README image budget. If needed,
+          # regenerate slightly smaller while preserving the same four moments.
+          if [ "$size" -gt 7000000 ]; then
+            ffmpeg -y -i "第三阶段Demo.mp4" \
+              -filter_complex "[0:v]trim=start=4:end=6,setpts=PTS-STARTPTS[v0]; \
+                               [0:v]trim=start=18:end=20,setpts=PTS-STARTPTS[v1]; \
+                               [0:v]trim=start=43:end=45,setpts=PTS-STARTPTS[v2]; \
+                               [0:v]trim=start=74:end=76,setpts=PTS-STARTPTS[v3]; \
+                               [v0][v1][v2][v3]concat=n=4:v=1:a=0,fps=7,scale=560:-2:flags=lanczos,split[s0][s1]; \
+                               [s0]palettegen=max_colors=96:stats_mode=diff[p]; \
+                               [s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
+              -loop 0 assets/demo/stage3/teaser.gif
+          fi
+
+      - name: Replace README embedded video with teaser
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('README.md')
+          text = p.read_text(encoding='utf-8')
+          old = '''## Demo(视频较大，加载约5s)\n\nhttps://github.com/user-attachments/assets/c9193cc8-d6fb-4aab-a2d8-6b01633f598f\n\n[▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)\n'''
+          new = '''## Demo\n\n<a href="https://zmuxuny.github.io/hy3-learning-agent/#demo">\n  <img src="assets/demo/stage3/teaser.gif" alt="Learning Agent · Hy3：目标输入、计划审阅、主动支持与评测结果的8秒预览" width="640" />\n</a>\n\n**8秒预览：目标输入 → 计划审阅 → 主动支持 → 评测结果**\n\n[▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)\n'''
+          if text.count(old) != 1:
+              raise SystemExit('README demo block did not match exactly once')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Verify and commit
+        shell: bash
+        run: |
+          test -s assets/demo/stage3/teaser.gif
+          bytes=$(stat -c%s assets/demo/stage3/teaser.gif)
+          test "$bytes" -lt 10000000
+          grep -q 'assets/demo/stage3/teaser.gif' README.md
+          grep -q '在线观看108秒Demo' README.md
+          rm -f .github/workflows/readme-gif-teaser-oneoff.yml
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: add lightweight README demo teaser"
+          git push origin HEAD:main
