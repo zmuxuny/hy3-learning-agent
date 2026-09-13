@@ -24,29 +24,40 @@
     },
     {
       "type": "clip",
-      "source": "sources/goal.webm",
-      "start": 1,
+      "source": "sources/goal-daytime.webm",
+      "start": 2.3,
       "duration": 6,
       "caption": "提出目标：一周完成目录统计工具，每天30分钟",
+      "playback_rate": 0.55,
       "video_start": 2,
       "video_end": 8
     },
     {
       "type": "clip",
-      "source": "sources/application.webm",
+      "source": "sources/application-daytime.webm",
       "start": 2,
-      "duration": 24,
-      "caption": "审阅任务与验收要求，采用后进入学习计划",
+      "duration": 18,
+      "caption": "审阅任务与验收要求，采用学习计划",
       "video_start": 8,
-      "video_end": 32
+      "video_end": 26
     },
     {
       "type": "clip",
-      "source": "sources/proactive.webm",
-      "start": 1,
-      "duration": 30,
-      "caption": "主动支持：后台发现任务临近截止，提醒先完成前置练习",
-      "video_start": 32,
+      "source": "sources/plan-daytime.webm",
+      "start": 2,
+      "duration": 12,
+      "caption": "进入学习计划：查看任务安排、当前进度与成果提交入口",
+      "video_start": 26,
+      "video_end": 38
+    },
+    {
+      "type": "clip",
+      "source": "sources/proactive-daytime.webm",
+      "start": 0,
+      "duration": 24,
+      "caption": "主动支持：在约定学习时段提醒临期任务，并进入对话继续学习",
+      "playback_rate": 0.7447154471544715,
+      "video_start": 38,
       "video_end": 62
     },
     {
@@ -66,5 +77,12 @@
       "video_end": 108
     }
   ],
-  "sha256": "be5d07d759c5495027a932cf2609877d1819b7b97c5955d6b2ec7340a4a1d847"
+  "encoding": {
+    "codec": "libx264",
+    "preset": "veryslow",
+    "crf": 23,
+    "pixel_format": "yuv420p",
+    "faststart": true
+  },
+  "sha256": "9200f968fb96c0d596f00c4a37d8289fb4da35f0a4522a8b6ae7d2ace36663f3"
 }

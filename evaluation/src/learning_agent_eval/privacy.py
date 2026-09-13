@@ -84,6 +84,7 @@ _IDENTITY_PATTERNS = (
     re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)"),
     re.compile(r"(?<!\d)\d{17}[0-9Xx](?!\d)"),
 )
+_RUNTIME_RUN_ID = re.compile(r"^runtime-run:[0-9a-f]{24}$")
 _SHA256_VALUE = re.compile(r"^[0-9a-f]{64}$")
 _SHA256_TOKEN = re.compile(r"(?<![A-Za-z0-9])[0-9a-f]{64}(?![A-Za-z0-9])")
 _RESERVED_EMAIL_DOMAINS = {
@@ -199,6 +200,11 @@ def privacy_issues(value: object, *, file: str = "<memory>") -> list[ValidationI
                         or (
                             isinstance(child, Mapping)
                             and normalized.endswith("_digests")
+                        )
+                        or (
+                            normalized == "runtime_run_id"
+                            and isinstance(child, str)
+                            and _RUNTIME_RUN_ID.fullmatch(child) is not None
                         )
                     ),
                 )

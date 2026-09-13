@@ -1,0 +1,38 @@
+{
+  "schema_version": "e1-resource-snapshot-v1",
+  "snapshot_version": "decisionbench-e1-mini-resources-v1",
+  "provenance": "public_and_fully_synthetic",
+  "queries": [
+    {
+      "query": "synthetic cuda profiling guide",
+      "results": [
+        {
+          "title": "Synthetic CUDA Profiling Guide",
+          "url": "https://cuda.example.test/profiling-guide"
+        }
+      ]
+    },
+    {
+      "query": "synthetic spaced review checklist",
+      "results": [
+        {
+          "title": "Synthetic Review Checklist",
+          "url": "https://learning.example.test/review-checklist"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "url": "https://cuda.example.test/profiling-guide",
+      "title": "Synthetic CUDA Profiling Guide",
+      "content": "A fully synthetic public test page: establish a baseline, capture kernel timings, compare memory transfer costs, and report one measured optimization."
+    },
+    {
+      "url": "https://learning.example.test/review-checklist",
+      "title": "Synthetic Review Checklist",
+      "content": "A fully synthetic public test page: retrieve from memory, inspect evidence, identify one gap, revise, and schedule the next review."
+    }
+  ],
+  "manifest_sha256": "b3e927d498d8754b89b843c63be4da15dd6ffdf24d346e5a08d3557902d45e35"
+}

@@ -144,9 +144,10 @@ def build(manifest, output):
         assert digest(base / p) == h, p
     for p, h in m['presentation_sources_sha256'].items():
         assert digest(ROOT / p) == h, p
-    proactive = m.get('proactive_presentation')
-    if proactive:
-        assert digest(base / proactive['evidence_archive']) == proactive['sha256']
+    for section in ('planning_presentation', 'proactive_presentation'):
+        evidence = m.get(section)
+        if evidence:
+            assert digest(base / evidence['evidence_archive']) == evidence['sha256']
     archive = ROOT / m['evidence_archive'] / 'automatic'
     assert digest(archive / 'summary.json') == m['summary_sha256']
     summary = json.loads((archive / 'summary.json').read_text())
@@ -162,6 +163,7 @@ def build(manifest, output):
         tmp = Path(directory)
         parts, timeline, seconds = [], [], 0
         transition = m['transition_seconds']
+        encoding = m.get('encoding', {'preset': 'veryfast', 'crf': 20})
         for i, s in enumerate(m['segments']):
             dest = tmp / f'{i}.mp4'
             duration = s['duration'] + (transition if i < len(m['segments']) - 1 else 0)
@@ -172,7 +174,8 @@ def build(manifest, output):
                 background = tmp / f'{i}.png'
                 frame(s.get('chapter', 1), s['caption']).save(background)
                 # Preserve every pixel of the entire browser viewport at its original size.
-                vf = '[1:v]scale=1440:900,setsar=1,tpad=stop_mode=clone:stop_duration=2[v];[0:v][v]overlay=240:140:shortest=1'
+                rate = s.get('playback_rate', 1)
+                vf = f'[1:v]setpts=(PTS-STARTPTS)/{rate},scale=1440:900,setsar=1,tpad=stop_mode=clone:stop_duration=2[v];[0:v][v]overlay=240:140:shortest=1'
                 ff('-loop', '1', '-i', background, '-ss', s['start'], '-i', base / s['source'], '-filter_complex_threads', '1', '-filter_complex', vf, *common, dest)
             else:
                 img = tmp / f'{i}.png'
@@ -186,14 +189,14 @@ def build(manifest, output):
             end = f'v{i}'
             filters.append(f'[{previous}][{i}:v]xfade=transition=fade:duration={transition}:offset={timeline[i]["video_start"]}[{end}]')
             previous = end
-        ff(*inputs, '-filter_complex_threads', '1', '-filter_complex', ';'.join(filters), '-map', f'[{previous}]', '-an', '-t', seconds, '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', output)
+        ff(*inputs, '-filter_complex_threads', '1', '-filter_complex', ';'.join(filters), '-map', f'[{previous}]', '-an', '-t', seconds, '-c:v', 'libx264', '-threads', '2', '-preset', encoding['preset'], '-crf', str(encoding['crf']), '-pix_fmt', 'yuv420p', '-movflags', '+faststart', output)
     info = json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-show_streams', '-show_format', '-of', 'json', str(output)]))
     duration = float(info['format']['duration'])
     assert abs(duration - seconds) < .1 and duration <= 120
     assert len(info['streams']) == 1 and info['streams'][0]['codec_type'] == 'video'
     video = info['streams'][0]
     assert (video['width'], video['height']) == (1920, 1080)
-    report = dict(video_file=output.name, duration=duration, width=1920, height=1080, audio=False, viewport=m['viewport'], viewport_placement={'x': 240, 'y': 140, 'width': 1440, 'height': 900}, transition_seconds=transition, timeline=timeline, sha256=digest(output))
+    report = dict(video_file=output.name, duration=duration, width=1920, height=1080, audio=False, viewport=m['viewport'], viewport_placement={'x': 240, 'y': 140, 'width': 1440, 'height': 900}, transition_seconds=transition, timeline=timeline, encoding=encoding, sha256=digest(output))
     (base / 'learning-agent-stage3.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print(duration, output)
 

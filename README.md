@@ -50,9 +50,21 @@ Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩
 
 ### 把学习目标变成可审阅的计划
 
-[![目录统计工具的计划提案：三个任务、210分钟，等待确认](assets/readme/screenshots/01-plan-review.png)](assets/stage3/application-screenshot.png)
+[![目录统计工具的计划提案：三个任务、150分钟，等待确认](assets/readme/screenshots/01-plan-review.png)](assets/readme/screenshots/01-plan-review.png)
 
-会Python基础、每天30分钟的学习者，希望一周完成目录统计工具。Hy3提出三个递进任务，预计共210分钟，并给出产出与验收要求；图中计划仍在等待确认，采用后才进入学习工作区。
+会Python基础、每天30分钟的学习者，希望一周完成目录统计工具。Hy3提出三个递进任务，预计共150分钟，并给出产出与验收要求；图中计划仍在等待确认，采用后才进入学习工作区。
+
+### 在学习计划中推进任务
+
+[![目录统计工具学习计划：三项任务、截止与复习安排、成果提交入口](assets/readme/screenshots/04-learning-plan.png)](assets/readme/screenshots/04-learning-plan.png)
+
+采用计划后，任务进入学习工作区。学习者可以查看当前建议、每项任务的要求与预计用时、截止和复习时间，并从对应任务提交成果或发起检查。
+
+### 提交作品与运行证据
+
+[![任务成果提交：代码文件、实际运行结果与逐项验收要求](assets/readme/screenshots/05-submit-work.png)](assets/readme/screenshots/05-submit-work.png)
+
+点击任务的“提交成果”进入对应对话，助手先说明本项任务需要哪些材料。图中学习者已上传路径校验脚本，并填写有效、无效目录的实际运行结果，准备发送；助手随后依据任务要求保存证据并逐项验收。
 
 ### 在没有新提问时主动支持学习
 

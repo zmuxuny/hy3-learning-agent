@@ -701,3 +701,16 @@ def test_terminal_failure_reason_never_copies_unknown_durable_text():
     assert "private-exception-detail" not in str(
         _terminal_failure_reason({"status_reason": "private-exception-detail"})
     )
+
+
+def test_runtime_run_hash_is_not_a_phone_number():
+    from learning_agent_eval.privacy import privacy_issues
+
+    # This identifier is produced by the 524cc96 CI run's actual case binding.
+    run_id = "runtime-run:0aaeae9d302da14894343993"
+    assert not privacy_issues({"runtime_run_id": run_id})
+    assert privacy_issues({"runtime_run_id": "14894343993"})
+    assert privacy_issues({"runtime_run_id": run_id + " 联系人13800138000"})
+    assert privacy_issues({"runtime_run_id": run_id, "note": "联系人13800138000"})
+    assert privacy_issues({"api_key": run_id})
+    assert privacy_issues({"private_reasoning": run_id})

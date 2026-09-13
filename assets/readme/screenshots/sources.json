@@ -3,17 +3,18 @@
   "images": [
     {
       "file": "01-plan-review.png",
-      "source": "assets/stage3/application-screenshot.png",
-      "source_sha256": "164323b10f59b90786069c6c308f2ce8349811cf4b3178f58c597ddd0284e589",
+      "source": "assets/demo/stage3/planning-daytime-evidence.tar.gz",
+      "source_sha256": "ad2f85df1bc5ca69be9c44f7f7ee4a4ffc2ca10ba26bf4b65a16be42b07bd07f",
       "presentation": "recorded product proposal; awaiting adoption",
-      "evidence": "assets/demo/stage3/recorded-evidence.tar.gz",
-      "session_id": "de9bd826-826d-4894-8143-861f8e58d60a",
-      "sha256": "164323b10f59b90786069c6c308f2ce8349811cf4b3178f58c597ddd0284e589",
+      "evidence": "assets/demo/stage3/planning-daytime-evidence.tar.gz",
+      "session_id": "bfdb1fb0-7d58-45b0-b9c7-f9cfd855f5c3",
+      "sha256": "b2ddcc3f1a8a3f118eb84f46ab1be225e9fb351655fe88c819351a1c3a72c602",
       "image_size": {
         "width": 1440,
         "height": 900
       },
-      "capture": "complete original product viewport, no crop"
+      "capture": "complete original product viewport, no crop",
+      "source_revision": "759e4fc7da859e576aad5f407a0fba8921ad51a7"
     },
     {
       "file": "02-proactive-support.png",
@@ -51,6 +52,34 @@
         "width": 1440,
         "height": 964
       }
+    },
+    {
+      "file": "04-learning-plan.png",
+      "source": "assets/demo/stage3/planning-daytime-evidence.tar.gz",
+      "source_sha256": "ad2f85df1bc5ca69be9c44f7f7ee4a4ffc2ca10ba26bf4b65a16be42b07bd07f",
+      "source_revision": "759e4fc7da859e576aad5f407a0fba8921ad51a7",
+      "presentation": "adopted plan; stage and three tasks",
+      "session_id": "bfdb1fb0-7d58-45b0-b9c7-f9cfd855f5c3",
+      "sha256": "1203c76b3fd001d5d049e1ef730ea5b384f0dc25f28b1f3174609345a1cec2cd",
+      "image_size": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "complete browser viewport; no crop"
+    },
+    {
+      "file": "05-submit-work.png",
+      "source": "assets/demo/stage3/planning-daytime-evidence.tar.gz",
+      "source_sha256": "ad2f85df1bc5ca69be9c44f7f7ee4a4ffc2ca10ba26bf4b65a16be42b07bd07f",
+      "source_revision": "759e4fc7da859e576aad5f407a0fba8921ad51a7",
+      "presentation": "uploaded code and measured command results; pending message draft",
+      "session_id": "52acdbd9-e669-403a-8b72-688788cb2d8a",
+      "sha256": "b04345f6c52fb2aa39d791a630933984a2562bebd3e563a48bb02facc7383df9",
+      "image_size": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "complete browser viewport; no crop"
     }
   ]
 }
