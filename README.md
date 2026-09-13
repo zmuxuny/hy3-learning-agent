@@ -78,7 +78,9 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 
 架构图提供 [draw.io 可编辑源文件](assets/proposal/architecture/learning-agent-system-architecture.drawio) 与 [PNG 版本](assets/proposal/architecture/learning-agent-system-architecture.png)。
 
-图中，用户操作和后台检查共同进入上下文组装与Hy3决策循环，工具结果返回运行器供下一步判断；下方的学习事实保存计划、证据和执行位置。离线评测从这些记录导出关键决策片段，经规则核对与Hy3评审后，形成可逐例核对的结果。
+**Agent Runtime（决策运行器）**统一组织上下文装配、Hy3决策与工具执行；需要用户批准时保存状态并暂停，获批后继续执行。工具结果返回Hy3，检查点与操作记录支持运行恢复。
+
+**Decision Episode（关键决策片段）**由状态包、环境清单、可观察轨迹（Trace）和可接受行动包络组成。图中暖色区域展开规则核对、Hy3内容核验、七维评分与结果校验，并将方法有效性验证单独列出。
 
 ## 第三阶段产出
 
