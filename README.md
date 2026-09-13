@@ -39,9 +39,9 @@ Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩
 
 架构图提供 [draw.io 可编辑源文件](assets/proposal/architecture/learning-agent-system-architecture.drawio) 与 [PNG 版本](assets/proposal/architecture/learning-agent-system-architecture.png)。
 
-**Agent Runtime（决策运行器）**统一组织上下文装配、Hy3决策与工具执行；需要用户批准时保存状态并暂停，获批后继续执行。工具结果返回Hy3，检查点与操作记录支持运行恢复。
+<strong>Agent Runtime（决策运行器）</strong>统一组织上下文装配、Hy3决策与工具执行；需要用户批准时保存状态并暂停，获批后继续执行。工具结果返回Hy3，检查点与操作记录支持运行恢复。
 
-**Decision Episode（关键决策片段）**由状态包、环境清单、可观察轨迹（Trace）和可接受行动包络组成。图中暖色区域展开规则核对、Hy3内容核验、七维评分与结果校验，并将方法有效性验证单独列出。
+<strong>Decision Episode（关键决策片段）</strong>由状态包、环境清单、可观察轨迹（Trace）和可接受行动包络组成。图中暖色区域展开规则核对、Hy3内容核验、七维评分与结果校验，并将方法有效性验证单独列出。
 
 ## 运行画面
 
