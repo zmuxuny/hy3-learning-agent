@@ -441,16 +441,16 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="validation" value="" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=15;fillColor=#FFFFFF;strokeColor=#E1A585;strokeWidth=1.8;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#20242A;arcSize=7;" vertex="1" parent="1">
-          <mxGeometry as="geometry" x="60" y="1545" width="1660" height="78" />
+          <mxGeometry as="geometry" x="60" y="1545" width="1660" height="92" />
         </mxCell>
         <mxCell id="validation-icon" value="" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=15;fillColor=none;strokeColor=none;strokeWidth=1.8;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#20242A;shape=image;imageAspect=1;image=data:image/svg+xml,%3Csvg%0A%20%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%0A%20%20width%3D%2224%22%0A%20%20height%3D%2224%22%0A%20%20viewBox%3D%220%200%2024%2024%22%0A%20%20fill%3D%22none%22%0A%20%20stroke%3D%22%23B65B30%22%0A%20%20stroke-width%3D%222.3%22%0A%20%20stroke-linecap%3D%22round%22%0A%20%20stroke-linejoin%3D%22round%22%0A%3E%0A%20%20%3Cpath%20d%3D%22M9%203l6%200%22%20%2F%3E%0A%20%20%3Cpath%20d%3D%22M10%209l4%200%22%20%2F%3E%0A%20%20%3Cpath%20d%3D%22M10%203v6l-4%2011a.7%20.7%200%200%200%20.5%201h11a.7%20.7%200%200%200%20.5%20-1l-4%20-11v-6%22%20%2F%3E%0A%3C%2Fsvg%3E%0A;" vertex="1" parent="1">
-          <mxGeometry as="geometry" x="82" y="1565" width="34" height="34" />
+          <mxGeometry as="geometry" x="82" y="1564" width="42" height="42" />
         </mxCell>
-        <mxCell id="validation-title" value="&lt;b&gt;方法有效性验证&lt;/b&gt;　固定质量对照 / 人工参考　→　与自动评分比较" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=15;fillColor=none;strokeColor=none;strokeWidth=1.8;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#20242A;align=left;spacing=0;fontColor=#B65B30;" vertex="1" parent="1">
-          <mxGeometry as="geometry" x="134" y="1555" width="1560" height="28" />
+        <mxCell id="validation-title" value="&lt;b&gt;方法有效性验证&lt;/b&gt;　固定质量对照与人工参考 → 自动评分结果比较" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=15;fillColor=none;strokeColor=none;strokeWidth=1.8;fontFamily=Noto Sans CJK SC;fontSize=24;fontColor=#20242A;align=left;spacing=0;fontColor=#B65B30;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="144" y="1555" width="1540" height="34" />
         </mxCell>
-        <mxCell id="validation-body" value="质量排序 · 重复稳定性 · 人工一致性 · 指令操控 · 条件遗漏 · 严重错误识别" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=15;fillColor=none;strokeColor=none;strokeWidth=1.8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#20242A;align=left;spacing=0;fontColor=#20242A;" vertex="1" parent="1">
-          <mxGeometry as="geometry" x="134" y="1589" width="1560" height="25" />
+        <mxCell id="validation-body" value="质量排序 · 重复稳定性 · 人工一致性 · 指令操控 · 条件遗漏 · 严重错误识别" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=15;fillColor=none;strokeColor=none;strokeWidth=1.8;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#20242A;align=left;spacing=0;fontColor=#20242A;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="144" y="1595" width="1540" height="30" />
         </mxCell>
         <mxCell id="report-validation" value="" style="edgeStyle=none;rounded=0;html=1;strokeColor=#B65B30;strokeWidth=2.6;startArrow=none;startFill=1;endArrow=blockThin;endFill=1;endSize=7;exitX=0.5;exitY=1.0;exitPerimeter=0;entryX=0.9006024096385542;entryY=0.0;entryPerimeter=0;" edge="1" parent="1" source="report" target="validation">
           <mxGeometry as="geometry" relative="1" />
