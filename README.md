@@ -35,9 +35,9 @@ Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩
 
 ### 在没有新提问时主动支持学习
 
-[![后台主动提醒：先完成临期任务的前置练习](assets/readme/screenshots/02-proactive-support.png)](assets/readme/screenshots/02-proactive-support.png)
+[![后台主动提醒：结合临期任务与当前学习时段](assets/readme/screenshots/02-proactive-support.png)](assets/readme/screenshots/02-proactive-support.png)
 
-在预设的临期任务场景中，后台检查发现后续任务依赖尚未开始的前置练习。Hy3发出站内提醒，建议先完成一个5—10分钟的小步骤；用户可从提醒进入对话继续学习。[录屏与运行记录](assets/demo/stage3/README.md#数据与画面来源)保留了触发及发送过程。
+演示场景设为9月11日15:00，学习者约定的学习时段为15:00—17:00。后台发现任务将在16:00截止、尚无提交证据，Hy3建议利用当前时段完成30分钟练习，并提交运行结果供检查。用户可从站内提醒进入对话继续学习。[完整录屏与运行记录](assets/readme/proactive-daytime-evidence.tar.gz)保留了触发、发送和后续界面；免打扰采用23:00—08:00的默认设置。
 
 ## 核心体验
 
@@ -77,6 +77,8 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 - **离线评测平面**：从关键决策导出可回放样本，在隔离环境中完成评分、有效性验证和结果归因，不进入用户运行时。
 
 架构图提供 [draw.io 可编辑源文件](assets/proposal/architecture/learning-agent-system-architecture.drawio) 与 [PNG 版本](assets/proposal/architecture/learning-agent-system-architecture.png)。
+
+图中，用户操作和后台检查共同进入上下文组装与Hy3决策循环，工具结果返回运行器供下一步判断；下方的学习事实保存计划、证据和执行位置。离线评测从这些记录导出关键决策片段，经规则核对与Hy3评审后，形成可逐例核对的结果。
 
 ## 第三阶段产出
 
