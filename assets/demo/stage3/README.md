@@ -34,3 +34,13 @@ python scripts/build-stage3-demo.py
 最终视频位于仓库根目录`第三阶段Demo.mp4`；本目录保存素材、封面与视频清单。
 
 `build-stage3-demo.py`按[timeline.json](timeline.json)验证素材与实验摘要，合成后检查时长和分辨率，输出根目录视频并更新本目录的`learning-agent-stage3.json`。归档视频可直接合成，无需再次调用模型；完整108秒成片的时间和摘要见[视频清单](learning-agent-stage3.json)。
+
+## README运行截图
+
+[截图来源与摘要](../../readme/screenshots/sources.json)记录素材版本、裁剪范围及对应证据。图片通过截帧或现有页面截图生成，保留原始文字和状态；原视频与报告共用截图未被覆盖。
+
+| 截图 | 来源与呈现内容 |
+| --- | --- |
+| [计划审阅](../../readme/screenshots/01-plan-review.png) | 从现有[应用截图](../../stage3/application-screenshot.png)裁出计划区域，保留“等待确认”和三个任务。 |
+| [主动支持](../../readme/screenshots/02-proactive-support.png) | 主动录屏第25秒，保留计划标题与通知正文；使用已允许夜间提醒的临时学习场景。 |
+| [验收实验归档](../../readme/screenshots/03-assessment-archive.png) | 在既有结果页选择A33，滚动到失败测试记录，截取案例区域；这是离线归档，素材含真实模型输出与预设作品证据。 |

@@ -13,7 +13,7 @@
 
 ## Demo
 
-[![Learning Agent · Hy3 Demo](assets/demo/stage3/cover.png)](https://zmuxuny.github.io/hy3-learning-agent/#demo)
+https://github.com/user-attachments/assets/c9193cc8-d6fb-4aab-a2d8-6b01633f598f
 
 [▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)
 
@@ -25,7 +25,19 @@ Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩
 
 > **让 AI 从一次性回答走向持续行动：理解目标、跟踪进度、验证掌握，并在恰当的时机主动介入。**
 
-![Learning Agent · Hy3 整体架构](assets/proposal/architecture/learning-agent-system-architecture.png)
+## 运行画面
+
+### 把学习目标变成可审阅的计划
+
+[![目录统计工具的计划提案：三个任务、210分钟，等待确认](assets/readme/screenshots/01-plan-review.png)](assets/stage3/application-screenshot.png)
+
+会Python基础、每天30分钟的学习者，希望一周完成目录统计工具。Hy3提出三个递进任务，预计共210分钟，并给出产出与验收要求；图中计划仍在等待确认，采用后才进入学习工作区。
+
+### 在没有新提问时主动支持学习
+
+[![后台主动提醒：先完成临期任务的前置练习](assets/readme/screenshots/02-proactive-support.png)](assets/readme/screenshots/02-proactive-support.png)
+
+在预设的临期任务场景中，后台检查发现后续任务依赖尚未开始的前置练习。Hy3发出站内提醒，建议先完成一个5—10分钟的小步骤；用户可从提醒进入对话继续学习。[录屏与运行记录](assets/demo/stage3/README.md#数据与画面来源)保留了触发及发送过程。
 
 ## 核心体验
 
@@ -53,6 +65,8 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 这里的“主动”不以通知数量衡量。`WAIT` 是与提醒、抽查和调整同等重要的决策：系统追求的是一次有依据、及时、可执行的介入。
 
 ## 系统设计
+
+![Learning Agent · Hy3 整体架构](assets/proposal/architecture/learning-agent-system-architecture.png)
 
 整体系统由五部分组成：
 
@@ -87,6 +101,12 @@ Learning Agent 不把计划视为静态日程，也不把一次对话当作任�
 质量对照实验的24组分数比较中，23组按正确、局部缺陷、严重错误的顺序依次降分。我们还检查了追加满分指令后是否误判、能否区分正常与严重行为，以及是否发现条件遗漏和工作量矛盾。各项材料如何构造、评分次数如何计算、结果说明什么，见[报告第四、五章](第三阶段项目与评测报告.md#4-实验安排与测试材料)。学习助手48项任务的表现则见第六章，自动评分与人工参考同时列出。
 
 直接核对应用实验的数据：[48例参考标签 application.csv](交付材料/人工标注/application.csv) · [48例自动与人工对照 application-human.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/application-human.csv) · [200次主体评分 cases.csv](evaluation/artifacts/decisionbench-final-method-20260910/automatic/cases.csv)。各文件的记录数、字段含义与原始证据查找方式见[关键数据文件索引](第三阶段交付说明.md#关键数据文件索引)。
+
+### 从实际证据检查验收判断
+
+[![A33概率归一化案例的离线评测归档：失败测试与验收依据](assets/readme/screenshots/03-assessment-archive.png)](assets/readme/screenshots/03-assessment-archive.png)
+
+图为**应用实验A33的离线评测归档**。给定测试输入`[0, ln 2]`，作品记录的结果是`[0.5, 0.5]`，期望则是`[1/3, 2/3]`。助手指出差异、给出退回判断，并要求修复后用同一输入复测，因此自动评分与人工参考均为100分。这里评价的是助手的验收决策，作品本身没有通过测试。任务条件和完整输出见[用例A33](评测用例目录.md)及[原始记录 formal-i09-a.json](evaluation/artifacts/decisionbench-study-20260910/evidence/full/evidence/formal-i09-a.json)。
 
 ## 快速开始
 

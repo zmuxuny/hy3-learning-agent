@@ -1,0 +1,50 @@
+{
+  "source_revision": "d0e233e4a16600af38f9c2bd0d96754d43f4a8b9",
+  "images": [
+    {
+      "file": "01-plan-review.png",
+      "source": "assets/stage3/application-screenshot.png",
+      "source_sha256": "164323b10f59b90786069c6c308f2ce8349811cf4b3178f58c597ddd0284e589",
+      "presentation": "recorded product proposal; awaiting adoption",
+      "crop": {
+        "x": 250,
+        "y": 0,
+        "width": 1190,
+        "height": 760
+      },
+      "evidence": "assets/demo/stage3/recorded-evidence.tar.gz",
+      "session_id": "de9bd826-826d-4894-8143-861f8e58d60a",
+      "sha256": "057e0f83735df04b2c96f9ee67088276d6b1520761bb4774e9f963baf342e26e"
+    },
+    {
+      "file": "02-proactive-support.png",
+      "source": "assets/demo/stage3/sources/proactive.webm",
+      "source_sha256": "f994b52799d64d7b9b33695b178c18159ea5062ec076c3e9262b48b8333a997f",
+      "timestamp_seconds": 25,
+      "presentation": "real Hy3 proactive notification in synthetic learner fixture",
+      "crop": {
+        "x": 250,
+        "y": 0,
+        "width": 1190,
+        "height": 440
+      },
+      "evidence": "assets/demo/stage3/proactive-evidence.tar.gz",
+      "run_id": "4a121a2a-9bbd-4d50-b1d7-ccaac21dbf1b",
+      "sha256": "bd463d611bb7bafe0b3714347fb6d9ea3379612ab2c8b22f44ab880397785958"
+    },
+    {
+      "file": "03-assessment-archive.png",
+      "source": "assets/demo/stage3/viewer.html",
+      "source_sha256": "69c827de0bf2f1e4b06408b6c5dcad07bb6848023d40267250d261f498f38c06",
+      "presentation": "offline application experiment archive; actual model output on synthetic submission evidence",
+      "case": "A33 / formal-i09-a",
+      "viewport": {
+        "width": 1000,
+        "height": 980
+      },
+      "capture": "select formal-i09-a; scroll observed output to Submission log; screenshot .case element",
+      "evidence": "evaluation/artifacts/decisionbench-study-20260910/evidence/full/evidence/formal-i09-a.json",
+      "sha256": "ce4881dc76fa8b8ccf4118ad58c960911e55ad9482581f6c906acb320659b3b4"
+    }
+  ]
+}
