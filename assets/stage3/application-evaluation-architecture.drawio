@@ -62,7 +62,7 @@
         <mxCell id="action" value="&lt;font style=&quot;font-size:11px&quot; color=&quot;#D45D52&quot;&gt;ACT&lt;/font&gt;&lt;br&gt;&lt;b&gt;提醒 · 抽查&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px&quot; color=&quot;#D45D52&quot;&gt;计划调整&lt;/font&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F6DDD7;strokeColor=#D45D52;strokeWidth=1.7;fontFamily=Noto Sans CJK SC;fontSize=17;fontStyle=1;fontColor=#20242A;spacing=6;" vertex="1" parent="1">
           <mxGeometry x="185" y="516" width="135" height="78" as="geometry" />
         </mxCell>
-        <mxCell id="hy3_core" value="&lt;font style=&quot;font-size:11px&quot; color=&quot;#6F75A4&quot;&gt;HY3 CONTROLLER&lt;/font&gt;&lt;br&gt;&lt;b&gt;Hy3 Learning Agent&lt;/b&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=top;fillColor=#DDD9EB;strokeColor=#545B66;strokeWidth=1.7;shadow=0;fontFamily=Noto Sans CJK SC;fontSize=23;fontStyle=1;fontColor=#20242A;spacing=7;spacingTop=12;spacingLeft=66;align=left;" vertex="1" parent="1">
+        <mxCell id="hy3_core" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#DDD9EB;strokeColor=#545B66;strokeWidth=1.7;shadow=0;fontFamily=Noto Sans CJK SC;fontSize=23;fontStyle=1;fontColor=#20242A;spacing=7;spacingTop=16;spacingLeft=86;" vertex="1" parent="1">
           <mxGeometry x="640" y="374" width="350" height="132" as="geometry" />
         </mxCell>
         <mxCell id="hy3_sense" value="SENSE" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fillColor=#F7F4EE;strokeColor=#4C98A5;strokeWidth=1.3;fontFamily=Noto Sans CJK SC;fontSize=11;fontStyle=1;fontColor=#3F8793;" vertex="1" parent="hy3_core">
@@ -213,7 +213,10 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="project-brand" value="" style="shape=image;imageAspect=1;aspect=fixed;image=data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22128%22%20height%3D%22128%22%20viewBox%3D%220%200%20128%20128%22%20role%3D%22img%22%20aria-labelledby%3D%22title%22%3E%3Ctitle%20id%3D%22title%22%3ELearning%20Agent%EF%BC%9A%E4%B9%A6%E9%A1%B5%E4%B8%AD%E7%9A%84%E5%AD%A6%E4%B9%A0%E8%B7%AF%E5%BE%84%3C%2Ftitle%3E%3Crect%20width%3D%22128%22%20height%3D%22128%22%20rx%3D%2229%22%20fill%3D%22%23203d63%22%2F%3E%3Cpath%20d%3D%22M27%2035C40%2031%2051%2034%2061%2042V94C50%2085%2040%2082%2027%2085Z%22%20fill%3D%22%23f5f8fc%22%2F%3E%3Cpath%20d%3D%22M68%2042C78%2034%2089%2031%20101%2035V85C88%2082%2079%2085%2068%2094Z%22%20fill%3D%22%23f5f8fc%22%2F%3E%3Cpath%20d%3D%22M39%2070C42%2054%2050%2052%2060%2060S75%2046%2089%2045%22%20fill%3D%22none%22%20stroke%3D%22%23507dac%22%20stroke-width%3D%225.5%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2290%22%20cy%3D%2245%22%20r%3D%225.5%22%20fill%3D%22%23d9a450%22%2F%3E%3C%2Fsvg%3E%0A;" vertex="1" parent="hy3_core">
-          <mxGeometry as="geometry" x="14" y="18" width="44" height="44" />
+          <mxGeometry as="geometry" x="24" y="20" width="44" height="44" />
+        </mxCell>
+        <mxCell id="project-title" value="&lt;b&gt;Hy3 Learning Agent&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=23;fontColor=#20242A;" vertex="1" parent="hy3_core">
+          <mxGeometry as="geometry" x="86" y="20" width="244" height="44" />
         </mxCell>
       </root>
     </mxGraphModel>
