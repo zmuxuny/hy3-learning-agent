@@ -470,22 +470,22 @@
         <mxCell id="outcome-wait" value="&lt;b&gt;保持安静&lt;/b&gt;" style="rounded=1;arcSize=10;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=21;fillColor=#FFFFFF;strokeColor=#8DA6C3;fontColor=#20242A;strokeWidth=1.5;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="809" y="800.622" width="118" height="38.054" />
         </mxCell>
-        <mxCell id="outcome-wait-branch" style="edgeStyle=none;rounded=0;html=1;startArrow=none;endArrow=block;endFill=1;endSize=6;strokeWidth=2.2;strokeColor=#52749B;exitX=0.5;exitY=1;exitPerimeter=0;entryX=0.5;entryY=0;entryPerimeter=0;" edge="1" parent="1" target="outcome-wait" source="outcomes">
+        <mxCell id="outcome-wait-branch" style="edgeStyle=none;rounded=1;arcSize=6;html=1;startArrow=none;endArrow=open;endFill=0;endSize=5;strokeWidth=1.8;strokeColor=#52749B;exitX=0.5;exitY=1;exitPerimeter=0;entryX=0.5;entryY=0;entryPerimeter=0;" edge="1" parent="1" target="outcome-wait" source="outcomes">
           <mxGeometry as="geometry" relative="1">
             <Array as="points">
-              <mxPoint x="1002.5" y="785.162" />
-              <mxPoint x="868" y="785.162" />
+              <mxPoint x="1002.5" y="780" />
+              <mxPoint x="868" y="780" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="outcome-act" value="&lt;b&gt;提醒 · 抽查 · 计划调整&lt;/b&gt;" style="rounded=1;arcSize=10;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=21;fillColor=#FBE0D9;strokeColor=#D47766;fontColor=#20242A;strokeWidth=1.5;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="940" y="800.622" width="266" height="38.054" />
         </mxCell>
-        <mxCell id="outcome-act-branch" style="edgeStyle=none;rounded=0;html=1;startArrow=none;endArrow=block;endFill=1;endSize=6;strokeWidth=2.2;strokeColor=#52749B;exitX=0.5;exitY=1;exitPerimeter=0;entryX=0.5;entryY=0;entryPerimeter=0;" edge="1" parent="1" target="outcome-act" source="outcomes">
+        <mxCell id="outcome-act-branch" style="edgeStyle=none;rounded=1;arcSize=6;html=1;startArrow=none;endArrow=open;endFill=0;endSize=5;strokeWidth=1.8;strokeColor=#52749B;exitX=0.5;exitY=1;exitPerimeter=0;entryX=0.5;entryY=0;entryPerimeter=0;" edge="1" parent="1" target="outcome-act" source="outcomes">
           <mxGeometry as="geometry" relative="1">
             <Array as="points">
-              <mxPoint x="1002.5" y="785.162" />
-              <mxPoint x="1073" y="785.162" />
+              <mxPoint x="1002.5" y="780" />
+              <mxPoint x="1073" y="780" />
             </Array>
           </mxGeometry>
         </mxCell>
