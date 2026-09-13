@@ -17,10 +17,7 @@
       property="og:image"
       content="https://zmuxuny.github.io/hy3-learning-agent/media/cover.png"
     />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%236d64e8%22/><path d=%22M16 27l16-9 16 9-16 9-16-9zm6 6v9c7 5 13 5 20 0v-9%22 fill=%22none%22 stroke=%22white%22 stroke-width=%224%22 stroke-linejoin=%22round%22/></svg>"
-    />
+    <link rel="icon" type="image/svg+xml" href="./media/learning-agent-mark.svg" />
     <title>Learning Agent · Hy3 Demo</title>
     <style>
       :root {
@@ -71,18 +68,10 @@
       }
 
       .brand-mark {
-        display: grid;
-        width: 34px;
-        height: 34px;
-        place-items: center;
-        border-radius: 10px;
-        background: #20211f;
-        color: #fff;
-      }
-
-      .brand-mark svg {
-        width: 20px;
-        height: 20px;
+        display: block;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 auto;
       }
 
       .top-links {
@@ -306,17 +295,7 @@
     <div class="shell">
       <header class="topbar">
         <a class="brand" href="https://github.com/zmuxuny/hy3-learning-agent">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path
-                d="m4 9 8-4.5L20 9l-8 4.5L4 9Zm3 3v4.5c3.5 2.5 6.5 2.5 10 0V12"
-                stroke="currentColor"
-                stroke-width="1.7"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </span>
+          <img class="brand-mark" src="./media/learning-agent-mark.svg" width="38" height="38" alt="" />
           Learning Agent
         </a>
         <nav class="top-links" aria-label="项目链接">

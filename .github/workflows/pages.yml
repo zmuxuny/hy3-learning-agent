@@ -8,6 +8,7 @@ on:
       - .github/workflows/pages.yml
       - pages/**
       - assets/demo/**
+      - assets/brand/**
       - 第三阶段Demo.mp4
   workflow_dispatch:
 
@@ -35,6 +36,7 @@ jobs:
           mkdir -p _site/media
           cp pages/index.html _site/index.html
           cp assets/demo/stage3/cover.png _site/media/
+          cp assets/brand/learning-agent-mark.svg _site/media/
           cp 第三阶段Demo.mp4 _site/media/learning-agent-stage3.mp4
 
       - name: Upload Pages artifact

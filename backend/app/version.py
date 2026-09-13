@@ -6,5 +6,5 @@ Every schema change increments ``CURRENT_SCHEMA_VERSION`` and appends the
 matching immutable revision in :mod:`app.db.migrations`.
 """
 
-APPLICATION_VERSION = "1.1.1"
+APPLICATION_VERSION = "1.2.0"
 CURRENT_SCHEMA_VERSION = 5

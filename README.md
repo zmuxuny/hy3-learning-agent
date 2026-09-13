@@ -13,18 +13,11 @@
 
 ## Demo
 
-
-
-
 https://github.com/user-attachments/assets/88b9f3e9-bb31-4ca0-8f26-42f3e0c6f5d2
-
-
-
-
 
 [▶ 在线观看108秒Demo（1080p）](https://zmuxuny.github.io/hy3-learning-agent/#demo) · [下载MP4](https://raw.githubusercontent.com/zmuxuny/hy3-learning-agent/main/第三阶段Demo.mp4) · [素材与复建](assets/demo/stage3/README.md)
 
-视频依次展示目标输入、计划审阅与采用、后台发出的主动提醒，以及案例评分依据和质量对照结果。
+视频依次展示目标输入、计划审阅与采用、学习计划任务页、后台发出的主动提醒，以及案例评分依据和质量对照结果。
 
 Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩展为贯穿目标、计划、执行、验收与调整的持续学习伙伴。
 
@@ -52,6 +45,12 @@ Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩
 
 ## 运行画面
 
+### 在没有新提问时主动支持学习
+
+[![后台主动提醒：结合临期任务与当前学习时段](assets/readme/screenshots/02-proactive-support.png)](assets/readme/screenshots/02-proactive-support.png)
+
+演示场景设为9月11日15:00，学习者约定的学习时段为15:00—17:00。后台发现任务将在16:00截止、尚无提交证据，Hy3建议利用当前时段完成30分钟练习，并提交运行结果供检查。用户可从站内提醒进入对话继续学习。[完整录屏与运行记录](assets/readme/proactive-daytime-evidence.tar.gz)保留了触发、发送和后续界面；免打扰采用23:00—08:00的默认设置。
+
 ### 把学习目标变成可审阅的计划
 
 [![目录统计工具的计划提案：三个任务、150分钟，等待确认](assets/readme/screenshots/01-plan-review.png)](assets/readme/screenshots/01-plan-review.png)
@@ -70,18 +69,6 @@ Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩
 
 点击任务的“提交成果”进入对应对话，助手先说明本项任务需要哪些材料。图中学习者已上传路径校验脚本，并填写有效、无效目录的实际运行结果，准备发送；助手随后依据任务要求保存证据并逐项验收。
 
-### 在没有新提问时主动支持学习
-
-[![后台主动提醒：结合临期任务与当前学习时段](assets/readme/screenshots/02-proactive-support.png)](assets/readme/screenshots/02-proactive-support.png)
-
-演示场景设为9月11日15:00，学习者约定的学习时段为15:00—17:00。后台发现任务将在16:00截止、尚无提交证据，Hy3建议利用当前时段完成30分钟练习，并提交运行结果供检查。用户可从站内提醒进入对话继续学习。[完整录屏与运行记录](assets/readme/proactive-daytime-evidence.tar.gz)保留了触发、发送和后续界面；免打扰采用23:00—08:00的默认设置。
-
-### 从实际证据检查验收判断
-
-[![A33概率归一化案例的离线评测归档：失败测试与验收依据](assets/readme/screenshots/03-assessment-archive.png)](assets/readme/screenshots/03-assessment-archive.png)
-
-图为**应用实验A33的离线评测归档**。给定测试输入`[0, ln 2]`，作品记录的结果是`[0.5, 0.5]`，期望则是`[1/3, 2/3]`。助手指出差异、给出退回判断，并要求修复后用同一输入复测，因此自动评分与人工参考均为100分。这里评价的是助手的验收决策，作品本身没有通过测试。任务条件和完整输出见[用例A33](评测用例目录.md)及[原始记录 formal-i09-a.json](evaluation/artifacts/decisionbench-study-20260910/evidence/full/evidence/formal-i09-a.json)。
-
 ## 第三阶段产出
 
 **评测材料统一下载与核对：[交付材料目录](交付材料/README.md)**，包含测试用例、原始决策证据、模型评分、两份人工标注、协商参考及一致性统计。
@@ -89,6 +76,12 @@ Learning Agent · Hy3 面向编程与技术学习，把 AI 从一次性问答扩
 第三阶段同时交付可运行的学习助手，以及检查其决策质量的评测方法。我们做了两类实验：让应用实际处理预先设置的学习任务，评价它的回复与操作；另行编写好坏不同的回复和操作记录，验证评测器能否辨别这些差异。
 
 应用实验有48项任务，规划、介入、验收、调整各12项，每项实际运行一次。评测器的质量对照实验选8个情境，每个编写正确处理、局部缺陷、严重错误三种版本，得到24份记录；每份固定材料评分3次，共72次，用来比较好坏顺序和重复评分的波动。
+
+### 从实际证据检查验收判断
+
+[![A33概率归一化案例的离线评测归档：失败测试与验收依据](assets/readme/screenshots/03-assessment-archive.png)](assets/readme/screenshots/03-assessment-archive.png)
+
+图为**应用实验A33的离线评测归档**。给定测试输入`[0, ln 2]`，作品记录的结果是`[0.5, 0.5]`，期望则是`[1/3, 2/3]`。助手指出差异、给出退回判断，并要求修复后用同一输入复测，因此自动评分与人工参考均为100分。这里评价的是助手的验收决策，作品本身没有通过测试。任务条件和完整输出见[用例A33](评测用例目录.md)及[原始记录 formal-i09-a.json](evaluation/artifacts/decisionbench-study-20260910/evidence/full/evidence/formal-i09-a.json)。
 
 以下文档均位于仓库根目录。报告正文说明应用与方法，附录完整列出评测集；数据和结果链接可进一步核对每一项证据。
 
