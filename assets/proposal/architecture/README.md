@@ -7,7 +7,7 @@
 | Learning Agent · Hy3 整体架构 | 报告图1，提供闭环概览。由学习目标、计划、提交与验收进入状态更新，再看主动判断的“保持安静”和“提醒、抽查、调整”分支；底部连接离线评测。 | [SVG](../../stage3/application-evaluation-architecture.svg) · [PNG](../../stage3/application-evaluation-architecture.png) · [draw.io源文件](../../stage3/application-evaluation-architecture.drawio) |
 | 系统技术架构详图 | README与技术文档。从工作台进入Agent Runtime，展开上下文、Hy3决策循环、工具审批、状态保存与效果投递；下方展开Decision Episode和评分流程。 | [SVG](learning-agent-system-architecture.svg) · [PNG](learning-agent-system-architecture.png) · [draw.io源文件](learning-agent-system-architecture.drawio) |
 
-两张图均固定为白底，浏览器深色主题不改变图内颜色。混元图形标识来自官方素材，来源见[素材说明](THIRD_PARTY_NOTICES.md)。
+网页中的两张图均固定为白底，浏览器深色主题不改变图内颜色。PDF报告中的整体架构图沿用浅灰蓝底色（`#E8ECF1`），由报告导出脚本切换背景，布局与内容保持一致。技术详图仅在Hy3决策循环模块使用混元图形标识；概览图中央代表整个学习助手，使用项目自己的书页路径Logo。混元标识来源见[素材说明](THIRD_PARTY_NOTICES.md)。
 
 在仓库根目录运行以下命令可从draw.io源文件重新导出两张图，并更新报告：
 

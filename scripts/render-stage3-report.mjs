@@ -71,5 +71,17 @@ await page.evaluate(()=>{
   if(ids.has(target))a.setAttribute('href','#'+ids.get(target));
  });
 });
+// Keep the white overview in portable HTML and use its original background in PDF.
+const overview=page.locator('img[alt="Learning Agent · Hy3 整体架构"]');
+const overviewWebSource=await overview.getAttribute('src');
+await overview.evaluate(async img=>{
+ const svg=new DOMParser().parseFromString(await (await fetch(img.src)).text(),'image/svg+xml');
+ svg.documentElement.style.background='#E8ECF1';
+ const background=svg.documentElement.querySelector(':scope > rect');
+ background.setAttribute('fill','#E8ECF1');background.style.fill='#E8ECF1';
+ img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(svg));
+ await img.decode();
+});
 await page.pdf({path:path.join(out,'第三阶段项目与评测报告.pdf'),format:'A4',printBackground:true,margin:{top:'14mm',bottom:'17mm',left:'15mm',right:'15mm'},displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="font-size:9px;color:#687386;width:100%;text-align:center">Learning Agent · Hy3 · 个人活动作品　<span class="pageNumber"></span> / <span class="totalPages"></span></div>'});
+await overview.evaluate(async(img,source)=>{img.src=source;await img.decode();},overviewWebSource);
 await page.screenshot({path:path.join(out,'report-preview.png'),fullPage:false});await browser.close();console.log('report rendered',out);
