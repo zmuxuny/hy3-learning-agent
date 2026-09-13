@@ -1,5 +1,3 @@
-# Learning Agent · Hy3
-
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/brand/learning-agent-logo-dark.svg" />
   <img src="assets/brand/learning-agent-logo.svg" alt="Learning Agent：书页中的学习路径" width="460" />
