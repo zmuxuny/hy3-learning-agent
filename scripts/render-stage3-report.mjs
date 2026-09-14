@@ -84,4 +84,6 @@ await overview.evaluate(async img=>{
 });
 await page.pdf({path:path.join(out,'第三阶段项目与评测报告.pdf'),format:'A4',printBackground:true,margin:{top:'14mm',bottom:'17mm',left:'15mm',right:'15mm'},displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="font-size:9px;color:#687386;width:100%;text-align:center">Learning Agent · Hy3 · 个人活动作品　<span class="pageNumber"></span> / <span class="totalPages"></span></div>'});
 await overview.evaluate(async(img,source)=>{img.src=source;await img.decode();},overviewWebSource);
-await page.screenshot({path:path.join(out,'report-preview.png'),fullPage:false});await browser.close();console.log('report rendered',out);
+// Keep the visual-check screenshot in the ignored build directory.
+const previewDir=path.join(root,'build');await mkdir(previewDir,{recursive:true});
+await page.screenshot({path:path.join(previewDir,'report-preview.png'),fullPage:false});await browser.close();console.log('report rendered',out);
