@@ -1,84 +1,63 @@
-# Security boundary
+# 安全说明
 
-Learning Agent is a single-owner personal application. It does not provide
-multi-user accounts, tenant isolation, or a safe environment for arbitrary
-code. The supported deployment boundary is deliberately small.
+Learning Agent 面向单个使用者，支持本机运行和个人服务器部署。当前不提供多用户账户、租户隔离或任意代码执行沙箱。安装与启动方式见 [README](README.md)，部署配置见 [.env.example](.env.example)。
 
-## Supported deployment modes
+## 部署与访问认证
 
-`DEPLOYMENT_MODE=local` is the default. `backend/run.py` binds to
-`127.0.0.1`, rejects non-loopback bind arguments, and the ASGI middleware also
-rejects requests when a direct server launch exposes a non-loopback socket.
-Host headers and CORS origins must be explicit loopback authorities.
+### 本机运行
 
-`DEPLOYMENT_MODE=server` is intended for one personal server behind HTTPS. It
-fails during configuration loading unless all of the following are present:
+默认使用 `DEPLOYMENT_MODE=local`。`backend/run.py` 默认绑定 `127.0.0.1`，拒绝非回环监听地址；直接通过 ASGI 服务器启动时，中间件也会检查连接是否来自回环地址。Host 和 CORS 配置仅接受明确的本机回环地址。
 
-- `SERVER_AUTH_TOKEN`: at least 32 bytes using bearer-token characters;
-- `SERVER_PUBLIC_ORIGIN`: one exact `https://host[:port]` origin;
-- `CORS_ORIGINS`: exactly that public origin.
+本机模式不要求服务器令牌，应仅供本机访问，不要通过端口转发或反向代理将其公开。
 
-All `/api/v1` routes, including settings, files, Runs, notifications and SSE,
-require either the bearer token or a signed short-lived session cookie. Cookie
-writes additionally require the exact Origin plus the matching CSRF cookie and
-header. Server-mode ASGI requests must also arrive with an HTTPS request scope;
-a trusted TLS-terminating proxy must therefore forward the original scheme.
-The static application shell is public, but it contains no user data;
-all data requests remain authenticated. The current frontend does not provide
-a polished server login screen, so server deployment remains an advanced setup
-even though the H8 local onboarding and release gate are complete.
+### 个人服务器部署
 
-Never expose local mode through port forwarding or a reverse proxy. In server
-mode, terminate TLS at a trusted proxy, preserve the exact public Host header,
-and do not share the bearer token in URLs, logs, screenshots, issues, or chat.
+使用 `DEPLOYMENT_MODE=server` 时，必须配置以下项目，否则配置加载失败：
 
-## High-risk tools
+| 配置项 | 要求 |
+| --- | --- |
+| `SERVER_AUTH_TOKEN` | 至少 32 字节，使用合法的 Bearer 令牌字符；应生成随机令牌 |
+| `SERVER_PUBLIC_ORIGIN` | 一个明确的 `https://host[:port]` 来源地址 |
+| `CORS_ORIGINS` | 仅包含上述公开来源地址 |
+| `SERVER_SESSION_TTL_SECONDS` | 浏览器会话有效期，默认 8 小时，可设置为 5 分钟至 24 小时 |
 
-This repository does not ship a capability-attested code sandbox.
-`code_execute` is therefore absent from the model tool surface and rejected at
-the direct tool and durable outbox boundaries in both deployment modes. The
-retained host runner is an internal compatibility primitive with fixed
-interpreter paths and a minimal environment; it is not a security sandbox and
-is not a supported user capability.
+`/api/v1` 下的数据接口，包括设置、文件、运行记录、通知和 SSE 事件流，均要求有效的 Bearer 令牌或签名会话 Cookie。CORS 预检请求不要求认证；建立会话的 `POST /api/v1/auth/session` 接口单独校验 Bearer 令牌。
 
-Web and file reads are marked `external_untrusted`. Their content cannot grant
-write or notification authority. A write after untrusted input needs an exact,
-consumed durable approval tied to the same Run, invocation, tool call, request
-digest and live claim. Email Runs are untrusted and read-only, except for the
-database-verified reply to the original Intervention through an original
-delivery channel.
+浏览器会话 Cookie 设置 `Secure`、`HttpOnly` 和 `SameSite=Strict`。使用 Cookie 认证的写请求，还必须携带匹配的 Origin，以及一致的 CSRF Cookie 和 `X-CSRF-Token` 请求头。当前前端未提供独立的服务器登录页，服务器部署需自行接入会话建立与 CSRF 请求处理。
 
-Web fetches resolve and pin a public unicast IP before sending, preserve the
-logical Host/TLS SNI, verify the connected peer, and repeat validation for each
-redirect. Wire bytes, decoded bytes, total time, encoding and media type are
-bounded independently. These guards do not make downloaded content trustworthy.
+服务器模式要求 ASGI 请求标记为 HTTPS。由反向代理终止 TLS 时，应保留公开 Host，并仅信任该代理转发的协议信息。静态应用页面可以公开访问，用户数据接口仍需认证。不要将服务器令牌放入 URL、日志、截图或公开讨论中。
 
-## Credentials and diagnostics
+## 工具执行与外部内容
 
-Keep `.env`, databases, Context projections, backups and `data/workspace/` out
-of source control. `.env` updates validate every key/value before touching the
-target, reject control characters and non-regular targets, and publish a 0600
-file through a locked, fsynced atomic replace.
+### 代码执行
 
-Configured model, mail, server-auth and VAPID credentials are removed from
-tool observations, checkpoints, approval projections, Run events, Context
-projections, diagnostic errors and Python log records. Tool arguments that
-contain a configured credential or a redaction placeholder fail closed before
-creating a durable invocation. Redaction is defense in depth, not permission
-to paste credentials into messages or artifacts; rotate a credential if it may
-have been exposed before this boundary was installed.
+当前未接入经过能力验证的隔离沙箱，因此 `code_execute` 不向模型开放，在直接工具调用和持久化执行队列中也会被拒绝，两种部署模式均如此。代码中保留的主机执行器使用固定解释器路径和最小环境，仅作为内部兼容实现，不属于可供用户使用的安全沙箱。
 
-Automated tests use temporary databases, synthetic credentials, mocked DNS and
-HTTP transports, and do not contact real model, mail or web providers.
+### 外部输入与操作授权
 
-## Reporting a problem
+网页和文件读取结果标记为 `external_untrusted`。外部材料中的指令不能自行授权写入或发送通知。受不可信输入影响的运行若要执行写操作，必须具备已持久化并消费的对应批准记录；执行时核对同一次运行、工具调用、请求摘要及当前执行凭据，避免批准被其他操作复用。
 
-Report a reproducible boundary failure through the repository's private
-security-reporting channel when available. Otherwise open a minimal issue that
-contains no credentials, personal data, database contents, email bodies, or
-private paths, and ask the maintainer for a private handoff method.
+邮件触发的运行按不可信、只读来源处理。例外是回复原有主动介入消息：系统需通过数据库确认原始介入记录和原投递渠道，才允许沿该渠道回复。
 
-H6 establishes the runtime boundary described above. H8 adds deterministic
-packaging and a mandatory secret-scanning release gate. External installation,
-continuous-use evidence and seven-day retention are explicitly deferred human
-validation and must not be inferred from this file or from automated tests.
+### 网络读取
+
+网页读取在发起请求前解析并固定公共单播 IP，保留目标 Host 和 TLS SNI，检查实际连接地址，并对每次重定向重新验证。传输字节数、解码后大小、耗时、编码和媒体类型均有独立限制。网络访问检查与内容可信度分别处理，下载成功的内容仍属于外部输入。
+
+## 凭据与本地数据
+
+`.env`、运行数据库、上下文投影、备份和 `data/workspace/` 中的个人材料不应提交到仓库；相关路径已列入 [.gitignore](.gitignore)。修改 `.env` 时，程序会校验键值、拒绝控制字符和非普通文件目标，并通过加锁、同步写入及原子替换，以 `0600` 权限保存文件。
+
+系统会对已配置的模型、邮件、服务器认证和 VAPID 凭据进行脱敏，覆盖工具观察、检查点、批准信息、运行事件、上下文投影、诊断错误和 Python 日志。包含已配置凭据或脱敏占位符的工具参数，会在创建持久化调用前被拒绝。不要主动将凭据粘贴到对话或交付材料中；如发生泄露，应更换相关凭据。
+
+工程回归中的安全测试使用临时数据库、合成凭据以及模拟的 DNS 和 HTTP 服务；这与调用真实模型的评测实验是不同的执行流程。发布检查包含凭据扫描，具体检查项见 [release-gates.json](release-gates.json)。
+
+## 安全问题反馈
+
+如发现认证绕过、越权执行或凭据泄露等问题，请先通过 [GitHub Issues](https://github.com/zmuxuny/hy3-learning-agent/issues/new) 联系维护者，请求私下提供详情的方式。公开 Issue 仅说明需要安全联络，不附漏洞利用步骤、凭据、个人数据、数据库内容、邮件正文或私有路径；复现材料通过双方确认的私下渠道提交。
+
+## 实现位置
+
+- [部署与认证](backend/app/core/deployment.py)：监听与来源检查、令牌认证、会话及 CSRF 校验。
+- [代码执行策略](backend/app/core/execution_policy.py)：代码执行能力限制。
+- [外部输入与授权](backend/app/core/trust.py)：来源信任和写操作批准校验。
+- [安全回归测试](tests/hardening/)：认证、工具执行、外部内容、脱敏与发布检查。
