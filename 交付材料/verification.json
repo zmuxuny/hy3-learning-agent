@@ -43,7 +43,7 @@
       ]
     }
   ],
-  "source_files_verified": 3274,
+  "source_files_verified": 3445,
   "environment": "extracted package; project Python dependencies; no model calls",
   "score_corrections": {
     "corrected_rows": 7,
@@ -55,6 +55,6 @@
     "outcome_matches": 48,
     "cases": 48
   },
-  "zip_sha256": "082885410ddf6bd0d7a9c8344baa2a0dc388556b79bf99f69ae6226211de414b",
+  "zip_sha256": "1b35a9a7f0b5cfdb727cee978c6447c15473a0b36e473bd6ea3ff45f6ed1bb0d",
   "reporting_schema_note": "2026-09-11: agreement summaries now retain direct agreement only; underlying labels and outcomes are unchanged."
 }

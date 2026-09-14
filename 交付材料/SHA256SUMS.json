@@ -1,11 +1,10 @@
 {
-  "人工标注/README.md": "b84ae1780b2a7f5ddc76c4883dedb895e34728f5b6d11b314bcf79086e187a49",
-  "人工标注/adjudication.json": "d23adf430ab47768ea50098f7bfbad304c9c0cfbbdae6ccccf70a814abb18990",
+  "人工标注/README.md": "48c528bac863334da5cfa42abe3e60313c98c425e3971e988abece016de652a6",
+  "人工标注/adjudication.json": "2a852aaf770866916b48d6f6394e786218435c534ede2bc554f2f6c62262b3ee",
   "人工标注/application.csv": "1b97a5bc6c3f9c6f590bfdd7acabc62a54aff44b54b85ddb98be12d82baa9065",
   "人工标注/application_czy.csv": "1b97a5bc6c3f9c6f590bfdd7acabc62a54aff44b54b85ddb98be12d82baa9065",
   "人工标注/application_zyq.csv": "14f2a5785445e40b5abf158438736702e1d828fc9f557fa057e5e96b29784587",
   "人工标注/score-corrections.csv": "c0fb1058cfe89d5a8dd72520b0e521675b9d264a3b4f132747675bd9bbf1e7e7",
-  "人工标注/原始上传/application_zyq.csv": "eb76b4b6f46207914ce01def5ae694ce4653be9a2412b401167c557e81826d57",
   "实验结果/主体实验/adversarial.csv": "a087a2c6faad1117eabe412854b45f0cfa3a7212b95393c0feee1991709922d9",
   "实验结果/主体实验/application-human.csv": "d2b64192b4b8e5fddee0a8a33b949a33c322ca35e224eba5184b0912a81ffaf0",
   "实验结果/主体实验/cases.csv": "4e3e80237cbb9b65c7cd50cf28169737fdb9e6a23a911491eb788b06e76cc70e",
@@ -17,12 +16,12 @@
   "实验结果/主体实验/triplets.csv": "f6658ddfcfbcec18950dc2e0576684124a39b45914c07955965035dc62ef29fb",
   "实验结果/人工一致性/annotation-differences.csv": "30dd52850f97ff1bdd086f88c0db9897fc9fe62742ba54ee38259bcffa17b298",
   "实验结果/人工一致性/application-alignment.csv": "0ed80da2e280b8e2cfe171ebc8cb1280d298b7d2ea85c202e983cbe43e3a4cfc",
-  "实验结果/人工一致性/confirmation.json": "bd35805602a4b85f864a28474c9b14fcb1c96a97be35f3661e3fb3b72c3bd696",
+  "实验结果/人工一致性/confirmation.json": "d1928121dfadef3f35abd4d6a3a1b807fa27fb4b913767cd7031c3b465774ba0",
   "实验结果/人工一致性/human-human-alignment.csv": "2990c83a9ab13f1ce79d7481ba9c0577943bcceab480c92940de7de251ba374d",
   "实验结果/卷积诊断/cases.csv": "4abef41307571b54c900ef9724843fa7d34970dfd796b6ec5f9b5c13eef97acb",
   "实验结果/卷积诊断/summary.json": "e533912b270cf794301fc4178b54e9a1c5460008a5f167d9db474e5934a9dce6",
   "实验结果/条件验证/cases.csv": "8c62e33c9335a3ea9da416f4e69b97750030a7b3592766402321e0bca0e59acc",
   "实验结果/条件验证/repetition.csv": "ec0c2ba93c100a48d2e676de9dd06d12bb5a61bd9ee0d35a9b2143734992da2a",
   "实验结果/条件验证/summary.json": "11baac9bec8c8cbef524856b01b654ce495664e6c8e3f18e8daad18ab3469c4e",
-  "评测数据.zip": "9deb021ae72ba09d643749bb2c1433241498dba4afcfb99087faf4231b079e7f"
+  "评测数据.zip": "1b35a9a7f0b5cfdb727cee978c6447c15473a0b36e473bd6ea3ff45f6ed1bb0d"
 }

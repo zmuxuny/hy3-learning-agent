@@ -2,14 +2,13 @@
 
 两位标注者分别评价同一批48个应用案例；讨论后共同采用czy的标注作为最终参考，用于检验自动评分。
 
-| 文件 | 内容 |
-| --- | --- |
-| [application_czy.csv](application_czy.csv) | czy的48例原始标注，保留原始文件字节 |
-| [application_zyq.csv](application_zyq.csv) | zyq的48例标注；维度等级保留，总分按权重与严重度上限计算 |
-| [application.csv](application.csv) | 协商后采用的最终参考，与czy文件完全相同 |
-| [原始上传/application_zyq.csv](原始上传/application_zyq.csv) | zyq上传原件，原始字节保留 |
-| [score-corrections.csv](score-corrections.csv) | 7行总分计算更正的逐项对照；达标结论均未变化 |
-| [adjudication.json](adjudication.json) | 协商决定、采用文件、范围及CSV文件的SHA-256摘要 |
+| 文件                                           | 内容                                           |
+| ---------------------------------------------- | ---------------------------------------------- |
+| [application_czy.csv](application_czy.csv)     | czy的48例标注                                  |
+| [application_zyq.csv](application_zyq.csv)     | zyq的48例标注                                  |
+| [application.csv](application.csv)             | 协商后采用的最终参考                           |
+| [score-corrections.csv](score-corrections.csv) | 7行总分计算更正的逐项对照                      |
+| [adjudication.json](adjudication.json)         | 协商决定、采用文件、范围及CSV文件的SHA-256摘要 |
 
 `id`为案例编号；`D1`—`D7`为七维等级，范围0—2；`review_score`、`review_outcome`为按七维等级、权重及严重度上限计算的参考总分与达标结论；`note`为判断说明。原始表中的`automatic_`字段保留其导出上下文，最终自动评分见[逐例对照表](../../evaluation/artifacts/decisionbench-final-method-20260910/automatic/application-human.csv)。
 
