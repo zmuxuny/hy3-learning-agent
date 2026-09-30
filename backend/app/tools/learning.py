@@ -88,7 +88,7 @@ class SubmissionCheckArgs(BaseModel):
     submission_id: int
     score: float = Field(ge=0, le=100, description="Score for a supported verdict only. Missing or ambiguous evidence requires clarification without calling this write tool; do not encode uncertainty as zero.")
     feedback: str = Field(min_length=1, max_length=10000)
-    checks: list[dict[str, Any]] = Field(default_factory=list, description="Observed criterion checks with passed boolean and evidence. Feedback must specify how to retest each failing boundary and its expected result.")
+    checks: list[dict[str, Any]] = Field(default_factory=list, description="Observed criterion checks with passed boolean and evidence. Checks are required unless explicitly marked required=false; a required check with passed=false prevents acceptance regardless of score. Feedback must specify how to retest each failing boundary and its expected result.")
     pass_threshold: float = Field(default=70, ge=0, le=100)
 
 
@@ -378,7 +378,14 @@ async def submission_check(ctx: ToolContext, args: SubmissionCheckArgs) -> dict:
     before_task = {"status": task.status, "completed_at": task.completed_at, "task_metadata": dict(task.task_metadata)}
     before_stage = {"status": task.stage.status}
     before_plan = {"progress": task.stage.plan.progress}
-    passed = args.score >= args.pass_threshold
+    # Legacy checks omit `required`, so only an explicit False opts out.
+    # Missing/ambiguous results are not fabricated failures, and empty checks
+    # retain the existing score-only behavior.
+    required_check_failed = any(
+        check.get("required") is not False and check.get("passed") is False
+        for check in args.checks
+    )
+    passed = args.score >= args.pass_threshold and not required_check_failed
     submission.score = args.score
     submission.feedback = args.feedback
     submission.status = "accepted" if passed else "revision_required"

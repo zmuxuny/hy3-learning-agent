@@ -95,10 +95,10 @@ def python_dependency_audit() -> None:
 
 
 def historical_migration() -> None:
-    # The historical migration contracts are part of the complete backend
-    # suite. Running the whole suite here preserves the pre-H8 CI regression
-    # boundary while keeping the release manifest at exactly eight gates.
-    _run([sys.executable, "-m", "pytest", "-q"], timeout=7200)
+    # Current product contracts include migration and evaluation/audit seams.
+    # Frozen experiments must instead use their original runtime and Git context.
+    _run([sys.executable, "-m", "pytest", "-q", "tests"], timeout=7200)
+    _run([sys.executable, "scripts/frozen-evaluation.py"], timeout=7200)
 
 
 def evidence_audit() -> None:
