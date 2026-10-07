@@ -6,12 +6,12 @@
     <meta name="theme-color" content="#f6f6f3" />
     <meta
       name="description"
-      content="Hy3持续理解学习状态，在没有新提问时判断是否介入。108秒展示主动学习助手，以及检验其决策质量的评测方法与实验结果。"
+      content="2026腾讯犀牛鸟开源人才培养计划混元课题个人项目：第二阶段Top 3，作者获优秀学生奖。第三阶段任务已完成，展示Hy3主动学习助手与决策评测成果。"
     />
     <meta property="og:title" content="Learning Agent · Hy3：主动学习助手与决策评测" />
     <meta
       property="og:description"
-      content="Hy3围绕学习目标制定计划，持续跟踪学习进展并主动提供支持。观看108秒产品演示，了解决策评测方法与实验结果。"
+      content="2026腾讯犀牛鸟开源人才培养计划混元课题：第二阶段Top 3、优秀学生奖。观看108秒Demo，了解主动学习助手与第三阶段评测成果。"
     />
     <meta
       property="og:image"
@@ -93,6 +93,44 @@
       .intro {
         max-width: 820px;
         margin-bottom: 34px;
+      }
+
+      .recognition {
+        margin: 0 0 28px;
+        padding: 3px 0 3px 18px;
+        border-left: 3px solid #ad7930;
+      }
+
+      .recognition p {
+        margin: 0;
+        color: #656760;
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .recognition strong {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 24px;
+        margin: 4px 0;
+        color: #80591f;
+        font-size: 25px;
+        line-height: 1.35;
+        font-weight: 700;
+      }
+
+      .recognition strong span {
+        white-space: nowrap;
+      }
+
+      .intro-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 22px;
+        margin-top: 20px;
+        font-size: 15px;
+        line-height: 1.6;
+        text-underline-offset: 4px;
       }
 
       .eyebrow {
@@ -325,17 +363,26 @@
         </a>
         <nav class="top-links" aria-label="项目链接">
           <a href="#results">评测结果</a>
-          <a href="https://github.com/zmuxuny/hy3-learning-agent/blob/main/第三阶段项目与评测报告.pdf">阅读报告</a>
+          <a href="./report.html">阅读报告</a>
         </nav>
       </header>
 
       <main>
         <section class="intro" aria-labelledby="demo-title">
-          <p class="eyebrow">Hy3 · 犀牛鸟实战任务一 · 个人活动作品</p>
-          <h1 id="demo-title">主动学习助手与决策评测</h1>
+          <aside class="recognition" aria-label="获奖与阶段成果">
+            <p>2026 腾讯犀牛鸟开源人才培养计划 · 混元课题</p>
+            <strong><span>第二阶段 Top 3</span><span>优秀学生奖</span></strong>
+            <p>作者获奖 · 本项目已完成第三阶段任务</p>
+          </aside>
+          <h1 id="demo-title">会主动跟进的学习 Agent</h1>
           <p class="lede">
-            Hy3围绕学习目标制定计划，在学习过程中持续跟踪进展、主动提供支持。108秒展示计划审阅、任务安排与主动提醒，以及检验助手建议和行动质量的评测方法与实验结果。
+            由Hy3驱动，把学习目标转化为计划，跟踪任务与作品证据，并在恰当的时机主动提供支持。108秒Demo呈现学习过程，下方报告与实验展示如何评估助手的决策质量。
           </p>
+          <nav class="intro-links" aria-label="阶段成果入口">
+            <a href="#demo">观看108秒Demo</a>
+            <a href="./report.html">阅读完整报告 →</a>
+            <a href="https://github.com/zmuxuny/hy3-learning-agent/tree/7f31816b29bbb35390343db032af889d67efb0e7">查看参赛快照</a>
+          </nav>
         </section>
 
         <figure class="player" id="demo">
