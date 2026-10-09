@@ -3,7 +3,7 @@
   <img src="assets/brand/learning-agent-logo.svg" alt="Learning Agent：书页中的学习路径" width="460" />
 </picture>
 
-### 从学习目标，到持续行动
+###  从学习目标，到持续行动
 
 一个由 **Hy3 驱动的主动学习 Agent**：把目标转化为可审阅的计划，持续跟踪任务与作品证据；没有新提问时，也会判断是否需要提醒、抽查或调整计划。
 
